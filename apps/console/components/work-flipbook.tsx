@@ -108,7 +108,7 @@ export function WorkFlipbook({
             Back
           </button>
         ) : null}
-        {onInside && i === 0 ? (
+        {onInside ? (
           <button
             type="button"
             onClick={onInside}

@@ -9,7 +9,7 @@ import { shortName } from "@/lib/names";
 import { cn } from "@/lib/utils";
 
 const TILE = { w: 72, h: 36 };
-const CELL = { w: 100, h: 92 };
+const CELL = { w: 110, h: 100 };
 
 function iso(col: number, row: number) {
   return {
@@ -74,14 +74,7 @@ function Tile({
           filter: active ? "brightness(1.04)" : undefined,
         }}
       />
-      <span className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col items-center">
-        {busy ? (
-          <span className="mb-0.5 max-w-[88px] truncate rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] leading-3 text-[var(--dim)] shadow-sm">
-            Working
-          </span>
-        ) : (
-          <span className="h-4" aria-hidden />
-        )}
+      <span className="absolute left-1/2 top-1 flex -translate-x-1/2 flex-col items-center">
         <PixelSprite name={desk.id} scale={2} working={busy} />
         {deskItem ? <PixelItem item={deskItem} scale={2} className="-mt-1" /> : null}
         <span className="-mt-1 flex items-end">
@@ -89,7 +82,9 @@ function Tile({
             <PixelItem key={item.kind} item={item} scale={1} />
           ))}
         </span>
-        <span className="mt-0.5 max-w-[72px] truncate text-[11px] font-medium leading-3">{shortName(desk.id)}</span>
+        <span className="mt-0.5 max-w-[72px] truncate text-[11px] font-medium leading-3 text-[#1d1d1f]">
+          {shortName(desk.id)}
+        </span>
       </span>
     </button>
   );

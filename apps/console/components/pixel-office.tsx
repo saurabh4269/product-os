@@ -168,6 +168,7 @@ export function PixelOffice({
   activity,
   link = true,
   district,
+  furniture,
 }: {
   members: string[];
   working: Set<string>;
@@ -175,7 +176,9 @@ export function PixelOffice({
   activity?: Record<string, string>;
   link?: boolean;
   district?: string;
+  furniture?: boolean;
 }) {
+  const showFurniture = furniture ?? !compact;
   const shown = members.filter((m) => m !== "system").slice(0, compact ? 4 : 8);
   return (
     <div className={cn("bg-[var(--floor)]", compact ? "px-4 pb-4 pt-6" : "px-4 pb-5 pt-6")}>
@@ -191,7 +194,7 @@ export function PixelOffice({
                 </span>
               ) : null}
               <PixelSprite name={name} scale={3} working={isWork} />
-              {compact ? null : <FurnitureSet name={name} district={district} working={isWork} scale={2} />}
+              {showFurniture ? <FurnitureSet name={name} district={district} working={isWork} scale={2} /> : null}
               <span className="mt-1.5 max-w-[84px] truncate text-center text-[12px] leading-4 text-[var(--dim)]">
                 {shortName(name)}
               </span>

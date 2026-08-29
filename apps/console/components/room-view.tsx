@@ -164,22 +164,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
       </div>
 
       <div className="mx-5 overflow-hidden rounded-[20px] border border-border sm:mx-8 lg:mx-12">
-        <PixelOffice
-          members={data.room.members}
-          working={working}
-          activity={activity}
-          district={
-            data.room.kind === "incident"
-              ? "Incidents"
-              : data.room.kind === "opportunity"
-                ? "Ideas"
-                : data.room.kind === "review"
-                  ? "Reviews"
-                  : data.room.kind === "research"
-                    ? "Research"
-                    : "Ops"
-          }
-        />
+        <PixelOffice members={data.room.members} working={working} activity={activity} furniture={false} />
       </div>
 
       {data.bundle ? (
