@@ -1,0 +1,51 @@
+# LOOP model IDs — configuration only (Requirement P-6).
+# Do not inline these strings at call sites. Import via loop.config.models.
+
+default_reasoning:
+  id: gemini-3.5-flash
+  lifecycle_tier: twelve_month
+  retires: "2027-05-19"
+  sampling_supported: true
+  temperature: 0.2
+  top_p: 0.95
+
+voice:
+  id: gemini-live-2.5-flash-native-audio
+  lifecycle_tier: retiring
+  retires: "2026-12-13"
+  sampling_supported: false
+  architecturally_optional: true
+
+embeddings:
+  id: gemini-embedding-001
+  lifecycle_tier: twelve_month
+  retires: "2028-05-20"
+  sampling_supported: false
+
+memory_generation:
+  id: gemini-3.5-flash
+  lifecycle_tier: twelve_month
+  sampling_supported: true
+
+# Short-term tier — 45 days' notice. Recorded so a retirement is auditable.
+# Sampling parameters MUST NOT be set (P-6b): silently ignored or error.
+opt_in_newer:
+  - id: gemini-3.6-flash
+    lifecycle_tier: short_term
+    sampling_supported: false
+    sampling_silently_ignored: [temperature, top_k, top_p]
+  - id: gemini-3.5-flash-lite
+    lifecycle_tier: short_term
+    sampling_supported: false
+    sampling_silently_ignored: [temperature, top_k, top_p]
+  - id: gemini-3.7-flash
+    lifecycle_tier: short_term
+    sampling_supported: true
+
+# Forbidden dependencies (P-6c, P-6a)
+forbidden:
+  - gemini-3.5-pro
+  - gemini-embedding-2
+
+region: us-central1
+project_env: GOOGLE_CLOUD_PROJECT

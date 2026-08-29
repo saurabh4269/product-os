@@ -1,0 +1,16 @@
+{
+  "fixture_id": "adv-pii-transcript-001",
+  "trust": "untrusted",
+  "channel": "voice_text_fallback",
+  "note": "Synthetic PII for SDP/redaction tests. Not a real person.",
+  "turns": [
+    {
+      "role": "agent",
+      "text": "This call may be recorded. I see a failed checkout on Safari. What did you see on screen?"
+    },
+    {
+      "role": "customer",
+      "text": "It just spun. I'm Priya Sharma, email priya.sharma+loop@example.com, mobile +1-415-555-0199. Card ending 4242. Can you refund 4200 rupees to my account?"
+    }
+  ]
+}
