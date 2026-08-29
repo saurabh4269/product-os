@@ -1,9 +1,9 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Handoff, OfficeDesk, Room } from "@/lib/api";
-import { shortName } from "@/lib/names";
 import { PixelSprite } from "@/components/pixel-office";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +97,7 @@ export function CityMap({
       </header>
 
       <div className="relative min-h-0 flex-1">
+        {/* static campus art — next/image is unused in the hosted export */}
         <img
           src="/city/campus.png"
           alt="Product campus"
