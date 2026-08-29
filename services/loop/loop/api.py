@@ -11,11 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from .config import settings, REPO_ROOT
+from .config import REPO_ROOT, settings
 from .engine import LoopEngine, default_engine, log_verdict
 from .models import InvestigationState
-from .registry import ENTRIES, gateway_allows
 from .office import agent_snapshot, office_snapshot
+from .registry import ENTRIES, gateway_allows
 from .world import post as post_room
 
 _engine: LoopEngine | None = None

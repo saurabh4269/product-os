@@ -5,7 +5,6 @@ from __future__ import annotations
 from .engine import LoopEngine
 from .registry import ENTRIES, by_id
 
-
 _ALIASES = {
     "analytics": "analytics_agent",
     "logs": "logs_agent",
