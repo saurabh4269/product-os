@@ -19,25 +19,15 @@ export default function GovernancePage() {
   if (!data) return <Loading />;
 
   return (
-    <div className="px-8 py-10 lg:px-12">
-      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Security plane</p>
-      <h1 className="font-display mt-3 text-[48px] leading-none">Governance</h1>
-      <p className="mt-6 font-display text-[40px] leading-none text-ok">
-        failOpen = {String(data.failOpen)}
-      </p>
-      <div className="mt-12 max-w-2xl space-y-4">
+    <div className="px-8 py-10 lg:px-14">
+      <h1 className="text-[28px] font-semibold tracking-tight">Governance</h1>
+      <p className="mt-3 text-[15px] text-[var(--dim)]">Safety stays closed if something fails. failOpen = {String(data.failOpen)}.</p>
+      <div className="mt-8 max-w-xl space-y-3">
         {data.identities.map((id) => (
           <div key={id.id} className="flex justify-between gap-6 border-b border-border py-3">
-            <p className="text-[15px]">{id.id}</p>
-            <p className="text-right text-[14px] text-[var(--dim)]">{id.envelope}</p>
+            <p className="text-[14px]">{id.id}</p>
+            <p className="text-right text-[13px] text-[var(--dim)]">{id.envelope}</p>
           </div>
-        ))}
-      </div>
-      <div className="mt-12 max-w-2xl space-y-2">
-        {data.verdicts.map((v) => (
-          <p key={String(v.id)} className="text-[14px] text-danger">
-            {String(v.verdict)} · {String(v.tool)} — {String(v.rationale)}
-          </p>
         ))}
       </div>
     </div>

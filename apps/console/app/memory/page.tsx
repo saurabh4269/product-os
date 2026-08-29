@@ -21,30 +21,23 @@ export default function MemoryPage() {
   if (!data) return <Loading label="Opening memory" />;
 
   return (
-    <div className="px-8 py-10 lg:px-12">
-      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Knowledge, not facts</p>
-      <h1 className="font-display mt-3 text-[48px] leading-none">Memory</h1>
-      <p className="mt-4 max-w-xl text-[16px] leading-7 text-[var(--dim)]">
-        The warehouse keeps numbers. This room keeps what we learned — so a later signal can find it.
+    <div className="px-8 py-10 lg:px-14">
+      <h1 className="text-[28px] font-semibold tracking-tight">Memory</h1>
+      <p className="mt-2 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        What we learned last time. Numbers stay in the warehouse; this is the short version we keep.
       </p>
-      <div className="mt-12 grid gap-12 lg:grid-cols-2">
+      <div className="mt-8 grid gap-8 lg:grid-cols-2">
         {KINDS.map((kind) => (
-          <section key={kind}>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">{kind}</p>
-            <div className="mt-4 space-y-6">
+          <section key={kind} className="rounded-2xl border border-border bg-white p-5">
+            <p className="text-[13px] font-medium capitalize text-[var(--faint)]">{kind}</p>
+            <div className="mt-4 space-y-4">
               {(data.memory[kind] ?? []).length === 0 ? (
                 <p className="text-[14px] text-[var(--dim)]">Nothing stored yet.</p>
               ) : (
                 (data.memory[kind] ?? []).map((card, i) => (
-                  <article key={String(card.id ?? i)}>
-                    <p className="font-display text-[24px] leading-8">
-                      {String(card.statement ?? JSON.stringify(card.structured ?? card))}
-                    </p>
-                    <p className="mt-2 text-[12px] text-[var(--faint)]">
-                      {String(card.provenance ?? "")}
-                      {card.confidence != null ? ` · ${card.confidence}` : ""}
-                    </p>
-                  </article>
+                  <p key={String(card.id ?? i)} className="text-[14px] leading-6">
+                    {String(card.statement ?? JSON.stringify(card.structured ?? card))}
+                  </p>
                 ))
               )}
             </div>

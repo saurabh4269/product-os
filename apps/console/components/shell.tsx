@@ -8,19 +8,27 @@ import { cn } from "@/lib/utils";
 import { PixelSprite } from "@/components/pixel-office";
 
 const SYSTEM = [
-  { href: "/", label: "Hive" },
-  { href: "/registry", label: "Registry" },
+  { href: "/", label: "Home" },
+  { href: "/registry", label: "Agents" },
   { href: "/memory", label: "Memory" },
-  { href: "/traces", label: "Traces" },
   { href: "/approvals", label: "Approvals" },
 ];
 
 const KINDS = ["incident", "opportunity", "review", "research", "ops"] as const;
 
 function kindLabel(kind: string) {
-  if (kind === "incident") return "Broke";
-  if (kind === "opportunity") return "Better";
-  return kind;
+  if (kind === "incident") return "Incidents";
+  if (kind === "opportunity") return "Ideas";
+  if (kind === "review") return "Reviews";
+  if (kind === "research") return "Research";
+  return "Ops";
+}
+
+function kindColor(kind: string) {
+  if (kind === "incident") return "var(--danger)";
+  if (kind === "opportunity") return "var(--ok)";
+  if (kind === "review") return "var(--warn)";
+  return "var(--accent)";
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -37,16 +45,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const inRoom = path.startsWith("/rooms/");
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <aside className="hidden w-[272px] shrink-0 flex-col border-r border-border bg-[var(--paper)] md:flex">
-        <div className="px-5 pb-5 pt-6">
+    <div className="flex h-screen overflow-hidden bg-background">
+      <aside className="hidden w-[260px] shrink-0 flex-col border-r border-border bg-white md:flex">
+        <div className="px-5 pb-4 pt-6">
           <Link href="/" className="block">
-            <p className="font-display text-[28px] leading-none tracking-tight">Product OS</p>
-            <p className="mt-2 text-[12px] text-[var(--dim)]">The office is the product.</p>
+            <p className="text-[17px] font-semibold tracking-tight">Product OS</p>
+            <p className="mt-1 text-[13px] text-[var(--dim)]">Your product team, in rooms.</p>
           </Link>
         </div>
 
-        <nav className="px-3 pb-3">
+        <nav className="px-3 pb-4">
           {SYSTEM.map((item) => {
             const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
             return (
@@ -54,8 +62,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "block px-2 py-1.5 text-[13px] transition-colors",
-                  active ? "text-accent" : "text-[var(--dim)] hover:text-foreground"
+                  "block rounded-lg px-3 py-1.5 text-[14px] transition-colors",
+                  active ? "bg-[var(--elev)] font-medium text-foreground" : "text-[var(--dim)] hover:text-foreground"
                 )}
               >
                 {item.label}
@@ -70,7 +78,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             if (!group.length) return null;
             return (
               <div key={kind} className="mb-5">
-                <p className="px-2 pb-1 text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">{kindLabel(kind)}</p>
+                <p className="px-3 pb-1 text-[12px] font-medium text-[var(--faint)]">{kindLabel(kind)}</p>
                 {group.map((room) => {
                   const href = `/rooms/${room.id}`;
                   const active = path === href;
@@ -79,26 +87,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       key={room.id}
                       href={href}
                       className={cn(
-                        "mb-0.5 flex items-start gap-2 px-2 py-2 transition-colors",
-                        active ? "bg-[var(--elev)] text-foreground" : "text-[var(--dim)] hover:text-foreground"
+                        "mb-0.5 flex items-start gap-2 rounded-lg px-3 py-2 transition-colors",
+                        active ? "bg-[var(--elev)]" : "hover:bg-[var(--elev)]/70"
                       )}
                     >
-                      <span
-                        className="mt-1.5 h-1.5 w-1.5 shrink-0"
-                        style={{
-                          background:
-                            kind === "incident"
-                              ? "var(--danger)"
-                              : kind === "opportunity"
-                                ? "var(--ok)"
-                                : kind === "review"
-                                  ? "var(--warn)"
-                                  : "var(--accent-2)",
-                        }}
-                      />
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: kindColor(kind) }} />
                       <span className="min-w-0">
                         <span className="block truncate text-[13px] leading-5 text-foreground">{room.title}</span>
-                        <span className="mt-0.5 block truncate text-[11px] leading-4 text-[var(--faint)]">
+                        <span className="mt-0.5 block truncate text-[12px] leading-4 text-[var(--faint)]">
                           {room.preview ?? room.topic}
                         </span>
                       </span>
@@ -113,13 +109,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2 border-t border-border px-4 py-3">
           <PixelSprite name="you" scale={3} />
           <div>
-            <p className="text-[12px] leading-4">You</p>
-            <p className="text-[11px] text-ok">in the rooms</p>
+            <p className="text-[13px] font-medium leading-4">You</p>
+            <p className="text-[12px] text-[var(--dim)]">Here with the team</p>
           </div>
         </div>
       </aside>
 
-      <main className={cn("min-w-0 flex-1", inRoom ? "overflow-hidden" : "overflow-y-auto chat-scroll")}>
+      <main className={cn("min-w-0 flex-1 bg-background", inRoom ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll")}>
         {children}
       </main>
     </div>

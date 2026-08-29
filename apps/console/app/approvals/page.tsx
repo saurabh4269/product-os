@@ -33,24 +33,23 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="px-8 py-10 lg:px-12">
-      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Waiting on a human</p>
-      <h1 className="font-display mt-3 text-[48px] leading-none">Approvals</h1>
+    <div className="px-8 py-10 lg:px-14">
+      <h1 className="text-[28px] font-semibold tracking-tight">Approvals</h1>
+      <p className="mt-2 text-[15px] text-[var(--dim)]">A few changes are waiting for a yes.</p>
       {data.pending.length === 0 ? (
-        <Empty title="Nothing at the gate." hint="Risk Agent will put work here." />
+        <Empty title="You’re all caught up." hint="New gates will show up here." />
       ) : (
-        <div className="mt-10 max-w-2xl space-y-10">
+        <div className="mt-8 max-w-xl space-y-6">
           {data.pending.map((a) => (
-            <article key={a.id}>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-warn">{a.risk_tier}</p>
-              <p className="font-display mt-2 text-[28px] leading-8">{a.consequence}</p>
-              <p className="mt-2 text-[14px] text-[var(--dim)]">{a.tier_rationale}</p>
+            <article key={a.id} className="rounded-2xl border border-border bg-white p-5">
+              <p className="text-[13px] text-[var(--faint)]">{a.risk_tier}</p>
+              <p className="mt-2 text-[15px] leading-6">{a.consequence}</p>
               <div className="mt-4 flex items-center gap-3">
                 <Button disabled={busy === a.id} onClick={() => void decide(a, "approve")}>
                   Approve
                 </Button>
                 <Button variant="ghost" disabled={busy === a.id} onClick={() => void decide(a, "deny")}>
-                  Hold
+                  Not yet
                 </Button>
                 <Link href={`/investigations/${a.investigation_id}`} className="text-[13px] text-accent">
                   Open room

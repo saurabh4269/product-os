@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Instrument_Serif, Outfit } from "next/font/google";
+import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Shell } from "@/components/shell";
 import "./globals.css";
 
-const sans = Outfit({
+const sans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
-});
-
-const display = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-display",
 });
 
 const mono = IBM_Plex_Mono({
@@ -22,12 +16,12 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "Product OS",
-  description: "An autonomous product team in rooms",
+  description: "A simple place to watch the product team work",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`dark ${sans.variable} ${display.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="h-full font-sans antialiased">
         <Shell>{children}</Shell>
       </body>

@@ -23,16 +23,15 @@ function artifactTone(type: string) {
   if (type === "risk_decision") return "var(--warn)";
   if (type === "memory_card") return "var(--ok)";
   if (type === "hypothesis" || type === "prd" || type === "experiment_design") return "var(--accent)";
-  if (type === "evidence") return "var(--accent-2)";
-  return "var(--dim)";
+  return "var(--line)";
 }
 
 function Artifact({ msg }: { msg: RoomMessage }) {
   const type = (msg.artifact_type ?? "note").replace(/_/g, " ");
   return (
-    <div className="mt-2 max-w-[640px] border-l-2 pl-4" style={{ borderColor: artifactTone(msg.artifact_type ?? "") }}>
-      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--faint)]">{type}</p>
-      <p className="mt-1 text-[15px] leading-6 text-[var(--ink)]">{msg.text}</p>
+    <div className="mt-2 max-w-[620px] rounded-xl bg-[var(--elev)] px-4 py-3">
+      <p className="text-[12px] font-medium capitalize text-[var(--faint)]">{type}</p>
+      <p className="mt-1 text-[14px] leading-6 text-[var(--ink)]">{msg.text}</p>
     </div>
   );
 }
@@ -48,18 +47,16 @@ function Gate({
 }) {
   if (!["proposed", "awaiting_approval"].includes(action.status)) return null;
   return (
-    <div className="hard-shadow my-4 max-w-[640px] border border-[var(--warn)] bg-[var(--paper)] p-5">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-warn">
-        {action.risk_tier} gate
-      </p>
-      <p className="font-display mt-2 text-[26px] leading-8">This change needs you.</p>
+    <div className="soft-card my-5 max-w-[620px] rounded-2xl border border-border bg-white p-5">
+      <p className="text-[13px] font-medium text-[var(--dim)]">Needs a quick look · {action.risk_tier}</p>
+      <p className="mt-2 text-[16px] font-medium leading-6">This change is waiting on you</p>
       <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">{action.consequence}</p>
       <div className="mt-4 flex gap-2">
         <Button onClick={() => onDecide("approve")} disabled={busy}>
           Approve
         </Button>
         <Button variant="ghost" onClick={() => onDecide("deny")} disabled={busy}>
-          Hold
+          Not yet
         </Button>
       </div>
     </div>
@@ -123,22 +120,23 @@ export function RoomView({ initialId }: { initialId?: string }) {
   let lastAuthor = "";
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="px-8 pb-4 pt-7 lg:px-12">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">
-          {data.room.kind}
-          {data.room.loop_type === "type_a" ? " · something broke" : data.room.loop_type === "type_b" ? " · something could be better" : ""}
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      <div className="px-8 pb-4 pt-6 lg:px-12">
+        <p className="text-[13px] text-[var(--faint)]">
+          {data.room.kind === "incident" ? "Incident" : data.room.kind === "opportunity" ? "Idea" : "Room"}
         </p>
-        <h1 className="font-display mt-2 max-w-3xl text-[40px] leading-[1.1] tracking-tight">{data.room.title}</h1>
-        <p className="mt-2 max-w-2xl text-[15px] leading-6 text-[var(--dim)]">{data.room.topic}</p>
+        <h1 className="mt-1 max-w-2xl text-[24px] font-semibold leading-8 tracking-tight">{data.room.title}</h1>
+        <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--dim)]">{data.room.topic}</p>
       </div>
 
-      <PixelOffice members={data.room.members} working={working} />
+      <div className="mx-8 overflow-hidden rounded-2xl border border-border lg:mx-12">
+        <PixelOffice members={data.room.members} working={working} />
+      </div>
 
       {recalled.length ? (
-        <div className="border-b border-border px-8 py-3 lg:px-12">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-ok">Remembered</p>
-          <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--ink)]/90">{recalled[0]}</p>
+        <div className="mx-8 mt-4 rounded-xl bg-[var(--elev)] px-4 py-3 lg:mx-12">
+          <p className="text-[12px] font-medium text-ok">From last time</p>
+          <p className="mt-1 text-[14px] leading-6 text-[var(--ink)]">{recalled[0]}</p>
         </div>
       ) : null}
 
@@ -147,17 +145,19 @@ export function RoomView({ initialId }: { initialId?: string }) {
           const repeat = msg.author === lastAuthor;
           lastAuthor = msg.author;
           return (
-            <div key={msg.id} className={repeat ? "pt-1" : "pt-5"}>
+            <div key={msg.id} className={repeat ? "pt-1" : "pt-4"}>
               {repeat ? null : (
                 <div className="mb-1 flex items-center gap-2">
                   <PixelSprite name={msg.author} scale={2} />
                   <span className="text-[14px] font-medium">{shortName(msg.author)}</span>
-                  <span className="text-[11px] text-[var(--faint)]">{when(msg.created_at)}</span>
+                  <span className="text-[12px] text-[var(--faint)]">{when(msg.created_at)}</span>
                 </div>
               )}
-              <div className={repeat ? "pl-10" : "pl-10"}>
-                {msg.kind === "artifact" ? <Artifact msg={msg} /> : (
-                  <p className="max-w-[640px] text-[15px] leading-6 text-[var(--ink)]/92">{msg.text}</p>
+              <div className="pl-10">
+                {msg.kind === "artifact" ? (
+                  <Artifact msg={msg} />
+                ) : (
+                  <p className="max-w-[620px] text-[14px] leading-6 text-[var(--ink)]">{msg.text}</p>
                 )}
               </div>
             </div>
@@ -169,7 +169,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
       </div>
 
       <form
-        className="border-t border-border px-8 py-4 lg:px-12"
+        className="border-t border-border px-8 py-3 lg:px-12"
         onSubmit={(e) => {
           e.preventDefault();
           void send();
@@ -178,8 +178,8 @@ export function RoomView({ initialId }: { initialId?: string }) {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Write in the room"
-          className="h-12 w-full bg-transparent text-[16px] outline-none placeholder:text-[var(--faint)]"
+          placeholder="Message the room"
+          className="h-11 w-full rounded-xl bg-[var(--elev)] px-4 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/30"
         />
       </form>
     </div>

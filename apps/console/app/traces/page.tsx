@@ -21,38 +21,19 @@ export default function TracesPage() {
   if (!data) return <Loading label="Opening traces" />;
 
   return (
-    <div className="px-8 py-10 lg:px-12">
-      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Who spoke to whom</p>
-      <h1 className="font-display mt-3 text-[48px] leading-none">Traces</h1>
-      <div className="mt-10 space-y-3">
+    <div className="px-8 py-10 lg:px-14">
+      <h1 className="text-[28px] font-semibold tracking-tight">Traces</h1>
+      <p className="mt-2 text-[15px] text-[var(--dim)]">Who talked to whom.</p>
+      <div className="mt-8 space-y-2">
         {data.traces.map((t, i) => (
-          <div key={String(t.id ?? i)} className="flex flex-wrap items-center gap-3 py-2">
+          <div key={String(t.id ?? i)} className="flex flex-wrap items-center gap-2 py-1">
             <PixelSprite name={String(t.from_agent ?? "")} scale={2} />
-            <span className="text-[15px]">{shortName(String(t.from_agent ?? ""))}</span>
+            <span className="text-[14px]">{shortName(String(t.from_agent ?? ""))}</span>
             <span className="text-[var(--faint)]">→</span>
             <PixelSprite name={String(t.to_agent ?? "")} scale={2} />
-            <span className="text-[15px]">{shortName(String(t.to_agent ?? ""))}</span>
-            <span className="text-[12px] text-[var(--faint)]">{String(t.summary ?? "")}</span>
+            <span className="text-[14px]">{shortName(String(t.to_agent ?? ""))}</span>
           </div>
         ))}
-      </div>
-      <div className="mt-12">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">Policy</p>
-        <div className="mt-4 space-y-2">
-          {data.verdicts.map((v, i) => (
-            <p key={String(v.id ?? i)} className="text-[15px]">
-              <span
-                className="mr-3 uppercase tracking-[0.12em]"
-                style={{ color: v.verdict === "DENY" || v.verdict === "BLOCK" ? "var(--danger)" : "var(--ok)" }}
-              >
-                {String(v.verdict)}
-              </span>
-              <span className="text-[var(--dim)]">
-                {String(v.agent_identity)} · {String(v.tool)}
-              </span>
-            </p>
-          ))}
-        </div>
       </div>
     </div>
   );

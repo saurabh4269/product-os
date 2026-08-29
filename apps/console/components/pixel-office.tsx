@@ -224,13 +224,13 @@ export function PixelOffice({
           return (
             <div key={name} className="relative flex flex-col items-center" style={{ animationDelay: `${i * 80}ms` }}>
               {isWork ? (
-                <span className="absolute -top-3 rounded-sm bg-[var(--ink)] px-1 font-sans text-[9px] leading-4 text-[var(--bg)]">
+                <span className="absolute -top-3 rounded-md bg-white px-1.5 font-sans text-[10px] leading-4 text-[var(--dim)] shadow-sm">
                   …
                 </span>
               ) : null}
               <PixelSprite name={name} scale={compact ? 2 : 3} working={isWork} />
               <Desk scale={compact ? 2 : 2} />
-              <span className="mt-0.5 max-w-[72px] truncate text-[10px] tracking-wide text-[var(--ink)]/70">
+              <span className="mt-0.5 max-w-[72px] truncate text-[11px] text-[var(--dim)]">
                 {shortName(name)}
               </span>
             </div>
@@ -256,20 +256,22 @@ export function HiveChamber({
 }) {
   const working = new Set(members.slice(0, 3));
   const tone =
-    kind === "incident" ? "var(--danger)" : kind === "opportunity" ? "var(--ok)" : kind === "review" ? "var(--warn)" : "var(--accent-2)";
+    kind === "incident" ? "var(--danger)" : kind === "opportunity" ? "var(--ok)" : kind === "review" ? "var(--warn)" : "var(--accent)";
+  const label =
+    kind === "incident" ? "Incident" : kind === "opportunity" ? "Idea" : kind === "review" ? "Review" : kind;
   return (
-    <div className="chamber hard-shadow flex h-full flex-col overflow-hidden border border-[var(--line)] bg-[var(--paper)]">
+    <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-white">
       <PixelOffice members={members} working={working} compact />
       <div className="flex flex-1 flex-col px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 shrink-0" style={{ background: tone }} />
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--dim)]">
-            {kind}
-            {loop === "type_a" ? " · broke" : loop === "type_b" ? " · better" : ""}
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: tone }} />
+          <p className="text-[12px] text-[var(--faint)]">
+            {label}
+            {loop === "type_a" ? " · fix" : loop === "type_b" ? " · improve" : ""}
           </p>
         </div>
-        <h3 className="font-display mt-1 text-[22px] leading-7 tracking-tight">{title}</h3>
-        <p className="mt-2 line-clamp-2 text-[13px] leading-5 text-[var(--dim)]">{preview}</p>
+        <h3 className="mt-1 text-[16px] font-semibold leading-6 tracking-tight">{title}</h3>
+        <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-[var(--dim)]">{preview}</p>
       </div>
     </div>
   );

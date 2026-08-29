@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, HTMLAttributes } from "react";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("border border-border bg-card p-5", className)} {...props} />;
+  return <div className={cn("rounded-xl border border-border bg-card p-5", className)} {...props} />;
 }
 
 export function Badge({
@@ -11,16 +11,14 @@ export function Badge({
   ...props
 }: HTMLAttributes<HTMLSpanElement> & { tone?: "muted" | "ok" | "warn" | "danger" | "high" | "accent" }) {
   const tones = {
-    muted: "text-[var(--dim)]",
+    muted: "text-[var(--faint)]",
     ok: "text-ok",
     warn: "text-warn",
     danger: "text-danger",
     high: "text-danger",
     accent: "text-accent",
   };
-  return (
-    <span className={cn("text-[11px] uppercase tracking-[0.16em]", tones[tone], className)} {...props} />
-  );
+  return <span className={cn("text-[12px] font-medium", tones[tone], className)} {...props} />;
 }
 
 export function Button({
@@ -29,14 +27,14 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "danger" }) {
   const variants = {
-    primary: "bg-accent text-[#100e14] hover:brightness-110",
-    ghost: "bg-transparent text-foreground hover:bg-white/5",
-    danger: "bg-danger text-[#100e14] hover:brightness-110",
+    primary: "bg-accent text-white hover:bg-[#4f46e5]",
+    ghost: "bg-transparent text-foreground hover:bg-muted",
+    danger: "bg-danger text-white hover:opacity-90",
   };
   return (
     <button
       className={cn(
-        "inline-flex cursor-pointer items-center gap-2 px-4 py-2 text-[13px] font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-[14px] font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40",
         variants[variant],
         className
       )}
@@ -48,7 +46,7 @@ export function Button({
 export function Empty({ title, hint }: { title: string; hint: string }) {
   return (
     <div className="py-16 text-center">
-      <p className="font-display text-2xl">{title}</p>
+      <p className="text-[18px] font-medium">{title}</p>
       <p className="mt-2 text-[14px] text-[var(--dim)]">{hint}</p>
     </div>
   );
@@ -57,17 +55,17 @@ export function Empty({ title, hint }: { title: string; hint: string }) {
 export function ErrorState({ message }: { message: string }) {
   return (
     <div className="px-8 py-16">
-      <p className="font-display text-2xl text-danger">Couldn’t reach the office.</p>
+      <p className="text-[18px] font-medium">Can’t reach the app right now.</p>
       <p className="mt-2 text-[14px] text-[var(--dim)]">{message}</p>
     </div>
   );
 }
 
-export function Loading({ label = "Opening" }: { label?: string }) {
+export function Loading({ label = "Loading" }: { label?: string }) {
   return (
     <div className="flex items-center gap-3 px-8 py-16">
-      <span className="h-2 w-2 animate-pulse bg-accent" />
-      <p className="text-[13px] text-[var(--dim)]">{label}</p>
+      <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
+      <p className="text-[14px] text-[var(--dim)]">{label}</p>
     </div>
   );
 }
