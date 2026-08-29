@@ -3,17 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import {
+  BookMarked,
+  CircleCheck,
+  House,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Users,
+} from "lucide-react";
 import { api, type Room } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { PixelSprite } from "@/components/pixel-office";
 
+const STORAGE = "loop-sidebar";
+
 const SYSTEM = [
-  { href: "/", label: "Home" },
-  { href: "/registry", label: "Agents" },
-  { href: "/memory", label: "Memory" },
-  { href: "/approvals", label: "Approvals" },
-];
+  { href: "/", label: "Home", icon: House },
+  { href: "/registry", label: "Agents", icon: Users },
+  { href: "/memory", label: "Memory", icon: BookMarked },
+  { href: "/approvals", label: "Approvals", icon: CircleCheck },
+] as const;
 
 const KINDS = ["incident", "opportunity", "review", "research", "ops"] as const;
 
@@ -25,17 +34,24 @@ function kindLabel(kind: string) {
   return "Ops";
 }
 
-function titleFor(path: string) {
-  if (path === "/") return "Campus";
-  if (path.startsWith("/rooms/")) return "Room";
-  if (path.startsWith("/agents/")) return "Agent";
-  if (path.startsWith("/registry")) return "Agents";
-  if (path.startsWith("/memory")) return "Memory";
-  if (path.startsWith("/approvals")) return "Approvals";
-  return "Product OS";
+function isActive(path: string, href: string) {
+  return href === "/" ? path === "/" : path.startsWith(href);
 }
 
-function NavBody({
+function Tip({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
+  return (
+    <span className="group relative flex justify-center">
+      {children}
+      {show ? (
+        <span className="pointer-events-none absolute left-full top-1/2 z-[60] ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-[#1d1d1f] px-2 py-1 text-[12px] text-white opacity-0 shadow-lg group-hover:flex group-hover:opacity-100">
+          {label}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function RoomList({
   path,
   rooms,
   onNavigate,
@@ -45,77 +61,80 @@ function NavBody({
   onNavigate?: () => void;
 }) {
   return (
-    <>
-      <div className="px-5 pb-5 pt-7">
-        <Link href="/" onClick={onNavigate} className="block">
-          <p className="text-[17px] font-semibold tracking-tight">Product OS</p>
-          <p className="mt-1 text-[13px] text-[var(--dim)]">A campus for the work.</p>
-        </Link>
-      </div>
+    <div className="flex-1 overflow-y-auto chat-scroll px-2 pb-4">
+      {KINDS.map((kind) => {
+        const group = rooms.filter((r) => r.kind === kind);
+        if (!group.length) return null;
+        return (
+          <div key={kind} className="mb-4">
+            <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--faint)]">
+              {kindLabel(kind)}
+            </p>
+            {group.map((room) => {
+              const href = `/rooms/${room.id}`;
+              return (
+                <Link
+                  key={room.id}
+                  href={href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "mb-0.5 block rounded-lg px-3 py-2 text-[13px] leading-5 transition-colors",
+                    path === href ? "bg-[var(--elev)] font-medium" : "text-[var(--dim)] hover:bg-[var(--elev)] hover:text-foreground"
+                  )}
+                >
+                  <span className="block truncate">{room.title}</span>
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
-      <nav className="px-3 pb-4">
-        {SYSTEM.map((item) => {
-          const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
-          return (
+function SystemLinks({
+  path,
+  collapsed,
+  onNavigate,
+}: {
+  path: string;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav className={cn("flex flex-col gap-0.5", collapsed ? "items-center px-2" : "px-2")}>
+      {SYSTEM.map((item) => {
+        const Icon = item.icon;
+        const active = isActive(path, item.href);
+        return (
+          <Tip key={item.href} label={item.label} show={collapsed}>
             <Link
-              key={item.href}
               href={item.href}
               onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "block rounded-full px-3 py-2.5 text-[15px] transition-colors lg:py-1.5 lg:text-[14px]",
-                active ? "bg-[var(--elev)] font-medium text-foreground" : "text-[var(--dim)] hover:text-foreground"
+                "group flex items-center rounded-xl transition-colors",
+                collapsed ? "h-11 w-11 justify-center" : "h-10 gap-3 px-3",
+                active ? "bg-[var(--elev)] text-foreground" : "text-[var(--dim)] hover:bg-[var(--elev)] hover:text-foreground"
               )}
             >
-              {item.label}
+              <Icon size={18} strokeWidth={1.75} />
+              {collapsed ? <span className="sr-only">{item.label}</span> : <span className="text-[14px]">{item.label}</span>}
             </Link>
-          );
-        })}
-      </nav>
-
-      <div className="flex-1 overflow-y-auto chat-scroll px-3 pb-6">
-        {KINDS.map((kind) => {
-          const group = rooms.filter((r) => r.kind === kind);
-          if (!group.length) return null;
-          return (
-            <div key={kind} className="mb-5">
-              <p className="px-3 pb-1 text-[12px] font-medium text-[var(--faint)]">{kindLabel(kind)}</p>
-              {group.map((room) => {
-                const href = `/rooms/${room.id}`;
-                const active = path === href;
-                return (
-                  <Link
-                    key={room.id}
-                    href={href}
-                    onClick={onNavigate}
-                    className={cn(
-                      "mb-0.5 block rounded-lg px-3 py-2.5 transition-colors lg:py-1.5",
-                      active ? "bg-[var(--elev)]" : "hover:bg-[var(--elev)]"
-                    )}
-                  >
-                    <span className="block truncate text-[14px] leading-5 text-foreground lg:text-[13px]">{room.title}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center gap-2 border-t border-border px-4 py-3">
-        <PixelSprite name="you" scale={3} />
-        <div>
-          <p className="text-[13px] font-medium leading-4">You</p>
-          <p className="text-[12px] text-[var(--dim)]">Here with the team</p>
-        </div>
-      </div>
-    </>
+          </Tip>
+        );
+      })}
+    </nav>
   );
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [desktop, setDesktop] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     api
@@ -125,64 +144,138 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, [path]);
 
   useEffect(() => {
-    setOpen(false);
-  }, [path]);
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setDesktop(wide.matches);
+    apply();
+    wide.addEventListener("change", apply);
+    const stored = window.localStorage.getItem(STORAGE);
+    if (stored === "open") setExpanded(true);
+    else if (stored === "closed") setExpanded(false);
+    else setExpanded(wide.matches);
+    setReady(true);
+    return () => wide.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!ready) return;
+    window.localStorage.setItem(STORAGE, expanded ? "open" : "closed");
+  }, [expanded, ready]);
+
+  useEffect(() => {
+    if (!ready || desktop) return;
+    setExpanded(false);
+  }, [path, ready, desktop]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      const t = e.target as HTMLElement | null;
+      const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (e.key === "[" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setExpanded((v) => !v);
+      }
+      if (e.key === "Escape" && !desktop) setExpanded(false);
     };
     window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [desktop]);
+
+  useEffect(() => {
+    if (desktop || !expanded) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [desktop, expanded]);
 
   const inRoom = path.startsWith("/rooms/") || path.startsWith("/agents/");
   const onCampus = path === "/";
+  const wide = desktop && expanded;
+  const flyout = !desktop && expanded;
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-background">
-      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-2 border-b border-black/5 bg-white/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden">
-        <button
-          type="button"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="flex h-11 w-11 items-center justify-center rounded-full text-foreground touch-manipulation"
-        >
-          {open ? <X size={20} strokeWidth={1.75} /> : <Menu size={20} strokeWidth={1.75} />}
-        </button>
-        <Link href="/" className="min-w-0">
-          <p className="truncate text-[15px] font-semibold tracking-tight">{titleFor(path)}</p>
-        </Link>
-      </header>
-
-      {open ? (
-        <button
-          type="button"
-          aria-label="Close menu"
-          className="fixed inset-0 z-40 bg-black/25 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      ) : null}
-
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[min(86vw,280px)] flex-col border-r border-border bg-white shadow-xl transition-transform duration-200 ease-out lg:static lg:z-0 lg:flex lg:w-[248px] lg:shrink-0 lg:translate-x-0 lg:shadow-none",
-          open ? "translate-x-0" : "-translate-x-full"
+          "relative z-30 flex h-full shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200 ease-out",
+          wide ? "w-[260px]" : "w-16"
         )}
       >
-        <NavBody path={path} rooms={rooms} onNavigate={() => setOpen(false)} />
+        <div className={cn("flex items-center", wide ? "justify-between px-3 pt-5 pb-4" : "flex-col gap-2 px-2 pt-4 pb-3")}>
+          <Link href="/" className={cn("flex items-center", wide ? "gap-2.5" : "h-11 w-11 justify-center")}>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1d1d1f] text-[13px] font-semibold text-white">
+              P
+            </span>
+            {wide ? (
+              <span>
+                <p className="text-[15px] font-semibold leading-4 tracking-tight">Product OS</p>
+                <p className="mt-0.5 text-[11px] text-[var(--dim)]">A campus for the work</p>
+              </span>
+            ) : (
+              <span className="sr-only">Product OS</span>
+            )}
+          </Link>
+          <Tip label={expanded ? "Close sidebar" : "Open sidebar"} show={!wide}>
+            <button
+              type="button"
+              aria-label={expanded ? "Close sidebar" : "Open sidebar"}
+              aria-expanded={expanded}
+              onClick={() => setExpanded((v) => !v)}
+              className="group flex h-11 w-11 items-center justify-center rounded-xl text-[var(--dim)] transition-colors hover:bg-[var(--elev)] hover:text-foreground touch-manipulation"
+            >
+              {expanded ? <PanelLeftClose size={18} strokeWidth={1.75} /> : <PanelLeftOpen size={18} strokeWidth={1.75} />}
+            </button>
+          </Tip>
+        </div>
+
+        <SystemLinks path={path} collapsed={!wide} onNavigate={!desktop ? () => setExpanded(false) : undefined} />
+
+        {wide ? (
+          <>
+            <div className="mx-4 my-4 h-px bg-border" />
+            <RoomList path={path} rooms={rooms} />
+          </>
+        ) : (
+          <div className="flex-1" />
+        )}
+
+        <div className={cn("border-t border-border", wide ? "flex items-center gap-2.5 px-3 py-3" : "flex justify-center py-3")}>
+          <PixelSprite name="you" scale={wide ? 3 : 2} />
+          {wide ? (
+            <div>
+              <p className="text-[13px] font-medium leading-4">You</p>
+              <p className="text-[12px] text-[var(--dim)]">Here with the team</p>
+            </div>
+          ) : (
+            <span className="sr-only">You</span>
+          )}
+        </div>
       </aside>
+
+      {flyout ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            className="fixed inset-0 z-40 bg-black/20 lg:hidden"
+            onClick={() => setExpanded(false)}
+          />
+          <div className="fixed inset-y-0 left-16 z-50 flex w-[min(72vw,260px)] flex-col border-r border-border bg-white shadow-2xl lg:hidden">
+            <div className="px-4 pb-3 pt-5">
+              <p className="text-[15px] font-semibold tracking-tight">Product OS</p>
+              <p className="mt-0.5 text-[12px] text-[var(--dim)]">A campus for the work</p>
+            </div>
+            <SystemLinks path={path} collapsed={false} onNavigate={() => setExpanded(false)} />
+            <div className="mx-4 my-3 h-px bg-border" />
+            <RoomList path={path} rooms={rooms} onNavigate={() => setExpanded(false)} />
+          </div>
+        </>
+      ) : null}
 
       <main
         className={cn(
-          "min-w-0 flex-1 bg-background pt-[calc(3.5rem+env(safe-area-inset-top))] lg:pt-0",
+          "min-w-0 flex-1 bg-background",
           inRoom ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll",
           onCampus && "bg-[#eef2ee]"
         )}
