@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { api, type Room } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { PipMark } from "@/components/mascot";
+import { BeanMark } from "@/components/mascot";
 import { PixelSprite } from "@/components/pixel-office";
 
 const STORAGE = "loop-sidebar";
@@ -215,7 +215,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       >
         <div className={cn("flex", wide ? "items-center gap-2 px-3 pt-5 pb-4" : "flex-col items-center gap-2 px-2 pt-4 pb-3")}>
           <Link href="/" className={cn("flex min-w-0 items-center", wide ? "flex-1 gap-2.5" : "h-11 w-11 justify-center")}>
-            <PipMark size={32} className="rounded-[10px] shadow-sm" />
+            <BeanMark size={32} className="shadow-sm" />
             {wide ? (
               <span className="min-w-0">
                 <p className="truncate text-[15px] font-semibold leading-5 tracking-tight">Product OS</p>
@@ -275,7 +275,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           />
           <div className="fixed inset-y-0 left-16 z-50 flex w-[min(72vw,260px)] flex-col border-r border-border bg-white shadow-2xl lg:hidden">
             <div className="flex items-center gap-2.5 px-4 pb-3 pt-5">
-              <PipMark size={32} className="rounded-[10px]" />
+              <BeanMark size={32} />
               <div>
                 <p className="text-[15px] font-semibold tracking-tight">Product OS</p>
                 <p className="mt-0.5 text-[12px] text-[var(--dim)]">A campus for the work</p>

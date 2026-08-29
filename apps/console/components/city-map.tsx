@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, type Handoff, type OfficeDesk, type Room, type RoomDetail } from "@/lib/api";
 import { BUILDINGS, LANDMARKS, busiestRoom, cluster, slotFor } from "@/lib/campus";
 import { pagesFromDistrict, pagesFromRoom } from "@/lib/work-pages";
-import { PipMark, PipSticker } from "@/components/mascot";
+import { BeanMark, CampusSticker } from "@/components/mascot";
 import { PixelSprite } from "@/components/pixel-office";
 import { WorkFlipbook } from "@/components/work-flipbook";
 
@@ -141,7 +141,7 @@ export function CityMap({
   return (
     <section className="relative flex min-h-0 flex-col bg-[#eef2ee] lg:h-full">
       <header className="relative z-20 flex items-start gap-3 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
-        <PipMark size={40} className="mt-0.5 rounded-2xl shadow-sm lg:hidden" />
+        <BeanMark size={40} className="mt-0.5 rounded-2xl shadow-sm lg:hidden" />
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
           <h1 className="mt-1 font-display text-[1.65rem] leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.6rem]">
@@ -153,8 +153,8 @@ export function CityMap({
           </p>
         </div>
       </header>
-      <PipSticker
-        className="pointer-events-none absolute right-3 top-3 z-20 hidden h-[116px] w-[116px] object-contain drop-shadow-sm sm:right-6 sm:top-5 lg:block"
+      <CampusSticker
+        className="pointer-events-none absolute right-2 top-2 z-20 hidden h-[132px] w-[132px] object-contain drop-shadow-sm sm:right-5 sm:top-4 lg:block"
       />
 
       <div className="relative mx-auto w-full max-w-[1100px] lg:absolute lg:inset-0 lg:max-w-none">
