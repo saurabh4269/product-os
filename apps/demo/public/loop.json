@@ -1,13 +1,13 @@
 {
   "investigation": {
-    "id": "inv_b945afb4ceb9",
+    "id": "inv_ef8c3da145f3",
     "originating_signal_ids": [
-      "sig_e32fe8825099"
+      "sig_18c2f3bdfb3d"
     ],
     "state": "AWAITING_APPROVAL",
-    "opened_at": "2026-08-29T14:41:18.760639Z",
+    "opened_at": "2026-08-29T14:47:40.858929Z",
     "closed_at": null,
-    "invocation_id": "job_6c3a8357125e",
+    "invocation_id": "job_653984aad8dc",
     "assigned_agents": [
       "orchestrator",
       "analytics",
@@ -17,17 +17,17 @@
     "token_budget": 200000,
     "tokens_consumed": 0,
     "linked_hypothesis_ids": [
-      "hyp_8de2aa080d0b"
+      "hyp_d5a05f76aba6"
     ],
     "linked_action_ids": [
-      "act_5e1a128aba74"
+      "act_6b0f361a652f"
     ],
     "verification_result": null,
     "recalled_lessons": []
   },
   "signals": [
     {
-      "id": "sig_e32fe8825099",
+      "id": "sig_18c2f3bdfb3d",
       "family": "business",
       "direction": "negative",
       "funnel_position": "purchase",
@@ -54,74 +54,74 @@
       "source": "warehouse.events_daily",
       "status": "investigating",
       "suppression_reason": null,
-      "detected_at": "2026-08-29T14:41:18.758700Z"
+      "detected_at": "2026-08-29T14:47:40.858165Z"
     }
   ],
   "evidence": [
     {
-      "id": "ev_08aa83f33355",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "ev_6304396ed4a6",
+      "investigation_id": "inv_ef8c3da145f3",
       "source_type": "analytics",
       "source_reference": "events_20260826..events_20260828 browser=Safari metric=purchase/begin_checkout",
       "claim": "Safari purchase conversion was 9.3% in the detection window versus 20.1% in the 14-day baseline (-53.8%). Chrome held 25.1% vs 21.2%.",
       "confidence": 0.92,
       "trust_level": "trusted",
       "collected_by": "analytics_agent",
-      "collected_at": "2026-08-29T14:41:18.818052Z",
+      "collected_at": "2026-08-29T14:47:40.913994Z",
       "weight": 0.92,
       "independence_group": "analytics_ga4"
     },
     {
-      "id": "ev_ad1b9698339e",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "ev_3f3fab28af32",
+      "investigation_id": "inv_ef8c3da145f3",
       "source_type": "logs",
       "source_reference": "Cloud Logging signature=3DS_TIMEOUT browser=Safari 2026-08-26..2026-08-28",
       "claim": "3DS_TIMEOUT errors on Safari rose from 0 in the baseline window to 114 after 2026-08-20.",
       "confidence": 0.9,
       "trust_level": "trusted",
       "collected_by": "logs_agent",
-      "collected_at": "2026-08-29T14:41:18.825512Z",
+      "collected_at": "2026-08-29T14:47:40.920340Z",
       "weight": 0.9,
       "independence_group": "logs_errors"
     },
     {
-      "id": "ev_46639e8a988b",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "ev_5c86a36c71c3",
+      "investigation_id": "inv_ef8c3da145f3",
       "source_type": "deployment",
       "source_reference": "deploy:dep_430 sha=9f8e7d6c5b4a",
       "claim": "Release pay-sdk@4.3.0 shipped 2026-08-20T09:14:00Z (Payment SDK 4.3 \u2014 new 3DS challenge iframe). Onset aligns with the Safari conversion break.",
       "confidence": 0.88,
       "trust_level": "trusted",
       "collected_by": "deployment_agent",
-      "collected_at": "2026-08-29T14:41:18.828567Z",
+      "collected_at": "2026-08-29T14:47:40.923174Z",
       "weight": 0.88,
       "independence_group": "deploy_timeline"
     },
     {
-      "id": "ev_1ccaf64b9d13",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "ev_3b9d67c64e75",
+      "investigation_id": "inv_ef8c3da145f3",
       "source_type": "github_issue",
       "source_reference": "github://northstar/pay/issues/1847",
-      "claim": "External issue text ingested as untrusted data. Not used as an instruction.",
+      "claim": "External issue text ingested as untrusted data. Injection screened and blocked. Not used as an instruction.",
       "confidence": 0.4,
       "trust_level": "untrusted",
       "collected_by": "code_agent",
-      "collected_at": "2026-08-29T14:41:18.830333Z",
+      "collected_at": "2026-08-29T14:47:40.924849Z",
       "weight": 0.4,
       "independence_group": "github_untrusted"
     }
   ],
   "hypotheses": [
     {
-      "id": "hyp_8de2aa080d0b",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "hyp_d5a05f76aba6",
+      "investigation_id": "inv_ef8c3da145f3",
       "statement": "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move.",
       "classification": "BUG",
       "confidence": 0.86,
       "supporting_evidence_ids": [
-        "ev_08aa83f33355",
-        "ev_ad1b9698339e",
-        "ev_46639e8a988b"
+        "ev_6304396ed4a6",
+        "ev_3f3fab28af32",
+        "ev_5c86a36c71c3"
       ],
       "contradicting_evidence_ids": [],
       "cited_memory": [],
@@ -135,8 +135,8 @@
   ],
   "actions": [
     {
-      "id": "act_5e1a128aba74",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "act_6b0f361a652f",
+      "investigation_id": "inv_ef8c3da145f3",
       "type": "flag_rollback",
       "risk_tier": "HIGH",
       "tier_rationale": "Touched surface is payment authorization (3DS). Tier follows the surface, not model confidence (H-1).",
@@ -147,11 +147,11 @@
         "to": "off",
         "pr": {
           "title": "Revert pay-sdk 4.3 Safari 3DS regression",
-          "body": "Investigation inv_b945afb4ceb9. Hypothesis: pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move.",
+          "body": "Investigation inv_ef8c3da145f3. Hypothesis: pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move.",
           "tests": "regression test must fail pre-change and pass post-change"
         }
       },
-      "idempotency_key": "ca6c92da50ca622c8f39ee9006fa514b",
+      "idempotency_key": "de5e32af524dad7e190fffa0daaecc67",
       "status": "awaiting_approval",
       "consequence": "On approval, LOOP will flip feature flag pay_sdk_4_3 to off (rollback to 4.2.x) and open a PR with a Safari 3DS regression test. No merge, no production deploy."
     }
@@ -159,9 +159,9 @@
   "approvals": [],
   "timeline": [
     {
-      "id": "tl_59d5abe64f5d",
-      "investigation_id": "inv_b945afb4ceb9",
-      "at": "2026-08-29T14:41:18.763292Z",
+      "id": "tl_09d4cef4d170",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.861370Z",
       "actor": "signal_agent",
       "kind": "signal",
       "title": "Investigation opened",
@@ -169,9 +169,9 @@
       "denial": false
     },
     {
-      "id": "tl_6bddcc7ccdd2",
-      "investigation_id": "inv_b945afb4ceb9",
-      "at": "2026-08-29T14:41:18.819847Z",
+      "id": "tl_cc9c7eca8adb",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.915266Z",
       "actor": "analytics_agent",
       "kind": "evidence",
       "title": "analytics evidence",
@@ -179,9 +179,9 @@
       "denial": false
     },
     {
-      "id": "tl_5f7389cd0735",
-      "investigation_id": "inv_b945afb4ceb9",
-      "at": "2026-08-29T14:41:18.826437Z",
+      "id": "tl_ff190dd5b142",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.921702Z",
       "actor": "logs_agent",
       "kind": "evidence",
       "title": "logs evidence",
@@ -189,9 +189,9 @@
       "denial": false
     },
     {
-      "id": "tl_49db36e9f3db",
-      "investigation_id": "inv_b945afb4ceb9",
-      "at": "2026-08-29T14:41:18.829369Z",
+      "id": "tl_813e544e2062",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.923745Z",
       "actor": "deployment_agent",
       "kind": "evidence",
       "title": "deployment evidence",
@@ -199,19 +199,29 @@
       "denial": false
     },
     {
-      "id": "tl_f33794aead81",
-      "investigation_id": "inv_b945afb4ceb9",
-      "at": "2026-08-29T14:41:18.830905Z",
+      "id": "tl_686d82f80ea9",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.924641Z",
+      "actor": "tool_output_armor",
+      "kind": "policy",
+      "title": "Blocked injected tool output",
+      "detail": "after_tool_callback screened GitHub/tool payload; needle=ignore previous instructions. Content not forwarded.",
+      "denial": true
+    },
+    {
+      "id": "tl_872b06d633fd",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.925233Z",
       "actor": "code_agent",
       "kind": "evidence",
       "title": "github_issue evidence",
-      "detail": "External issue text ingested as untrusted data. Not used as an instruction.",
+      "detail": "External issue text ingested as untrusted data. Injection screened and blocked. Not used as an instruction.",
       "denial": false
     },
     {
-      "id": "tl_7aa1bc7f7308",
-      "investigation_id": "inv_b945afb4ceb9",
-      "at": "2026-08-29T14:41:18.834216Z",
+      "id": "tl_8261636a8516",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.926018Z",
       "actor": "root_cause_agent",
       "kind": "hypothesis",
       "title": "Root cause emitted",
@@ -219,9 +229,9 @@
       "denial": false
     },
     {
-      "id": "tl_c09c804d9283",
-      "investigation_id": "inv_b945afb4ceb9",
-      "at": "2026-08-29T14:41:18.834844Z",
+      "id": "tl_0793402a5b0c",
+      "investigation_id": "inv_ef8c3da145f3",
+      "at": "2026-08-29T14:47:40.926551Z",
       "actor": "risk_agent",
       "kind": "risk",
       "title": "HIGH tier \u2014 approval required",
@@ -231,41 +241,54 @@
   ],
   "agent_calls": [
     {
-      "id": "a2a_a57d3fa96093",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "a2a_1af5d7ff6a11",
+      "investigation_id": "inv_ef8c3da145f3",
       "from_agent": "orchestrator",
       "to_agent": "analytics_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-08-29T14:41:18.766525Z",
-      "finished_at": "2026-08-29T14:41:18.766527Z",
+      "started_at": "2026-08-29T14:47:40.863123Z",
+      "finished_at": "2026-08-29T14:47:40.863124Z",
       "status": "ok",
       "summary": "funnel conversion by browser"
     },
     {
-      "id": "a2a_78d347d8aa48",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "a2a_15e037603cfb",
+      "investigation_id": "inv_ef8c3da145f3",
       "from_agent": "orchestrator",
       "to_agent": "logs_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-08-29T14:41:18.821437Z",
-      "finished_at": "2026-08-29T14:41:18.821438Z",
+      "started_at": "2026-08-29T14:47:40.916566Z",
+      "finished_at": "2026-08-29T14:47:40.916567Z",
       "status": "ok",
       "summary": "error signatures vs deploy window"
     },
     {
-      "id": "a2a_4deee825baad",
-      "investigation_id": "inv_b945afb4ceb9",
+      "id": "a2a_09ca639d4bf9",
+      "investigation_id": "inv_ef8c3da145f3",
       "from_agent": "orchestrator",
       "to_agent": "deployment_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-08-29T14:41:18.827269Z",
-      "finished_at": "2026-08-29T14:41:18.827270Z",
+      "started_at": "2026-08-29T14:47:40.922623Z",
+      "finished_at": "2026-08-29T14:47:40.922623Z",
       "status": "ok",
       "summary": "release timeline correlation"
     }
   ],
   "outcomes": [],
   "lessons": [],
-  "verdicts": [],
+  "verdicts": [
+    {
+      "id": "pv_bedc72f97d7a",
+      "agent_identity": "loop-analysis",
+      "tool": "read_github_issue",
+      "arguments_digest": "59fefacb1435ff49",
+      "verdict": "BLOCK",
+      "rationale": "Prompt-injection pattern in tool output: ignore previous instructions",
+      "enforcement_mode": "ENFORCING",
+      "token_usage": 0,
+      "timestamp": "2026-08-29T14:47:40.924354Z",
+      "finding_type": "prompt_injection"
+    }
+  ],
   "state": "AWAITING_APPROVAL"
 }

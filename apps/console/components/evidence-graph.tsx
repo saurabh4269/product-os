@@ -11,8 +11,9 @@ export function EvidenceGraph({
 }) {
   const hyp = hypotheses[0];
   const trusted = evidence.filter((e) => e.trust_level === "trusted");
+  const untrusted = evidence.filter((e) => e.trust_level !== "trusted");
   const width = 720;
-  const height = 280;
+  const height = 320;
   const cx = width / 2;
   const cy = 70;
   const nodes = trusted.map((e, i) => {
@@ -52,6 +53,27 @@ export function EvidenceGraph({
           </text>
         </g>
       ))}
+      {untrusted.map((e, i) => {
+        const x = 90 + i * 180;
+        const y = 290;
+        return (
+          <g key={e.id}>
+            <rect
+              x={x - 70}
+              y={y - 18}
+              width="140"
+              height="36"
+              rx="8"
+              fill="#0E1223"
+              stroke="#DC2626"
+              strokeDasharray="4 3"
+            />
+            <text x={x} y={y + 4} textAnchor="middle" fill="#F87171" fontSize="10">
+              {e.source_type} · untrusted
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }

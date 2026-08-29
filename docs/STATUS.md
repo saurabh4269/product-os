@@ -16,6 +16,7 @@ Last updated: 2026-08-29
 - CI assertions: `fail_open = false` on Model Armor CONTENT_AUTHZ; default model `gemini-3.5-flash`; no sampling on 3.6-flash / 3.5-flash-lite.
 - `./scripts/boot.sh` and `./scripts/verify.sh`.
 - Tests: 17 passed (engine, safety, ads join, media-bridge, ADK apps, infra).
+- Console verified against the live API: Pulse shows the Safari drop and HIGH investigation; evidence graph has analytics + logs + deploy plus a dashed untrusted GitHub node; approval queue executes once; outcome ledger shows Safari `9.3% → 17.0%` RESOLVED; governance shows `failOpen=false` and the BLOCK on `read_github_issue`.
 
 ## What is mocked
 
@@ -39,6 +40,8 @@ Applied with the Cloud Agent SA (credentials never echoed or committed):
 Cheap Terraform re-apply is clean (`No changes`).
 
 Warehouse loaded into BigQuery (2026-08-29): `loop_raw.events` 39,350 rows, `loop_raw.logs` 663 rows, `loop_raw.deploys` 2 rows. Cloud Run source deploy blocked — this SA cannot enable `cloudbuild.googleapis.com`.
+
+Console E2E (this run): investigation `inv_ef8c3da145f3`, action `act_6b0f361a652f` approved once → `RESOLVED`. Queue empty after. Interactive Cloud Agent browser was usage-capped; pages were driven via the API and captured with headless Chrome.
 
 ## What needs you (IAM / entitlements)
 

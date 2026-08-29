@@ -110,6 +110,8 @@ class LoopEngine:
             base = baseline.get(browser)
             if not base or base["conversion"] <= 0:
                 continue
+            if cur.get("begin_checkout", 0) < 80:
+                continue
             rel = (cur["conversion"] - base["conversion"]) / base["conversion"]
             if rel > -0.12:
                 continue
@@ -271,15 +273,42 @@ class LoopEngine:
             )
         )
 
-        # Untrusted GitHub issue — tagged, never used as instruction
-        poison = Path(__file__).resolve().parents[3] / "data" / "fixtures" / "poisoned_github_issue.md"
+        # Untrusted GitHub / tool output — screen then ingest as DATA, never as instruction (M-10, M-13)
+        fixtures = Path(__file__).resolve().parents[3] / "data" / "fixtures"
+        poison = fixtures / "poisoned_github_issue.md"
+        injected = fixtures / "prompt_injection_tool.json"
+        raw_bits = []
         if poison.exists():
+            raw_bits.append(poison.read_text())
+        if injected.exists():
+            raw_bits.append(injected.read_text())
+        blob = "\n".join(raw_bits)
+        hit, needle = screen_tool_output(blob)
+        if hit:
+            log_verdict(
+                self.store,
+                agent="loop-analysis",
+                tool="read_github_issue",
+                args="1847",
+                verdict="BLOCK",
+                rationale=f"Prompt-injection pattern in tool output: {needle}",
+                finding="prompt_injection",
+            )
+            self.timeline(
+                inv.id,
+                "tool_output_armor",
+                "policy",
+                "Blocked injected tool output",
+                f"after_tool_callback screened GitHub/tool payload; needle={needle}. Content not forwarded.",
+                denial=True,
+            )
+        if poison.exists() or injected.exists():
             items.append(
                 self._evidence(
                     inv,
                     source_type="github_issue",
                     source_reference="github://northstar/pay/issues/1847",
-                    claim="External issue text ingested as untrusted data. Not used as an instruction.",
+                    claim="External issue text ingested as untrusted data. Injection screened and blocked. Not used as an instruction.",
                     independence_group="github_untrusted",
                     collected_by="code_agent",
                     confidence=0.4,

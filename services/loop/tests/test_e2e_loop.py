@@ -28,6 +28,8 @@ def test_full_loop_three_source_high_tier_verify(engine: LoopEngine):
     hyps = engine.store.list_hypotheses(inv.id)
     assert hyps
     assert len(hyps[0].independence_groups) >= 3
+    verdicts = engine.store.list_verdicts()
+    assert any(v.finding_type == "prompt_injection" and v.verdict == "BLOCK" for v in verdicts)
     actions = engine.store.list_actions(inv.id)
     assert actions[0].risk_tier == RiskTier.HIGH
     assert actions[0].status == "awaiting_approval"
