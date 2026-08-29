@@ -69,7 +69,7 @@ Gated stack (Agent Gateway / SGP / telephony): `cd infra/terraform/gated && terr
 ## Cost estimate
 
 - Local demo + CI: $0.
-- Cheap GCP now live (empty BQ + two topics + Armor templates): typically pennies/day until you load data or serve traffic.
+- Cheap GCP now live (BQ warehouse loaded + two topics + Armor templates): typically pennies/day until you serve Cloud Run traffic.
 - Budget alert at $8 is ready when you pass `TF_VAR_billing_account`.
 - Do **not** apply gated Terraform or Agent Runtime `min_instances` without reviewing spend.
 
