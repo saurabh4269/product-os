@@ -222,21 +222,21 @@ export function PixelOffice({
 }) {
   const shown = members.filter((m) => m !== "system").slice(0, compact ? 4 : 8);
   return (
-    <div className={cn("bg-[var(--floor)]", compact ? "px-3 pb-3 pt-4" : "px-4 pb-4 pt-5")}>
-      <div className="flex items-end justify-center gap-3 overflow-x-auto">
+    <div className={cn("bg-[var(--floor)]", compact ? "px-4 pb-4 pt-6" : "px-4 pb-5 pt-6")}>
+      <div className="-mx-1 flex justify-center gap-4 overflow-x-auto overflow-y-visible px-1 py-2">
         {shown.map((name, i) => {
           const isWork = working.has(name);
           const note = compact ? undefined : activity?.[name];
           const inner = (
             <>
               {note ? (
-                <span className="mb-1 max-w-[92px] truncate rounded-full bg-white px-2 py-0.5 font-sans text-[10px] leading-4 text-[var(--dim)]">
+                <span className="mb-1.5 max-w-[92px] truncate rounded-full bg-white px-2 py-0.5 font-sans text-[10px] leading-4 text-[var(--dim)]">
                   {note}
                 </span>
               ) : null}
-              <PixelSprite name={name} scale={compact ? 2 : 3} working={isWork} />
+              <PixelSprite name={name} scale={3} working={isWork} />
               {compact ? null : <Desk scale={2} />}
-              <span className="mt-1 max-w-[76px] truncate text-center text-[11px] leading-4 text-[var(--dim)]">
+              <span className="mt-1.5 max-w-[84px] truncate text-center text-[12px] leading-4 text-[var(--dim)]">
                 {shortName(name)}
               </span>
             </>
@@ -279,7 +279,7 @@ export function HiveChamber({
   const label =
     kind === "incident" ? "Incident" : kind === "opportunity" ? "Idea" : kind === "review" ? "Review" : kind;
   return (
-    <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-[20px] border border-border bg-white">
+    <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-[22px] border border-border bg-white">
       <PixelOffice members={members} working={working} compact link={false} />
       <div className="flex flex-1 flex-col px-5 py-5">
         <p className="text-[13px] text-[var(--faint)]">

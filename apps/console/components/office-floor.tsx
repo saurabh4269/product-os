@@ -16,14 +16,15 @@ function DeskTile({ desk }: { desk: OfficeDesk }) {
       className="group flex min-w-0 flex-col items-center rounded-2xl px-1.5 py-3 text-center transition-colors hover:bg-white"
     >
       {busy ? (
-        <span className="mb-1 max-w-full truncate rounded-full bg-white px-2 py-0.5 text-[10px] leading-4 text-[var(--dim)] shadow-sm">
-          {desk.doing}
+        <span className="mb-1.5 max-w-full truncate rounded-full bg-white px-2 py-0.5 text-[11px] leading-4 text-[var(--dim)] shadow-sm">
+          <span className="sm:hidden">Working</span>
+          <span className="hidden sm:inline">{desk.doing}</span>
         </span>
       ) : (
-        <span className="mb-1 h-4" aria-hidden />
+        <span className="mb-1.5 h-5" aria-hidden />
       )}
       <PixelSprite name={desk.id} scale={3} working={busy} />
-      <p className="mt-1.5 w-full truncate text-[13px] font-medium leading-4">{desk.display_name}</p>
+      <p className="mt-2 w-full truncate text-[13px] font-medium leading-4">{desk.display_name}</p>
       <p className="mt-0.5 line-clamp-2 min-h-[32px] w-full text-[12px] leading-4 text-[var(--faint)]">
         {desk.room_title ?? (busy ? "Working" : "Around the office")}
       </p>
@@ -60,7 +61,7 @@ export function OfficeFloor({
           return (
             <div key={district} className="rounded-[20px] bg-[var(--floor)] px-2 py-4 sm:px-3">
               <p className="px-2 pb-2 text-[12px] text-[var(--faint)]">{district}</p>
-              <div className="grid grid-cols-3 gap-x-1 gap-y-2 sm:grid-cols-4 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
                 {group.map((desk) => (
                   <DeskTile key={desk.id} desk={desk} />
                 ))}
