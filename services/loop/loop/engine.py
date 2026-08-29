@@ -205,14 +205,14 @@ class LoopEngine:
         for seg in signal.affected_segments:
             needles.extend([x for x in (seg.browser, seg.os, seg.platform, seg.app_version, seg.geo, seg.channel) if x])
         metric = (signal.metric or "").lower()
-        if "purchase" in metric or signal.funnel_position == "purchase":
+        if "feature_request" in metric or "apple_pay" in metric:
+            needles.extend(["apple_pay", "wallet"])
+        elif "shipping" in metric:
+            needles.extend(["shipping", "delivery"])
+        elif "purchase" in metric or signal.funnel_position == "purchase":
             needles.extend(["checkout", "pay-sdk", "sdk-callback", "3ds"])
         if "activat" in metric or signal.funnel_position == "activation":
             needles.extend(["onboarding", "activation"])
-        if "apple_pay" in metric:
-            needles.extend(["apple_pay", "wallet"])
-        if "shipping" in metric:
-            needles.extend(["shipping", "delivery"])
         return needles
 
     def gather_evidence(self, inv: Investigation) -> list[Evidence]:

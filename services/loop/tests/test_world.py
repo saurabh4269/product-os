@@ -75,6 +75,11 @@ def test_memory_recalled_on_similar_later_signal(engine: LoopEngine):
     oinv = engine.store.get_investigation(onboarding.investigation_id)
     assert oinv
     assert any("Activation drops" in lesson for lesson in oinv.recalled_lessons)
+    apple = next(r for r in engine.store.list_rooms() if r.scenario_id == "apple_pay")
+    ainv = engine.store.get_investigation(apple.investigation_id)
+    assert ainv
+    assert any("Apple Pay" in lesson for lesson in ainv.recalled_lessons)
+    assert not any("SDK callback" in lesson for lesson in ainv.recalled_lessons)
 
 
 def test_seed_world_idempotent(engine: LoopEngine):
