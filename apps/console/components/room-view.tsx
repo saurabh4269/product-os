@@ -46,7 +46,7 @@ function Gate({
       <p className="text-[13px] text-[var(--dim)]">Needs a look · {action.risk_tier}</p>
       <p className="mt-2 text-[16px] font-semibold leading-6 tracking-tight">This change is waiting on you</p>
       <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">{action.consequence}</p>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <Button onClick={() => onDecide("approve")} disabled={busy}>
           Approve
         </Button>
@@ -150,7 +150,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="px-8 pb-5 pt-8 lg:px-12">
+      <div className="px-5 pb-5 pt-6 sm:px-8 lg:px-12 lg:pt-8">
         <Link href="/" className="text-[13px] text-[var(--faint)] hover:text-foreground">
           ← Campus
         </Link>
@@ -161,18 +161,18 @@ export function RoomView({ initialId }: { initialId?: string }) {
         <p className="mt-2 max-w-2xl text-[14px] leading-6 text-[var(--dim)]">{data.room.topic}</p>
       </div>
 
-      <div className="mx-8 overflow-hidden rounded-[20px] border border-border lg:mx-12">
+      <div className="mx-5 overflow-hidden rounded-[20px] border border-border sm:mx-8 lg:mx-12">
         <PixelOffice members={data.room.members} working={working} activity={activity} />
       </div>
 
       {recalled.length ? (
-        <div className="mx-8 mt-4 rounded-2xl bg-[var(--elev)] px-5 py-4 lg:mx-12">
+        <div className="mx-5 mt-4 rounded-2xl bg-[var(--elev)] px-5 py-4 sm:mx-8 lg:mx-12">
           <p className="text-[12px] text-[var(--faint)]">From last time</p>
           <p className="mt-1 text-[14px] leading-6 text-[var(--ink)]">{recalled[0]}</p>
         </div>
       ) : null}
 
-      <div className="chat-scroll flex-1 space-y-1 overflow-y-auto px-8 py-6 lg:px-12">
+      <div className="chat-scroll flex-1 space-y-1 overflow-y-auto px-5 py-6 sm:px-8 lg:px-12">
         {thread.map((row) => {
           if (row.kind === "handoff" && row.handoff) {
             lastAuthor = "";
@@ -225,7 +225,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
       </div>
 
       <form
-        className="border-t border-border px-8 py-3 lg:px-12"
+        className="border-t border-border px-5 py-3 sm:px-8 lg:px-12"
         onSubmit={(e) => {
           e.preventDefault();
           void send();

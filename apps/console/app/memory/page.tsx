@@ -21,8 +21,8 @@ export default function MemoryPage() {
   if (!data) return <Loading label="Opening memory" />;
 
   return (
-    <div className="px-8 py-12 lg:px-16">
-      <h1 className="text-[32px] font-semibold tracking-tight">Memory</h1>
+    <div className="page-pad">
+      <h1 className="text-[26px] font-semibold tracking-tight sm:text-[32px]">Memory</h1>
       <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
         What we learned last time. The short version, kept here.
       </p>

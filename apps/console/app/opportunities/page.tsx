@@ -21,7 +21,7 @@ export default function OpportunitiesPage() {
   if (data.opportunities.length === 0) return <Empty title="No ideas yet." hint="They’ll show up as rooms." />;
 
   return (
-    <div className="px-8 py-12 lg:px-16">
+    <div className="page-pad">
       <h1 className="text-[32px] font-semibold tracking-tight">Ideas</h1>
       <div className="mt-8 max-w-lg space-y-4">
         {data.opportunities.map((o) => (

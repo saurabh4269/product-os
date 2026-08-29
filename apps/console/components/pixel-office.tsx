@@ -223,7 +223,7 @@ export function PixelOffice({
   const shown = members.filter((m) => m !== "system").slice(0, compact ? 6 : 10);
   return (
     <div className={cn("relative overflow-hidden bg-[var(--floor)]", compact ? "h-[80px]" : "h-[120px]")}>
-      <div className="absolute inset-0 flex items-end justify-center gap-4 px-4 pb-2">
+      <div className="absolute inset-0 flex items-end justify-start gap-4 overflow-x-auto px-4 pb-2 sm:justify-center">
         {shown.map((name, i) => {
           const isWork = working.has(name);
           const note = activity?.[name];

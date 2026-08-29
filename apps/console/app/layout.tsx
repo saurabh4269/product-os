@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
 import { Shell } from "@/components/shell";
 import "./globals.css";
@@ -17,6 +17,13 @@ const mono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Product OS",
   description: "A simple place for the product team",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f5f5f7",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

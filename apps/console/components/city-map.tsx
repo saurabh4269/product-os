@@ -1,31 +1,20 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import type { Handoff, OfficeDesk, Room } from "@/lib/api";
+import { api, type Handoff, type OfficeDesk, type Room } from "@/lib/api";
 import { PixelSprite } from "@/components/pixel-office";
-import { cn } from "@/lib/utils";
 
 const LQIP =
-  "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAAbACgDASIAAhEBAxEB/8QAGQAAAgMBAAAAAAAAAAAAAAAABAUAAQMG/8QAJxAAAgIBAgYBBQEAAAAAAAAAAQIAAxEEEhMhIjFRcQUyUoGCkfD/xAAWAQEBAQAAAAAAAAAAAAAAAAABAgD/xAAaEQADAQEBAQAAAAAAAAAAAAAAARESAkFR/9oADAMBAAIRAxEAPwDrJm1yAkbxle4gOt1ri40U5XHJn8eoFizqsVCpYjOSN3uTr4byjddXW7siHLDxzE0N9Ybbu6vERoH2sK6yLAeQJ7GD63UMlRFihbScBlhphTqAcjIkiL4PUOzbd4KknI/HeSUnRQfq6NrtYik7xhiBnB9QG56uAUtXcQeTgnd/I8lEA9xn3JfFCCFXrtZCl1vFUdiOR/s1XqbPDVc/ccmNjRU31VIf1Etaq6z0Iq+hiZ8thlgej+PWhuJgKTzIA5n/AHiSHySkoUlD/9k=";
+  "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/2wBDAVVaWldsY2JsbVRfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/wAARCAAEAAYDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAwT/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGdAf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//Z";
 
-type Slot = { x: number; y: number; kind: string };
-
-const SLOTS: Record<string, Slot[]> = {
-  incident: [
-    { x: 22.5, y: 46, kind: "incident" },
-    { x: 28.5, y: 39, kind: "incident" },
-    { x: 25.5, y: 55, kind: "incident" },
-  ],
-  opportunity: [
-    { x: 55, y: 43, kind: "opportunity" },
-    { x: 63, y: 50, kind: "opportunity" },
-  ],
-  review: [{ x: 41.5, y: 40, kind: "review" }],
-  research: [{ x: 78, y: 34, kind: "research" }],
-  ops: [{ x: 71.5, y: 43, kind: "ops" }],
+const SLOTS: Record<string, { x: number; y: number }> = {
+  Incidents: { x: 26, y: 47 },
+  Ideas: { x: 55, y: 63 },
+  Reviews: { x: 41.5, y: 40 },
+  Research: { x: 78, y: 34 },
+  Ops: { x: 71.5, y: 43 },
+  Office: { x: 48, y: 52 },
 };
 
 const LANDMARKS = [
@@ -33,234 +22,273 @@ const LANDMARKS = [
   { href: "/approvals", label: "Approvals", x: 52, y: 77 },
 ];
 
-const CAR_COLORS = ["#0071e3", "#df1b41", "#e8b931", "#1d1d1f"];
+function districtOf(title: string | null | undefined, fallback = "Ops") {
+  const t = (title || "").toLowerCase();
+  if (t.includes("safari") || t.includes("3ds") || t.includes("timeout") || t.includes("denied")) return "Incidents";
+  if (t.includes("review") || t.includes("activation") || t.includes("onboarding")) return "Reviews";
+  if (t.includes("research")) return "Research";
+  if (t.includes("android") || t.includes("apple pay") || t.includes("shipping")) return "Ideas";
+  return fallback;
+}
 
-type Placed = {
-  room: Room;
-  x: number;
-  y: number;
-  desks: OfficeDesk[];
-};
+function slotFor(desk: OfficeDesk | undefined, rooms: Room[]) {
+  if (desk?.district && SLOTS[desk.district]) return SLOTS[desk.district];
+  const room = rooms.find((r) => r.id === desk?.room_id);
+  return SLOTS[districtOf(room?.title ?? desk?.room_title, "Ops")] || SLOTS.Ops;
+}
 
-function placeRooms(rooms: Room[], desks: OfficeDesk[]): Placed[] {
-  const used: Record<string, number> = {};
-  const out: Placed[] = [];
-  const ordered = [...rooms].sort((a, b) => a.kind.localeCompare(b.kind) || a.title.localeCompare(b.title));
-  for (const room of ordered) {
-    const bank = SLOTS[room.kind] ?? SLOTS.ops;
-    const i = used[room.kind] ?? 0;
-    used[room.kind] = i + 1;
-    const slot = bank[Math.min(i, bank.length - 1)];
-    const people = desks.filter((d) => d.room_id === room.id).slice(0, 4);
-    out.push({ room, x: slot.x + i * 0.15, y: slot.y + (i > bank.length - 1 ? 4 : 0), desks: people });
+function cluster(desks: OfficeDesk[], rooms: Room[]) {
+  const groups = new Map<string, OfficeDesk[]>();
+  for (const d of desks) {
+    if (!d.room_id) continue;
+    groups.set(d.room_id, [...(groups.get(d.room_id) || []), d]);
   }
-  return out;
+  return [...groups.entries()].map(([key, people]) => {
+    const s = slotFor(people[0], rooms);
+    return { key, people, x: s.x, y: s.y };
+  });
 }
 
-function kindWord(kind: string) {
-  if (kind === "incident") return "Incident";
-  if (kind === "opportunity") return "Idea";
-  if (kind === "review") return "Review";
-  if (kind === "research") return "Research";
-  return "Ops";
-}
+function useImageBox(frame: HTMLElement | null, img: HTMLImageElement | null) {
+  const [box, setBox] = useState({ left: 0, top: 0, width: 0, height: 0, ready: false });
 
-function pathD(a: Placed, b: Placed) {
-  const midX = (a.x + b.x) / 2;
-  const midY = Math.min(a.y, b.y) - 8;
-  return `M ${a.x} ${a.y} Q ${midX} ${midY} ${b.x} ${b.y}`;
+  useEffect(() => {
+    if (!frame || !img) return;
+
+    const measure = () => {
+      const fw = frame.clientWidth;
+      const fh = frame.clientHeight;
+      const nw = img.naturalWidth || 1350;
+      const nh = img.naturalHeight || 900;
+      if (!fw || !fh) return;
+      const scale = Math.min(fw / nw, fh / nh);
+      const width = nw * scale;
+      const height = nh * scale;
+      setBox({
+        left: (fw - width) / 2,
+        top: (fh - height) / 2,
+        width,
+        height,
+        ready: width > 8 && height > 8,
+      });
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(frame);
+    img.addEventListener("load", measure);
+    return () => {
+      ro.disconnect();
+      img.removeEventListener("load", measure);
+    };
+  }, [frame, img]);
+
+  return box;
 }
 
 export function CityMap({
-  rooms,
-  desks,
-  handoffs,
-  working,
+  rooms: roomsIn,
+  desks: desksIn,
+  handoffs: handoffsIn,
 }: {
   rooms: Room[];
   desks: OfficeDesk[];
   handoffs: Handoff[];
-  working: number;
 }) {
   const router = useRouter();
-  const placed = useMemo(() => placeRooms(rooms, desks), [rooms, desks]);
-  const [focus, setFocus] = useState<string | null>(null);
-  const [fly, setFly] = useState(false);
-  const [ready, setReady] = useState(false);
-  const current = placed.find((p) => p.room.id === focus) ?? null;
-  const byId = Object.fromEntries(placed.map((p) => [p.room.id, p]));
+  const [rooms, setRooms] = useState(roomsIn);
+  const [desks, setDesks] = useState(desksIn);
+  const [handoffs, setHandoffs] = useState(handoffsIn);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [fly, setFly] = useState<string | null>(null);
+  const [imgReady, setImgReady] = useState(false);
+  const [frameEl, setFrameEl] = useState<HTMLDivElement | null>(null);
+  const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
+  const box = useImageBox(frameEl, imgEl);
 
-  const lines = handoffs
-    .filter((h) => h.room_id && byId[h.room_id])
-    .slice(-6)
-    .map((h) => {
-      const dest = h.room_id ? byId[h.room_id] : null;
-      const srcRoom = placed.find((p) => p.desks.some((d) => d.id === h.from_agent)) ?? dest;
-      if (!dest || !srcRoom) return null;
-      return { id: h.id, a: srcRoom, b: dest, summary: h.summary };
-    })
-    .filter(Boolean) as Array<{ id: string; a: Placed; b: Placed; summary: string }>;
+  useEffect(() => {
+    setRooms(roomsIn);
+    setDesks(desksIn);
+    setHandoffs(handoffsIn);
+  }, [roomsIn, desksIn, handoffsIn]);
 
-  function enter(spot: Placed) {
-    setFocus(spot.room.id);
-    setFly(true);
-    window.setTimeout(() => router.push(`/rooms/${spot.room.id}`), 420);
-  }
+  const load = useCallback(async () => {
+    try {
+      const [office, listed] = await Promise.all([api.office(), api.rooms()]);
+      setDesks(office.desks);
+      setHandoffs(office.handoffs);
+      setRooms(listed.rooms);
+    } catch {
+      /* keep last snapshot */
+    }
+  }, []);
 
-  const origin = current ? `${current.x}% ${current.y}%` : "50% 48%";
-  const scale = fly ? 2.05 : current ? 1.28 : 1;
+  useEffect(() => {
+    const t = setInterval(() => void load(), 4000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const enter = (href: string) => {
+    setFly(href);
+    window.setTimeout(() => router.push(href), 420);
+  };
+
+  const groups = cluster(desks, rooms);
+  const selected = rooms.find((r) => r.id === picked);
+  const inside = desks.filter((d) => d.room_id === picked);
 
   return (
-    <div className="relative h-full min-h-[640px] overflow-hidden bg-[#eef2ee]">
-      <header className="pointer-events-none absolute left-6 top-6 z-20 max-w-sm">
-        <p className="text-[13px] text-[var(--faint)]">Campus</p>
-        <h1 className="mt-1 text-[28px] font-semibold tracking-tight">The work has a place</h1>
-        <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">
-          {working} people are already in the buildings. Click a pin to look inside — or scroll for the
-          office.
+    <section className="relative flex min-h-0 flex-col bg-[#eef2ee] lg:h-full">
+      <header className="relative z-20 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
+        <h1 className="mt-1 font-display text-[1.65rem] leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.6rem]">
+          The work has a place.
+        </h1>
+        <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[#6e6e73]">
+          {desks.filter((d) => d.status !== "idle").length} people are already in the buildings. Tap a pin, or
+          scroll for the office.
         </p>
       </header>
 
-      <div
-        className="absolute inset-0 origin-center will-change-transform"
-        style={{
-          transform: `scale(${scale})`,
-          transformOrigin: origin,
-          transition: "transform 520ms cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      >
-        <img src={LQIP} alt="" className="absolute inset-0 h-full w-full scale-105 object-contain blur-xl" />
-        <picture>
-          <source srcSet="/city/campus.webp" type="image/webp" />
-          <img
-            src="/city/campus.jpg"
-            alt="Product campus"
-            width={1600}
-            height={900}
-            decoding="async"
-            fetchPriority="high"
-            onLoad={() => setReady(true)}
-            className={cn(
-              "absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-500",
-              ready ? "opacity-100" : "opacity-0"
-            )}
-          />
-        </picture>
+      <div className="relative mx-auto w-full max-w-[1100px] lg:absolute lg:inset-0 lg:max-w-none">
+        <div
+          ref={setFrameEl}
+          className="relative mx-auto aspect-[3/2] w-full max-h-[min(56vh,400px)] sm:max-h-[min(64vh,560px)] md:max-h-[min(70vh,680px)] lg:absolute lg:inset-0 lg:mx-0 lg:aspect-auto lg:h-full lg:max-h-none"
+        >
+          <picture>
+            <source srcSet="/city/campus.webp" type="image/webp" />
+            {/* campus art is object-contain + measured; next/image fights that box */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img>
+              ref={setImgEl}
+              src="/city/campus.jpg"
+              alt="LOOP campus"
+              width={1350}
+              height={900}
+              decoding="async"
+              fetchPriority="high"
+              onLoad={() => setImgReady(true)}
+              onClick={() => setPicked(null)}
+              className={`absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300 ${
+                imgReady ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          </picture>
+          {!imgReady && (
+            <img src={LQIP} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-105 object-contain blur-md" />
+          )}
 
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {lines.map((line, i) => {
-            const d = pathD(line.a, line.b);
-            const pid = `handoff-${line.id}`;
-            return (
-              <g key={line.id}>
-                <path id={pid} d={d} fill="none" stroke="rgba(29,29,31,0.16)" strokeWidth="0.28" strokeDasharray="1.1 0.9" />
-                <circle r="0.72" fill={CAR_COLORS[i % CAR_COLORS.length]}>
-                  <animateMotion dur={`${3.6 + (i % 3) * 0.7}s`} repeatCount="indefinite" rotate="auto">
-                    <mpath href={`#${pid}`} />
-                  </animateMotion>
-                </circle>
-              </g>
-            );
-          })}
-        </svg>
-
-        {LANDMARKS.map((mark) => (
-          <Link
-            key={mark.href}
-            href={mark.href}
-            className="absolute z-10 -translate-x-1/2 -translate-y-full text-center"
-            style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
-          >
-            <span className="inline-block rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[var(--dim)] shadow-sm">
-              {mark.label}
-            </span>
-          </Link>
-        ))}
-
-        {placed.map((spot) => {
-          const busy = spot.desks.some((d) => d.status !== "idle") || (spot.room.message_count ?? 0) > 0;
-          const selected = focus === spot.room.id;
-          return (
-            <button
-              key={spot.room.id}
-              type="button"
-              onClick={() => {
-                setFly(false);
-                setFocus(spot.room.id);
-              }}
-              className="absolute z-10 -translate-x-1/2 -translate-y-[86%] text-center"
-              style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
+          {box.ready && (
+            <div
+              className="absolute overflow-visible"
+              style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
             >
-              <span className="relative inline-block">
-                <img
-                  src="/city/pin.webp"
-                  alt=""
-                  width={40}
-                  height={40}
-                  className={cn(
-                    "mx-auto block drop-shadow-md transition-transform",
-                    selected ? "h-14 w-14" : "h-10 w-10",
-                    busy && "pin-bob"
-                  )}
-                />
-                <span className="absolute -bottom-1 left-1/2 flex -translate-x-1/2">
-                  {spot.desks.slice(0, 3).map((desk, i) => (
-                    <span key={desk.id} className="inline-block" style={{ marginLeft: i ? -8 : 0 }}>
-                      <PixelSprite name={desk.id} scale={2} working={desk.status !== "idle"} />
-                    </span>
-                  ))}
-                </span>
-              </span>
-              <span
-                className={cn(
-                  "mt-7 block max-w-[140px] truncate rounded-full px-2.5 py-1 text-[11px] font-medium shadow-sm",
-                  selected ? "bg-[#1d1d1f] text-white" : "bg-white/90 text-[var(--ink)]"
-                )}
-              >
-                {spot.room.title}
-              </span>
-            </button>
-          );
-        })}
+              <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+                {handoffs.slice(-8).map((h, i) => {
+                  const a = slotFor(desks.find((d) => d.id === h.from_agent), rooms);
+                  const b = slotFor(desks.find((d) => d.id === h.to_agent), rooms);
+                  if (a.x === b.x && a.y === b.y) return null;
+                  return (
+                    <g key={`${h.id}-${i}`}>
+                      <path
+                        id={`road-${i}`}
+                        d={`M ${a.x} ${a.y} C ${(a.x + b.x) / 2} ${a.y - 8}, ${(a.x + b.x) / 2} ${b.y - 8}, ${b.x} ${b.y}`}
+                        fill="none"
+                        stroke="rgba(29,29,31,0.16)"
+                        strokeWidth="0.35"
+                        strokeDasharray="1.2 0.8"
+                      />
+                      <circle r="0.85" fill="#1d1d1f">
+                        <animateMotion dur="3.6s" repeatCount="indefinite">
+                          <mpath href={`#road-${i}`} />
+                        </animateMotion>
+                      </circle>
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {LANDMARKS.map((m) => (
+                <button
+                  key={m.href}
+                  type="button"
+                  onClick={() => enter(m.href)}
+                  className={`absolute z-20 -translate-x-1/2 -translate-y-full rounded-full border border-black/10 bg-white/95 px-2.5 py-1.5 text-[12px] font-medium text-[#1d1d1f] shadow-sm transition touch-manipulation ${
+                    fly === m.href ? "scale-125" : "hover:scale-105"
+                  }`}
+                  style={{ left: `${m.x}%`, top: `${m.y}%` }}
+                >
+                  {m.label}
+                </button>
+              ))}
+
+              {groups.map((g) => {
+                const room = rooms.find((r) => r.id === g.key);
+                const on = picked === g.key;
+                const zooming = fly === `/rooms/${g.key}`;
+                return (
+                  <div
+                    key={g.key}
+                    className="absolute z-10"
+                    style={{
+                      left: `${g.x}%`,
+                      top: `${g.y}%`,
+                      transform: `translate(-50%, -88%) scale(${zooming ? 2.05 : on ? 1.18 : 1})`,
+                      transformOrigin: "50% 90%",
+                      transition: "transform 420ms cubic-bezier(.2,.8,.2,1)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setPicked(g.key)}
+                      className="relative flex min-h-11 min-w-11 flex-col items-center touch-manipulation"
+                      aria-label={room?.title ?? "Open building"}
+                    >
+                      {on && room && (
+                        <span className="mb-1 hidden max-w-[160px] truncate rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium shadow-sm sm:block">
+                          {room.title}
+                        </span>
+                      )}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/city/pin.webp" alt="" width={28} height={36} className="h-8 w-auto drop-shadow-md sm:h-9" />
+                      <span className="absolute -bottom-1 flex gap-0.5">
+                        {g.people.slice(0, 3).map((p) => (
+                          <PixelSprite key={p.id} name={p.id} scale={1} working={p.status !== "idle"} />
+                        ))}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      {current && !fly ? (
-        <aside className="absolute bottom-8 left-5 right-5 z-30 mx-auto max-w-md rounded-[22px] border border-border bg-white/95 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur md:left-auto md:right-6 md:mx-0">
-          <p className="text-[12px] text-[var(--faint)]">{kindWord(current.room.kind)}</p>
-          <h2 className="mt-1 text-[18px] font-semibold leading-6 tracking-tight">{current.room.title}</h2>
-          <p className="mt-2 text-[13px] leading-5 text-[var(--dim)]">{current.room.preview ?? current.room.topic}</p>
-          {current.desks.length ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {current.desks.map((desk) => (
-                <Link
-                  key={desk.id}
-                  href={`/agents/${desk.id}`}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--elev)] py-1 pl-1 pr-2.5 text-[12px] hover:bg-[#ececef]"
-                >
-                  <PixelSprite name={desk.id} scale={2} working={desk.status !== "idle"} />
-                  {desk.display_name}
-                </Link>
-              ))}
-            </div>
-          ) : null}
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => enter(current)}
-              className="inline-flex rounded-full bg-accent px-4 py-2 text-[14px] font-medium text-white hover:bg-[#0077ed]"
-            >
-              Open the room
-            </button>
-            <button type="button" onClick={() => setFocus(null)} className="text-[13px] text-[var(--dim)]">
-              Keep looking
-            </button>
+      {selected && (
+        <aside className="relative z-30 mx-4 mb-4 mt-2 rounded-2xl border border-black/10 bg-white/95 p-4 shadow-xl backdrop-blur sm:absolute sm:bottom-6 sm:right-6 sm:mx-0 sm:mb-0 sm:mt-0 sm:w-[300px]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#86868b]">Building</p>
+          <h2 className="mt-1 text-[17px] font-semibold leading-snug">{selected.title}</h2>
+          <p className="mt-2 text-[13px] text-[#6e6e73]">
+            {inside.length} {inside.length === 1 ? "person" : "people"} inside
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {inside.slice(0, 6).map((d) => (
+              <span key={d.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-2 py-1 text-[11px]">
+                <PixelSprite name={d.id} scale={1} working={d.status !== "idle"} />
+                {d.display_name.split(" ")[0]}
+              </span>
+            ))}
           </div>
+          <button
+            type="button"
+            onClick={() => enter(`/rooms/${selected.id}`)}
+            className="mt-4 min-h-11 w-full rounded-full bg-[#1d1d1f] text-[13px] font-medium text-white touch-manipulation"
+          >
+            Open the room
+          </button>
         </aside>
-      ) : null}
-
-      <p className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 text-[12px] text-[var(--faint)]">
-        Scroll for the office
-      </p>
-    </div>
+      )}
+    </section>
   );
 }

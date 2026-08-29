@@ -43,13 +43,13 @@ export function OfficeFloor({
   const recent = handoffs.slice(-4).reverse();
   return (
     <section className="overflow-hidden rounded-[24px] border border-border bg-white">
-      <div className="flex flex-wrap items-end justify-between gap-3 px-6 pt-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-5 sm:px-6 sm:pt-6">
         <div>
           <p className="text-[13px] text-[var(--faint)]">The office</p>
           <h2 className="mt-1 text-[22px] font-semibold tracking-tight">Who’s up to what</h2>
         </div>
         <p className="text-[13px] text-[var(--dim)]">
-          {working} working · click anyone to read their chat
+          {working} working · tap anyone to read their chat
         </p>
       </div>
 
@@ -71,7 +71,7 @@ export function OfficeFloor({
       </div>
 
       {recent.length ? (
-        <div className="border-t border-border px-6 py-4">
+        <div className="border-t border-border px-4 py-4 sm:px-6">
           <p className="text-[12px] text-[var(--faint)]">Handing work across the room</p>
           <div className="mt-2 space-y-2">
             {recent.map((h) => (
@@ -114,7 +114,7 @@ export function RoomHandoff({
   at?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 py-2 pl-10 text-[13px] text-[var(--dim)]">
+    <div className="flex flex-wrap items-center gap-2 py-2 pl-4 text-[13px] text-[var(--dim)] sm:pl-10">
       <span className={cn("rounded-full bg-[var(--elev)] px-2 py-0.5 text-[12px]")}>handed off</span>
       <Link href={`/agents/${from}`} className="font-medium text-foreground hover:text-accent">
         {shortName(from)}

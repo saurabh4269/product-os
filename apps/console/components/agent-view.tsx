@@ -36,7 +36,7 @@ export function AgentView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="flex items-start gap-4 px-8 pb-5 pt-8 lg:px-12">
+      <div className="flex items-start gap-4 px-5 pb-5 pt-6 sm:px-8 lg:px-12 lg:pt-8">
         <PixelSprite name={data.agent.id} scale={4} working={desk?.status !== "idle"} />
         <div className="min-w-0">
           <Link href="/" className="text-[13px] text-[var(--faint)] hover:text-foreground">
@@ -62,7 +62,7 @@ export function AgentView() {
       </div>
 
       {data.rooms.length ? (
-        <div className="mx-8 flex flex-wrap gap-2 lg:mx-12">
+        <div className="mx-5 flex flex-wrap gap-2 sm:mx-8 lg:mx-12">
           {data.rooms.map((room) => (
             <Link
               key={room.id}
@@ -75,7 +75,7 @@ export function AgentView() {
         </div>
       ) : null}
 
-      <div className="chat-scroll mt-6 flex-1 space-y-5 overflow-y-auto px-8 pb-10 lg:px-12">
+      <div className="chat-scroll mt-6 flex-1 space-y-5 overflow-y-auto px-5 pb-10 sm:px-8 lg:px-12">
         {data.handoffs.length ? (
           <section>
             <p className="text-[12px] text-[var(--faint)]">Handed across the room</p>

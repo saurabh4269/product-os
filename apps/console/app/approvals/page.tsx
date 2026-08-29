@@ -33,8 +33,8 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="px-8 py-12 lg:px-16">
-      <h1 className="text-[32px] font-semibold tracking-tight">Approvals</h1>
+    <div className="page-pad">
+      <h1 className="text-[26px] font-semibold tracking-tight sm:text-[32px]">Approvals</h1>
       <p className="mt-3 text-[15px] text-[var(--dim)]">A few changes are waiting for a yes.</p>
       {data.pending.length === 0 ? (
         <Empty title="You’re all caught up." hint="New gates will show up here." />

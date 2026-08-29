@@ -21,7 +21,7 @@ export default function TracesPage() {
   if (!data) return <Loading label="Opening traces" />;
 
   return (
-    <div className="px-8 py-12 lg:px-16">
+    <div className="page-pad">
       <h1 className="text-[32px] font-semibold tracking-tight">Traces</h1>
       <p className="mt-3 text-[15px] text-[var(--dim)]">Who talked to whom.</p>
       <div className="mt-8 space-y-2">

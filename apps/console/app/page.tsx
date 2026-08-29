@@ -38,15 +38,15 @@ export default function HomePage() {
   const chambers = rooms.filter((r) => r.scenario_id || ["review", "research", "ops"].includes(r.kind));
 
   return (
-    <div>
-      <section className="h-screen">
-        <CityMap rooms={chambers} desks={office.desks} handoffs={office.handoffs} working={office.working} />
+    <>
+      <section className="lg:h-full">
+        <CityMap rooms={chambers} desks={office.desks} handoffs={office.handoffs} />
       </section>
 
-      <section className="bg-background px-8 py-14 lg:px-16">
+      <section className="page-pad bg-background">
         <header className="max-w-xl">
           <p className="text-[13px] text-[var(--faint)]">Below the campus</p>
-          <h2 className="mt-1 text-[28px] font-semibold tracking-tight">The office, up close</h2>
+          <h2 className="mt-1 text-[24px] font-semibold tracking-tight sm:text-[28px]">The office, up close</h2>
           <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
             Same team, as a quiet list — if you’d rather read than walk the island.
           </p>
@@ -74,7 +74,7 @@ export default function HomePage() {
           <OfficeFloor desks={office.desks} handoffs={office.handoffs} working={office.working} />
         </div>
 
-        <div className="mt-12 flex items-end justify-between">
+        <div className="mt-12 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <h3 className="text-[22px] font-semibold tracking-tight">Rooms</h3>
           <p className="text-[13px] text-[var(--dim)]">Group chats for each piece of work</p>
         </div>
@@ -92,6 +92,6 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-    </div>
+    </>
   );
 }
