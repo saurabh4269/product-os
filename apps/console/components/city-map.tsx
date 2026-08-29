@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, type Handoff, type OfficeDesk, type Room, type RoomDetail } from "@/lib/api";
 import { BUILDINGS, LANDMARKS, busiestRoom, cluster, slotFor } from "@/lib/campus";
 import { pagesFromDistrict, pagesFromRoom } from "@/lib/work-pages";
-import { CampusSticker } from "@/components/mascot";
+import { CampusSticker, type MascotMood } from "@/components/mascot";
 import { PixelSprite } from "@/components/pixel-office";
 import { WorkFlipbook } from "@/components/work-flipbook";
 
@@ -75,6 +75,7 @@ export function CityMap({
   const [peek, setPeek] = useState<RoomDetail | null>(null);
   const [frameEl, setFrameEl] = useState<HTMLDivElement | null>(null);
   const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
+  const [cheer, setCheer] = useState(false);
   const box = useImageBox(frameEl, imgEl);
 
   useEffect(() => {
@@ -120,6 +121,7 @@ export function CityMap({
 
   const enter = (href: string) => {
     setFly(href);
+    setCheer(true);
     window.setTimeout(() => router.push(href), 420);
   };
 
@@ -128,6 +130,13 @@ export function CityMap({
     const roomId = busiestRoom(id, desks, rooms);
     onPick(roomId, id);
   };
+
+  useEffect(() => {
+    if (!picked && !district) return;
+    setCheer(true);
+    const t = window.setTimeout(() => setCheer(false), 780);
+    return () => clearTimeout(t);
+  }, [picked, district]);
 
   const groups = cluster(desks, rooms);
   const selected = rooms.find((r) => r.id === picked);
@@ -138,10 +147,18 @@ export function CityMap({
       ? pagesFromDistrict(district, rooms, desks)
       : [];
 
+  const focus = BUILDINGS.find((b) => b.id === (hover || district));
+  const look = focus ? Math.max(-1, Math.min(1, (focus.x - 50) / 38)) : 0;
+  const mood: MascotMood = cheer ? "yay" : focus ? "watch" : "idle";
+
   return (
     <section className="relative flex min-h-0 flex-col bg-[#eef2ee] lg:h-full">
       <header className="relative z-20 flex items-start gap-3 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
-        <CampusSticker className="mt-0.5 h-[68px] w-[118px] shrink-0 drop-shadow-sm sm:h-[76px] sm:w-[132px] lg:hidden" />
+        <CampusSticker
+          look={look}
+          mood={mood}
+          className="mt-0.5 h-[68px] w-[118px] shrink-0 drop-shadow-sm sm:h-[76px] sm:w-[132px] lg:hidden"
+        />
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
           <h1 className="mt-1 font-display text-[1.65rem] leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.6rem]">
@@ -154,6 +171,8 @@ export function CityMap({
         </div>
       </header>
       <CampusSticker
+        look={look}
+        mood={mood}
         className="pointer-events-none absolute right-5 top-4 z-20 hidden h-[148px] w-[252px] drop-shadow-md lg:block"
       />
 

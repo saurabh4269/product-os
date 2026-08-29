@@ -52,7 +52,7 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | File | Role |
 |---|---|
 | `components/shell.tsx` | 64px icon rail + expand. Overlay on `<lg`, in-flow grow on `lg+`. `localStorage` key `loop-sidebar`. `[` toggles. |
-| `components/mascot.tsx` | Mochi (cream) is the rail mark. Duo sticker is transparent — no sage plate. |
+| `components/mascot.tsx` | Mochi (cream) is the rail mark. Pair is two sprites: they breathe, glance at each other, watch a hovered building, hop when you pick one. Wave on rail hover. |
 | `components/city-map.tsx` | Painted campus. Pins **and building ellipses** are % of the contained image box. |
 | `components/iso-office.tsx` | 2:1 isometric floor (Claude City energy, no Phaser). |
 | `components/work-flipbook.tsx` | Click-the-work pages. Do not wrap room cards in a naked `<Link>`. |

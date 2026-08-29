@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preload" as="image" href="/city/campus.webp" type="image/webp" />
         <link rel="preload" as="image" href="/city/mochi.webp" type="image/webp" />
-        <link rel="preload" as="image" href="/city/duo.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/city/bean-sit.webp" type="image/webp" />
       </head>
       <body className="h-full font-sans antialiased">
         <Shell>{children}</Shell>

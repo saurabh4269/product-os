@@ -214,7 +214,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className={cn("flex", wide ? "items-center gap-2 px-3 pt-5 pb-4" : "flex-col items-center gap-2 px-2 pt-4 pb-3")}>
-          <Link href="/" className={cn("flex min-w-0 items-center", wide ? "flex-1 gap-2.5" : "h-11 w-11 justify-center")}>
+          <Link href="/" className={cn("group flex min-w-0 items-center", wide ? "flex-1 gap-2.5" : "h-11 w-11 justify-center")}>
             <BeanMark size={32} className="shadow-sm" />
             {wide ? (
               <span className="min-w-0">

@@ -144,3 +144,111 @@ body {
 .iso-tile {
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
 }
+
+/* Mochi + Bean: sit, watch the campus, hop when you pick a building. */
+.mascot-sit {
+  display: inline-flex;
+  transform-origin: 50% 100%;
+  animation: mascot-breathe 3.6s ease-in-out infinite;
+}
+.mascot-sit.is-late {
+  animation-delay: 0.4s;
+}
+.mascot-sit img {
+  transform-origin: 50% 80%;
+  transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mascot-sit.is-watch {
+  animation-duration: 2.2s;
+}
+.mascot-pair.is-yay .mascot-sit,
+.mascot-sit.is-yay {
+  animation: mascot-hop 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mascot-pair.is-yay .mascot-sit.is-late {
+  animation-delay: 70ms;
+}
+.mascot-sit.is-idle img.who-bean {
+  animation: mascot-glance-bean 8s ease-in-out infinite;
+}
+.mascot-sit.is-idle img.who-mochi {
+  animation: mascot-glance-mochi 8s ease-in-out infinite;
+}
+
+.mascot-mark {
+  transform-origin: 50% 90%;
+  animation: mascot-breathe 2.8s ease-in-out infinite;
+}
+.group:hover .mascot-mark,
+.mascot-mark.is-wave {
+  animation: mascot-wave 900ms ease-in-out;
+}
+
+@keyframes mascot-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes mascot-hop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  28% {
+    transform: translateY(-11px) rotate(-6deg);
+  }
+  52% {
+    transform: translateY(-1px) rotate(4deg);
+  }
+  72% {
+    transform: translateY(-5px) rotate(-2deg);
+  }
+}
+
+@keyframes mascot-glance-bean {
+  0%,
+  22%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30%,
+  42% {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes mascot-glance-mochi {
+  0%,
+  22%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30%,
+  42% {
+    transform: rotate(-10deg);
+  }
+}
+
+@keyframes mascot-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  18% {
+    transform: rotate(14deg);
+  }
+  36% {
+    transform: rotate(-8deg);
+  }
+  54% {
+    transform: rotate(12deg);
+  }
+  72% {
+    transform: rotate(-4deg);
+  }
+}

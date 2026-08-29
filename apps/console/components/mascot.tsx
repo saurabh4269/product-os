@@ -2,7 +2,40 @@
 
 import { cn } from "@/lib/utils";
 
-/** Mochi — cream bear. She's the face of the product. Bean (cocoa) sits with her on campus. */
+/** Mochi — cream bear. She's the face. Bean (cocoa) sits with her and they watch the work. */
+
+export type MascotMood = "idle" | "watch" | "yay";
+
+function SitBear({
+  who,
+  look = 0,
+  mood = "idle",
+  late,
+  className,
+}: {
+  who: "mochi" | "bean";
+  look?: number;
+  mood?: MascotMood;
+  late?: boolean;
+  className?: string;
+}) {
+  const src = who === "mochi" ? "/city/mochi" : "/city/bean-sit";
+  const tilt = Math.max(-1, Math.min(1, look)) * (who === "mochi" ? 8 : 6);
+  return (
+    <span className={cn("mascot-sit", `is-${mood}`, late && "is-late", className)}>
+      <picture>
+        <source srcSet={`${src}.webp`} type="image/webp" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`${src}.png`}
+          alt=""
+          className={cn("h-full w-full object-contain drop-shadow-sm", who === "mochi" ? "who-mochi" : "who-bean")}
+          style={{ transform: `rotate(${tilt}deg)` }}
+        />
+      </picture>
+    </span>
+  );
+}
 
 export function BeanMark({
   size = 32,
@@ -12,43 +45,41 @@ export function BeanMark({
   className?: string;
 }) {
   return (
-    <picture>
-      <source srcSet="/city/mochi.webp" type="image/webp" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/city/mochi.png"
-        alt=""
-        width={size}
-        height={size}
-        className={cn("shrink-0 object-contain drop-shadow-sm", className)}
-        style={{ width: size, height: size }}
-      />
-    </picture>
+    <span className={cn("mascot-mark inline-flex shrink-0", className)} style={{ width: size, height: size }}>
+      <picture>
+        <source srcSet="/city/mochi.webp" type="image/webp" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/city/mochi.png" alt="" width={size} height={size} className="h-full w-full object-contain drop-shadow-sm" />
+      </picture>
+    </span>
   );
 }
 
 export function CampusSticker({
   className,
   title = "Mochi and Bean",
+  look = 0,
+  mood = "idle",
 }: {
   className?: string;
   title?: string;
+  look?: number;
+  mood?: MascotMood;
 }) {
   return (
-    <picture>
-      <source srcSet="/city/duo.webp" type="image/webp" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/city/duo.png" alt={title} className={cn("select-none object-contain", className)} />
-    </picture>
+    <div
+      role="img"
+      aria-label={title}
+      className={cn("mascot-pair inline-flex items-end justify-center", `is-${mood}`, className)}
+    >
+      <SitBear who="bean" look={look} mood={mood} className="h-full w-[54%] -mr-[9%]" />
+      <SitBear who="mochi" look={look} mood={mood} late className="h-full w-[54%] -ml-[9%]" />
+    </div>
   );
 }
 
 export function BeanWave({ className }: { className?: string }) {
-  return (
-    <span className={cn("inline-flex origin-bottom animate-[bob_2.2s_ease-in-out_infinite]", className)}>
-      <BeanMark size={36} />
-    </span>
-  );
+  return <BeanMark size={36} className={cn("is-wave", className)} />;
 }
 
 /** @deprecated use BeanMark */
