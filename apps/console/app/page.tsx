@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { api, type OfficeSnapshot, type Room } from "@/lib/api";
 import { pct } from "@/lib/utils";
 import { ErrorState, Loading } from "@/components/ui";
-import { HiveChamber } from "@/components/pixel-office";
-import { OfficeFloor } from "@/components/office-floor";
 import { CityMap } from "@/components/city-map";
+import { IsoOffice } from "@/components/iso-office";
+import { OfficeFloor } from "@/components/office-floor";
+import { RoomCard } from "@/components/work-flipbook";
 
 function magLabel(raw: unknown) {
   const n = Number(raw);
@@ -20,6 +20,8 @@ export default function HomePage() {
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [signals, setSignals] = useState<Array<Record<string, unknown>>>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [inside, setInside] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([api.rooms(), api.signals(), api.office()])
@@ -37,10 +39,24 @@ export default function HomePage() {
 
   const chambers = rooms.filter((r) => r.scenario_id || ["review", "research", "ops"].includes(r.kind));
 
+  function walkInside(district: string) {
+    setInside(district);
+    window.requestAnimationFrame(() => {
+      document.getElementById("inside")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   return (
     <>
       <section className="lg:h-full">
-        <CityMap rooms={chambers} desks={office.desks} handoffs={office.handoffs} />
+        <CityMap
+          rooms={chambers}
+          desks={office.desks}
+          handoffs={office.handoffs}
+          picked={picked}
+          onPick={(id) => setPicked(id)}
+          onWalkInside={walkInside}
+        />
       </section>
 
       <section className="page-pad bg-background">
@@ -48,7 +64,7 @@ export default function HomePage() {
           <p className="text-[13px] text-[var(--faint)]">Below the campus</p>
           <h2 className="mt-1 text-[24px] font-semibold tracking-tight sm:text-[28px]">The office, up close</h2>
           <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
-            Same team, as a quiet list — if you’d rather read than walk the island.
+            Walk the isometric floor, then flip a piece of work until you are in the room.
           </p>
         </header>
 
@@ -70,25 +86,32 @@ export default function HomePage() {
           </div>
         ) : null}
 
+        <div id="inside" className="mt-12 scroll-mt-6">
+          <IsoOffice
+            desks={office.desks}
+            rooms={chambers}
+            handoffs={office.handoffs}
+            focus={inside}
+            picked={picked}
+            onPickRoom={(id, district) => {
+              setPicked(id);
+              if (district) setInside(district);
+            }}
+            onPickDistrict={(d) => setInside(d || null)}
+          />
+        </div>
+
         <div className="mt-12">
           <OfficeFloor desks={office.desks} handoffs={office.handoffs} working={office.working} />
         </div>
 
         <div className="mt-12 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <h3 className="text-[22px] font-semibold tracking-tight">Rooms</h3>
-          <p className="text-[13px] text-[var(--dim)]">Group chats for each piece of work</p>
+          <h3 className="mt-0 text-[22px] font-semibold tracking-tight">Rooms</h3>
+          <p className="text-[13px] text-[var(--dim)]">Click the work to go deeper</p>
         </div>
-        <div className="rise mt-5 grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="rise mt-5 grid grid-cols-1 gap-8 sm:gap-10 lg:grid-cols-2 xl:grid-cols-3">
           {chambers.map((room) => (
-            <Link key={room.id} href={`/rooms/${room.id}`} className="block">
-              <HiveChamber
-                title={room.title}
-                kind={room.kind}
-                preview={room.preview ?? room.topic}
-                members={room.members}
-                loop={room.loop_type}
-              />
-            </Link>
+            <RoomCard key={room.id} room={room} desks={office.desks} />
           ))}
         </div>
       </section>

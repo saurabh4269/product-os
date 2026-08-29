@@ -2,66 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, type Handoff, type OfficeDesk, type Room } from "@/lib/api";
+import { api, type Handoff, type OfficeDesk, type Room, type RoomDetail } from "@/lib/api";
+import { BUILDINGS, LANDMARKS, busiestRoom, cluster, slotFor } from "@/lib/campus";
+import { pagesFromDistrict, pagesFromRoom } from "@/lib/work-pages";
 import { PixelSprite } from "@/components/pixel-office";
+import { WorkFlipbook } from "@/components/work-flipbook";
 
 const LQIP =
   "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/2wBDAVVaWldsY2JsbVRfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/wAARCAAEAAYDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAwT/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGdAf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//Z";
-
-const SLOTS: Record<string, { x: number; y: number }> = {
-  Incidents: { x: 24, y: 48 },
-  Ideas: { x: 50, y: 56 },
-  Reviews: { x: 40, y: 42 },
-  Research: { x: 84, y: 42 },
-  Ops: { x: 72, y: 44 },
-  Office: { x: 48, y: 52 },
-};
-
-const LANDMARKS = [
-  { href: "/memory", label: "Memory", x: 28, y: 72 },
-  { href: "/approvals", label: "Approvals", x: 50, y: 80 },
-];
-
-function districtOf(title: string | null | undefined, fallback = "Ops") {
-  const t = (title || "").toLowerCase();
-  if (t.includes("safari") || t.includes("3ds") || t.includes("timeout") || t.includes("denied")) return "Incidents";
-  if (t.includes("review") || t.includes("activation") || t.includes("onboarding")) return "Reviews";
-  if (t.includes("research")) return "Research";
-  if (t.includes("android") || t.includes("apple pay") || t.includes("shipping")) return "Ideas";
-  return fallback;
-}
-
-function slotFor(desk: OfficeDesk | undefined, rooms: Room[]) {
-  if (desk?.district && SLOTS[desk.district]) return SLOTS[desk.district];
-  const room = rooms.find((r) => r.id === desk?.room_id);
-  return SLOTS[districtOf(room?.title ?? desk?.room_title, "Ops")] || SLOTS.Ops;
-}
-
-function cluster(desks: OfficeDesk[], rooms: Room[]) {
-  const groups = new Map<string, OfficeDesk[]>();
-  for (const d of desks) {
-    if (!d.room_id) continue;
-    groups.set(d.room_id, [...(groups.get(d.room_id) || []), d]);
-  }
-  const raw = [...groups.entries()].map(([key, people]) => {
-    const s = slotFor(people[0], rooms);
-    return { key, people, x: s.x, y: s.y };
-  });
-  const bySlot = new Map<string, typeof raw>();
-  for (const g of raw) {
-    const k = `${g.x}:${g.y}`;
-    bySlot.set(k, [...(bySlot.get(k) || []), g]);
-  }
-  for (const list of bySlot.values()) {
-    const n = list.length;
-    list.forEach((g, i) => {
-      const spread = (i - (n - 1) / 2) * 5.2;
-      g.x += spread;
-      g.y += Math.abs(spread) * 0.18;
-    });
-  }
-  return raw;
-}
 
 function useImageBox(frame: HTMLElement | null, img: HTMLImageElement | null) {
   const [box, setBox] = useState({ left: 0, top: 0, width: 0, height: 0, ready: false });
@@ -104,18 +52,26 @@ export function CityMap({
   rooms: roomsIn,
   desks: desksIn,
   handoffs: handoffsIn,
+  picked,
+  onPick,
+  onWalkInside,
 }: {
   rooms: Room[];
   desks: OfficeDesk[];
   handoffs: Handoff[];
+  picked: string | null;
+  onPick: (roomId: string | null, district?: string) => void;
+  onWalkInside: (district: string) => void;
 }) {
   const router = useRouter();
   const [rooms, setRooms] = useState(roomsIn);
   const [desks, setDesks] = useState(desksIn);
   const [handoffs, setHandoffs] = useState(handoffsIn);
-  const [picked, setPicked] = useState<string | null>(null);
+  const [district, setDistrict] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
   const [fly, setFly] = useState<string | null>(null);
   const [imgReady, setImgReady] = useState(false);
+  const [peek, setPeek] = useState<RoomDetail | null>(null);
   const [frameEl, setFrameEl] = useState<HTMLDivElement | null>(null);
   const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
   const box = useImageBox(frameEl, imgEl);
@@ -125,6 +81,25 @@ export function CityMap({
     setDesks(desksIn);
     setHandoffs(handoffsIn);
   }, [roomsIn, desksIn, handoffsIn]);
+
+  useEffect(() => {
+    if (!picked) {
+      setPeek(null);
+      return;
+    }
+    let live = true;
+    api
+      .room(picked)
+      .then((d) => {
+        if (live) setPeek(d);
+      })
+      .catch(() => {
+        if (live) setPeek(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [picked]);
 
   const load = useCallback(async () => {
     try {
@@ -147,9 +122,20 @@ export function CityMap({
     window.setTimeout(() => router.push(href), 420);
   };
 
+  const pickBuilding = (id: string) => {
+    setDistrict(id);
+    const roomId = busiestRoom(id, desks, rooms);
+    onPick(roomId, id);
+  };
+
   const groups = cluster(desks, rooms);
   const selected = rooms.find((r) => r.id === picked);
-  const inside = desks.filter((d) => d.room_id === picked);
+  const inside = desks.filter((d) => (picked ? d.room_id === picked : d.district === district));
+  const pages = selected
+    ? pagesFromRoom(selected, desks, peek)
+    : district
+      ? pagesFromDistrict(district, rooms, desks)
+      : [];
 
   return (
     <section className="relative flex min-h-0 flex-col bg-[#eef2ee] lg:h-full">
@@ -159,8 +145,8 @@ export function CityMap({
           The work has a place.
         </h1>
         <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[#6e6e73]">
-          {desks.filter((d) => d.status !== "idle").length} people are already in the buildings. Tap a pin, or
-          scroll for the office.
+          {desks.filter((d) => d.status !== "idle").length} people are already in the buildings. Tap a
+          building, then flip the work.
         </p>
       </header>
 
@@ -182,7 +168,10 @@ export function CityMap({
               decoding="async"
               fetchPriority="high"
               onLoad={() => setImgReady(true)}
-              onClick={() => setPicked(null)}
+              onClick={() => {
+                onPick(null);
+                setDistrict(null);
+              }}
               className={`absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300 ${
                 imgReady ? "opacity-100" : "opacity-0"
               }`}
@@ -197,6 +186,33 @@ export function CityMap({
               className="absolute overflow-visible"
               style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
             >
+              <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+                {BUILDINGS.map((b) => {
+                  const on = hover === b.id || district === b.id;
+                  return (
+                    <ellipse
+                      key={b.id}
+                      cx={b.x}
+                      cy={b.y}
+                      rx={b.rx}
+                      ry={b.ry}
+                      fill={on ? "rgba(255,255,255,0.32)" : "rgba(255,255,255,0.01)"}
+                      stroke={on ? "rgba(29,29,31,0.2)" : "transparent"}
+                      strokeWidth="0.4"
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHover(b.id)}
+                      onMouseLeave={() => setHover(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        pickBuilding(b.id);
+                      }}
+                    >
+                      <title>{b.label}</title>
+                    </ellipse>
+                  );
+                })}
+              </svg>
+
               <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                 {handoffs.slice(-8).map((h, i) => {
                   const a = slotFor(desks.find((d) => d.id === h.from_agent), rooms);
@@ -221,6 +237,18 @@ export function CityMap({
                   );
                 })}
               </svg>
+
+              {hover && !district ? (
+                <span
+                  className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-full border border-black/10 bg-white/95 px-2.5 py-1 text-[12px] font-medium shadow-sm"
+                  style={{
+                    left: `${BUILDINGS.find((b) => b.id === hover)?.x ?? 50}%`,
+                    top: `${(BUILDINGS.find((b) => b.id === hover)?.y ?? 50) - 8}%`,
+                  }}
+                >
+                  {hover}
+                </span>
+              ) : null}
 
               {LANDMARKS.map((m) => (
                 <button
@@ -254,7 +282,11 @@ export function CityMap({
                   >
                     <button
                       type="button"
-                      onClick={() => setPicked(g.key)}
+                      onClick={() => {
+                        const d = desks.find((desk) => desk.room_id === g.key)?.district;
+                        setDistrict(d ?? null);
+                        onPick(g.key, d);
+                      }}
                       className="relative flex min-h-11 min-w-11 flex-col items-center touch-manipulation"
                       aria-label={room?.title ?? "Open building"}
                     >
@@ -279,30 +311,33 @@ export function CityMap({
         </div>
       </div>
 
-      {selected && (
-        <aside className="relative z-30 mx-4 mb-4 mt-2 rounded-2xl border border-black/10 bg-white/95 p-4 shadow-xl backdrop-blur sm:absolute sm:bottom-6 sm:right-6 sm:mx-0 sm:mb-0 sm:mt-0 sm:w-[300px]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#86868b]">Building</p>
-          <h2 className="mt-1 text-[17px] font-semibold leading-snug">{selected.title}</h2>
-          <p className="mt-2 text-[13px] text-[#6e6e73]">
-            {inside.length} {inside.length === 1 ? "person" : "people"} inside
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {inside.slice(0, 6).map((d) => (
-              <span key={d.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-2 py-1 text-[11px]">
-                <PixelSprite name={d.id} scale={1} working={d.status !== "idle"} />
-                {d.display_name.split(" ")[0]}
-              </span>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => enter(`/rooms/${selected.id}`)}
-            className="mt-4 min-h-11 w-full rounded-full bg-[#1d1d1f] text-[13px] font-medium text-white touch-manipulation"
-          >
-            Open the room
-          </button>
+      {pages.length ? (
+        <aside className="relative z-30 mx-4 mb-4 mt-2 sm:absolute sm:bottom-6 sm:right-6 sm:mx-0 sm:mb-0 sm:mt-0 sm:w-[300px] sm:max-h-[min(72vh,540px)] sm:overflow-y-auto">
+          <WorkFlipbook
+            pages={pages}
+            cover={
+              inside.length ? (
+                <div className="flex flex-wrap gap-2 px-5 pt-5">
+                  {inside.slice(0, 6).map((d) => (
+                    <span key={d.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-2 py-1 text-[11px]">
+                      <PixelSprite name={d.id} scale={1} working={d.status !== "idle"} />
+                      {d.display_name.split(" ")[0]}
+                    </span>
+                  ))}
+                </div>
+              ) : null
+            }
+            onOpen={selected ? () => enter(`/rooms/${selected.id}`) : undefined}
+            onInside={
+              district || selected
+                ? () => onWalkInside(district || desks.find((d) => d.room_id === selected?.id)?.district || "Office")
+                : undefined
+            }
+            openLabel="Open the room"
+            insideLabel="Walk inside"
+          />
         </aside>
-      )}
+      ) : null}
     </section>
   );
 }

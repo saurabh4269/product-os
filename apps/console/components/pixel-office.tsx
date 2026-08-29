@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef } from "react";
+import { FurnitureSet } from "@/components/pixel-furniture";
 import { hashHue, shortName } from "@/lib/names";
 import { cn } from "@/lib/utils";
 
@@ -78,25 +79,6 @@ const FRAME_B = [
   "...kkn..knk.....",
   "...kbk..kbk.....",
   "...kkk..kkk.....",
-  "................",
-];
-
-const DESK = [
-  "................",
-  "......oooo......",
-  ".....okggko.....",
-  ".....okggko.....",
-  ".....okkkko.....",
-  "..owwwwwwwwwwo..",
-  ".owwwwwwwwwwwwo.",
-  ".ow..........wo.",
-  ".ow..........wo.",
-  ".owwwwwwwwwwwwo.",
-  "................",
-  "................",
-  "................",
-  "................",
-  "................",
   "................",
 ];
 
@@ -179,46 +161,20 @@ export function Pixel({ name, size = 16 }: { name: string; size?: number }) {
   return <PixelSprite name={name} scale={scale} />;
 }
 
-function Desk({ scale = 2 }: { scale?: number }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useLayoutEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.imageSmoothingEnabled = false;
-    paint(
-      ctx,
-      DESK,
-      scale,
-      { k: "#8e8e93", s: "#d9a57a", h: "#2b1b12", t: "#c9b29a", n: "#3a3a3c", b: "#2c2c2e" },
-      { o: "#c7c7cc", g: "#dce3ea", w: "#c9b29a" }
-    );
-  }, [scale]);
-  return (
-    <canvas
-      ref={ref}
-      width={16 * scale}
-      height={16 * scale}
-      className="pixelated block"
-      style={{ width: 16 * scale, height: 16 * scale }}
-      aria-hidden
-    />
-  );
-}
-
 export function PixelOffice({
   members,
   working,
   compact = false,
   activity,
   link = true,
+  district,
 }: {
   members: string[];
   working: Set<string>;
   compact?: boolean;
   activity?: Record<string, string>;
   link?: boolean;
+  district?: string;
 }) {
   const shown = members.filter((m) => m !== "system").slice(0, compact ? 4 : 8);
   return (
@@ -235,7 +191,7 @@ export function PixelOffice({
                 </span>
               ) : null}
               <PixelSprite name={name} scale={3} working={isWork} />
-              {compact ? null : <Desk scale={2} />}
+              {compact ? null : <FurnitureSet name={name} district={district} working={isWork} scale={2} />}
               <span className="mt-1.5 max-w-[84px] truncate text-center text-[12px] leading-4 text-[var(--dim)]">
                 {shortName(name)}
               </span>

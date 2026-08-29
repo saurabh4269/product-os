@@ -52,7 +52,10 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | File | Role |
 |---|---|
 | `components/shell.tsx` | 64px icon rail + expand. Overlay on `<lg`, in-flow grow on `lg+`. `localStorage` key `loop-sidebar`. `[` toggles. |
-| `components/city-map.tsx` | Isometric campus. Pins are **% of the contained image box**, not the letterboxed frame. |
+| `components/city-map.tsx` | Painted campus. Pins **and building ellipses** are % of the contained image box. |
+| `components/iso-office.tsx` | 2:1 isometric floor (Claude City energy, no Phaser). |
+| `components/work-flipbook.tsx` | Click-the-work pages. Do not wrap room cards in a naked `<Link>`. |
+| `lib/furniture.ts` | Deterministic pixel furniture. |
 | `components/pixel-office.tsx` | Pixel people. Do not put sprites in a short `overflow-hidden` + `overflow-x-auto` box. |
 | `components/office-floor.tsx` | Desk grid + handoffs. 2 columns on a phone. |
 | `lib/api.ts` | `NEXT_PUBLIC_API_URL` or `""` in production (same origin). |
@@ -124,6 +127,7 @@ After deploy: hard-refresh the hosted URL. Confirm `/city/campus.webp` is 200 an
 3. **People** in room cards and the office must show full sprites. No `h-[80px]` + `overflow-hidden` people strip. `overflow-x-auto` also clips Y — pad inside the scrollport.
 4. **Rooms are one column on a phone** (`lg:grid-cols-2`).
 5. Campus hero is **not** `h-screen` on a phone (that letterboxed the island and floated pins into white).
+6. Keep the painted `campus.webp`. Do not replace it with Phaser / Three / `react-isometric-grid`. Interactivity is hotspots + iso floor + flipbook.
 
 ## Tests that matter
 

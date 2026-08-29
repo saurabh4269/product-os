@@ -140,3 +140,7 @@ body {
 .pin-bob {
   animation: pin-bob 1.8s ease-in-out infinite;
 }
+
+.iso-tile {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}

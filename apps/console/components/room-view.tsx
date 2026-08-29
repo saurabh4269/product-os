@@ -8,6 +8,8 @@ import { when } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
 import { PixelOffice, PixelSprite } from "@/components/pixel-office";
 import { RoomHandoff } from "@/components/office-floor";
+import { WorkFlipbook } from "@/components/work-flipbook";
+import { pagesFromRoom } from "@/lib/work-pages";
 
 function useRoomId(fallback?: string) {
   const [id, setId] = useState(fallback ?? "");
@@ -162,8 +164,31 @@ export function RoomView({ initialId }: { initialId?: string }) {
       </div>
 
       <div className="mx-5 overflow-hidden rounded-[20px] border border-border sm:mx-8 lg:mx-12">
-        <PixelOffice members={data.room.members} working={working} activity={activity} />
+        <PixelOffice
+          members={data.room.members}
+          working={working}
+          activity={activity}
+          district={
+            data.room.kind === "incident"
+              ? "Incidents"
+              : data.room.kind === "opportunity"
+                ? "Ideas"
+                : data.room.kind === "review"
+                  ? "Reviews"
+                  : data.room.kind === "research"
+                    ? "Research"
+                    : "Ops"
+          }
+        />
       </div>
+
+      {data.bundle ? (
+        <div className="mx-5 mt-4 sm:mx-8 lg:mx-12">
+          <WorkFlipbook
+            pages={pagesFromRoom(data.room, [], data).filter((p) => !p.id.endsWith("-open"))}
+          />
+        </div>
+      ) : null}
 
       {recalled.length ? (
         <div className="mx-5 mt-4 rounded-2xl bg-[var(--elev)] px-5 py-4 sm:mx-8 lg:mx-12">

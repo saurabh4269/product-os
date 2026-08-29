@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Handoff, OfficeDesk } from "@/lib/api";
 import { shortName } from "@/lib/names";
+import { FurnitureSet } from "@/components/pixel-furniture";
 import { PixelSprite } from "@/components/pixel-office";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,9 @@ function DeskTile({ desk }: { desk: OfficeDesk }) {
         <span className="mb-1.5 h-5" aria-hidden />
       )}
       <PixelSprite name={desk.id} scale={3} working={busy} />
+      <div className="mt-1">
+        <FurnitureSet name={desk.id} district={desk.district} working={busy} scale={2} compact />
+      </div>
       <p className="mt-2 w-full truncate text-[13px] font-medium leading-4">{desk.display_name}</p>
       <p className="mt-0.5 line-clamp-2 min-h-[32px] w-full text-[12px] leading-4 text-[var(--faint)]">
         {desk.room_title ?? (busy ? "Working" : "Around the office")}
