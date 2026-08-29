@@ -258,7 +258,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             aria-label="Close sidebar"
-            className="fixed inset-0 z-40 bg-black/20 lg:hidden"
+            className="fixed inset-y-0 left-16 right-0 z-40 bg-black/20 lg:hidden"
             onClick={() => setExpanded(false)}
           />
           <div className="fixed inset-y-0 left-16 z-50 flex w-[min(72vw,260px)] flex-col border-r border-border bg-white shadow-2xl lg:hidden">
