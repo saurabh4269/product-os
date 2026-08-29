@@ -92,12 +92,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       )}
                     >
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: kindColor(kind) }} />
-                      <span className="min-w-0">
-                        <span className="block truncate text-[13px] leading-5 text-foreground">{room.title}</span>
-                        <span className="mt-0.5 block truncate text-[12px] leading-4 text-[var(--faint)]">
-                          {room.preview ?? room.topic}
-                        </span>
-                      </span>
+                      <span className="min-w-0 truncate text-[13px] leading-5 text-foreground">{room.title}</span>
                     </Link>
                   );
                 })}
