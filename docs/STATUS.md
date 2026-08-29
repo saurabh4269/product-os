@@ -6,14 +6,14 @@ Last updated: 2026-08-29
 
 **Console + API:** https://loop-5uy6fkd7bq-uc.a.run.app
 
-`us-central1` Cloud Run service `loop` (bundle path, latest known revision `loop-00014-wc8`). Public `python:3.12-slim` + GCS tarball. SQLite is ephemeral (re-seeds the **full world** on cold start).
+`us-central1` Cloud Run service `loop` (bundle path, latest known revision `loop-00017-77b`). Public `python:3.12-slim` + GCS tarball. SQLite is ephemeral (re-seeds the **full world** on cold start).
 
 Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/deploy-gcp.sh`
 
 ## What works
 
 - Generic Type A / Type B pipeline. Six fixtures, one engine. Safari is a fixture.
-- Campus home: painted island, clickable buildings, isometric floor, generated furniture, flipbook rooms. Memory on the watch, Approvals on the tram.
+- Campus home: painted island, clickable buildings, isometric floor, generated furniture, flipbook rooms. Bean + Mochi on the campus. Memory on the watch, Approvals on the tram.
 - Icon-rail sidebar (always on) + expand. Overlay on phone, in-flow on laptop.
 - Rooms, per-bot chats (`/agents/:id`), visible handoffs. Pixel people unclipped on phone cards.
 - Agent Registry (identity, permissions, version, risk). Gateway deny on production customer-record dump.
