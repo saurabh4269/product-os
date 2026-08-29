@@ -6,14 +6,16 @@ Last updated: 2026-08-29
 
 **Console + API:** https://loop-5uy6fkd7bq-uc.a.run.app
 
-`us-central1` Cloud Run service `loop`. Public `python:3.12-slim` + GCS bundle. SQLite is ephemeral (re-seeds the **full world** on cold start).
+`us-central1` Cloud Run service `loop` (bundle path, latest known revision `loop-00014-wc8`). Public `python:3.12-slim` + GCS tarball. SQLite is ephemeral (re-seeds the **full world** on cold start).
 
 Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/deploy-gcp.sh`
 
 ## What works
 
 - Generic Type A / Type B pipeline. Six fixtures, one engine. Safari is a fixture.
-- Rooms: incidents, opportunities, reviews, research, ops. Pixel-agent presence. In-room artifacts + Risk gates.
+- Campus home: isometric island, pins on buildings, Memory on the watch, Approvals on the tram. Scroll for office + rooms.
+- Icon-rail sidebar (always on) + expand. Overlay on phone, in-flow on laptop.
+- Rooms, per-bot chats (`/agents/:id`), visible handoffs. Pixel people unclipped on phone cards.
 - Agent Registry (identity, permissions, version, risk). Gateway deny on production customer-record dump.
 - Memory Bank: customer / product / engineering / organizational. Lesson recall on similar later signals.
 - Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN).
@@ -24,3 +26,8 @@ Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/d
 ## What is mocked / mapped
 
 See README “Honest Google-product mapping”. Agent Gateway, Memory Bank, Live API, Antigravity are faithful local equivalents where the named 2026 product is not usable from this SA.
+
+## Docs for the next agent
+
+- [`AGENTS.md`](../AGENTS.md) — handoff, commands, UI contract
+- [`docs/LEARNINGS.md`](LEARNINGS.md) — pitfalls and errors already hit

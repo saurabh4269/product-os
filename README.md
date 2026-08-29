@@ -6,6 +6,8 @@ An autonomous product team that observes the product, understands users, identif
 
 **Safari / 3DS / payments are scenario fixtures — not the product.** The home experience is rooms + heterogeneous live signals. The same pipeline runs Type A (something broke → fix) and Type B (something could be better → improve). After root cause the graph forks: **BUG** (code + test + PR) vs **FEATURE** (proposal + impact + human approval).
 
+**New agent?** Start at [`AGENTS.md`](AGENTS.md). Pitfalls we already paid for: [`docs/LEARNINGS.md`](docs/LEARNINGS.md).
+
 Spec: [`docs/PRD.md`](docs/PRD.md). Architecture: [`docs/architecture.mmd`](docs/architecture.mmd) · [`docs/architecture.svg`](docs/architecture.svg).
 
 ## One command
