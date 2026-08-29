@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-/** Bean — round cocoa bear. Sticker-soft like Bubu/Dudu, our own character. */
+/** Mochi — cream bear. She's the face of the product. Bean (cocoa) sits with her on campus. */
 
 export function BeanMark({
   size = 32,
@@ -13,14 +13,14 @@ export function BeanMark({
 }) {
   return (
     <picture>
-      <source srcSet="/city/bean.webp" type="image/webp" />
+      <source srcSet="/city/mochi.webp" type="image/webp" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/city/bean.jpg"
+        src="/city/mochi.png"
         alt=""
         width={size}
         height={size}
-        className={cn("shrink-0 rounded-[10px] object-cover", className)}
+        className={cn("shrink-0 object-contain drop-shadow-sm", className)}
         style={{ width: size, height: size }}
       />
     </picture>
@@ -29,7 +29,7 @@ export function BeanMark({
 
 export function CampusSticker({
   className,
-  title = "Bean and Mochi",
+  title = "Mochi and Bean",
 }: {
   className?: string;
   title?: string;
@@ -38,7 +38,7 @@ export function CampusSticker({
     <picture>
       <source srcSet="/city/duo.webp" type="image/webp" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/city/duo.jpg" alt={title} className={cn("select-none", className)} />
+      <img src="/city/duo.png" alt={title} className={cn("select-none object-contain", className)} />
     </picture>
   );
 }

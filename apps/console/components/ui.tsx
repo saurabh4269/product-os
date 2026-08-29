@@ -56,7 +56,7 @@ export function Empty({ title, hint }: { title: string; hint: string }) {
 export function ErrorState({ message }: { message: string }) {
   return (
     <div className="page-pad flex items-start gap-4">
-      <BeanMark size={48} className="rounded-2xl" />
+      <BeanMark size={48} />
       <div>
         <p className="text-[18px] font-medium">Can’t reach the app right now.</p>
         <p className="mt-2 text-[14px] text-[var(--dim)]">{message}</p>

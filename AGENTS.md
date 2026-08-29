@@ -26,7 +26,7 @@ The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents,
 | Models | IDs only in [`config/models.yaml`](config/models.yaml). Default `gemini-3.5-flash`. Never set sampling on 3.6 / 3.5-lite. |
 | Cost | Cheap GCP only (BQ, Pub/Sub, Cloud Run, Model Armor). Agent Gateway / SGP / telephony stay **plan-only**. |
 | Hosted SQLite | Ephemeral. Cold start re-seeds the world. Room IDs change. Do not hard-code hosted room IDs. |
-| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. Mascots are **Bean** (cocoa bear) and **Mochi** (cream bear) — Bubu/Dudu cuteness, original characters. |
+| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. Mascots are **Mochi** (cream bear, brand face) and **Bean** (cocoa). Both show on phone — do not hide the duo behind `lg:block`. |
 | Art | Campus is `apps/console/public/city/campus.webp` (~75KB) + `campus.jpg`. **Do not re-add the 2MB PNG.** |
 | Git | Commits look human. No AI `Co-authored-by` / author overrides. |
 
@@ -52,7 +52,7 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | File | Role |
 |---|---|
 | `components/shell.tsx` | 64px icon rail + expand. Overlay on `<lg`, in-flow grow on `lg+`. `localStorage` key `loop-sidebar`. `[` toggles. |
-| `components/mascot.tsx` | Bean face + Bean/Mochi sticker. Brand in the rail. |
+| `components/mascot.tsx` | Mochi (cream) is the rail mark. Duo sticker is transparent — no sage plate. |
 | `components/city-map.tsx` | Painted campus. Pins **and building ellipses** are % of the contained image box. |
 | `components/iso-office.tsx` | 2:1 isometric floor (Claude City energy, no Phaser). |
 | `components/work-flipbook.tsx` | Click-the-work pages. Do not wrap room cards in a naked `<Link>`. |
