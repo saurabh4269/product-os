@@ -159,7 +159,7 @@ export function CityMap({
             <source srcSet="/city/campus.webp" type="image/webp" />
             {/* campus art is object-contain + measured; next/image fights that box */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img>
+            <img
               ref={setImgEl}
               src="/city/campus.jpg"
               alt="LOOP campus"
