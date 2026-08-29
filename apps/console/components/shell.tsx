@@ -40,7 +40,7 @@ function isActive(path: string, href: string) {
 
 function Tip({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
   return (
-    <span className="group relative flex justify-center">
+    <span className={cn("group relative flex", show ? "justify-center" : "w-full justify-start")}>
       {children}
       {show ? (
         <span className="pointer-events-none absolute left-full top-1/2 z-[60] ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-[#1d1d1f] px-2 py-1 text-[12px] text-white opacity-0 shadow-lg group-hover:flex group-hover:opacity-100">
@@ -61,7 +61,7 @@ function RoomList({
   onNavigate?: () => void;
 }) {
   return (
-    <div className="flex-1 overflow-y-auto chat-scroll px-2 pb-4">
+    <div className="flex-1 overflow-y-auto chat-scroll px-2 pb-4 text-left">
       {KINDS.map((kind) => {
         const group = rooms.filter((r) => r.kind === kind);
         if (!group.length) return null;
@@ -103,7 +103,7 @@ function SystemLinks({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className={cn("flex flex-col gap-0.5", collapsed ? "items-center px-2" : "px-2")}>
+    <nav className={cn("flex flex-col gap-0.5", collapsed ? "items-center px-2" : "items-stretch px-2")}>
       {SYSTEM.map((item) => {
         const Icon = item.icon;
         const active = isActive(path, item.href);
@@ -115,7 +115,7 @@ function SystemLinks({
               aria-current={active ? "page" : undefined}
               className={cn(
                 "group flex items-center rounded-xl transition-colors",
-                collapsed ? "h-11 w-11 justify-center" : "h-10 gap-3 px-3",
+                collapsed ? "h-11 w-11 justify-center" : "h-10 w-full justify-start gap-3 px-3",
                 active ? "bg-[var(--elev)] text-foreground" : "text-[var(--dim)] hover:bg-[var(--elev)] hover:text-foreground"
               )}
             >
@@ -198,7 +198,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       <aside
         className={cn(
-          "relative z-30 flex h-full shrink-0 flex-col border-r border-border bg-white transition-[width] duration-200 ease-out",
+          "relative z-30 flex h-full shrink-0 flex-col border-r border-border bg-white text-left transition-[width] duration-200 ease-out",
           wide ? "w-[260px]" : "w-16"
         )}
       >
