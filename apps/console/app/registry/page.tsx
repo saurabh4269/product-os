@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api, type RegistryAgent } from "@/lib/api";
-import { Badge, Card, ErrorState, Loading } from "@/components/ui";
-import { Pixel } from "@/components/pixel-office";
+import { ErrorState, Loading } from "@/components/ui";
+import { PixelSprite } from "@/components/pixel-office";
 
 export default function RegistryPage() {
   const [agents, setAgents] = useState<RegistryAgent[] | null>(null);
@@ -17,50 +17,48 @@ export default function RegistryPage() {
   }, []);
 
   if (err) return <ErrorState message={err} />;
-  if (!agents) return <Loading label="Opening registry" />;
+  if (!agents) return <Loading label="Opening the registry" />;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Agent Registry</h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--dim)]">
-          Identity, capabilities, permissions, version, environment, risk. What stops engineering from reading
-          customer data is the deny list on <span className="font-mono text-foreground">loop-code</span>, not a
-          prompt.
-        </p>
-      </div>
-      <div className="grid-fade grid gap-3 md:grid-cols-2">
+    <div className="px-8 py-10 lg:px-12">
+      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Who is allowed</p>
+      <h1 className="font-display mt-3 text-[48px] leading-none">Registry</h1>
+      <p className="mt-4 max-w-xl text-[16px] leading-7 text-[var(--dim)]">
+        Identity first. Engineering cannot read customer records because <em>loop-code</em> is denied that
+        permission — not because a prompt said please don’t.
+      </p>
+      <div className="rise mt-10 divide-y divide-border">
         {agents.map((a) => (
-          <Card key={a.id}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Pixel name={a.id} />
-                <div>
-                  <p className="text-sm font-medium">{a.display_name}</p>
-                  <p className="font-mono text-[10px] text-[var(--dim)]">
-                    {a.identity} · v{a.version} · {a.environment}
-                  </p>
-                </div>
-              </div>
-              <Badge tone={a.risk_level === "HIGH" ? "high" : a.risk_level === "MEDIUM" ? "warn" : "muted"}>
-                {a.risk_level}
-              </Badge>
+          <div key={a.id} className="grid grid-cols-[56px_1fr] gap-4 py-6 md:grid-cols-[56px_220px_1fr_120px]">
+            <PixelSprite name={a.id} scale={3} />
+            <div>
+              <p className="text-[16px] leading-5">{a.display_name}</p>
+              <p className="mt-1 text-[12px] text-[var(--faint)]">
+                {a.identity} · {a.version}
+              </p>
             </div>
-            <p className="mt-3 text-sm text-[var(--dim)]">{a.role}</p>
-            <p className="mt-2 font-mono text-[10px] text-[var(--dim)]">owner {a.owner}</p>
-            <div className="mt-3 flex flex-wrap gap-1">
-              {a.permissions_allow.slice(0, 4).map((p) => (
-                <Badge key={p} tone="ok">
-                  allow {p}
-                </Badge>
+            <p className="hidden text-[14px] leading-6 text-[var(--dim)] md:block">{a.role}</p>
+            <p
+              className="text-[12px] uppercase tracking-[0.14em]"
+              style={{
+                color: a.risk_level === "HIGH" ? "var(--danger)" : a.risk_level === "MEDIUM" ? "var(--warn)" : "var(--dim)",
+              }}
+            >
+              {a.risk_level}
+            </p>
+            <div className="col-span-full flex flex-wrap gap-x-4 gap-y-1 text-[12px] md:col-start-2">
+              {a.permissions_allow.slice(0, 3).map((p) => (
+                <span key={p} className="text-ok">
+                  {p}
+                </span>
               ))}
               {a.permissions_deny.slice(0, 3).map((p) => (
-                <Badge key={p} tone="danger">
-                  deny {p}
-                </Badge>
+                <span key={p} className="text-danger">
+                  {p}
+                </span>
               ))}
             </div>
-          </Card>
+          </div>
         ))}
       </div>
     </div>

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Badge, Card, ErrorState, Loading } from "@/components/ui";
-import { Pixel } from "@/components/pixel-office";
+import { shortName } from "@/lib/names";
+import { ErrorState, Loading } from "@/components/ui";
+import { PixelSprite } from "@/components/pixel-office";
 
 export default function TracesPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.traces>> | null>(null);
@@ -20,42 +21,39 @@ export default function TracesPage() {
   if (!data) return <Loading label="Opening traces" />;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Observability</h1>
-        <p className="mt-2 text-sm text-[var(--dim)]">
-          A2A reasoning hops and policy verdicts. OpenTelemetry-shaped locally; Cloud Trace in GCP.
-        </p>
-      </div>
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Reasoning chain</h2>
+    <div className="px-8 py-10 lg:px-12">
+      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Who spoke to whom</p>
+      <h1 className="font-display mt-3 text-[48px] leading-none">Traces</h1>
+      <div className="mt-10 space-y-3">
         {data.traces.map((t, i) => (
-          <Card key={String(t.id ?? i)} className="flex items-center justify-between gap-3 py-3">
-            <div className="flex items-center gap-2">
-              <Pixel name={String(t.from_agent ?? "")} />
-              <span className="text-sm">{String(t.from_agent)}</span>
-              <span className="text-[var(--dim)]">→</span>
-              <Pixel name={String(t.to_agent ?? "")} />
-              <span className="text-sm">{String(t.to_agent)}</span>
-            </div>
-            <div className="text-right">
-              <Badge>{String(t.trust_boundary ?? "")}</Badge>
-              <p className="mt-1 max-w-sm truncate font-mono text-[10px] text-[var(--dim)]">{String(t.summary ?? "")}</p>
-            </div>
-          </Card>
+          <div key={String(t.id ?? i)} className="flex flex-wrap items-center gap-3 py-2">
+            <PixelSprite name={String(t.from_agent ?? "")} scale={2} />
+            <span className="text-[15px]">{shortName(String(t.from_agent ?? ""))}</span>
+            <span className="text-[var(--faint)]">→</span>
+            <PixelSprite name={String(t.to_agent ?? "")} scale={2} />
+            <span className="text-[15px]">{shortName(String(t.to_agent ?? ""))}</span>
+            <span className="text-[12px] text-[var(--faint)]">{String(t.summary ?? "")}</span>
+          </div>
         ))}
-      </section>
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Policy verdicts</h2>
-        {data.verdicts.map((v, i) => (
-          <Card key={String(v.id ?? i)} className="flex items-center justify-between">
-            <p className="text-sm">
-              {String(v.agent_identity)} · {String(v.tool)}
+      </div>
+      <div className="mt-12">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">Policy</p>
+        <div className="mt-4 space-y-2">
+          {data.verdicts.map((v, i) => (
+            <p key={String(v.id ?? i)} className="text-[15px]">
+              <span
+                className="mr-3 uppercase tracking-[0.12em]"
+                style={{ color: v.verdict === "DENY" || v.verdict === "BLOCK" ? "var(--danger)" : "var(--ok)" }}
+              >
+                {String(v.verdict)}
+              </span>
+              <span className="text-[var(--dim)]">
+                {String(v.agent_identity)} · {String(v.tool)}
+              </span>
             </p>
-            <Badge tone={v.verdict === "DENY" || v.verdict === "BLOCK" ? "high" : "ok"}>{String(v.verdict)}</Badge>
-          </Card>
-        ))}
-      </section>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,28 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BookOpen, Gavel, Home, Library, Radio, Scale, Shield, Sparkles } from "lucide-react";
 import { api, type Room } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Pixel } from "@/components/pixel-office";
+import { PixelSprite } from "@/components/pixel-office";
 
-const NAV = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/registry", label: "Registry", icon: Library },
-  { href: "/memory", label: "Memory", icon: BookOpen },
-  { href: "/traces", label: "Traces", icon: Radio },
-  { href: "/approvals", label: "Approvals", icon: Gavel },
-  { href: "/outcomes", label: "Outcomes", icon: Scale },
-  { href: "/governance", label: "Governance", icon: Shield },
+const SYSTEM = [
+  { href: "/", label: "Hive" },
+  { href: "/registry", label: "Registry" },
+  { href: "/memory", label: "Memory" },
+  { href: "/traces", label: "Traces" },
+  { href: "/approvals", label: "Approvals" },
 ];
 
-const KIND_TONE: Record<string, string> = {
-  incident: "text-danger",
-  opportunity: "text-ok",
-  review: "text-warn",
-  research: "text-copper",
-  ops: "text-[var(--dim)]",
-};
+const KINDS = ["incident", "opportunity", "review", "research", "ops"] as const;
+
+function kindLabel(kind: string) {
+  if (kind === "incident") return "Broke";
+  if (kind === "opportunity") return "Better";
+  return kind;
+}
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
@@ -37,50 +34,43 @@ export function Shell({ children }: { children: React.ReactNode }) {
       .catch(() => setRooms([]));
   }, [path]);
 
-  const roomActive = path.startsWith("/rooms/");
+  const inRoom = path.startsWith("/rooms/");
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <nav className="flex w-14 shrink-0 flex-col items-center border-r border-border bg-[#0b0b0d] py-4">
-        <Link href="/" className="mb-6 font-mono text-[10px] tracking-[0.24em] text-accent">
-          OS
-        </Link>
-        {NAV.map((item) => {
-          const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={item.label}
-              className={cn(
-                "mb-1 flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                active ? "bg-accent/15 text-accent" : "text-[var(--dim)] hover:bg-white/5 hover:text-foreground"
-              )}
-            >
-              <Icon size={16} />
-            </Link>
-          );
-        })}
-        <div className="mt-auto pb-2">
-          <Sparkles size={14} className="text-[var(--dim)]" />
+      <aside className="hidden w-[272px] shrink-0 flex-col border-r border-border bg-[var(--paper)] md:flex">
+        <div className="px-5 pb-5 pt-6">
+          <Link href="/" className="block">
+            <p className="font-display text-[28px] leading-none tracking-tight">Product OS</p>
+            <p className="mt-2 text-[12px] text-[var(--dim)]">The office is the product.</p>
+          </Link>
         </div>
-      </nav>
 
-      <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-[#0c0c0e] md:flex">
-        <div className="border-b border-border px-4 py-4">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent">Product OS</p>
-          <p className="mt-1 text-sm text-[var(--dim)]">Rooms · agents · humans</p>
-        </div>
-        <div className="flex-1 overflow-y-auto chat-scroll px-2 py-2">
-          {(["incident", "opportunity", "review", "research", "ops"] as const).map((kind) => {
-            const group = rooms.filter((r) => r.kind === kind);
-            if (group.length === 0) return null;
+        <nav className="px-3 pb-3">
+          {SYSTEM.map((item) => {
+            const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
             return (
-              <div key={kind} className="mb-3">
-                <p className={cn("px-2 pb-1 font-mono text-[10px] uppercase tracking-widest", KIND_TONE[kind])}>
-                  {kind}
-                </p>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "block px-2 py-1.5 text-[13px] transition-colors",
+                  active ? "text-accent" : "text-[var(--dim)] hover:text-foreground"
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex-1 overflow-y-auto chat-scroll px-3 pb-6">
+          {KINDS.map((kind) => {
+            const group = rooms.filter((r) => r.kind === kind);
+            if (!group.length) return null;
+            return (
+              <div key={kind} className="mb-5">
+                <p className="px-2 pb-1 text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">{kindLabel(kind)}</p>
                 {group.map((room) => {
                   const href = `/rooms/${room.id}`;
                   const active = path === href;
@@ -89,19 +79,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       key={room.id}
                       href={href}
                       className={cn(
-                        "mb-0.5 block rounded-lg px-2 py-2 transition-colors",
-                        active ? "bg-white/8 text-foreground" : "text-[var(--dim)] hover:bg-white/5 hover:text-foreground"
+                        "mb-0.5 flex items-start gap-2 px-2 py-2 transition-colors",
+                        active ? "bg-[var(--elev)] text-foreground" : "text-[var(--dim)] hover:text-foreground"
                       )}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm text-foreground">{room.title}</p>
-                        {room.loop_type ? (
-                          <span className="shrink-0 font-mono text-[9px] uppercase text-[var(--dim)]">
-                            {room.loop_type === "type_a" ? "A" : "B"}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 truncate font-mono text-[10px] text-[var(--dim)]">{room.preview ?? room.topic}</p>
+                      <span
+                        className="mt-1.5 h-1.5 w-1.5 shrink-0"
+                        style={{
+                          background:
+                            kind === "incident"
+                              ? "var(--danger)"
+                              : kind === "opportunity"
+                                ? "var(--ok)"
+                                : kind === "review"
+                                  ? "var(--warn)"
+                                  : "var(--accent-2)",
+                        }}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] leading-5 text-foreground">{room.title}</span>
+                        <span className="mt-0.5 block truncate text-[11px] leading-4 text-[var(--faint)]">
+                          {room.preview ?? room.topic}
+                        </span>
+                      </span>
                     </Link>
                   );
                 })}
@@ -109,22 +109,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
             );
           })}
         </div>
+
+        <div className="flex items-center gap-2 border-t border-border px-4 py-3">
+          <PixelSprite name="you" scale={3} />
+          <div>
+            <p className="text-[12px] leading-4">You</p>
+            <p className="text-[11px] text-ok">in the rooms</p>
+          </div>
+        </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-5">
-          <p className="font-mono text-[11px] uppercase tracking-widest text-[var(--dim)]">
-            Observe · investigate · coordinate · ship · verify
-          </p>
-          <div className="flex items-center gap-2">
-            <Pixel name="orchestrator" />
-            <span className="rounded-full bg-ok/15 px-2 py-0.5 font-mono text-[10px] text-ok">live</span>
-          </div>
-        </header>
-        <main className={cn("min-h-0 flex-1", roomActive ? "overflow-hidden" : "overflow-y-auto px-6 py-8")}>
-          {children}
-        </main>
-      </div>
+      <main className={cn("min-w-0 flex-1", inRoom ? "overflow-hidden" : "overflow-y-auto chat-scroll")}>
+        {children}
+      </main>
     </div>
   );
 }

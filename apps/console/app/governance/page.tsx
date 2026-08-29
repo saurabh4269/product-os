@@ -2,49 +2,44 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Badge, Card, ErrorState, Loading } from "@/components/ui";
+import { ErrorState, Loading } from "@/components/ui";
 
 export default function GovernancePage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.governance>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api.governance().then(setData).catch((e) => setErr(e.message));
+    api
+      .governance()
+      .then(setData)
+      .catch((e) => setErr(e.message));
   }, []);
 
   if (err) return <ErrorState message={err} />;
   if (!data) return <Loading />;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-semibold">Governance</h1>
-      <Card>
-        <p className="font-mono text-[11px] uppercase text-[var(--dim)]">Safety pins</p>
-        <div className="mt-3 flex gap-2">
-          <Badge tone={data.failOpen ? "danger" : "ok"}>failOpen={String(data.failOpen)}</Badge>
-          <Badge tone="ok">tool-output screen on</Badge>
-        </div>
-      </Card>
-      <div className="grid gap-3 md:grid-cols-2">
+    <div className="px-8 py-10 lg:px-12">
+      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Security plane</p>
+      <h1 className="font-display mt-3 text-[48px] leading-none">Governance</h1>
+      <p className="mt-6 font-display text-[40px] leading-none text-ok">
+        failOpen = {String(data.failOpen)}
+      </p>
+      <div className="mt-12 max-w-2xl space-y-4">
         {data.identities.map((id) => (
-          <Card key={id.id}>
-            <p className="font-mono text-sm">{id.id}</p>
-            <p className="mt-1 text-sm text-[var(--dim)]">{id.envelope}</p>
-          </Card>
+          <div key={id.id} className="flex justify-between gap-6 border-b border-border py-3">
+            <p className="text-[15px]">{id.id}</p>
+            <p className="text-right text-[14px] text-[var(--dim)]">{id.envelope}</p>
+          </div>
         ))}
       </div>
-      <Card>
-        <p className="font-mono text-[11px] uppercase text-[var(--dim)]">Policy verdicts</p>
-        {data.verdicts.length === 0 ? (
-          <p className="mt-2 text-sm text-[var(--dim)]">No blocks yet. Injected tool output is logged here.</p>
-        ) : (
-          data.verdicts.map((v) => (
-            <p key={String(v.id)} className="mt-2 text-sm text-red-300">
-              {String(v.verdict)} · {String(v.tool)} — {String(v.rationale)}
-            </p>
-          ))
-        )}
-      </Card>
+      <div className="mt-12 max-w-2xl space-y-2">
+        {data.verdicts.map((v) => (
+          <p key={String(v.id)} className="text-[14px] text-danger">
+            {String(v.verdict)} · {String(v.tool)} — {String(v.rationale)}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }

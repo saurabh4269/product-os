@@ -4,30 +4,45 @@
 
 :root {
   color-scheme: dark;
-  --bg: #08090a;
-  --bg-elev: #111113;
-  --bg-mute: #18181b;
-  --line: rgba(255, 255, 255, 0.08);
-  --ink: #ececee;
-  --dim: #8a8f98;
-  --accent: #5e6ad2;
-  --accent-2: #d4a27f;
-  --ok: #4cb782;
-  --warn: #e2a03f;
-  --danger: #eb5757;
+  --bg: #100e14;
+  --paper: #1a1620;
+  --elev: #221c2b;
+  --line: rgba(246, 240, 230, 0.08);
+  --ink: #f6f0e6;
+  --dim: #9a9086;
+  --faint: #6b645c;
+  --accent: #ff7a45;
+  --accent-2: #ffb089;
+  --ok: #6fbf93;
+  --warn: #e8c36a;
+  --danger: #ff5a6a;
+  --floor: #3a3348;
+  --floor-2: #2f293c;
+  --wood: #8b5e3c;
+  --shadow: #09070c;
 }
 
 html,
 body {
+  height: 100%;
   background: var(--bg);
   color: var(--ink);
-  height: 100%;
 }
 
 body {
   background-image:
-    radial-gradient(1200px 600px at 10% -10%, rgba(94, 106, 210, 0.08), transparent 50%),
-    radial-gradient(900px 500px at 110% 10%, rgba(212, 162, 127, 0.05), transparent 45%);
+    radial-gradient(900px 520px at 0% 0%, rgba(255, 122, 69, 0.07), transparent 55%),
+    radial-gradient(800px 480px at 100% 100%, rgba(111, 191, 147, 0.05), transparent 50%);
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 * {
@@ -35,8 +50,12 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(255, 122, 69, 0.28);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -49,10 +68,57 @@ body {
   }
 }
 
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3348 transparent;
+}
+.chat-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: #3a3348;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.tile-floor {
+  background-color: var(--floor);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.hard-shadow {
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+
+.rise > * {
+  animation: rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rise > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.rise > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.rise > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.rise > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.rise > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -60,56 +126,38 @@ body {
   }
 }
 
-.grid-fade > * {
-  animation: rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes pixel-bob {
+@keyframes bob {
   0%,
   100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
   }
 }
 
-@keyframes pixel-walk {
-  0% {
-    transform: translateX(0);
-  }
-  50% {
-    transform: translateX(6px);
-  }
+@keyframes blink {
+  0%,
+  96%,
   100% {
-    transform: translateX(0);
+    opacity: 1;
+  }
+  98% {
+    opacity: 0.15;
   }
 }
 
-.pixel-agent {
-  image-rendering: pixelated;
-  animation: pixel-bob 1.1s ease-in-out infinite;
+.agent-bob {
+  animation: bob 1.2s ease-in-out infinite;
+}
+.agent-bob.is-working {
+  animation-duration: 0.45s;
 }
 
-.pixel-agent.is-working {
-  animation: pixel-bob 0.55s ease-in-out infinite, pixel-walk 2.4s ease-in-out infinite;
+.chamber {
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms ease;
 }
-
-.office-floor {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 40%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.025) 0 8px,
-      transparent 8px 16px
-    ),
-    #0c0c0e;
-}
-
-.chat-scroll::-webkit-scrollbar {
-  width: 10px;
-}
-.chat-scroll::-webkit-scrollbar-thumb {
-  background: #2a2a2e;
-  border-radius: 8px;
+.chamber:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--shadow);
 }

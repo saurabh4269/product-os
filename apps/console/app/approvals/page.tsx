@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type Action } from "@/lib/api";
-import { Badge, Button, Card, Empty, ErrorState, Loading } from "@/components/ui";
+import { Button, Empty, ErrorState, Loading } from "@/components/ui";
 
 export default function ApprovalsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.approvals>> | null>(null);
@@ -33,31 +33,32 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-semibold">Approval queue</h1>
+    <div className="px-8 py-10 lg:px-12">
+      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Waiting on a human</p>
+      <h1 className="font-display mt-3 text-[48px] leading-none">Approvals</h1>
       {data.pending.length === 0 ? (
-        <Empty title="Queue clear" hint="Risk Agent gates land here and survive restarts." />
+        <Empty title="Nothing at the gate." hint="Risk Agent will put work here." />
       ) : (
-        data.pending.map((a) => (
-          <Card key={a.id} className="space-y-3">
-            <div className="flex justify-between">
-              <Badge tone="high">{a.risk_tier}</Badge>
-              <Link href={`/investigations/${a.investigation_id}`} className="font-mono text-xs text-accent">
-                open room
-              </Link>
-            </div>
-            <p className="text-sm">{a.consequence}</p>
-            <p className="text-xs text-[var(--dim)]">{a.tier_rationale}</p>
-            <div className="flex gap-2">
-              <Button disabled={busy === a.id} onClick={() => void decide(a, "approve")}>
-                Approve
-              </Button>
-              <Button variant="ghost" disabled={busy === a.id} onClick={() => void decide(a, "deny")}>
-                Deny
-              </Button>
-            </div>
-          </Card>
-        ))
+        <div className="mt-10 max-w-2xl space-y-10">
+          {data.pending.map((a) => (
+            <article key={a.id}>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-warn">{a.risk_tier}</p>
+              <p className="font-display mt-2 text-[28px] leading-8">{a.consequence}</p>
+              <p className="mt-2 text-[14px] text-[var(--dim)]">{a.tier_rationale}</p>
+              <div className="mt-4 flex items-center gap-3">
+                <Button disabled={busy === a.id} onClick={() => void decide(a, "approve")}>
+                  Approve
+                </Button>
+                <Button variant="ghost" disabled={busy === a.id} onClick={() => void decide(a, "deny")}>
+                  Hold
+                </Button>
+                <Link href={`/investigations/${a.investigation_id}`} className="text-[13px] text-accent">
+                  Open room
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
       )}
     </div>
   );

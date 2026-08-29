@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
+import { shortName } from "@/lib/names";
 import { when } from "@/lib/utils";
-import { Badge, Button, ErrorState, Loading } from "@/components/ui";
-import { Pixel, PixelOffice } from "@/components/pixel-office";
+import { Button, ErrorState, Loading } from "@/components/ui";
+import { PixelOffice, PixelSprite } from "@/components/pixel-office";
 
 function useRoomId(fallback?: string) {
   const [id, setId] = useState(fallback ?? "");
@@ -18,52 +19,47 @@ function useRoomId(fallback?: string) {
   return id;
 }
 
+function artifactTone(type: string) {
+  if (type === "risk_decision") return "var(--warn)";
+  if (type === "memory_card") return "var(--ok)";
+  if (type === "hypothesis" || type === "prd" || type === "experiment_design") return "var(--accent)";
+  if (type === "evidence") return "var(--accent-2)";
+  return "var(--dim)";
+}
+
 function Artifact({ msg }: { msg: RoomMessage }) {
-  const type = msg.artifact_type ?? "note";
-  const tone =
-    type === "risk_decision"
-      ? "warn"
-      : type === "hypothesis"
-        ? "accent"
-        : type === "memory_card"
-          ? "ok"
-          : type === "prd" || type === "experiment_design"
-            ? "accent"
-            : "muted";
+  const type = (msg.artifact_type ?? "note").replace(/_/g, " ");
   return (
-    <div className="rounded-xl border border-border bg-[#0e0e11] p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <Badge tone={tone}>{type.replace("_", " ")}</Badge>
-        <span className="font-mono text-[10px] text-[var(--dim)]">{msg.author}</span>
-      </div>
-      <p className="text-sm leading-relaxed">{msg.text}</p>
+    <div className="mt-2 max-w-[640px] border-l-2 pl-4" style={{ borderColor: artifactTone(msg.artifact_type ?? "") }}>
+      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--faint)]">{type}</p>
+      <p className="mt-1 text-[15px] leading-6 text-[var(--ink)]">{msg.text}</p>
     </div>
   );
 }
 
-function ApprovalCard({
+function Gate({
   action,
-  onDecide,
   busy,
+  onDecide,
 }: {
   action: Action;
-  onDecide: (d: "approve" | "deny") => void;
   busy: boolean;
+  onDecide: (d: "approve" | "deny") => void;
 }) {
   if (!["proposed", "awaiting_approval"].includes(action.status)) return null;
   return (
-    <div className="rounded-xl border border-warn/40 bg-warn/5 p-4">
-      <div className="flex items-center gap-2">
-        <Badge tone={action.risk_tier === "HIGH" ? "high" : "warn"}>{action.risk_tier}</Badge>
-        <p className="text-sm font-medium">Risk gate · in-room approval</p>
-      </div>
-      <p className="mt-2 text-sm text-[var(--dim)]">{action.consequence}</p>
-      <div className="mt-3 flex gap-2">
+    <div className="hard-shadow my-4 max-w-[640px] border border-[var(--warn)] bg-[var(--paper)] p-5">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-warn">
+        {action.risk_tier} gate
+      </p>
+      <p className="font-display mt-2 text-[26px] leading-8">This change needs you.</p>
+      <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">{action.consequence}</p>
+      <div className="mt-4 flex gap-2">
         <Button onClick={() => onDecide("approve")} disabled={busy}>
           Approve
         </Button>
         <Button variant="ghost" onClick={() => onDecide("deny")} disabled={busy}>
-          Deny
+          Hold
         </Button>
       </div>
     </div>
@@ -97,10 +93,11 @@ export function RoomView({ initialId }: { initialId?: string }) {
     return set;
   }, [data]);
 
-  if (err) return <div className="p-6"><ErrorState message={err} /></div>;
-  if (!id || !data) return <div className="p-6"><Loading label="Opening room" /></div>;
+  if (err) return <ErrorState message={err} />;
+  if (!id || !data) return <Loading label="Opening the room" />;
 
   const pending = data.bundle?.actions ?? [];
+  const recalled = data.bundle?.investigation.recalled_lessons ?? [];
 
   async function send() {
     if (!text.trim()) return;
@@ -123,91 +120,68 @@ export function RoomView({ initialId }: { initialId?: string }) {
     }
   }
 
+  let lastAuthor = "";
+
   return (
-    <div className="flex h-full min-h-0">
-      <section className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-border px-5 py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-medium tracking-tight">{data.room.title}</h1>
-            <Badge tone={data.room.kind === "incident" ? "danger" : data.room.kind === "opportunity" ? "ok" : "muted"}>
-              {data.room.kind}
-            </Badge>
-            {data.room.loop_type ? <Badge tone="accent">{data.room.loop_type === "type_a" ? "Type A" : "Type B"}</Badge> : null}
-            {data.room.path ? <Badge>{data.room.path}</Badge> : null}
-          </div>
-          <p className="mt-1 text-sm text-[var(--dim)]">{data.room.topic}</p>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="px-8 pb-4 pt-7 lg:px-12">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">
+          {data.room.kind}
+          {data.room.loop_type === "type_a" ? " · something broke" : data.room.loop_type === "type_b" ? " · something could be better" : ""}
+        </p>
+        <h1 className="font-display mt-2 max-w-3xl text-[40px] leading-[1.1] tracking-tight">{data.room.title}</h1>
+        <p className="mt-2 max-w-2xl text-[15px] leading-6 text-[var(--dim)]">{data.room.topic}</p>
+      </div>
+
+      <PixelOffice members={data.room.members} working={working} />
+
+      {recalled.length ? (
+        <div className="border-b border-border px-8 py-3 lg:px-12">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-ok">Remembered</p>
+          <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--ink)]/90">{recalled[0]}</p>
         </div>
-        <div className="px-5 pt-4">
-          <PixelOffice members={data.room.members} working={working} />
-        </div>
-        <div className="chat-scroll flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {data.messages.map((msg) => (
-            <div key={msg.id} className="flex gap-3">
-              <div className="mt-1 shrink-0">
-                <Pixel name={msg.author} size={14} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium">{msg.author.replace(/_/g, " ")}</span>
-                  <span className="font-mono text-[10px] text-[var(--dim)]">{when(msg.created_at)}</span>
+      ) : null}
+
+      <div className="chat-scroll flex-1 space-y-1 overflow-y-auto px-8 py-6 lg:px-12">
+        {data.messages.map((msg) => {
+          const repeat = msg.author === lastAuthor;
+          lastAuthor = msg.author;
+          return (
+            <div key={msg.id} className={repeat ? "pt-1" : "pt-5"}>
+              {repeat ? null : (
+                <div className="mb-1 flex items-center gap-2">
+                  <PixelSprite name={msg.author} scale={2} />
+                  <span className="text-[14px] font-medium">{shortName(msg.author)}</span>
+                  <span className="text-[11px] text-[var(--faint)]">{when(msg.created_at)}</span>
                 </div>
-                {msg.kind === "artifact" ? (
-                  <div className="mt-2">
-                    <Artifact msg={msg} />
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm leading-relaxed text-foreground/90">{msg.text}</p>
+              )}
+              <div className={repeat ? "pl-10" : "pl-10"}>
+                {msg.kind === "artifact" ? <Artifact msg={msg} /> : (
+                  <p className="max-w-[640px] text-[15px] leading-6 text-[var(--ink)]/92">{msg.text}</p>
                 )}
               </div>
             </div>
-          ))}
-          {pending.map((action) => (
-            <ApprovalCard key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
-          ))}
-        </div>
-        <form
-          className="flex gap-2 border-t border-border p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send();
-          }}
-        >
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Talk to the room — humans and agents share this thread"
-            className="h-10 flex-1 rounded-lg border border-border bg-muted px-3 text-sm outline-none placeholder:text-[var(--dim)] focus:border-accent/50"
-          />
-          <Button type="submit" disabled={busy || !text.trim()}>
-            Send
-          </Button>
-        </form>
-      </section>
-      <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-border bg-[#0c0c0e] p-4 lg:block">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--dim)]">Artifacts</p>
-        <div className="mt-3 space-y-2">
-          {data.messages
-            .filter((m) => m.kind === "artifact")
-            .map((m) => (
-              <div key={m.id} className="rounded-lg border border-border px-3 py-2">
-                <p className="font-mono text-[10px] uppercase text-accent">{m.artifact_type}</p>
-                <p className="mt-1 line-clamp-3 text-xs text-[var(--dim)]">{m.text}</p>
-              </div>
-            ))}
-        </div>
-        {data.bundle?.investigation.recalled_lessons?.length ? (
-          <div className="mt-6">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--dim)]">Recalled memory</p>
-            <ul className="mt-2 space-y-2">
-              {data.bundle.investigation.recalled_lessons.map((lesson) => (
-                <li key={lesson} className="rounded-lg border border-ok/20 bg-ok/5 p-3 text-xs leading-relaxed">
-                  {lesson}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </aside>
+          );
+        })}
+        {pending.map((action) => (
+          <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
+        ))}
+      </div>
+
+      <form
+        className="border-t border-border px-8 py-4 lg:px-12"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+      >
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write in the room"
+          className="h-12 w-full bg-transparent text-[16px] outline-none placeholder:text-[var(--faint)]"
+        />
+      </form>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Badge, Card, ErrorState, Loading } from "@/components/ui";
+import { ErrorState, Loading } from "@/components/ui";
 
 const KINDS = ["customer", "product", "engineering", "organizational"] as const;
 
@@ -18,36 +18,37 @@ export default function MemoryPage() {
   }, []);
 
   if (err) return <ErrorState message={err} />;
-  if (!data) return <Loading label="Opening Memory Bank" />;
+  if (!data) return <Loading label="Opening memory" />;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Memory Bank</h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--dim)]">
-          Four kinds of organizational memory. Warehouse holds facts. Memory holds knowledge — retrieved when a
-          later signal looks like a past one.
-        </p>
-      </div>
-      <div className="grid-fade grid gap-4 md:grid-cols-2">
+    <div className="px-8 py-10 lg:px-12">
+      <p className="text-[12px] uppercase tracking-[0.2em] text-accent">Knowledge, not facts</p>
+      <h1 className="font-display mt-3 text-[48px] leading-none">Memory</h1>
+      <p className="mt-4 max-w-xl text-[16px] leading-7 text-[var(--dim)]">
+        The warehouse keeps numbers. This room keeps what we learned — so a later signal can find it.
+      </p>
+      <div className="mt-12 grid gap-12 lg:grid-cols-2">
         {KINDS.map((kind) => (
-          <Card key={kind}>
-            <Badge tone="accent">{kind}</Badge>
-            <div className="mt-4 space-y-3">
+          <section key={kind}>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--faint)]">{kind}</p>
+            <div className="mt-4 space-y-6">
               {(data.memory[kind] ?? []).length === 0 ? (
-                <p className="text-sm text-[var(--dim)]">Empty</p>
+                <p className="text-[14px] text-[var(--dim)]">Nothing stored yet.</p>
               ) : (
                 (data.memory[kind] ?? []).map((card, i) => (
-                  <div key={String(card.id ?? i)} className="rounded-lg border border-border p-3">
-                    <p className="text-sm leading-relaxed">{String(card.statement ?? JSON.stringify(card.structured ?? card))}</p>
-                    <p className="mt-2 font-mono text-[10px] text-[var(--dim)]">
-                      {String(card.provenance ?? "")} · {String(card.confidence ?? "")}
+                  <article key={String(card.id ?? i)}>
+                    <p className="font-display text-[24px] leading-8">
+                      {String(card.statement ?? JSON.stringify(card.structured ?? card))}
                     </p>
-                  </div>
+                    <p className="mt-2 text-[12px] text-[var(--faint)]">
+                      {String(card.provenance ?? "")}
+                      {card.confidence != null ? ` · ${card.confidence}` : ""}
+                    </p>
+                  </article>
                 ))
               )}
             </div>
-          </Card>
+          </section>
         ))}
       </div>
     </div>
