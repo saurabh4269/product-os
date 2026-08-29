@@ -78,9 +78,9 @@ export default function HomePage() {
           <h3 className="text-[22px] font-semibold tracking-tight">Rooms</h3>
           <p className="text-[13px] text-[var(--dim)]">Group chats for each piece of work</p>
         </div>
-        <div className="rise mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="rise mt-5 grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {chambers.map((room) => (
-            <Link key={room.id} href={`/rooms/${room.id}`} className="block min-h-[220px]">
+            <Link key={room.id} href={`/rooms/${room.id}`} className="block">
               <HiveChamber
                 title={room.title}
                 kind={room.kind}

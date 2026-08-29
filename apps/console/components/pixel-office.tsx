@@ -220,33 +220,37 @@ export function PixelOffice({
   activity?: Record<string, string>;
   link?: boolean;
 }) {
-  const shown = members.filter((m) => m !== "system").slice(0, compact ? 6 : 10);
+  const shown = members.filter((m) => m !== "system").slice(0, compact ? 4 : 8);
   return (
-    <div className={cn("relative overflow-hidden bg-[var(--floor)]", compact ? "h-[80px]" : "h-[120px]")}>
-      <div className="absolute inset-0 flex items-end justify-start gap-4 overflow-x-auto px-4 pb-2 sm:justify-center">
+    <div className={cn("bg-[var(--floor)]", compact ? "px-3 pb-3 pt-4" : "px-4 pb-4 pt-5")}>
+      <div className="flex items-end justify-center gap-3 overflow-x-auto">
         {shown.map((name, i) => {
           const isWork = working.has(name);
-          const note = activity?.[name];
+          const note = compact ? undefined : activity?.[name];
           const inner = (
             <>
-              {isWork || note ? (
-                <span className="absolute -top-4 left-1/2 max-w-[88px] -translate-x-1/2 truncate rounded-full bg-white px-2 font-sans text-[10px] leading-4 text-[var(--dim)]">
-                  {note ? note : "…"}
+              {note ? (
+                <span className="mb-1 max-w-[92px] truncate rounded-full bg-white px-2 py-0.5 font-sans text-[10px] leading-4 text-[var(--dim)]">
+                  {note}
                 </span>
               ) : null}
               <PixelSprite name={name} scale={compact ? 2 : 3} working={isWork} />
-              <Desk scale={compact ? 2 : 2} />
-              <span className="mt-0.5 max-w-[72px] truncate text-[11px] text-[var(--dim)]">
+              {compact ? null : <Desk scale={2} />}
+              <span className="mt-1 max-w-[76px] truncate text-center text-[11px] leading-4 text-[var(--dim)]">
                 {shortName(name)}
               </span>
             </>
           );
           return (
-            <div key={name} className="relative flex flex-col items-center" style={{ animationDelay: `${i * 80}ms` }}>
+            <div
+              key={name}
+              className="flex shrink-0 flex-col items-center"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
               {!link || name === "you" || name === "system" ? (
                 inner
               ) : (
-                <Link href={`/agents/${name}`} className="relative flex flex-col items-center hover:opacity-80">
+                <Link href={`/agents/${name}`} className="flex flex-col items-center hover:opacity-80">
                   {inner}
                 </Link>
               )}
@@ -277,13 +281,13 @@ export function HiveChamber({
   return (
     <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-[20px] border border-border bg-white">
       <PixelOffice members={members} working={working} compact link={false} />
-      <div className="flex flex-1 flex-col px-5 py-4">
-        <p className="text-[12px] text-[var(--faint)]">
+      <div className="flex flex-1 flex-col px-5 py-5">
+        <p className="text-[13px] text-[var(--faint)]">
           {label}
           {loop === "type_a" ? " · fix" : loop === "type_b" ? " · improve" : ""}
         </p>
         <h3 className="mt-1 text-[17px] font-semibold leading-6 tracking-tight">{title}</h3>
-        <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-[var(--dim)]">{preview}</p>
+        <p className="mt-2 line-clamp-3 text-[14px] leading-6 text-[var(--dim)]">{preview}</p>
       </div>
     </div>
   );
