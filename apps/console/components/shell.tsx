@@ -240,7 +240,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="flex-1" />
         )}
 
-        <div className={cn("border-t border-border", wide ? "flex items-center gap-2.5 px-3 py-3" : "flex justify-center py-3")}>
+        <div className={cn("mt-auto border-t border-border", wide ? "flex items-center gap-2.5 px-3 py-3" : "flex justify-center pb-5 pt-3")}>
           <PixelSprite name="you" scale={wide ? 3 : 2} />
           {wide ? (
             <div>
