@@ -157,7 +157,7 @@ export function CityMap({
         <CampusSticker
           look={look}
           mood={mood}
-          className="mt-0.5 h-[68px] w-[118px] shrink-0 drop-shadow-sm sm:h-[76px] sm:w-[132px] lg:hidden"
+          className="mt-0.5 h-[68px] w-[118px] shrink-0 sm:h-[76px] sm:w-[132px] lg:hidden"
         />
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
@@ -173,7 +173,7 @@ export function CityMap({
       <CampusSticker
         look={look}
         mood={mood}
-        className="pointer-events-none absolute right-5 top-4 z-20 hidden h-[148px] w-[252px] drop-shadow-md lg:block"
+        className="pointer-events-none absolute right-5 top-4 z-20 hidden h-[148px] w-[252px] lg:block"
       />
 
       <div className="relative mx-auto w-full max-w-[1100px] lg:absolute lg:inset-0 lg:max-w-none">

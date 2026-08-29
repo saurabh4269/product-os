@@ -191,31 +191,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [desktop]);
 
-  useEffect(() => {
-    if (desktop || !expanded) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [desktop, expanded]);
-
   const inRoom = path.startsWith("/rooms/") || path.startsWith("/agents/");
   const onCampus = path === "/";
-  const wide = desktop && expanded;
-  const flyout = !desktop && expanded;
+  const wide = expanded;
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       <aside
         className={cn(
           "relative z-30 flex h-full shrink-0 flex-col border-r border-border bg-white text-left transition-[width] duration-200 ease-out",
-          wide ? "w-[260px]" : "w-16"
+          wide ? "w-[min(16.25rem,calc(100vw-3.5rem))]" : "w-16"
         )}
       >
         <div className={cn("flex", wide ? "items-center gap-2 px-3 pt-5 pb-4" : "flex-col items-center gap-2 px-2 pt-4 pb-3")}>
           <Link href="/" className={cn("group flex min-w-0 items-center", wide ? "flex-1 gap-2.5" : "h-11 w-11 justify-center")}>
-            <BeanMark size={32} className="shadow-sm" />
+            <BeanMark size={32} />
             {wide ? (
               <span className="min-w-0">
                 <p className="truncate text-[15px] font-semibold leading-5 tracking-tight">Product OS</p>
@@ -264,29 +254,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </aside>
-
-      {flyout ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close sidebar"
-            className="fixed inset-y-0 left-16 right-0 z-40 bg-black/20 lg:hidden"
-            onClick={() => setExpanded(false)}
-          />
-          <div className="fixed inset-y-0 left-16 z-50 flex w-[min(72vw,260px)] flex-col border-r border-border bg-white shadow-2xl lg:hidden">
-            <div className="flex items-center gap-2.5 px-4 pb-3 pt-5">
-              <BeanMark size={32} />
-              <div>
-                <p className="text-[15px] font-semibold tracking-tight">Product OS</p>
-                <p className="mt-0.5 text-[12px] text-[var(--dim)]">A campus for the work</p>
-              </div>
-            </div>
-            <SystemLinks path={path} collapsed={false} onNavigate={() => setExpanded(false)} />
-            <div className="mx-4 my-3 h-px bg-border" />
-            <RoomList path={path} rooms={rooms} onNavigate={() => setExpanded(false)} />
-          </div>
-        </>
-      ) : null}
 
       <main
         className={cn(

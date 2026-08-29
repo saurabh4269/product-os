@@ -2,7 +2,8 @@
 
 import { cn } from "@/lib/utils";
 
-/** Mochi — cream bear. She's the face. Bean (cocoa) sits with her and they watch the work. */
+/** Mochi — cream bear. She's the face. Bean sits with her and they watch the work.
+ *  PNG only — iPad Safari can keep a plate on WebP alpha. */
 
 export type MascotMood = "idle" | "watch" | "yay";
 
@@ -19,20 +20,17 @@ function SitBear({
   late?: boolean;
   className?: string;
 }) {
-  const src = who === "mochi" ? "/city/mochi" : "/city/bean-sit";
+  const src = who === "mochi" ? "/city/mochi.png" : "/city/bean-sit.png";
   const tilt = Math.max(-1, Math.min(1, look)) * (who === "mochi" ? 8 : 6);
   return (
     <span className={cn("mascot-sit", `is-${mood}`, late && "is-late", className)}>
-      <picture>
-        <source srcSet={`${src}.webp`} type="image/webp" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`${src}.png`}
-          alt=""
-          className={cn("h-full w-full object-contain drop-shadow-sm", who === "mochi" ? "who-mochi" : "who-bean")}
-          style={{ transform: `rotate(${tilt}deg)` }}
-        />
-      </picture>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        className={cn("h-full w-full bg-transparent object-contain", who === "mochi" ? "who-mochi" : "who-bean")}
+        style={{ transform: `rotate(${tilt}deg)` }}
+      />
     </span>
   );
 }
@@ -45,12 +43,9 @@ export function BeanMark({
   className?: string;
 }) {
   return (
-    <span className={cn("mascot-mark inline-flex shrink-0", className)} style={{ width: size, height: size }}>
-      <picture>
-        <source srcSet="/city/mochi.webp" type="image/webp" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/city/mochi.png" alt="" width={size} height={size} className="h-full w-full object-contain drop-shadow-sm" />
-      </picture>
+    <span className={cn("mascot-mark inline-flex shrink-0 bg-transparent", className)} style={{ width: size, height: size }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/city/mochi.png" alt="" width={size} height={size} className="h-full w-full bg-transparent object-contain" />
     </span>
   );
 }
@@ -70,7 +65,7 @@ export function CampusSticker({
     <div
       role="img"
       aria-label={title}
-      className={cn("mascot-pair inline-flex items-end justify-center", `is-${mood}`, className)}
+      className={cn("mascot-pair inline-flex items-end justify-center bg-transparent", `is-${mood}`, className)}
     >
       <SitBear who="bean" look={look} mood={mood} className="h-full w-[54%] -mr-[9%]" />
       <SitBear who="mochi" look={look} mood={mood} late className="h-full w-[54%] -ml-[9%]" />
