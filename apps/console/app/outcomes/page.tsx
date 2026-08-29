@@ -23,8 +23,8 @@ export default function OutcomesPage() {
   }
 
   return (
-    <div className="px-8 py-10 lg:px-14">
-      <h1 className="text-[28px] font-semibold tracking-tight">Outcomes</h1>
+    <div className="px-8 py-12 lg:px-16">
+      <h1 className="text-[32px] font-semibold tracking-tight">Outcomes</h1>
       <div className="mt-8 max-w-md space-y-6">
         {data.outcomes.map((o) => (
           <article key={String(o.id)}>

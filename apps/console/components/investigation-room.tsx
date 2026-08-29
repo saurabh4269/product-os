@@ -7,19 +7,19 @@ import { Badge, Button, Card, ErrorState, Loading } from "@/components/ui";
 import { EvidenceGraph } from "@/components/evidence-graph";
 
 const PIXEL: Record<string, string> = {
-  signal_agent: "#22c55e",
-  orchestrator: "#38bdf8",
-  analytics_agent: "#a78bfa",
-  logs_agent: "#f59e0b",
-  deployment_agent: "#fb7185",
-  customer_voice_agent: "#34d399",
-  feedback_agent: "#2dd4bf",
-  root_cause_agent: "#f472b6",
-  risk_agent: "#facc15",
-  code_agent: "#94a3b8",
-  product_agent: "#60a5fa",
-  learning_agent: "#4ade80",
-  tool_output_armor: "#ef4444",
+  signal_agent: "#6e6e73",
+  orchestrator: "#0071e3",
+  analytics_agent: "#5b7c99",
+  logs_agent: "#8e8e93",
+  deployment_agent: "#4a5568",
+  customer_voice_agent: "#6b7c6e",
+  feedback_agent: "#a3b5c9",
+  root_cause_agent: "#636366",
+  risk_agent: "#b75106",
+  code_agent: "#48484a",
+  product_agent: "#5b7c99",
+  learning_agent: "#248a3d",
+  tool_output_armor: "#de3b2f",
 };
 
 function Pixel({ name, size = 10 }: { name: string; size?: number }) {

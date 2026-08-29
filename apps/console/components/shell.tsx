@@ -24,13 +24,6 @@ function kindLabel(kind: string) {
   return "Ops";
 }
 
-function kindColor(kind: string) {
-  if (kind === "incident") return "var(--danger)";
-  if (kind === "opportunity") return "var(--ok)";
-  if (kind === "review") return "var(--warn)";
-  return "var(--accent)";
-}
-
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -46,11 +39,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <aside className="hidden w-[260px] shrink-0 flex-col border-r border-border bg-white md:flex">
-        <div className="px-5 pb-4 pt-6">
+      <aside className="hidden w-[248px] shrink-0 flex-col border-r border-border bg-white md:flex">
+        <div className="px-5 pb-5 pt-7">
           <Link href="/" className="block">
             <p className="text-[17px] font-semibold tracking-tight">Product OS</p>
-            <p className="mt-1 text-[13px] text-[var(--dim)]">Your product team, in rooms.</p>
+            <p className="mt-1 text-[13px] text-[var(--dim)]">A quiet place for the work.</p>
           </Link>
         </div>
 
@@ -62,7 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "block rounded-lg px-3 py-1.5 text-[14px] transition-colors",
+                  "block rounded-full px-3 py-1.5 text-[14px] transition-colors",
                   active ? "bg-[var(--elev)] font-medium text-foreground" : "text-[var(--dim)] hover:text-foreground"
                 )}
               >
@@ -87,12 +80,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                       key={room.id}
                       href={href}
                       className={cn(
-                        "mb-0.5 flex items-start gap-2 rounded-lg px-3 py-2 transition-colors",
-                        active ? "bg-[var(--elev)]" : "hover:bg-[var(--elev)]/70"
+                        "mb-0.5 block rounded-lg px-3 py-1.5 transition-colors",
+                        active ? "bg-[var(--elev)]" : "hover:bg-[var(--elev)]"
                       )}
                     >
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: kindColor(kind) }} />
-                      <span className="min-w-0 truncate text-[13px] leading-5 text-foreground">{room.title}</span>
+                      <span className="block truncate text-[13px] leading-5 text-foreground">{room.title}</span>
                     </Link>
                   );
                 })}

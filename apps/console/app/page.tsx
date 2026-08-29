@@ -34,34 +34,33 @@ export default function HomePage() {
   const chambers = rooms.filter((r) => r.scenario_id || ["review", "research", "ops"].includes(r.kind));
 
   return (
-    <div className="min-h-full px-8 py-10 lg:px-14">
+    <div className="min-h-full px-8 py-12 lg:px-16">
       <header className="max-w-xl">
-        <h1 className="text-[28px] font-semibold tracking-tight">Good to have you here</h1>
-        <p className="mt-2 text-[15px] leading-6 text-[var(--dim)]">
-          The team is already in the rooms. Open one when you’re ready — nothing here needs to feel urgent.
+        <h1 className="text-[32px] font-semibold tracking-tight">Welcome</h1>
+        <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
+          The team is already in the rooms. Open one when you’re ready.
         </p>
       </header>
 
       {signals.length > 0 ? (
-        <div className="mt-8 flex flex-wrap gap-6">
+        <div className="mt-10 flex flex-wrap gap-x-10 gap-y-4">
           {signals.map((s) => {
             const segs =
               (s.affected_segments as Array<{ browser?: string; os?: string; platform?: string; geo?: string }>) ?? [];
             const who = segs[0]?.browser || segs[0]?.os || segs[0]?.platform || segs[0]?.geo || "all";
-            const n = Number(s.magnitude);
             return (
               <div key={String(s.id)}>
                 <p className="text-[12px] text-[var(--faint)]">
                   {String(s.metric).replace(/_/g, " ")} · {who}
                 </p>
-                <p className="mt-0.5 text-[20px] font-semibold text-foreground">{magLabel(s.magnitude)}</p>
+                <p className="mt-0.5 text-[20px] font-semibold tracking-tight text-foreground">{magLabel(s.magnitude)}</p>
               </div>
             );
           })}
         </div>
       ) : null}
 
-      <div className="rise mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="rise mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {chambers.map((room) => (
           <Link key={room.id} href={`/rooms/${room.id}`} className="block min-h-[220px]">
             <HiveChamber

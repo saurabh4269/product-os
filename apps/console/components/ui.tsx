@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, HTMLAttributes } from "react";
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-xl border border-border bg-card p-5", className)} {...props} />;
+  return <div className={cn("rounded-2xl border border-border bg-card p-5", className)} {...props} />;
 }
 
 export function Badge({
@@ -27,14 +27,14 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "danger" }) {
   const variants = {
-    primary: "bg-accent text-white hover:bg-[#4f46e5]",
+    primary: "bg-accent text-white hover:bg-[#0077ed]",
     ghost: "bg-transparent text-foreground hover:bg-muted",
-    danger: "bg-danger text-white hover:opacity-90",
+    danger: "bg-transparent text-danger hover:bg-[#de3b2f0f]",
   };
   return (
     <button
       className={cn(
-        "inline-flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-[14px] font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[14px] font-medium transition duration-150 disabled:cursor-not-allowed disabled:opacity-40",
         variants[variant],
         className
       )}
@@ -64,7 +64,7 @@ export function ErrorState({ message }: { message: string }) {
 export function Loading({ label = "Loading" }: { label?: string }) {
   return (
     <div className="flex items-center gap-3 px-8 py-16">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--faint)]" />
       <p className="text-[14px] text-[var(--dim)]">{label}</p>
     </div>
   );

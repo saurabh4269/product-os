@@ -21,14 +21,14 @@ export default function MemoryPage() {
   if (!data) return <Loading label="Opening memory" />;
 
   return (
-    <div className="px-8 py-10 lg:px-14">
-      <h1 className="text-[28px] font-semibold tracking-tight">Memory</h1>
-      <p className="mt-2 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        What we learned last time. Numbers stay in the warehouse; this is the short version we keep.
+    <div className="px-8 py-12 lg:px-16">
+      <h1 className="text-[32px] font-semibold tracking-tight">Memory</h1>
+      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        What we learned last time. The short version, kept here.
       </p>
-      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+      <div className="mt-10 grid gap-5 lg:grid-cols-2">
         {KINDS.map((kind) => (
-          <section key={kind} className="rounded-2xl border border-border bg-white p-5">
+          <section key={kind} className="rounded-[20px] border border-border bg-white p-6">
             <p className="text-[13px] font-medium capitalize text-[var(--faint)]">{kind}</p>
             <div className="mt-4 space-y-4">
               {(data.memory[kind] ?? []).length === 0 ? (

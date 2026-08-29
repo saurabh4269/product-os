@@ -20,13 +20,13 @@ export default function RegistryPage() {
   if (!agents) return <Loading label="Opening agents" />;
 
   return (
-    <div className="px-8 py-10 lg:px-14">
-      <h1 className="text-[28px] font-semibold tracking-tight">Agents</h1>
-      <p className="mt-2 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Each one has its own identity and permissions. Engineering can’t read customer records because that
-        permission is off — not because we asked nicely.
+    <div className="px-8 py-12 lg:px-16">
+      <h1 className="text-[32px] font-semibold tracking-tight">Agents</h1>
+      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        Each person has a role and a few permissions. Engineering can’t read customer records because that
+        permission is off.
       </p>
-      <div className="mt-8 divide-y divide-border rounded-2xl border border-border bg-white">
+      <div className="mt-10 divide-y divide-border overflow-hidden rounded-[20px] border border-border bg-white">
         {agents.map((a) => (
           <div key={a.id} className="grid grid-cols-[48px_1fr] gap-3 px-5 py-4 md:grid-cols-[48px_200px_1fr_80px]">
             <PixelSprite name={a.id} scale={2} />

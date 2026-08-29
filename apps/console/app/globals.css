@@ -4,22 +4,22 @@
 
 :root {
   color-scheme: light;
-  --bg: #f6f9fc;
+  --bg: #f5f5f7;
   --paper: #ffffff;
-  --elev: #f0f4f8;
-  --line: #e6ebf1;
-  --ink: #0a2540;
-  --dim: #425466;
-  --faint: #68778d;
-  --accent: #635bff;
-  --accent-2: #7a73ff;
-  --ok: #0d9488;
-  --warn: #c2410c;
-  --danger: #df1b41;
-  --floor: #eef2f7;
-  --floor-2: #e4eaf1;
-  --wood: #c4a484;
-  --shadow: rgba(10, 37, 64, 0.06);
+  --elev: #f5f5f7;
+  --line: #d2d2d7;
+  --ink: #1d1d1f;
+  --dim: #6e6e73;
+  --faint: #86868b;
+  --accent: #0071e3;
+  --accent-2: #0077ed;
+  --ok: #248a3d;
+  --warn: #b75106;
+  --danger: #de3b2f;
+  --floor: #f5f5f7;
+  --floor-2: #ececef;
+  --wood: #c9b29a;
+  --shadow: rgba(0, 0, 0, 0.04);
 }
 
 html,
@@ -39,7 +39,7 @@ body {
 }
 
 ::selection {
-  background: rgba(99, 91, 255, 0.16);
+  background: rgba(0, 113, 227, 0.16);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -54,13 +54,13 @@ body {
 
 .chat-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #cfd7e2 transparent;
+  scrollbar-color: #c7c7cc transparent;
 }
 .chat-scroll::-webkit-scrollbar {
   width: 8px;
 }
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: #cfd7e2;
+  background: #c7c7cc;
   border-radius: 8px;
 }
 
@@ -69,16 +69,8 @@ body {
   image-rendering: crisp-edges;
 }
 
-.tile-floor {
-  background-color: var(--floor);
-  background-image:
-    linear-gradient(rgba(10, 37, 64, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(10, 37, 64, 0.05) 1px, transparent 1px);
-  background-size: 16px 16px;
-}
-
 .soft-card {
-  box-shadow: 0 1px 2px rgba(10, 37, 64, 0.04), 0 8px 24px rgba(10, 37, 64, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.03);
 }
 
 .rise > * {
@@ -88,7 +80,7 @@ body {
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -102,21 +94,20 @@ body {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
   }
 }
 
 .agent-bob {
-  animation: bob 1.2s ease-in-out infinite;
+  animation: bob 2.4s ease-in-out infinite;
 }
 .agent-bob.is-working {
-  animation-duration: 0.45s;
+  animation-duration: 0.8s;
 }
 
 .chamber {
-  transition: box-shadow 180ms ease, transform 180ms ease;
+  transition: box-shadow 180ms ease;
 }
 .chamber:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(10, 37, 64, 0.08);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
 }

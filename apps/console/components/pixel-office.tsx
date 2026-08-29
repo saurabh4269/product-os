@@ -14,31 +14,31 @@ type Palette = {
 };
 
 const SKIN = ["#f0c9a0", "#d9a57a", "#c68662", "#8d5524", "#f3d1b8"];
-const HAIR = ["#2b1b12", "#4a2c14", "#1a1a1a", "#6b3a1f", "#c4a574", "#3d2a5c"];
+const HAIR = ["#2b1b12", "#4a2c14", "#1a1a1a", "#6b3a1f", "#c4a574", "#4a4a4c"];
 const SHIRT = [
-  "#ff7a45",
-  "#6fbf93",
-  "#7aa2ff",
-  "#e8c36a",
-  "#c084fc",
-  "#5ec8c8",
-  "#ff5a6a",
-  "#f6f0e6",
+  "#5b7c99",
+  "#8e8e93",
+  "#a3b5c9",
+  "#6b7c6e",
+  "#c7c1b3",
+  "#4a5568",
+  "#d4d4d8",
+  "#e8e4dc",
 ];
-const PANTS = ["#2a2438", "#3d3450", "#1c1826", "#40352a"];
+const PANTS = ["#3a3a3c", "#48484a", "#636366", "#2c2c2e"];
 
 export function paletteFor(name: string): Palette {
   if (name === "you") {
-    return { k: "#1a1210", s: "#f0c9a0", h: "#2b1b12", t: "#f6f0e6", n: "#2a2438", b: "#1a1210" };
+    return { k: "#2c2c2e", s: "#f0c9a0", h: "#2b1b12", t: "#e8e4dc", n: "#3a3a3c", b: "#2c2c2e" };
   }
   const n = hashHue(name);
   return {
-    k: "#1a1210",
+    k: "#2c2c2e",
     s: SKIN[n % SKIN.length],
     h: HAIR[(n >> 3) % HAIR.length],
     t: SHIRT[(n >> 5) % SHIRT.length],
     n: PANTS[(n >> 7) % PANTS.length],
-    b: "#1a1210",
+    b: "#2c2c2e",
   };
 }
 
@@ -190,8 +190,8 @@ function Desk({ scale = 2 }: { scale?: number }) {
       ctx,
       DESK,
       scale,
-      { k: "#2a1c14", s: "#d9a57a", h: "#2b1b12", t: "#8b5e3c", n: "#2a2438", b: "#1a1210" },
-      { o: "#141018", g: "#7dcea0", w: "#8b5e3c" }
+      { k: "#8e8e93", s: "#d9a57a", h: "#2b1b12", t: "#c9b29a", n: "#3a3a3c", b: "#2c2c2e" },
+      { o: "#c7c7cc", g: "#dce3ea", w: "#c9b29a" }
     );
   }, [scale]);
   return (
@@ -217,14 +217,14 @@ export function PixelOffice({
 }) {
   const shown = members.filter((m) => m !== "system").slice(0, compact ? 6 : 10);
   return (
-    <div className={cn("tile-floor relative overflow-hidden", compact ? "h-[88px]" : "h-[120px]")}>
-      <div className="absolute inset-0 flex items-end justify-center gap-3 px-4 pb-2">
+    <div className={cn("relative overflow-hidden bg-[var(--floor)]", compact ? "h-[80px]" : "h-[108px]")}>
+      <div className="absolute inset-0 flex items-end justify-center gap-4 px-4 pb-2">
         {shown.map((name, i) => {
           const isWork = working.has(name);
           return (
             <div key={name} className="relative flex flex-col items-center" style={{ animationDelay: `${i * 80}ms` }}>
               {isWork ? (
-                <span className="absolute -top-3 rounded-md bg-white px-1.5 font-sans text-[10px] leading-4 text-[var(--dim)] shadow-sm">
+                <span className="absolute -top-3 rounded-full bg-white px-2 font-sans text-[10px] leading-4 text-[var(--dim)]">
                   …
                 </span>
               ) : null}
@@ -255,22 +255,17 @@ export function HiveChamber({
   loop?: string | null;
 }) {
   const working = new Set(members.slice(0, 3));
-  const tone =
-    kind === "incident" ? "var(--danger)" : kind === "opportunity" ? "var(--ok)" : kind === "review" ? "var(--warn)" : "var(--accent)";
   const label =
     kind === "incident" ? "Incident" : kind === "opportunity" ? "Idea" : kind === "review" ? "Review" : kind;
   return (
-    <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-white">
+    <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-[20px] border border-border bg-white">
       <PixelOffice members={members} working={working} compact />
-      <div className="flex flex-1 flex-col px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: tone }} />
-          <p className="text-[12px] text-[var(--faint)]">
-            {label}
-            {loop === "type_a" ? " · fix" : loop === "type_b" ? " · improve" : ""}
-          </p>
-        </div>
-        <h3 className="mt-1 text-[16px] font-semibold leading-6 tracking-tight">{title}</h3>
+      <div className="flex flex-1 flex-col px-5 py-4">
+        <p className="text-[12px] text-[var(--faint)]">
+          {label}
+          {loop === "type_a" ? " · fix" : loop === "type_b" ? " · improve" : ""}
+        </p>
+        <h3 className="mt-1 text-[17px] font-semibold leading-6 tracking-tight">{title}</h3>
         <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-[var(--dim)]">{preview}</p>
       </div>
     </div>

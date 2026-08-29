@@ -16,7 +16,7 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "Product OS",
-  description: "A simple place to watch the product team work",
+  description: "A simple place for the product team",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

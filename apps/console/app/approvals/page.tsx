@@ -33,15 +33,15 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="px-8 py-10 lg:px-14">
-      <h1 className="text-[28px] font-semibold tracking-tight">Approvals</h1>
-      <p className="mt-2 text-[15px] text-[var(--dim)]">A few changes are waiting for a yes.</p>
+    <div className="px-8 py-12 lg:px-16">
+      <h1 className="text-[32px] font-semibold tracking-tight">Approvals</h1>
+      <p className="mt-3 text-[15px] text-[var(--dim)]">A few changes are waiting for a yes.</p>
       {data.pending.length === 0 ? (
         <Empty title="You’re all caught up." hint="New gates will show up here." />
       ) : (
         <div className="mt-8 max-w-xl space-y-6">
           {data.pending.map((a) => (
-            <article key={a.id} className="rounded-2xl border border-border bg-white p-5">
+            <article key={a.id} className="rounded-[20px] border border-border bg-white p-6">
               <p className="text-[13px] text-[var(--faint)]">{a.risk_tier}</p>
               <p className="mt-2 text-[15px] leading-6">{a.consequence}</p>
               <div className="mt-4 flex items-center gap-3">

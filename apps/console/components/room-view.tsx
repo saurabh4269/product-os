@@ -19,13 +19,6 @@ function useRoomId(fallback?: string) {
   return id;
 }
 
-function artifactTone(type: string) {
-  if (type === "risk_decision") return "var(--warn)";
-  if (type === "memory_card") return "var(--ok)";
-  if (type === "hypothesis" || type === "prd" || type === "experiment_design") return "var(--accent)";
-  return "var(--line)";
-}
-
 function Artifact({ msg }: { msg: RoomMessage }) {
   const type = (msg.artifact_type ?? "note").replace(/_/g, " ");
   return (
@@ -47,9 +40,9 @@ function Gate({
 }) {
   if (!["proposed", "awaiting_approval"].includes(action.status)) return null;
   return (
-    <div className="soft-card my-5 max-w-[620px] rounded-2xl border border-border bg-white p-5">
-      <p className="text-[13px] font-medium text-[var(--dim)]">Needs a quick look · {action.risk_tier}</p>
-      <p className="mt-2 text-[16px] font-medium leading-6">This change is waiting on you</p>
+    <div className="my-5 max-w-[620px] rounded-2xl border border-border bg-[var(--elev)] p-5">
+      <p className="text-[13px] text-[var(--dim)]">Needs a look · {action.risk_tier}</p>
+      <p className="mt-2 text-[16px] font-semibold leading-6 tracking-tight">This change is waiting on you</p>
       <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">{action.consequence}</p>
       <div className="mt-4 flex gap-2">
         <Button onClick={() => onDecide("approve")} disabled={busy}>
@@ -121,21 +114,21 @@ export function RoomView({ initialId }: { initialId?: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="px-8 pb-4 pt-6 lg:px-12">
+      <div className="px-8 pb-5 pt-8 lg:px-12">
         <p className="text-[13px] text-[var(--faint)]">
           {data.room.kind === "incident" ? "Incident" : data.room.kind === "opportunity" ? "Idea" : "Room"}
         </p>
-        <h1 className="mt-1 max-w-2xl text-[24px] font-semibold leading-8 tracking-tight">{data.room.title}</h1>
-        <p className="mt-1 max-w-2xl text-[14px] leading-6 text-[var(--dim)]">{data.room.topic}</p>
+        <h1 className="mt-1 max-w-2xl text-[26px] font-semibold leading-8 tracking-tight">{data.room.title}</h1>
+        <p className="mt-2 max-w-2xl text-[14px] leading-6 text-[var(--dim)]">{data.room.topic}</p>
       </div>
 
-      <div className="mx-8 overflow-hidden rounded-2xl border border-border lg:mx-12">
+      <div className="mx-8 overflow-hidden rounded-[20px] border border-border lg:mx-12">
         <PixelOffice members={data.room.members} working={working} />
       </div>
 
       {recalled.length ? (
-        <div className="mx-8 mt-4 rounded-xl bg-[var(--elev)] px-4 py-3 lg:mx-12">
-          <p className="text-[12px] font-medium text-ok">From last time</p>
+        <div className="mx-8 mt-4 rounded-2xl bg-[var(--elev)] px-5 py-4 lg:mx-12">
+          <p className="text-[12px] text-[var(--faint)]">From last time</p>
           <p className="mt-1 text-[14px] leading-6 text-[var(--ink)]">{recalled[0]}</p>
         </div>
       ) : null}
@@ -179,7 +172,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Message the room"
-          className="h-11 w-full rounded-xl bg-[var(--elev)] px-4 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/30"
+          className="h-12 w-full rounded-full bg-[var(--elev)] px-5 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/25"
         />
       </form>
     </div>

@@ -19,8 +19,8 @@ export default function GovernancePage() {
   if (!data) return <Loading />;
 
   return (
-    <div className="px-8 py-10 lg:px-14">
-      <h1 className="text-[28px] font-semibold tracking-tight">Governance</h1>
+    <div className="px-8 py-12 lg:px-16">
+      <h1 className="text-[32px] font-semibold tracking-tight">Governance</h1>
       <p className="mt-3 text-[15px] text-[var(--dim)]">Safety stays closed if something fails. failOpen = {String(data.failOpen)}.</p>
       <div className="mt-8 max-w-xl space-y-3">
         {data.identities.map((id) => (
