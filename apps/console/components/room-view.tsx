@@ -151,7 +151,10 @@ export function RoomView({ initialId }: { initialId?: string }) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       <div className="px-8 pb-5 pt-8 lg:px-12">
-        <p className="text-[13px] text-[var(--faint)]">
+        <Link href="/" className="text-[13px] text-[var(--faint)] hover:text-foreground">
+          ← Campus
+        </Link>
+        <p className="mt-3 text-[13px] text-[var(--faint)]">
           {data.room.kind === "incident" ? "Incident" : data.room.kind === "opportunity" ? "Idea" : "Room"}
         </p>
         <h1 className="mt-1 max-w-2xl text-[26px] font-semibold leading-8 tracking-tight">{data.room.title}</h1>

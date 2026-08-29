@@ -39,7 +39,10 @@ export function AgentView() {
       <div className="flex items-start gap-4 px-8 pb-5 pt-8 lg:px-12">
         <PixelSprite name={data.agent.id} scale={4} working={desk?.status !== "idle"} />
         <div className="min-w-0">
-          <p className="text-[13px] text-[var(--faint)]">Agent</p>
+          <Link href="/" className="text-[13px] text-[var(--faint)] hover:text-foreground">
+            ← Campus
+          </Link>
+          <p className="mt-3 text-[13px] text-[var(--faint)]">Agent</p>
           <h1 className="mt-1 text-[26px] font-semibold tracking-tight">{data.agent.display_name}</h1>
           <p className="mt-2 max-w-xl text-[14px] leading-6 text-[var(--dim)]">{data.agent.role}</p>
           {desk ? (

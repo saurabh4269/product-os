@@ -111,3 +111,17 @@ body {
 .chamber:hover {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.06);
 }
+
+@keyframes pin-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.pin-bob {
+  animation: pin-bob 1.8s ease-in-out infinite;
+}

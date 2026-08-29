@@ -36,6 +36,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, [path]);
 
   const inRoom = path.startsWith("/rooms/") || path.startsWith("/agents/");
+  const onCampus = path === "/";
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -43,7 +44,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="px-5 pb-5 pt-7">
           <Link href="/" className="block">
             <p className="text-[17px] font-semibold tracking-tight">Product OS</p>
-            <p className="mt-1 text-[13px] text-[var(--dim)]">A quiet place for the work.</p>
+            <p className="mt-1 text-[13px] text-[var(--dim)]">A campus for the work.</p>
           </Link>
         </div>
 
@@ -102,7 +103,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className={cn("min-w-0 flex-1 bg-background", inRoom ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll")}>
+      <main
+        className={cn(
+          "min-w-0 flex-1 bg-background",
+          inRoom || onCampus ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll",
+          onCampus && "bg-[#f4f6f4]"
+        )}
+      >
         {children}
       </main>
     </div>
