@@ -1,0 +1,271 @@
+{
+  "investigation": {
+    "id": "inv_b945afb4ceb9",
+    "originating_signal_ids": [
+      "sig_e32fe8825099"
+    ],
+    "state": "AWAITING_APPROVAL",
+    "opened_at": "2026-08-29T14:41:18.760639Z",
+    "closed_at": null,
+    "invocation_id": "job_6c3a8357125e",
+    "assigned_agents": [
+      "orchestrator",
+      "analytics",
+      "logs",
+      "deployment"
+    ],
+    "token_budget": 200000,
+    "tokens_consumed": 0,
+    "linked_hypothesis_ids": [
+      "hyp_8de2aa080d0b"
+    ],
+    "linked_action_ids": [
+      "act_5e1a128aba74"
+    ],
+    "verification_result": null,
+    "recalled_lessons": []
+  },
+  "signals": [
+    {
+      "id": "sig_e32fe8825099",
+      "family": "business",
+      "direction": "negative",
+      "funnel_position": "purchase",
+      "metric": "purchase_conversion",
+      "magnitude": -0.5383673469387755,
+      "baseline": 0.20114942528735633,
+      "affected_segments": [
+        {
+          "platform": "web",
+          "os": "iOS",
+          "browser": "Safari",
+          "app_version": null,
+          "geo": null,
+          "channel": null
+        }
+      ],
+      "detection_window": {
+        "start": "2026-08-26",
+        "end": "2026-08-28",
+        "baseline_start": "2026-08-06",
+        "baseline_end": "2026-08-19"
+      },
+      "confidence": 0.95,
+      "source": "warehouse.events_daily",
+      "status": "investigating",
+      "suppression_reason": null,
+      "detected_at": "2026-08-29T14:41:18.758700Z"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_08aa83f33355",
+      "investigation_id": "inv_b945afb4ceb9",
+      "source_type": "analytics",
+      "source_reference": "events_20260826..events_20260828 browser=Safari metric=purchase/begin_checkout",
+      "claim": "Safari purchase conversion was 9.3% in the detection window versus 20.1% in the 14-day baseline (-53.8%). Chrome held 25.1% vs 21.2%.",
+      "confidence": 0.92,
+      "trust_level": "trusted",
+      "collected_by": "analytics_agent",
+      "collected_at": "2026-08-29T14:41:18.818052Z",
+      "weight": 0.92,
+      "independence_group": "analytics_ga4"
+    },
+    {
+      "id": "ev_ad1b9698339e",
+      "investigation_id": "inv_b945afb4ceb9",
+      "source_type": "logs",
+      "source_reference": "Cloud Logging signature=3DS_TIMEOUT browser=Safari 2026-08-26..2026-08-28",
+      "claim": "3DS_TIMEOUT errors on Safari rose from 0 in the baseline window to 114 after 2026-08-20.",
+      "confidence": 0.9,
+      "trust_level": "trusted",
+      "collected_by": "logs_agent",
+      "collected_at": "2026-08-29T14:41:18.825512Z",
+      "weight": 0.9,
+      "independence_group": "logs_errors"
+    },
+    {
+      "id": "ev_46639e8a988b",
+      "investigation_id": "inv_b945afb4ceb9",
+      "source_type": "deployment",
+      "source_reference": "deploy:dep_430 sha=9f8e7d6c5b4a",
+      "claim": "Release pay-sdk@4.3.0 shipped 2026-08-20T09:14:00Z (Payment SDK 4.3 \u2014 new 3DS challenge iframe). Onset aligns with the Safari conversion break.",
+      "confidence": 0.88,
+      "trust_level": "trusted",
+      "collected_by": "deployment_agent",
+      "collected_at": "2026-08-29T14:41:18.828567Z",
+      "weight": 0.88,
+      "independence_group": "deploy_timeline"
+    },
+    {
+      "id": "ev_1ccaf64b9d13",
+      "investigation_id": "inv_b945afb4ceb9",
+      "source_type": "github_issue",
+      "source_reference": "github://northstar/pay/issues/1847",
+      "claim": "External issue text ingested as untrusted data. Not used as an instruction.",
+      "confidence": 0.4,
+      "trust_level": "untrusted",
+      "collected_by": "code_agent",
+      "collected_at": "2026-08-29T14:41:18.830333Z",
+      "weight": 0.4,
+      "independence_group": "github_untrusted"
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp_8de2aa080d0b",
+      "investigation_id": "inv_b945afb4ceb9",
+      "statement": "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move.",
+      "classification": "BUG",
+      "confidence": 0.86,
+      "supporting_evidence_ids": [
+        "ev_08aa83f33355",
+        "ev_ad1b9698339e",
+        "ev_46639e8a988b"
+      ],
+      "contradicting_evidence_ids": [],
+      "cited_memory": [],
+      "rank": 1,
+      "independence_groups": [
+        "analytics_ga4",
+        "deploy_timeline",
+        "logs_errors"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "act_5e1a128aba74",
+      "investigation_id": "inv_b945afb4ceb9",
+      "type": "flag_rollback",
+      "risk_tier": "HIGH",
+      "tier_rationale": "Touched surface is payment authorization (3DS). Tier follows the surface, not model confidence (H-1).",
+      "required_approver_role": "eng-manager",
+      "artifacts": {
+        "flag": "pay_sdk_4_3",
+        "from": "on",
+        "to": "off",
+        "pr": {
+          "title": "Revert pay-sdk 4.3 Safari 3DS regression",
+          "body": "Investigation inv_b945afb4ceb9. Hypothesis: pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move.",
+          "tests": "regression test must fail pre-change and pass post-change"
+        }
+      },
+      "idempotency_key": "ca6c92da50ca622c8f39ee9006fa514b",
+      "status": "awaiting_approval",
+      "consequence": "On approval, LOOP will flip feature flag pay_sdk_4_3 to off (rollback to 4.2.x) and open a PR with a Safari 3DS regression test. No merge, no production deploy."
+    }
+  ],
+  "approvals": [],
+  "timeline": [
+    {
+      "id": "tl_59d5abe64f5d",
+      "investigation_id": "inv_b945afb4ceb9",
+      "at": "2026-08-29T14:41:18.763292Z",
+      "actor": "signal_agent",
+      "kind": "signal",
+      "title": "Investigation opened",
+      "detail": "purchase_conversion -53.8% vs baseline 20.1%",
+      "denial": false
+    },
+    {
+      "id": "tl_6bddcc7ccdd2",
+      "investigation_id": "inv_b945afb4ceb9",
+      "at": "2026-08-29T14:41:18.819847Z",
+      "actor": "analytics_agent",
+      "kind": "evidence",
+      "title": "analytics evidence",
+      "detail": "Safari purchase conversion was 9.3% in the detection window versus 20.1% in the 14-day baseline (-53.8%). Chrome held 25.1% vs 21.2%.",
+      "denial": false
+    },
+    {
+      "id": "tl_5f7389cd0735",
+      "investigation_id": "inv_b945afb4ceb9",
+      "at": "2026-08-29T14:41:18.826437Z",
+      "actor": "logs_agent",
+      "kind": "evidence",
+      "title": "logs evidence",
+      "detail": "3DS_TIMEOUT errors on Safari rose from 0 in the baseline window to 114 after 2026-08-20.",
+      "denial": false
+    },
+    {
+      "id": "tl_49db36e9f3db",
+      "investigation_id": "inv_b945afb4ceb9",
+      "at": "2026-08-29T14:41:18.829369Z",
+      "actor": "deployment_agent",
+      "kind": "evidence",
+      "title": "deployment evidence",
+      "detail": "Release pay-sdk@4.3.0 shipped 2026-08-20T09:14:00Z (Payment SDK 4.3 \u2014 new 3DS challenge iframe). Onset aligns with the Safari conversion break.",
+      "denial": false
+    },
+    {
+      "id": "tl_f33794aead81",
+      "investigation_id": "inv_b945afb4ceb9",
+      "at": "2026-08-29T14:41:18.830905Z",
+      "actor": "code_agent",
+      "kind": "evidence",
+      "title": "github_issue evidence",
+      "detail": "External issue text ingested as untrusted data. Not used as an instruction.",
+      "denial": false
+    },
+    {
+      "id": "tl_7aa1bc7f7308",
+      "investigation_id": "inv_b945afb4ceb9",
+      "at": "2026-08-29T14:41:18.834216Z",
+      "actor": "root_cause_agent",
+      "kind": "hypothesis",
+      "title": "Root cause emitted",
+      "detail": "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move.",
+      "denial": false
+    },
+    {
+      "id": "tl_c09c804d9283",
+      "investigation_id": "inv_b945afb4ceb9",
+      "at": "2026-08-29T14:41:18.834844Z",
+      "actor": "risk_agent",
+      "kind": "risk",
+      "title": "HIGH tier \u2014 approval required",
+      "detail": "On approval, LOOP will flip feature flag pay_sdk_4_3 to off (rollback to 4.2.x) and open a PR with a Safari 3DS regression test. No merge, no production deploy.",
+      "denial": false
+    }
+  ],
+  "agent_calls": [
+    {
+      "id": "a2a_a57d3fa96093",
+      "investigation_id": "inv_b945afb4ceb9",
+      "from_agent": "orchestrator",
+      "to_agent": "analytics_agent",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-08-29T14:41:18.766525Z",
+      "finished_at": "2026-08-29T14:41:18.766527Z",
+      "status": "ok",
+      "summary": "funnel conversion by browser"
+    },
+    {
+      "id": "a2a_78d347d8aa48",
+      "investigation_id": "inv_b945afb4ceb9",
+      "from_agent": "orchestrator",
+      "to_agent": "logs_agent",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-08-29T14:41:18.821437Z",
+      "finished_at": "2026-08-29T14:41:18.821438Z",
+      "status": "ok",
+      "summary": "error signatures vs deploy window"
+    },
+    {
+      "id": "a2a_4deee825baad",
+      "investigation_id": "inv_b945afb4ceb9",
+      "from_agent": "orchestrator",
+      "to_agent": "deployment_agent",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-08-29T14:41:18.827269Z",
+      "finished_at": "2026-08-29T14:41:18.827270Z",
+      "status": "ok",
+      "summary": "release timeline correlation"
+    }
+  ],
+  "outcomes": [],
+  "lessons": [],
+  "verdicts": [],
+  "state": "AWAITING_APPROVAL"
+}

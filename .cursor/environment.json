@@ -1,0 +1,5 @@
+{
+  "name": "LOOP product-os",
+  "install": "./scripts/install-gcloud.sh\npython3 -m pip install --upgrade pip\npython3 -m venv /workspace/services/loop/.venv || true\n/workspace/services/loop/.venv/bin/pip install -e /workspace/services/loop[dev] || pip install -e /workspace/services/loop[dev]",
+  "start": "./scripts/gcp-activate.sh"
+}
