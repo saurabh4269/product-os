@@ -200,6 +200,14 @@ class Store:
     def list_agent_calls(self, investigation_id: str) -> list[AgentCall]:
         return self._list("agent_calls", AgentCall, "WHERE investigation_id=?", (investigation_id,))
 
+    def list_all_agent_calls(self) -> list[AgentCall]:
+        calls = self._list("agent_calls", AgentCall)
+        return sorted(calls, key=lambda c: c.started_at)
+
+    def list_all_messages(self) -> list[RoomMessage]:
+        msgs = self._list("messages", RoomMessage)
+        return sorted(msgs, key=lambda m: m.created_at)
+
     def claim_idempotency(self, key: str, tool: str, compute) -> tuple[Any, bool]:
         """Return (result, reused). Honours A-7 at-least-once without duplicate side effects."""
         with self._lock:

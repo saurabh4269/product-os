@@ -35,7 +35,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       .catch(() => setRooms([]));
   }, [path]);
 
-  const inRoom = path.startsWith("/rooms/");
+  const inRoom = path.startsWith("/rooms/") || path.startsWith("/agents/");
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

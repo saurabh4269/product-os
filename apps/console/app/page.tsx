@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type Room } from "@/lib/api";
+import { api, type OfficeSnapshot, type Room } from "@/lib/api";
 import { pct } from "@/lib/utils";
 import { ErrorState, Loading } from "@/components/ui";
 import { HiveChamber } from "@/components/pixel-office";
+import { OfficeFloor } from "@/components/office-floor";
 
 function magLabel(raw: unknown) {
   const n = Number(raw);
@@ -15,21 +16,23 @@ function magLabel(raw: unknown) {
 
 export default function HomePage() {
   const [rooms, setRooms] = useState<Room[] | null>(null);
+  const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [signals, setSignals] = useState<Array<Record<string, unknown>>>([]);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([api.rooms(), api.signals()])
-      .then(([r, s]) => {
+    Promise.all([api.rooms(), api.signals(), api.office()])
+      .then(([r, s, o]) => {
         setRooms(r.rooms);
         setSignals(s.signals);
+        setOffice(o);
         setErr(null);
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "API unreachable"));
   }, []);
 
   if (err) return <ErrorState message={err} />;
-  if (!rooms) return <Loading label="Opening home" />;
+  if (!rooms || !office) return <Loading label="Opening the office" />;
 
   const chambers = rooms.filter((r) => r.scenario_id || ["review", "research", "ops"].includes(r.kind));
 
@@ -38,7 +41,8 @@ export default function HomePage() {
       <header className="max-w-xl">
         <h1 className="text-[32px] font-semibold tracking-tight">Welcome</h1>
         <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
-          The team is already in the rooms. Open one when you’re ready.
+          The team is already at their desks. Click a person to see what they’re doing, or open a room
+          when you’re ready.
         </p>
       </header>
 
@@ -60,7 +64,15 @@ export default function HomePage() {
         </div>
       ) : null}
 
-      <div className="rise mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-12">
+        <OfficeFloor desks={office.desks} handoffs={office.handoffs} working={office.working} />
+      </div>
+
+      <div className="mt-12 flex items-end justify-between">
+        <h2 className="text-[22px] font-semibold tracking-tight">Rooms</h2>
+        <p className="text-[13px] text-[var(--dim)]">Group chats for each piece of work</p>
+      </div>
+      <div className="rise mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {chambers.map((room) => (
           <Link key={room.id} href={`/rooms/${room.id}`} className="block min-h-[220px]">
             <HiveChamber

@@ -121,6 +121,40 @@ export type RoomDetail = {
   members: string[];
 };
 
+export type OfficeDesk = {
+  id: string;
+  display_name: string;
+  role: string;
+  identity: string;
+  status: "working" | "handing_off" | "idle" | string;
+  doing: string;
+  room_id?: string | null;
+  room_title?: string | null;
+  district: string;
+  last_at?: string | null;
+  handed_from?: string | null;
+  handed_to?: string | null;
+  message_count: number;
+  handoff_count: number;
+};
+
+export type Handoff = {
+  id: string;
+  from_agent: string;
+  to_agent: string;
+  summary: string;
+  started_at: string;
+  room_id?: string | null;
+  room_title?: string | null;
+};
+
+export type OfficeSnapshot = {
+  desks: OfficeDesk[];
+  handoffs: Handoff[];
+  working: number;
+  idle: number;
+};
+
 export type RegistryAgent = {
   id: string;
   display_name: string;
@@ -136,6 +170,14 @@ export type RegistryAgent = {
   room: string;
   role: string;
   trust_boundary: string;
+};
+
+export type AgentDetail = {
+  agent: RegistryAgent;
+  desk: OfficeDesk | null;
+  rooms: Array<{ id: string; title: string; kind: string; topic: string }>;
+  messages: Array<RoomMessage & { room_title?: string }>;
+  handoffs: Handoff[];
 };
 
 export const api = {
@@ -180,6 +222,7 @@ export const api = {
       failOpen: boolean;
     }>("/api/governance"),
   opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
+  office: () => get<OfficeSnapshot>("/api/office"),
   agents: () =>
     get<{
       agents: Array<{
@@ -193,6 +236,7 @@ export const api = {
         risk_level?: string;
       }>;
     }>("/api/agents"),
+  agent: (id: string) => get<AgentDetail>(`/api/agents/${id}`),
   metrics: () =>
     get<{
       idea_to_impact_hours_mean: number | null;

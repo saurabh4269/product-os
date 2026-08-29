@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { hashHue, shortName } from "@/lib/names";
 import { cn } from "@/lib/utils";
@@ -210,22 +211,27 @@ export function PixelOffice({
   members,
   working,
   compact = false,
+  activity,
+  link = true,
 }: {
   members: string[];
   working: Set<string>;
   compact?: boolean;
+  activity?: Record<string, string>;
+  link?: boolean;
 }) {
   const shown = members.filter((m) => m !== "system").slice(0, compact ? 6 : 10);
   return (
-    <div className={cn("relative overflow-hidden bg-[var(--floor)]", compact ? "h-[80px]" : "h-[108px]")}>
+    <div className={cn("relative overflow-hidden bg-[var(--floor)]", compact ? "h-[80px]" : "h-[120px]")}>
       <div className="absolute inset-0 flex items-end justify-center gap-4 px-4 pb-2">
         {shown.map((name, i) => {
           const isWork = working.has(name);
-          return (
-            <div key={name} className="relative flex flex-col items-center" style={{ animationDelay: `${i * 80}ms` }}>
-              {isWork ? (
-                <span className="absolute -top-3 rounded-full bg-white px-2 font-sans text-[10px] leading-4 text-[var(--dim)]">
-                  …
+          const note = activity?.[name];
+          const inner = (
+            <>
+              {isWork || note ? (
+                <span className="absolute -top-4 left-1/2 max-w-[88px] -translate-x-1/2 truncate rounded-full bg-white px-2 font-sans text-[10px] leading-4 text-[var(--dim)]">
+                  {note ? note : "…"}
                 </span>
               ) : null}
               <PixelSprite name={name} scale={compact ? 2 : 3} working={isWork} />
@@ -233,6 +239,17 @@ export function PixelOffice({
               <span className="mt-0.5 max-w-[72px] truncate text-[11px] text-[var(--dim)]">
                 {shortName(name)}
               </span>
+            </>
+          );
+          return (
+            <div key={name} className="relative flex flex-col items-center" style={{ animationDelay: `${i * 80}ms` }}>
+              {!link || name === "you" || name === "system" ? (
+                inner
+              ) : (
+                <Link href={`/agents/${name}`} className="relative flex flex-col items-center hover:opacity-80">
+                  {inner}
+                </Link>
+              )}
             </div>
           );
         })}
@@ -259,7 +276,7 @@ export function HiveChamber({
     kind === "incident" ? "Incident" : kind === "opportunity" ? "Idea" : kind === "review" ? "Review" : kind;
   return (
     <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-[20px] border border-border bg-white">
-      <PixelOffice members={members} working={working} compact />
+      <PixelOffice members={members} working={working} compact link={false} />
       <div className="flex flex-1 flex-col px-5 py-4">
         <p className="text-[12px] text-[var(--faint)]">
           {label}

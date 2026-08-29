@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { api, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { shortName } from "@/lib/names";
 import { when } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
 import { PixelOffice, PixelSprite } from "@/components/pixel-office";
+import { RoomHandoff } from "@/components/office-floor";
 
 function useRoomId(fallback?: string) {
   const [id, setId] = useState(fallback ?? "");
@@ -80,7 +82,41 @@ export function RoomView({ initialId }: { initialId?: string }) {
     const set = new Set<string>();
     if (!data) return set;
     for (const m of data.messages.slice(-8)) set.add(m.author);
+    for (const call of data.bundle?.agent_calls ?? []) {
+      set.add(String(call.to_agent ?? ""));
+      set.add(String(call.from_agent ?? ""));
+    }
     return set;
+  }, [data]);
+
+  const activity = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (!data) return map;
+    for (const call of data.bundle?.agent_calls ?? []) {
+      const to = String(call.to_agent ?? "");
+      if (to) map[to] = String(call.summary ?? "working");
+    }
+    for (const m of data.messages) {
+      if (m.author && m.author !== "system") map[m.author] = m.text;
+    }
+    return map;
+  }, [data]);
+
+  const thread = useMemo(() => {
+    if (!data) return [] as Array<{ key: string; at: string; kind: "msg" | "handoff"; msg?: RoomMessage; handoff?: Record<string, unknown> }>;
+    const rows: Array<{ key: string; at: string; kind: "msg" | "handoff"; msg?: RoomMessage; handoff?: Record<string, unknown> }> = [];
+    for (const msg of data.messages) {
+      rows.push({ key: msg.id, at: msg.created_at, kind: "msg", msg });
+    }
+    for (const call of data.bundle?.agent_calls ?? []) {
+      rows.push({
+        key: String(call.id ?? `${call.from_agent}-${call.to_agent}-${call.started_at}`),
+        at: String(call.started_at ?? data.room.created_at),
+        kind: "handoff",
+        handoff: call,
+      });
+    }
+    return rows.sort((a, b) => a.at.localeCompare(b.at));
   }, [data]);
 
   if (err) return <ErrorState message={err} />;
@@ -123,7 +159,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
       </div>
 
       <div className="mx-8 overflow-hidden rounded-[20px] border border-border lg:mx-12">
-        <PixelOffice members={data.room.members} working={working} />
+        <PixelOffice members={data.room.members} working={working} activity={activity} />
       </div>
 
       {recalled.length ? (
@@ -134,15 +170,39 @@ export function RoomView({ initialId }: { initialId?: string }) {
       ) : null}
 
       <div className="chat-scroll flex-1 space-y-1 overflow-y-auto px-8 py-6 lg:px-12">
-        {data.messages.map((msg) => {
+        {thread.map((row) => {
+          if (row.kind === "handoff" && row.handoff) {
+            lastAuthor = "";
+            return (
+              <RoomHandoff
+                key={row.key}
+                from={String(row.handoff.from_agent ?? "")}
+                to={String(row.handoff.to_agent ?? "")}
+                summary={String(row.handoff.summary ?? "")}
+                at={when(row.at)}
+              />
+            );
+          }
+          const msg = row.msg;
+          if (!msg) return null;
           const repeat = msg.author === lastAuthor;
           lastAuthor = msg.author;
+          const href = msg.author_kind === "agent" ? `/agents/${msg.author}` : null;
           return (
             <div key={msg.id} className={repeat ? "pt-1" : "pt-4"}>
               {repeat ? null : (
                 <div className="mb-1 flex items-center gap-2">
-                  <PixelSprite name={msg.author} scale={2} />
-                  <span className="text-[14px] font-medium">{shortName(msg.author)}</span>
+                  {href ? (
+                    <Link href={href} className="flex items-center gap-2 hover:opacity-80">
+                      <PixelSprite name={msg.author} scale={2} />
+                      <span className="text-[14px] font-medium">{shortName(msg.author)}</span>
+                    </Link>
+                  ) : (
+                    <>
+                      <PixelSprite name={msg.author} scale={2} />
+                      <span className="text-[14px] font-medium">{shortName(msg.author)}</span>
+                    </>
+                  )}
                   <span className="text-[12px] text-[var(--faint)]">{when(msg.created_at)}</span>
                 </div>
               )}

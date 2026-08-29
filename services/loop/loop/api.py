@@ -15,6 +15,7 @@ from .config import settings, REPO_ROOT
 from .engine import LoopEngine, default_engine, log_verdict
 from .models import InvestigationState
 from .registry import ENTRIES, gateway_allows
+from .office import agent_snapshot, office_snapshot
 from .world import post as post_room
 
 _engine: LoopEngine | None = None
@@ -303,6 +304,11 @@ def metrics():
     }
 
 
+@app.get("/api/office")
+def office():
+    return office_snapshot(get_engine())
+
+
 @app.get("/api/agents")
 def agents():
     return {
@@ -321,6 +327,14 @@ def agents():
             for e in ENTRIES
         ]
     }
+
+
+@app.get("/api/agents/{agent_id}")
+def agent_detail(agent_id: str):
+    snap = agent_snapshot(get_engine(), agent_id)
+    if not snap:
+        raise HTTPException(404, "agent not found")
+    return snap
 
 
 def _summary(eng: LoopEngine, inv_id: str) -> dict:
@@ -394,8 +408,8 @@ def _spa_file(path: str) -> FileResponse | None:
     nested = _STATIC / rel / "index.html"
     if nested.is_file():
         return FileResponse(nested)
-    if rel.startswith("investigations/") or rel.startswith("rooms/"):
-        folder = "rooms" if rel.startswith("rooms/") else "investigations"
+    if rel.startswith("investigations/") or rel.startswith("rooms/") or rel.startswith("agents/"):
+        folder = "rooms" if rel.startswith("rooms/") else "investigations" if rel.startswith("investigations/") else "agents"
         for placeholder in (
             _STATIC / folder / "_" / "index.html",
             _STATIC / folder / "_.html",
