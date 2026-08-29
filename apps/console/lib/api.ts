@@ -1,7 +1,9 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+const BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8080");
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
+  const res = await fetch(`${BASE}${path}`, { cache: "no-store", credentials: "same-origin" });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
   return res.json();
 }
@@ -109,4 +111,17 @@ export const api = {
     }>("/api/governance"),
   opportunities: () =>
     get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
+  agents: () =>
+    get<{ agents: Array<{ id: string; room: string; role: string; tb: string; status: string }> }>(
+      "/api/agents"
+    ),
+  metrics: () =>
+    get<{
+      idea_to_impact_hours_mean: number | null;
+      idea_to_impact_target_hours: number;
+      baseline_manual_hours: number;
+      investigations: number;
+      resolved: number;
+      failOpen: boolean;
+    }>("/api/metrics"),
 };

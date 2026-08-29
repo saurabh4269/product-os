@@ -273,6 +273,11 @@ class LoopEngine:
             )
         )
 
+        # Customer Voice — diagnostic, not a survey. Structured evidence (research doc + K-11).
+        self.a2a(inv.id, "orchestrator", "customer_voice_agent", "TB-3", "consented diagnostic call")
+        voice = self._collect_customer_voice(inv)
+        items.append(voice)
+
         # Untrusted GitHub / tool output — screen then ingest as DATA, never as instruction (M-10, M-13)
         fixtures = Path(__file__).resolve().parents[3] / "data" / "fixtures"
         poison = fixtures / "poisoned_github_issue.md"
@@ -349,6 +354,63 @@ class LoopEngine:
         self.timeline(inv.id, collected_by, "evidence", f"{source_type} evidence", claim[:240])
         return e
 
+    def _collect_customer_voice(self, inv: Investigation) -> Evidence:
+        """Sarah-style adaptive diagnostic from the research brief. Live API stays mocked."""
+        from .media_bridge import MediaBridge
+
+        bridge = MediaBridge()
+        session_id = f"voice_{inv.id}"
+        bridge.open_session(session_id)
+        turns = [
+            ("agent", "I see a failed checkout on Safari after a ₹4,200 attempt. What did you see on screen?"),
+            ("customer", "The payment page kept loading."),
+            ("agent", "Did you see an error message, or did it remain on the loading screen?"),
+            ("customer", "Just loading."),
+            ("agent", "Did this happen on another browser?"),
+            ("customer", "Chrome on my laptop worked. iPhone Safari failed twice."),
+        ]
+        fixtures = Path(__file__).resolve().parents[3] / "data" / "fixtures" / "pii_transcript.json"
+        if fixtures.exists():
+            import json
+
+            raw = json.loads(fixtures.read_text())
+            for t in raw.get("turns", []):
+                turns.append((str(t.get("role", "customer")), str(t.get("text", ""))))
+        screened = [bridge.ingest_transcript_turn(session_id, role, text) for role, text in turns]
+        blocked = sum(1 for t in screened if t.get("blocked"))
+        pii_holder = next((t["redacted"] for t in screened if "[EMAIL_ADDRESS]" in t.get("redacted", "")), "")
+        structured = {
+            "reason": "payment_timeout",
+            "severity": "high",
+            "purchase_intent": "high",
+            "friction": "technical",
+            "competitor_mentioned": False,
+            "feature_request": None,
+            "willing_to_retry": True,
+            "confidence": 0.94,
+            "user_token": "tok_sarah_safari",
+            "channel": "voice_text_fallback",
+            "injection_turns_blocked": blocked,
+        }
+        self.store.put_memory(
+            f"voice_{inv.id}",
+            "customer",
+            {"structured": structured, "redacted_excerpt": pii_holder[:180], "provenance": inv.id},
+        )
+        return self._evidence(
+            inv,
+            source_type="customer_voice",
+            source_reference=f"media-bridge:{session_id} structured.reason=payment_timeout",
+            claim=(
+                "Consented diagnostic (not a survey): spinner-only hang on iPhone Safari, Chrome succeeded, "
+                f"willing to retry. Structured reason=payment_timeout confidence=0.94. "
+                f"PII redacted; {blocked} injected/unsafe turns blocked."
+            ),
+            independence_group="customer_voice",
+            collected_by="customer_voice_agent",
+            confidence=0.94,
+        )
+
     def form_hypothesis(self, inv: Investigation) -> Hypothesis | None:
         """Hard gate: ≥3 independent sources or no hypothesis."""
         evidence = [e for e in self.store.list_evidence(inv.id) if e.trust_level == TrustLevel.TRUSTED]
@@ -369,7 +431,8 @@ class LoopEngine:
             investigation_id=inv.id,
             statement=(
                 "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion "
-                "on iOS Safari. Chrome is unaffected. Ads spend did not move."
+                "on iOS Safari. Chrome is unaffected. Ads spend did not move. A consented diagnostic "
+                "call reproduced a spinner-only 3DS hang (reason=payment_timeout)."
             ),
             classification=Classification.BUG,
             confidence=0.86,

@@ -9,14 +9,20 @@ import { Badge, Button, Card, Empty, ErrorState, Loading } from "@/components/ui
 export default function PulsePage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.investigations>> | null>(null);
   const [signals, setSignals] = useState<Awaited<ReturnType<typeof api.signals>> | null>(null);
+  const [metrics, setMetrics] = useState<Awaited<ReturnType<typeof api.metrics>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() {
     try {
-      const [inv, sig] = await Promise.all([api.investigations(), api.signals()]);
+      const [inv, sig, met] = await Promise.all([
+        api.investigations(),
+        api.signals(),
+        api.metrics().catch(() => null),
+      ]);
       setData(inv);
       setSignals(sig);
+      setMetrics(met);
       setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "API unreachable. Run ./scripts/boot.sh");
@@ -58,7 +64,7 @@ export default function PulsePage() {
         </Button>
       </div>
 
-      <div className="grid-fade grid gap-4 md:grid-cols-3">
+      <div className="grid-fade grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <p className="font-mono text-[11px] uppercase text-slate-500">Open investigations</p>
           <p className="mt-2 text-3xl">{open.length}</p>
@@ -71,6 +77,17 @@ export default function PulsePage() {
           <p className="font-mono text-[11px] uppercase text-slate-500">Awaiting you</p>
           <p className="mt-2 text-3xl">
             {data.investigations.filter((i) => i.state === "AWAITING_APPROVAL").length}
+          </p>
+        </Card>
+        <Card>
+          <p className="font-mono text-[11px] uppercase text-slate-500">Idea → impact</p>
+          <p className="mt-2 text-3xl">
+            {metrics?.idea_to_impact_hours_mean != null
+              ? `${metrics.idea_to_impact_hours_mean}h`
+              : "open"}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            target &lt; {metrics?.idea_to_impact_target_hours ?? 48}h · manual ~3 weeks
           </p>
         </Card>
       </div>

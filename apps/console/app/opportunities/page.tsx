@@ -24,6 +24,8 @@ export default function OpportunitiesPage() {
           <p className="text-sm font-medium">{String(o.title)}</p>
           <p className="mt-2 font-mono text-xs text-slate-400">
             {String(o.frequency)} customers · ${String(o.revenue_affected_usd)} · churn {String(o.churn_risk)}
+            {o.competitor_capability ? " · competitor yes" : ""}
+            {o.implementation_estimate ? ` · impl ${String(o.implementation_estimate)}` : ""}
           </p>
           <p className="mt-2 text-xs text-slate-500">Query: {String(o.source_query)}</p>
         </Card>

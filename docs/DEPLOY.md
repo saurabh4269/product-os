@@ -24,7 +24,22 @@ Load the seeded warehouse into BigQuery (pennies):
 ./scripts/load-bq.sh
 ```
 
-## Cloud Run (API)
+## Hosted now
+
+Live: https://loop-5uy6fkd7bq-uc.a.run.app
+
+This path does **not** need Cloud Build. It uploads `dist/loop-host.tgz` to
+`gs://mystical-timing-442601-q8-loop-host` and runs `python:3.12-slim` which
+downloads the bundle and serves FastAPI + the static console.
+
+```bash
+./scripts/package-host.sh
+./scripts/deploy-gcp.sh
+```
+
+SQLite is ephemeral on Cloud Run. Cold start re-runs the seeded Safari loop.
+
+## Cloud Run (image build — optional, needs extra IAM)
 
 The Cloud Agent SA can **enable** some APIs and create BQ/Pub/Sub/Armor, but it cannot create a new runtime SA, set project IAM, or push images. Deploy after you grant the bindings below.
 

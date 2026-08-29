@@ -17,6 +17,8 @@ signal → investigation → evidence → root-cause (≥3 sources)
 
 That generates the warehouse, runs unprompted detection, opens the Safari investigation through the HIGH-tier gate, starts the API on `:8080` and the console on `:3000`.
 
+**Hosted (GCP `us-central1`):** [https://loop-5uy6fkd7bq-uc.a.run.app](https://loop-5uy6fkd7bq-uc.a.run.app) — API and console on one Cloud Run origin. Redeploy with `./scripts/package-host.sh && ./scripts/deploy-gcp.sh`.
+
 ```bash
 ./scripts/verify.sh   # lint, typecheck, tests, console build, Remotion render
 ```

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from .config import settings
+from .config import settings, REPO_ROOT
 from .engine import LoopEngine, default_engine
 from .models import InvestigationState
 
@@ -34,12 +36,14 @@ async def lifespan(_app: FastAPI):
         from generate import main as gen
 
         gen(cfg.warehouse_path())
-    get_engine()
+    eng = get_engine()
+    if not eng.store.list_investigations():
+        eng.run_until_approval()
     yield
 
 
 _origin = settings().console_origin
-_wildcard = _origin == "*"
+_wildcard = _origin == "*" or bool(os.environ.get("K_SERVICE"))
 app = FastAPI(title="LOOP", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
@@ -64,7 +68,7 @@ class ApproveBody(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "service": "loop"}
+    return {"ok": True, "service": "loop", "hosted": bool(os.environ.get("K_SERVICE")), "region": settings().region}
 
 
 @app.post("/api/detect")
@@ -163,10 +167,73 @@ def opportunities():
                 "frequency": 37,
                 "revenue_affected_usd": 18400,
                 "churn_risk": "medium",
+                "competitor_capability": False,
+                "implementation_estimate": "low",
                 "source_query": "events_20260820+ Safari begin_checkout without purchase",
-            }
+            },
+            {
+                "id": "opp_apple_pay",
+                "title": "Apple Pay on iOS checkout",
+                "frequency": 37,
+                "revenue_affected_usd": 82000,
+                "churn_risk": "high",
+                "competitor_capability": True,
+                "implementation_estimate": "medium",
+                "source_query": "customer_voice cluster: feature_request=apple_pay (research brief)",
+            },
+            {
+                "id": "opp_shipping_earlier",
+                "title": "Surface shipping cost before checkout",
+                "frequency": 18,
+                "revenue_affected_usd": 24100,
+                "churn_risk": "medium",
+                "competitor_capability": True,
+                "implementation_estimate": "low",
+                "source_query": "GA4: checkout → shipping_info reopen 12–18%",
+            },
         ]
     }
+
+
+@app.get("/api/metrics")
+def metrics():
+    eng = get_engine()
+    invs = eng.store.list_investigations()
+    outcomes = eng.store.list_outcomes()
+    closed = [i for i in invs if i.closed_at and i.opened_at]
+    hours = []
+    for i in closed:
+        delta = (i.closed_at - i.opened_at).total_seconds() / 3600
+        hours.append(delta)
+    return {
+        "idea_to_impact_hours_mean": round(sum(hours) / len(hours), 3) if hours else None,
+        "idea_to_impact_target_hours": 48,
+        "baseline_manual_hours": 504,
+        "investigations": len(invs),
+        "resolved": sum(1 for o in outcomes if str(o.verdict) in {"RESOLVED", "OutcomeVerdict.RESOLVED", "resolved"}),
+        "failOpen": False,
+    }
+
+
+AGENTS = [
+    {"id": "signal_agent", "room": "pulse", "role": "Detects unusual behavior", "tb": "TB-2", "status": "ambient"},
+    {"id": "orchestrator", "room": "command", "role": "Incident commander — coordinates, never gathers", "tb": "TB-1", "status": "idle"},
+    {"id": "analytics_agent", "room": "analysis", "role": "Funnel / segment facts from daily tables", "tb": "TB-2", "status": "idle"},
+    {"id": "logs_agent", "room": "analysis", "role": "Error signatures vs deploy window", "tb": "TB-2", "status": "idle"},
+    {"id": "deployment_agent", "room": "analysis", "role": "Release timeline correlation", "tb": "TB-2", "status": "idle"},
+    {"id": "customer_voice_agent", "room": "voice", "role": "Adaptive diagnostic calls, structured evidence", "tb": "TB-3", "status": "idle"},
+    {"id": "feedback_agent", "room": "voice", "role": "Transcript → structured reasons", "tb": "TB-1", "status": "idle"},
+    {"id": "root_cause_agent", "room": "command", "role": "Hypothesis only with ≥3 independence groups", "tb": "TB-1", "status": "idle"},
+    {"id": "risk_agent", "room": "command", "role": "Tier from surface, not model confidence", "tb": "TB-1", "status": "idle"},
+    {"id": "code_agent", "room": "code", "role": "PR + regression test — no merge", "tb": "TB-4", "status": "idle"},
+    {"id": "product_agent", "room": "product", "role": "Opportunity clusters with warehouse impact", "tb": "TB-5", "status": "idle"},
+    {"id": "learning_agent", "room": "memory", "role": "Verify outcome and write the lesson", "tb": "TB-7", "status": "idle"},
+]
+
+
+@app.get("/api/agents")
+def agents():
+    return {"agents": AGENTS}
 
 
 def _summary(eng: LoopEngine, inv_id: str) -> dict:
@@ -208,6 +275,63 @@ def _bundle(eng: LoopEngine, inv_id: str) -> dict:
         "verdicts": [v.model_dump(mode="json") for v in eng.store.list_verdicts()],
         "state": inv.state.value if isinstance(inv.state, InvestigationState) else inv.state,
     }
+
+
+def _static_dir() -> Path | None:
+    env = os.environ.get("LOOP_STATIC_DIR")
+    candidates = [
+        Path(env) if env else None,
+        REPO_ROOT / "apps" / "console" / "out",
+        Path("/app/static"),
+    ]
+    for c in candidates:
+        if c and (c / "index.html").exists():
+            return c
+    return None
+
+
+_STATIC = _static_dir()
+
+
+def _spa_file(path: str) -> FileResponse | None:
+    if _STATIC is None:
+        return None
+    if path.startswith("api/"):
+        return None
+    rel = path.strip("/")
+    if not rel:
+        return FileResponse(_STATIC / "index.html")
+    direct = _STATIC / rel
+    if direct.is_file():
+        return FileResponse(direct)
+    nested = _STATIC / rel / "index.html"
+    if nested.is_file():
+        return FileResponse(nested)
+    if rel.startswith("investigations/"):
+        for placeholder in (
+            _STATIC / "investigations" / "_" / "index.html",
+            _STATIC / "investigations" / "_.html",
+        ):
+            if placeholder.is_file():
+                return FileResponse(placeholder)
+    html = _STATIC / f"{rel}.html"
+    if html.is_file():
+        return FileResponse(html)
+    return FileResponse(_STATIC / "index.html")
+
+
+if _STATIC is not None:
+
+    @app.get("/", include_in_schema=False)
+    def hosted_root():
+        return FileResponse(_STATIC / "index.html")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def hosted_spa(path: str):
+        page = _spa_file(path)
+        if page is None:
+            raise HTTPException(404)
+        return page
 
 
 def create_app() -> FastAPI:

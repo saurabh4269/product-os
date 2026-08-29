@@ -25,6 +25,7 @@ def test_full_loop_three_source_high_tier_verify(engine: LoopEngine):
     evidence = engine.store.list_evidence(inv.id)
     groups = {e.independence_group for e in evidence if e.trust_level.value == "trusted"}
     assert {"analytics_ga4", "logs_errors", "deploy_timeline"} <= groups
+    assert any(e.source_type == "customer_voice" for e in evidence)
     hyps = engine.store.list_hypotheses(inv.id)
     assert hyps
     assert len(hyps[0].independence_groups) >= 3

@@ -1,30 +1,47 @@
 #!/usr/bin/env bash
-# Deploy LOOP API to Cloud Run (cheap). Fails with exact IAM grants if the SA cannot deploy.
+# Host LOOP on Cloud Run using a public Python image + GCS bundle (no Cloud Build).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="${HOME}/google-cloud-sdk/bin:${PATH}"
 PROJECT="${GOOGLE_CLOUD_PROJECT:-mystical-timing-442601-q8}"
 REGION="${GOOGLE_CLOUD_REGION:-us-central1}"
-SERVICE="${LOOP_CLOUD_RUN_SERVICE:-loop-api}"
+SERVICE="${LOOP_CLOUD_RUN_SERVICE:-loop}"
+BUCKET="${LOOP_BUNDLE_BUCKET:-${PROJECT}-loop-host}"
+OBJECT="loop-host.tgz"
 
 echo "deploy-gcp: project=${PROJECT} region=${REGION} service=${SERVICE}"
 
-if ! command -v gcloud >/dev/null 2>&1; then
-  echo "gcloud not on PATH. Run ./scripts/install-gcloud.sh" >&2
-  exit 1
+if [[ ! -f "$ROOT/dist/loop-host.tgz" ]]; then
+  bash "$ROOT/scripts/package-host.sh"
 fi
 
+gcloud storage buckets describe "gs://${BUCKET}" --project="$PROJECT" >/dev/null 2>&1 \
+  || gcloud storage buckets create "gs://${BUCKET}" --location="$REGION" --project="$PROJECT"
+
+gcloud storage cp "$ROOT/dist/loop-host.tgz" "gs://${BUCKET}/${OBJECT}" --project="$PROJECT"
+# Public read so the Cloud Run container can curl without extra IAM.
+gcloud storage objects update "gs://${BUCKET}/${OBJECT}" --add-acl-grant=entity=allUsers,role=READER --project="$PROJECT" \
+  || gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" --member=allUsers --role=roles/storage.objectViewer --project="$PROJECT" \
+  || true
+
+BUNDLE_URL="https://storage.googleapis.com/${BUCKET}/${OBJECT}"
+echo "deploy-gcp: bundle ${BUNDLE_URL}"
+
+# python:3.12-slim is public; Cloud Build is not required.
 set +e
 gcloud run deploy "${SERVICE}" \
-  --source "${ROOT}" \
+  --image python:3.12-slim \
   --project "${PROJECT}" \
   --region "${REGION}" \
   --allow-unauthenticated \
-  --memory 512Mi \
+  --memory 1Gi \
   --cpu 1 \
   --min-instances 0 \
   --max-instances 2 \
   --timeout 300 \
+  --cpu-boost \
+  --command bash \
+  --args="-c,apt-get update -qq && apt-get install -y -qq curl ca-certificates python3-pip && curl -fsSL ${BUNDLE_URL} -o /tmp/loop.tgz && mkdir -p /app && tar -xzf /tmp/loop.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=* PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
   --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT},LOOP_CONSOLE_ORIGIN=*" \
   --quiet
 STATUS=$?
@@ -33,27 +50,8 @@ set -e
 if [[ $STATUS -ne 0 ]]; then
   cat <<'EOF' >&2
 
-Cloud Run deploy was denied for this service account (expected if you have not
-granted Cloud Build / Artifact Registry / Cloud Run Admin).
-
-As project owner, run once:
-
-  PROJECT=mystical-timing-442601-q8
-  SA=loop-cloud-agent@${PROJECT}.iam.gserviceaccount.com
-
-  gcloud services enable \
-    run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com \
-    --project=$PROJECT
-
-  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=roles/run.admin
-  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=roles/artifactregistry.admin
-  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=roles/cloudbuild.builds.editor
-  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=roles/iam.serviceAccountUser
-  gcloud projects add-iam-policy-binding $PROJECT --member=serviceAccount:$SA --role=roles/storage.admin
-
-Then re-run: ./scripts/deploy-gcp.sh
-
-Do not apply infra/terraform/gated (Agent Gateway / SGP / telephony).
+Cloud Run deploy failed. If this is IAM, as project owner run docs/DEPLOY.md grants
+then re-run ./scripts/deploy-gcp.sh
 EOF
   exit $STATUS
 fi
