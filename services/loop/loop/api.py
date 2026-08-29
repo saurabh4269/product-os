@@ -12,8 +12,10 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .config import settings, REPO_ROOT
-from .engine import LoopEngine, default_engine
+from .engine import LoopEngine, default_engine, log_verdict
 from .models import InvestigationState
+from .registry import ENTRIES, gateway_allows
+from .world import post as post_room
 
 _engine: LoopEngine | None = None
 
@@ -37,7 +39,9 @@ async def lifespan(_app: FastAPI):
 
         gen(cfg.warehouse_path())
     eng = get_engine()
-    if not eng.store.list_investigations():
+    if not eng.store.list_rooms():
+        eng.seed_world()
+    elif not eng.store.list_investigations():
         eng.run_until_approval()
     yield
 
@@ -63,7 +67,12 @@ app.add_middleware(
 class ApproveBody(BaseModel):
     approver: str = "oncall@northstar"
     decision: str = "approve"
-    rationale: str = "Reviewed evidence graph; blast radius is payment 3DS on Safari."
+    rationale: str = "Reviewed the evidence pack and risk gate."
+
+
+class RoomPostBody(BaseModel):
+    author: str = "you"
+    text: str
 
 
 @app.get("/api/health")
@@ -83,6 +92,103 @@ def run_until_approval():
     eng = get_engine()
     inv = eng.run_until_approval()
     return _bundle(eng, inv.id)
+
+
+@app.post("/api/world/seed")
+def world_seed():
+    return get_engine().seed_world()
+
+
+@app.get("/api/rooms")
+def rooms():
+    eng = get_engine()
+    items = []
+    for room in eng.store.list_rooms():
+        msgs = eng.store.list_messages(room.id)
+        items.append(
+            {
+                **room.model_dump(mode="json"),
+                "message_count": len(msgs),
+                "preview": msgs[-1].text if msgs else room.topic,
+            }
+        )
+    return {"rooms": items}
+
+
+@app.get("/api/rooms/{room_id}")
+def room_detail(room_id: str):
+    eng = get_engine()
+    room = eng.store.get_room(room_id)
+    if not room:
+        raise HTTPException(404, "room not found")
+    bundle = _bundle(eng, room.investigation_id) if room.investigation_id and eng.store.get_investigation(room.investigation_id) else None
+    return {
+        "room": room.model_dump(mode="json"),
+        "messages": [m.model_dump(mode="json") for m in eng.store.list_messages(room_id)],
+        "bundle": bundle,
+        "members": room.members,
+    }
+
+
+@app.post("/api/rooms/{room_id}/messages")
+def room_post(room_id: str, body: RoomPostBody):
+    eng = get_engine()
+    room = eng.store.get_room(room_id)
+    if not room:
+        raise HTTPException(404, "room not found")
+    post_room(eng, room_id, author=body.author, author_kind="human", kind="chat", text=body.text)
+    low = body.text.lower()
+    if any(n in low for n in ("customer records", "production database", "dump all customer", "send me the customer")):
+        if not gateway_allows("code_agent", "customer_data.read"):
+            log_verdict(
+                eng.store,
+                agent="loop-code",
+                tool="prod_db.query",
+                args=body.text,
+                verdict="DENY",
+                rationale="Gateway identity loop-code denied customer_data.read.",
+                finding="exfil_attempt",
+            )
+            post_room(
+                eng,
+                room_id,
+                author="security_policy_agent",
+                author_kind="agent",
+                kind="artifact",
+                text="DENY · identity/gateway. Engineering cannot read customer records.",
+                artifact_type="risk_decision",
+                artifact={"verdict": "DENY", "finding": "exfil_attempt"},
+            )
+    return room_detail(room_id)
+
+
+@app.get("/api/registry")
+def registry():
+    return {"agents": [e.model_dump(mode="json") for e in ENTRIES]}
+
+
+@app.get("/api/memory")
+def memory():
+    eng = get_engine()
+    by_kind: dict[str, list] = {"customer": [], "product": [], "engineering": [], "organizational": []}
+    for item in eng.store.list_memory():
+        kind = item.get("kind") or "organizational"
+        by_kind.setdefault(kind, []).append(item)
+    return {"memory": by_kind, "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons()]}
+
+
+@app.get("/api/scenarios")
+def scenarios():
+    return {"scenarios": get_engine().seed_world().get("scenarios")}
+
+
+@app.get("/api/traces")
+def traces():
+    eng = get_engine()
+    calls = []
+    for inv in eng.store.list_investigations():
+        calls.extend(c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv.id))
+    return {"traces": calls, "verdicts": [v.model_dump(mode="json") for v in eng.store.list_verdicts()]}
 
 
 @app.get("/api/signals")
@@ -150,6 +256,7 @@ def governance():
             {"id": "loop-product", "envelope": "workspace drafts; no merge"},
             {"id": "loop-experiment", "envelope": "flags + metrics"},
             {"id": "loop-learning", "envelope": "memory write"},
+            {"id": "loop-security", "envelope": "gateway + identity; deny customer_records.dump"},
         ],
         "verdicts": [v.model_dump(mode="json") for v in eng.store.list_verdicts()],
         "failOpen": False,
@@ -159,40 +266,21 @@ def governance():
 
 @app.get("/api/opportunities")
 def opportunities():
-    return {
-        "opportunities": [
+    eng = get_engine()
+    items = []
+    for room in eng.store.list_rooms():
+        if room.kind.value != "opportunity":
+            continue
+        items.append(
             {
-                "id": "opp_retry_banner",
-                "title": "Retry-after-3DS banner on Safari",
-                "frequency": 37,
-                "revenue_affected_usd": 18400,
-                "churn_risk": "medium",
-                "competitor_capability": False,
-                "implementation_estimate": "low",
-                "source_query": "events_20260820+ Safari begin_checkout without purchase",
-            },
-            {
-                "id": "opp_apple_pay",
-                "title": "Apple Pay on iOS checkout",
-                "frequency": 37,
-                "revenue_affected_usd": 82000,
-                "churn_risk": "high",
-                "competitor_capability": True,
-                "implementation_estimate": "medium",
-                "source_query": "customer_voice cluster: feature_request=apple_pay (research brief)",
-            },
-            {
-                "id": "opp_shipping_earlier",
-                "title": "Surface shipping cost before checkout",
-                "frequency": 18,
-                "revenue_affected_usd": 24100,
-                "churn_risk": "medium",
-                "competitor_capability": True,
-                "implementation_estimate": "low",
-                "source_query": "GA4: checkout → shipping_info reopen 12–18%",
-            },
-        ]
-    }
+                "id": room.scenario_id or room.id,
+                "title": room.title,
+                "room_id": room.id,
+                "status": room.status,
+                "loop_type": room.loop_type.value if room.loop_type else "type_b",
+            }
+        )
+    return {"opportunities": items}
 
 
 @app.get("/api/metrics")
@@ -215,25 +303,24 @@ def metrics():
     }
 
 
-AGENTS = [
-    {"id": "signal_agent", "room": "pulse", "role": "Detects unusual behavior", "tb": "TB-2", "status": "ambient"},
-    {"id": "orchestrator", "room": "command", "role": "Incident commander — coordinates, never gathers", "tb": "TB-1", "status": "idle"},
-    {"id": "analytics_agent", "room": "analysis", "role": "Funnel / segment facts from daily tables", "tb": "TB-2", "status": "idle"},
-    {"id": "logs_agent", "room": "analysis", "role": "Error signatures vs deploy window", "tb": "TB-2", "status": "idle"},
-    {"id": "deployment_agent", "room": "analysis", "role": "Release timeline correlation", "tb": "TB-2", "status": "idle"},
-    {"id": "customer_voice_agent", "room": "voice", "role": "Adaptive diagnostic calls, structured evidence", "tb": "TB-3", "status": "idle"},
-    {"id": "feedback_agent", "room": "voice", "role": "Transcript → structured reasons", "tb": "TB-1", "status": "idle"},
-    {"id": "root_cause_agent", "room": "command", "role": "Hypothesis only with ≥3 independence groups", "tb": "TB-1", "status": "idle"},
-    {"id": "risk_agent", "room": "command", "role": "Tier from surface, not model confidence", "tb": "TB-1", "status": "idle"},
-    {"id": "code_agent", "room": "code", "role": "PR + regression test — no merge", "tb": "TB-4", "status": "idle"},
-    {"id": "product_agent", "room": "product", "role": "Opportunity clusters with warehouse impact", "tb": "TB-5", "status": "idle"},
-    {"id": "learning_agent", "room": "memory", "role": "Verify outcome and write the lesson", "tb": "TB-7", "status": "idle"},
-]
-
-
 @app.get("/api/agents")
 def agents():
-    return {"agents": AGENTS}
+    return {
+        "agents": [
+            {
+                "id": e.id,
+                "room": e.room,
+                "role": e.role,
+                "tb": e.trust_boundary,
+                "status": e.status,
+                "owner": e.owner,
+                "identity": e.identity,
+                "risk_level": e.risk_level,
+                "version": e.version,
+            }
+            for e in ENTRIES
+        ]
+    }
 
 
 def _summary(eng: LoopEngine, inv_id: str) -> dict:
@@ -307,10 +394,11 @@ def _spa_file(path: str) -> FileResponse | None:
     nested = _STATIC / rel / "index.html"
     if nested.is_file():
         return FileResponse(nested)
-    if rel.startswith("investigations/"):
+    if rel.startswith("investigations/") or rel.startswith("rooms/"):
+        folder = "rooms" if rel.startswith("rooms/") else "investigations"
         for placeholder in (
-            _STATIC / "investigations" / "_" / "index.html",
-            _STATIC / "investigations" / "_.html",
+            _STATIC / folder / "_" / "index.html",
+            _STATIC / folder / "_.html",
         ):
             if placeholder.is_file():
                 return FileResponse(placeholder)

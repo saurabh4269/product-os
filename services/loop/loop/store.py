@@ -21,6 +21,8 @@ from .models import (
     Outcome,
     PolicyVerdict,
     ProposedAction,
+    Room,
+    RoomMessage,
     Signal,
     TimelineEvent,
 )
@@ -61,6 +63,8 @@ CREATE TABLE IF NOT EXISTS memory (
   kind TEXT NOT NULL,
   json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, room_id TEXT, json TEXT NOT NULL);
 """
 
 
@@ -259,7 +263,30 @@ class Store:
     def list_memory(self, kind: str | None = None) -> list[dict]:
         with self._lock:
             if kind:
-                rows = self._conn.execute("SELECT json FROM memory WHERE kind=?", (kind,)).fetchall()
+                rows = self._conn.execute("SELECT id, kind, json FROM memory WHERE kind=?", (kind,)).fetchall()
             else:
-                rows = self._conn.execute("SELECT json FROM memory").fetchall()
-        return [json.loads(r[0]) for r in rows]
+                rows = self._conn.execute("SELECT id, kind, json FROM memory").fetchall()
+        out = []
+        for row in rows:
+            payload = json.loads(row[2])
+            payload.setdefault("id", row[0])
+            payload.setdefault("kind", row[1])
+            out.append(payload)
+        return out
+
+    def put_room(self, room: Room) -> None:
+        self._put("rooms", room)
+
+    def get_room(self, id_: str) -> Room | None:
+        return self._get("rooms", Room, id_)
+
+    def list_rooms(self) -> list[Room]:
+        rooms = self._list("rooms", Room)
+        return sorted(rooms, key=lambda r: (r.kind.value, r.created_at), reverse=False)
+
+    def put_message(self, msg: RoomMessage) -> None:
+        self._put("messages", msg, {"room_id": msg.room_id})
+
+    def list_messages(self, room_id: str) -> list[RoomMessage]:
+        msgs = self._list("messages", RoomMessage, "WHERE room_id=?", (room_id,))
+        return sorted(msgs, key=lambda m: m.created_at)

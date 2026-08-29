@@ -40,8 +40,8 @@ def test_no_inline_sampling_on_ignored_models():
         assert "GenerateContentConfig" not in blob.split(mid)[0][-200:]
 
 
-def test_nineteen_agents_named():
-    assert len(ALL_AGENT_NAMES) == 19
+def test_roster_agents_named():
+    assert len(ALL_AGENT_NAMES) == 23
 
 
 def test_failopen_false_in_terraform():

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" role="img" aria-label="Product OS five planes">
+  <rect width="1200" height="680" fill="#08090a"/>
+  <text x="48" y="48" fill="#5e6ad2" font-family="IBM Plex Mono, monospace" font-size="14" letter-spacing="3">PRODUCT OS</text>
+  <text x="48" y="78" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="28">Five planes</text>
+
+  <g>
+    <rect x="40" y="110" width="220" height="520" rx="12" fill="#111113" stroke="rgba(255,255,255,0.08)"/>
+    <text x="56" y="142" fill="#d4a27f" font-family="IBM Plex Mono, monospace" font-size="12">1 SIGNAL</text>
+    <text x="56" y="180" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">GA4 · Ads · PostHog</text>
+    <text x="56" y="202" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Firebase · Logging</text>
+    <text x="56" y="224" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Voice · Reviews · CRM</text>
+    <text x="56" y="270" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">BigQuery FACTS</text>
+    <text x="56" y="292" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">never raw rows ’ memory</text>
+  </g>
+
+  <g>
+    <rect x="280" y="110" width="280" height="520" rx="12" fill="#111113" stroke="rgba(255,255,255,0.08)"/>
+    <text x="296" y="142" fill="#5e6ad2" font-family="IBM Plex Mono, monospace" font-size="12">2 AGENT · ADK 2</text>
+    <text x="296" y="180" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Signal ’ Investigator</text>
+    <text x="296" y="202" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">specialists in parallel</text>
+    <text x="296" y="240" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Root cause · Type A / B</text>
+    <text x="296" y="274" fill="#eb5757" font-family="IBM Plex Sans, sans-serif" font-size="14">BUG ’ Code + Test + PR</text>
+    <text x="296" y="298" fill="#4cb782" font-family="IBM Plex Sans, sans-serif" font-size="14">FEATURE ’ PRD + experiment</text>
+    <text x="296" y="336" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Risk gate · Learning</text>
+    <text x="296" y="370" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">A2A structured outputs</text>
+    <text x="296" y="392" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Commander discovers Registry</text>
+  </g>
+
+  <g>
+    <rect x="580" y="110" width="240" height="250" rx="12" fill="#111113" stroke="rgba(255,255,255,0.08)"/>
+    <text x="596" y="142" fill="#eb5757" font-family="IBM Plex Mono, monospace" font-size="12">3 SECURITY</text>
+    <text x="596" y="180" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Identity per agent</text>
+    <text x="596" y="202" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Gateway before tools</text>
+    <text x="596" y="224" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Model Armor · SDP</text>
+    <text x="596" y="246" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Secret Manager · Audit</text>
+    <text x="596" y="282" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="13">failOpen = false</text>
+  </g>
+
+  <g>
+    <rect x="580" y="380" width="240" height="250" rx="12" fill="#111113" stroke="rgba(255,255,255,0.08)"/>
+    <text x="596" y="412" fill="#4cb782" font-family="IBM Plex Mono, monospace" font-size="12">4 TOOLS</text>
+    <text x="596" y="450" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">GitHub · BigQuery</text>
+    <text x="596" y="472" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Calendar · Gmail draft</text>
+    <text x="596" y="494" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Flags · CI · Drive</text>
+    <text x="596" y="516" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Voice media-bridge</text>
+  </g>
+
+  <g>
+    <rect x="840" y="110" width="320" height="520" rx="12" fill="#111113" stroke="rgba(255,255,255,0.08)"/>
+    <text x="856" y="142" fill="#5e6ad2" font-family="IBM Plex Mono, monospace" font-size="12">5 MEMORY / CONTROL</text>
+    <text x="856" y="180" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Cloud Run runtime</text>
+    <text x="856" y="214" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Memory Bank</text>
+    <text x="856" y="236" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">customer · product</text>
+    <text x="856" y="258" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">engineering · organizational</text>
+    <text x="856" y="300" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Registry · Sessions</text>
+    <text x="856" y="334" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">OpenTelemetry traces</text>
+    <text x="856" y="380" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">UI: multi-room chat</text>
+    <text x="856" y="402" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">pixel agents in each room</text>
+    <text x="856" y="460" fill="#ececee" font-family="IBM Plex Sans, sans-serif" font-size="14">Fixtures ` product shape</text>
+    <text x="856" y="482" fill="#8a8f98" font-family="IBM Plex Sans, sans-serif" font-size="13">Safari / 3DS is one eval</text>
+  </g>
+</svg>

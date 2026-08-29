@@ -27,6 +27,9 @@ export type Investigation = {
   assigned_agents: string[];
   recalled_lessons: string[];
   verification_result?: string | null;
+  scenario_id?: string | null;
+  room_id?: string | null;
+  title?: string | null;
 };
 
 export type Evidence = {
@@ -70,6 +73,34 @@ export type Timeline = {
   denial: boolean;
 };
 
+export type Room = {
+  id: string;
+  kind: string;
+  title: string;
+  topic: string;
+  status: string;
+  created_at: string;
+  members: string[];
+  investigation_id?: string | null;
+  scenario_id?: string | null;
+  loop_type?: string | null;
+  path?: string | null;
+  message_count?: number;
+  preview?: string;
+};
+
+export type RoomMessage = {
+  id: string;
+  room_id: string;
+  author: string;
+  author_kind: string;
+  kind: string;
+  text: string;
+  artifact_type?: string | null;
+  artifact: Record<string, unknown>;
+  created_at: string;
+};
+
 export type Bundle = {
   investigation: Investigation;
   signals: Array<Record<string, unknown>>;
@@ -83,24 +114,63 @@ export type Bundle = {
   verdicts: Array<Record<string, unknown>>;
 };
 
+export type RoomDetail = {
+  room: Room;
+  messages: RoomMessage[];
+  bundle: Bundle | null;
+  members: string[];
+};
+
+export type RegistryAgent = {
+  id: string;
+  display_name: string;
+  owner: string;
+  capabilities: string[];
+  permissions_allow: string[];
+  permissions_deny: string[];
+  version: string;
+  environment: string;
+  risk_level: string;
+  status: string;
+  identity: string;
+  room: string;
+  role: string;
+  trust_boundary: string;
+};
+
 export const api = {
   health: () => get<{ ok: boolean }>("/api/health"),
   run: () => post<Bundle>("/api/loop/run"),
+  seedWorld: () => post<{ rooms: string[]; scenarios: Array<Record<string, unknown>> }>("/api/world/seed"),
+  rooms: () => get<{ rooms: Room[] }>("/api/rooms"),
+  room: (id: string) => get<RoomDetail>(`/api/rooms/${id}`),
+  postRoom: (id: string, text: string) => post<RoomDetail>(`/api/rooms/${id}/messages`, { author: "you", text }),
+  registry: () => get<{ agents: RegistryAgent[] }>("/api/registry"),
+  memory: () =>
+    get<{
+      memory: Record<string, Array<Record<string, unknown>>>;
+      lessons: Array<Record<string, unknown>>;
+    }>("/api/memory"),
+  traces: () =>
+    get<{ traces: Array<Record<string, unknown>>; verdicts: Array<Record<string, unknown>> }>("/api/traces"),
+  scenarios: () => get<{ scenarios: Array<Record<string, unknown>> }>("/api/scenarios"),
   investigations: () =>
-    get<{ investigations: Array<Investigation & { hypothesis?: string; confidence?: number; risk_tier?: string; action_status?: string }> }>(
-      "/api/investigations"
-    ),
+    get<{
+      investigations: Array<
+        Investigation & { hypothesis?: string; confidence?: number; risk_tier?: string; action_status?: string }
+      >;
+    }>("/api/investigations"),
   investigation: (id: string) => get<Bundle>(`/api/investigations/${id}`),
   signals: () => get<{ signals: Array<Record<string, unknown>> }>("/api/signals"),
   approvals: () => get<{ pending: Action[]; history: Array<Record<string, unknown>> }>("/api/approvals"),
   approve: (actionId: string, decision: "approve" | "deny") =>
     post(`/api/approvals/${actionId}`, {
       decision,
-      approver: "oncall@northstar",
+      approver: "you@product-os",
       rationale:
         decision === "approve"
-          ? "Evidence graph is consistent across analytics, logs, and deploy timeline."
-          : "Need more evidence before touching payment.",
+          ? "Evidence pack and risk gate reviewed in-room."
+          : "Need more evidence before this change ships.",
     }),
   outcomes: () => get<{ outcomes: Array<Record<string, unknown>> }>("/api/outcomes"),
   governance: () =>
@@ -109,12 +179,20 @@ export const api = {
       verdicts: Array<Record<string, unknown>>;
       failOpen: boolean;
     }>("/api/governance"),
-  opportunities: () =>
-    get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
+  opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
   agents: () =>
-    get<{ agents: Array<{ id: string; room: string; role: string; tb: string; status: string }> }>(
-      "/api/agents"
-    ),
+    get<{
+      agents: Array<{
+        id: string;
+        room: string;
+        role: string;
+        tb: string;
+        status: string;
+        owner?: string;
+        identity?: string;
+        risk_level?: string;
+      }>;
+    }>("/api/agents"),
   metrics: () =>
     get<{
       idea_to_impact_hours_mean: number | null;

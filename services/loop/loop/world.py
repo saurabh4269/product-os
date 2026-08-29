@@ -1,0 +1,988 @@
+"""Generic Type A / Type B world. Scenario fixtures — not the product shape."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from .engine import LoopEngine, _id, _now, idempotency_key, log_verdict
+from .models import (
+    Classification,
+    Direction,
+    Investigation,
+    InvestigationState,
+    Lesson,
+    LoopType,
+    PathKind,
+    Room,
+    RoomKind,
+    RoomMessage,
+    Segment,
+    Signal,
+    SignalFamily,
+    SignalStatus,
+    TimelineEvent,
+    TrustLevel,
+)
+from .registry import gateway_allows
+
+MEMORY_KINDS = ("customer", "product", "engineering", "organizational")
+
+
+def seed_world(engine: LoopEngine) -> dict[str, Any]:
+    """Stand up rooms + six fixtures through the same pipeline. Idempotent."""
+    if engine.store.get_flag("world_seeded") == "1":
+        return {
+            "reused": True,
+            "rooms": [r.id for r in engine.store.list_rooms()],
+            "scenarios": _scenario_index(engine),
+        }
+    _ensure_standing_rooms(engine)
+    _plant_organizational_memory(engine)
+    existing_rooms = {r.scenario_id: r for r in engine.store.list_rooms() if r.scenario_id}
+    invs = engine.store.list_investigations()
+    if "safari_3ds" in existing_rooms:
+        safari = engine.store.get_investigation(existing_rooms["safari_3ds"].investigation_id)
+    elif invs:
+        safari = invs[0]
+        publish_safari_room(engine, safari)
+    else:
+        safari = engine.run_until_approval()
+    assert safari
+    if "android_sdk" not in existing_rooms:
+        _run_android_sdk(engine)
+    if "onboarding_activation" not in existing_rooms:
+        _run_onboarding(engine)
+    if "apple_pay" not in existing_rooms:
+        _run_apple_pay(engine)
+    if "shipping_ux" not in existing_rooms:
+        _run_shipping_experiment(engine)
+    if "security_exfil" not in existing_rooms:
+        _run_security_exfil(engine)
+    engine.store.set_flag("world_seeded", "1", idempotency_key("world", "seed", "v1"))
+    return {
+        "reused": False,
+        "safari_investigation": safari.id,
+        "rooms": [r.id for r in engine.store.list_rooms()],
+        "scenarios": _scenario_index(engine),
+    }
+
+
+def _scenario_index(engine: LoopEngine) -> list[dict[str, Any]]:
+    out = []
+    for room in engine.store.list_rooms():
+        if not room.scenario_id:
+            continue
+        out.append(
+            {
+                "id": room.scenario_id,
+                "room_id": room.id,
+                "title": room.title,
+                "kind": room.kind.value,
+                "loop_type": room.loop_type.value if room.loop_type else None,
+                "path": room.path.value if room.path else None,
+                "status": room.status,
+                "investigation_id": room.investigation_id,
+            }
+        )
+    return out
+
+
+def _ensure_standing_rooms(engine: LoopEngine) -> None:
+    standing = [
+        ("room_ops", RoomKind.OPS, "General ops", "Fleet-wide signals, deploys, and coordination."),
+        ("room_research", RoomKind.RESEARCH, "Research", "Customer voice, reviews, and market threads."),
+        ("room_reviews", RoomKind.REVIEW, "Reviews", "Risk gates, policy denials, and human approvals."),
+    ]
+    for rid, kind, title, topic in standing:
+        if engine.store.get_room(rid):
+            continue
+        room = Room(
+            id=rid,
+            kind=kind,
+            title=title,
+            topic=topic,
+            status="open",
+            created_at=_now(),
+            members=["orchestrator", "signal_agent", "you"],
+        )
+        engine.store.put_room(room)
+        post(
+            engine,
+            rid,
+            author="system",
+            author_kind="system",
+            kind="system",
+            text=topic,
+        )
+
+
+def _plant_organizational_memory(engine: LoopEngine) -> None:
+    cards = [
+        Lesson(
+            id="les_prior_sdk",
+            investigation_id="inv_prior_org",
+            statement=(
+                "SDK callback regressions after payment SDK upgrades require a device-specific "
+                "regression test. Last seen on release 4.2 WebView."
+            ),
+            root_cause_family="sdk-callback",
+            applicable_conditions=["dep=pay-sdk", "surface=checkout", "family=sdk"],
+            linked_playbook_skill="playbooks/sdk-callback",
+            confidence=0.81,
+            author_agent="learning_agent",
+        ),
+        Lesson(
+            id="les_prior_activation",
+            investigation_id="inv_prior_org",
+            statement=(
+                "Activation drops after onboarding copy changes are usually copy/config, not auth. "
+                "Revert the copy experiment before touching identity."
+            ),
+            root_cause_family="onboarding-copy",
+            applicable_conditions=["funnel=activation", "surface=onboarding"],
+            linked_playbook_skill="playbooks/activation",
+            confidence=0.78,
+            author_agent="learning_agent",
+        ),
+        Lesson(
+            id="les_prior_apple_pay",
+            investigation_id="inv_prior_org",
+            statement="iOS customers repeatedly ask for Apple Pay; cluster size historically predicts revenue lift.",
+            root_cause_family="wallet-request",
+            applicable_conditions=["feature=apple_pay", "platform=ios"],
+            linked_playbook_skill="playbooks/wallet",
+            confidence=0.74,
+            author_agent="product_agent",
+        ),
+    ]
+    kinds = {
+        "les_prior_sdk": "engineering",
+        "les_prior_activation": "organizational",
+        "les_prior_apple_pay": "product",
+    }
+    for lesson in cards:
+        engine.store.put_lesson(lesson)
+        engine.store.put_memory(
+            lesson.id,
+            kinds[lesson.id],
+            {
+                "id": lesson.id,
+                "kind": kinds[lesson.id],
+                "statement": lesson.statement,
+                "root_cause_family": lesson.root_cause_family,
+                "applicable_conditions": lesson.applicable_conditions,
+                "provenance": "organizational memory (prior quarter)",
+                "confidence": lesson.confidence,
+            },
+        )
+    engine.store.put_memory(
+        "mem_customer_spinner",
+        "customer",
+        {
+            "id": "mem_customer_spinner",
+            "kind": "customer",
+            "statement": "Users describe spinner-only hangs as 'the page kept loading' — not a decline.",
+            "provenance": "customer voice cluster",
+            "confidence": 0.88,
+        },
+    )
+
+
+def post(
+    engine: LoopEngine,
+    room_id: str,
+    *,
+    author: str,
+    author_kind: str,
+    kind: str,
+    text: str,
+    artifact_type: str | None = None,
+    artifact: dict[str, Any] | None = None,
+) -> RoomMessage:
+    msg = RoomMessage(
+        id=_id("msg"),
+        room_id=room_id,
+        author=author,
+        author_kind=author_kind,  # type: ignore[arg-type]
+        kind=kind,  # type: ignore[arg-type]
+        text=text,
+        artifact_type=artifact_type,
+        artifact=artifact or {},
+        created_at=_now(),
+    )
+    engine.store.put_message(msg)
+    room = engine.store.get_room(room_id)
+    if room:
+        room.last_message_at = msg.created_at
+        engine.store.put_room(room)
+    return msg
+
+
+def _signal(**kwargs: Any) -> Signal:
+    kwargs.setdefault("status", SignalStatus.OPEN)
+    kwargs.setdefault("detected_at", _now())
+    kwargs.setdefault("id", _id("sig"))
+    kwargs.setdefault(
+        "detection_window",
+        {
+            "start": "2026-08-26",
+            "end": "2026-08-28",
+            "baseline_start": "2026-08-06",
+            "baseline_end": "2026-08-19",
+        },
+    )
+    return Signal(**kwargs)
+
+
+def _open_typed(
+    engine: LoopEngine,
+    signal: Signal,
+    *,
+    scenario_id: str,
+    title: str,
+    topic: str,
+    kind: RoomKind,
+    loop_type: LoopType,
+    path: PathKind,
+    members: list[str],
+) -> tuple[Investigation, Room]:
+    engine.store.put_signal(signal)
+    inv = engine.open_investigation(signal)
+    assert inv
+    inv.scenario_id = scenario_id
+    inv.loop_type = loop_type
+    inv.title = title
+    room = Room(
+        id=_id("room"),
+        kind=kind,
+        title=title,
+        topic=topic,
+        status="open",
+        created_at=_now(),
+        members=members,
+        investigation_id=inv.id,
+        scenario_id=scenario_id,
+        loop_type=loop_type,
+        path=path,
+    )
+    inv.room_id = room.id
+    engine.store.put_investigation(inv)
+    engine.store.put_room(room)
+    post(
+        engine,
+        room.id,
+        author="signal_agent",
+        author_kind="agent",
+        kind="artifact",
+        text=f"Signal opened · {signal.metric} {signal.magnitude:.1%} vs baseline {signal.baseline:.1%}",
+        artifact_type="signal",
+        artifact=signal.model_dump(mode="json"),
+    )
+    if inv.recalled_lessons:
+        post(
+            engine,
+            room.id,
+            author="learning_agent",
+            author_kind="agent",
+            kind="artifact",
+            text="Memory Bank recalled a similar lesson.",
+            artifact_type="memory_card",
+            artifact={"lessons": inv.recalled_lessons},
+        )
+    return inv, room
+
+
+def _add_facts(engine: LoopEngine, inv: Investigation, facts: list[dict[str, Any]]) -> None:
+    inv.state = InvestigationState.GATHERING
+    inv.assigned_agents = list(dict.fromkeys(inv.assigned_agents + [f["collected_by"] for f in facts]))
+    engine.store.put_investigation(inv)
+    for fact in facts:
+        engine.a2a(inv.id, "orchestrator", fact["collected_by"], fact.get("tb", "TB-2"), fact["source_type"])
+        ev = engine._evidence(
+            inv,
+            source_type=fact["source_type"],
+            source_reference=fact["source_reference"],
+            claim=fact["claim"],
+            independence_group=fact["independence_group"],
+            collected_by=fact["collected_by"],
+            confidence=fact.get("confidence", 0.86),
+            trust=TrustLevel.TRUSTED,
+        )
+        if inv.room_id:
+            post(
+                engine,
+                inv.room_id,
+                author=fact["collected_by"],
+                author_kind="agent",
+                kind="artifact",
+                text=fact["claim"],
+                artifact_type="evidence",
+                artifact=ev.model_dump(mode="json"),
+            )
+
+
+def _voice(engine: LoopEngine, inv: Investigation, *, context: str, turns: list[tuple[str, str]], structured: dict[str, Any]) -> None:
+    from .media_bridge import MediaBridge
+
+    bridge = MediaBridge()
+    session_id = f"voice_{inv.id}"
+    bridge.open_session(session_id)
+    screened = [bridge.ingest_transcript_turn(session_id, role, text) for role, text in turns]
+    blocked = sum(1 for t in screened if t.get("blocked"))
+    structured = {**structured, "injection_turns_blocked": blocked, "context": context}
+    engine.store.put_memory(
+        f"voice_{inv.id}",
+        "customer",
+        {"structured": structured, "provenance": inv.id, "kind": "customer"},
+    )
+    ev = engine._evidence(
+        inv,
+        source_type="customer_voice",
+        source_reference=f"media-bridge:{session_id} reason={structured.get('reason')}",
+        claim=(
+            f"Diagnostic (not a survey) with context: {context}. "
+            f"reason={structured.get('reason')} severity={structured.get('severity')} "
+            f"purchase_intent={structured.get('purchase_intent')} friction={structured.get('friction')} "
+            f"feature_request={structured.get('feature_request')} willing_to_retry={structured.get('willing_to_retry')} "
+            f"confidence={structured.get('confidence')}."
+        ),
+        independence_group="customer_voice",
+        collected_by="customer_voice_agent",
+        confidence=float(structured.get("confidence") or 0.9),
+    )
+    if inv.room_id:
+        post(
+            engine,
+            inv.room_id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=ev.claim,
+            artifact_type="evidence",
+            artifact={"structured": structured, **ev.model_dump(mode="json")},
+        )
+
+
+def _close_type_a(
+    engine: LoopEngine,
+    inv: Investigation,
+    *,
+    statement: str,
+    surface: str,
+    action_type: str,
+    artifacts: dict[str, Any],
+    consequence: str,
+    semantic: str,
+) -> None:
+    hyp = engine.form_hypothesis(inv, statement=statement, classification=Classification.BUG)
+    assert hyp
+    if inv.room_id:
+        post(
+            engine,
+            inv.room_id,
+            author="root_cause_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=hyp.statement,
+            artifact_type="hypothesis",
+            artifact=hyp.model_dump(mode="json"),
+        )
+    action = engine.propose_action(
+        inv,
+        hyp,
+        surface=surface,
+        action_type=action_type,  # type: ignore[arg-type]
+        artifacts=artifacts,
+        consequence=consequence,
+        semantic=semantic,
+    )
+    if inv.room_id:
+        post(
+            engine,
+            inv.room_id,
+            author="risk_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=f"{action.risk_tier.value} gate · {action.tier_rationale}",
+            artifact_type="risk_decision",
+            artifact=action.model_dump(mode="json"),
+        )
+        post(
+            engine,
+            inv.room_id,
+            author="code_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=consequence,
+            artifact_type="pr",
+            artifact=action.artifacts,
+        )
+
+
+def _run_android_sdk(engine: LoopEngine) -> None:
+    signal = _signal(
+        family=SignalFamily.BUSINESS,
+        direction=Direction.NEGATIVE,
+        funnel_position="purchase",
+        metric="purchase_conversion",
+        magnitude=-0.18,
+        baseline=0.41,
+        affected_segments=[Segment(platform="android", os="Android", app_version="pay-sdk@3.8.0")],
+        confidence=0.91,
+        source="warehouse.events_daily + firebase",
+    )
+    inv, room = _open_typed(
+        engine,
+        signal,
+        scenario_id="android_sdk",
+        title="Android purchase conversion −18% after pay-sdk 3.8",
+        topic="Type A · reliability. Same pipeline as any other conversion break.",
+        kind=RoomKind.INCIDENT,
+        loop_type=LoopType.TYPE_A,
+        path=PathKind.BUG,
+        members=[
+            "orchestrator",
+            "analytics_agent",
+            "logs_agent",
+            "deployment_agent",
+            "customer_voice_agent",
+            "code_agent",
+            "coordination_agent",
+            "you",
+        ],
+    )
+    _add_facts(
+        engine,
+        inv,
+        [
+            {
+                "source_type": "analytics",
+                "source_reference": "events_20260820..events_20260828 platform=android metric=purchase/begin_checkout",
+                "claim": "Android purchase conversion was 33.6% in-window versus 41.0% baseline (−18%). iOS held flat.",
+                "independence_group": "analytics_ga4",
+                "collected_by": "analytics_agent",
+                "confidence": 0.93,
+            },
+            {
+                "source_type": "logs",
+                "source_reference": "Cloud Logging signature=SDK_CALLBACK_MISS platform=android",
+                "claim": "SDK_CALLBACK_MISS on Android rose 6.4× after pay-sdk@3.8.0. No matching iOS signature.",
+                "independence_group": "logs_errors",
+                "collected_by": "logs_agent",
+                "confidence": 0.9,
+            },
+            {
+                "source_type": "deployment",
+                "source_reference": "deploy:pay-sdk-3.8.0",
+                "claim": "pay-sdk 3.8.0 rolled to 100% Android on 2026-08-20. Onset aligns with the conversion break.",
+                "independence_group": "deploy_timeline",
+                "collected_by": "deployment_agent",
+                "confidence": 0.89,
+            },
+        ],
+    )
+    _voice(
+        engine,
+        inv,
+        context="User u_8821, Pixel 8, pay-sdk 3.8.0, failed purchase ₹1,890, two prior successes on 3.7.x, known issue: callback miss after 3.8.",
+        turns=[
+            ("agent", "I see a failed Android checkout after we shipped pay-sdk 3.8. After you tapped pay, what happened on screen?"),
+            ("customer", "The pay button spun and then jumped back to the cart. No error."),
+            ("agent", "Did Google Pay open, or did it never leave the app?"),
+            ("customer", "Never left the app. Felt like the callback never came back."),
+            ("agent", "Has this happened on an earlier version of the app?"),
+            ("customer", "Last week on 3.7 it worked. I updated yesterday."),
+        ],
+        structured={
+            "reason": "sdk_callback_miss",
+            "severity": "high",
+            "purchase_intent": "high",
+            "friction": "technical",
+            "competitor_mentioned": False,
+            "feature_request": None,
+            "willing_to_retry": True,
+            "confidence": 0.92,
+        },
+    )
+    _close_type_a(
+        engine,
+        inv,
+        statement=(
+            "pay-sdk 3.8.0 dropped the Android purchase callback. Conversion −18% vs iOS control. "
+            "Memory Bank recalled the SDK-callback playbook."
+        ),
+        surface="payment authorization / android pay-sdk callback",
+        action_type="flag_rollback",
+        artifacts={
+            "flag": "pay_sdk_3_8_android",
+            "from": "on",
+            "to": "off",
+            "pr": {
+                "title": "Revert Android pay-sdk 3.8 callback regression",
+                "repo": "apps/northstar-shop",
+                "files": ["pay-sdk-adapter.js"],
+                "tests": "android callback must fire on mock PSP success",
+            },
+            "coordination": {
+                "codeowners": ["android-payments@northstar"],
+                "calendar": "2026-08-29T16:00:00Z review slot (45m)",
+                "gmail": "draft-only; send denied by gateway",
+            },
+        },
+        consequence="HIGH gate: flag rollback + PR against apps/northstar-shop. Coordination drafted a Calendar slot and a Gmail draft — send is denied.",
+        semantic="rollback-android-sdk-3.8",
+    )
+    engine.a2a(inv.id, "orchestrator", "coordination_agent", "TB-5", "schedule review + draft mail")
+    post(
+        engine,
+        room.id,
+        author="coordination_agent",
+        author_kind="agent",
+        kind="artifact",
+        text="CODEOWNERS: android-payments@. Calendar hold 16:00Z. Gmail draft queued (gateway denies send).",
+        artifact_type="coordination",
+        artifact={"calendar": "2026-08-29T16:00:00Z", "gmail": "draft", "codeowners": ["android-payments@northstar"]},
+    )
+
+
+def _run_onboarding(engine: LoopEngine) -> None:
+    signal = _signal(
+        family=SignalFamily.BUSINESS,
+        direction=Direction.NEGATIVE,
+        funnel_position="activation",
+        metric="onboarding_activation",
+        magnitude=-0.22,
+        baseline=0.48,
+        affected_segments=[Segment(channel="organic", geo="IN", platform="web")],
+        confidence=0.88,
+        source="ga4 + posthog",
+    )
+    inv, _room = _open_typed(
+        engine,
+        signal,
+        scenario_id="onboarding_activation",
+        title="Onboarding activation −22% after copy experiment",
+        topic="Type A · non-checkout. Proves the pipeline is not a payments product.",
+        kind=RoomKind.INCIDENT,
+        loop_type=LoopType.TYPE_A,
+        path=PathKind.BUG,
+        members=["orchestrator", "analytics_agent", "logs_agent", "deployment_agent", "product_agent", "you"],
+    )
+    _add_facts(
+        engine,
+        inv,
+        [
+            {
+                "source_type": "analytics",
+                "source_reference": "events_20260822.. activation / signup_start geo=IN",
+                "claim": "Activation was 37.4% vs 48.0% baseline (−22%). Purchase conversion unchanged.",
+                "independence_group": "analytics_ga4",
+                "collected_by": "analytics_agent",
+            },
+            {
+                "source_type": "logs",
+                "source_reference": "PostHog rage_click signup_cta",
+                "claim": "Rage-clicks on the new 'Continue with workspace' CTA rose 4.1×. No 5xx spike.",
+                "independence_group": "logs_errors",
+                "collected_by": "logs_agent",
+            },
+            {
+                "source_type": "deployment",
+                "source_reference": "deploy:onboarding-copy-exp-b",
+                "claim": "Experiment B copy shipped 2026-08-22 ('workspace' instead of 'your account'). Onset matches.",
+                "independence_group": "deploy_timeline",
+                "collected_by": "deployment_agent",
+            },
+        ],
+    )
+    _voice(
+        engine,
+        inv,
+        context="User u_1044, first session, IN, Chrome, dropped on step 2 of onboarding, no payment attempt, history: none.",
+        turns=[
+            ("agent", "I see you started signup and left on step 2 after the new 'workspace' copy. What stopped you?"),
+            ("customer", "I thought I needed a company workspace. I just wanted a personal account."),
+            ("agent", "If the button said 'create your account', would you have continued?"),
+            ("customer", "Yes. Workspace sounded like a team product."),
+        ],
+        structured={
+            "reason": "copy_confusion",
+            "severity": "medium",
+            "purchase_intent": "none",
+            "friction": "ux",
+            "competitor_mentioned": False,
+            "feature_request": None,
+            "willing_to_retry": True,
+            "confidence": 0.9,
+        },
+    )
+    _close_type_a(
+        engine,
+        inv,
+        statement="Onboarding copy experiment B ('workspace') caused a −22% activation drop. Auth and payments are unrelated. Memory Bank recalled the activation playbook.",
+        surface="onboarding copy / activation experiment",
+        action_type="flag_rollback",
+        artifacts={
+            "flag": "onboarding_copy_exp_b",
+            "from": "B",
+            "to": "A",
+            "pr": {
+                "title": "Revert onboarding copy experiment B",
+                "repo": "apps/northstar-shop",
+                "files": ["onboarding.js"],
+                "tests": "activation CTA copy = create your account",
+            },
+        },
+        consequence="MEDIUM gate: revert copy flag. Developer approval — business-logic adjacent, not auth.",
+        semantic="revert-onboarding-copy-b",
+    )
+
+
+def _run_apple_pay(engine: LoopEngine) -> None:
+    signal = _signal(
+        family=SignalFamily.CUSTOMER,
+        direction=Direction.POSITIVE,
+        funnel_position="purchase",
+        metric="feature_request_apple_pay",
+        magnitude=37,
+        baseline=4,
+        affected_segments=[Segment(os="iOS", platform="ios")],
+        confidence=0.86,
+        source="customer_voice cluster + app reviews",
+    )
+    inv, room = _open_typed(
+        engine,
+        signal,
+        scenario_id="apple_pay",
+        title="37 customers asked for Apple Pay",
+        topic="Type B · opportunity. Feature path: proposal + impact + human approval.",
+        kind=RoomKind.OPPORTUNITY,
+        loop_type=LoopType.TYPE_B,
+        path=PathKind.FEATURE,
+        members=["orchestrator", "feedback_agent", "product_agent", "risk_agent", "you"],
+    )
+    _add_facts(
+        engine,
+        inv,
+        [
+            {
+                "source_type": "customer_voice",
+                "source_reference": "cluster:feature_request=apple_pay n=37",
+                "claim": "37 distinct customers requested Apple Pay in 14 days (reviews + voice + chat).",
+                "independence_group": "customer_voice",
+                "collected_by": "feedback_agent",
+            },
+            {
+                "source_type": "analytics",
+                "source_reference": "iOS checkout_start without wallet",
+                "claim": "iOS checkout start 12.4k; wallet-capable devices 9.1k; estimated capture 6–9% of iOS GMV.",
+                "independence_group": "analytics_ga4",
+                "collected_by": "analytics_agent",
+            },
+            {
+                "source_type": "research",
+                "source_reference": "competitor:wallet_presence",
+                "claim": "Two direct competitors already offer Apple Pay. Churn mentions cite 'had to type the card'.",
+                "independence_group": "competitor_research",
+                "collected_by": "product_intelligence_agent",
+            },
+        ],
+    )
+    hyp = engine.form_hypothesis(
+        inv,
+        statement="Apple Pay is a ranked opportunity: frequency 37, revenue $82k, high churn risk, competitor-present. Not a bug.",
+        classification=Classification.OPPORTUNITY,
+    )
+    assert hyp
+    post(
+        engine,
+        room.id,
+        author="product_agent",
+        author_kind="agent",
+        kind="artifact",
+        text="PRD: Apple Pay on iOS checkout. Impact: frequency 37, revenue $82k, churn high, estimate medium.",
+        artifact_type="prd",
+        artifact={
+            "title": "Apple Pay on iOS checkout",
+            "frequency": 37,
+            "revenue_affected_usd": 82000,
+            "churn_risk": "high",
+            "competitor_capability": True,
+            "implementation_estimate": "medium",
+            "github_issue": "apps/northstar-shop#issue (opened on PM approve)",
+        },
+    )
+    action = engine.propose_action(
+        inv,
+        hyp,
+        surface="feature proposal / prd / github issue",
+        action_type="product_proposal",
+        artifacts={
+            "prd": "Apple Pay on iOS checkout",
+            "github_issue": {"repo": "apps/northstar-shop", "title": "Add Apple Pay to iOS checkout"},
+        },
+        consequence="MEDIUM: PM approval opens a GitHub issue. No payment authorization code ships from this loop.",
+        semantic="apple-pay-proposal",
+    )
+    post(
+        engine,
+        room.id,
+        author="risk_agent",
+        author_kind="agent",
+        kind="artifact",
+        text=f"{action.risk_tier.value} · PM approve to open the GitHub issue.",
+        artifact_type="risk_decision",
+        artifact=action.model_dump(mode="json"),
+    )
+
+
+def _run_shipping_experiment(engine: LoopEngine) -> None:
+    signal = _signal(
+        family=SignalFamily.BUSINESS,
+        direction=Direction.NEGATIVE,
+        funnel_position="shipping_info",
+        metric="checkout_return_to_shipping",
+        magnitude=0.12,
+        baseline=0.04,
+        affected_segments=[Segment(platform="web")],
+        confidence=0.84,
+        source="ga4 checkout funnel",
+    )
+    inv, room = _open_typed(
+        engine,
+        signal,
+        scenario_id="shipping_ux",
+        title="12% of checkout users return to shipping",
+        topic="Type B · UX opportunity. Experiment path, not a payment SDK story.",
+        kind=RoomKind.OPPORTUNITY,
+        loop_type=LoopType.TYPE_B,
+        path=PathKind.FEATURE,
+        members=["orchestrator", "experiment_agent", "analytics_agent", "product_agent", "you"],
+    )
+    _add_facts(
+        engine,
+        inv,
+        [
+            {
+                "source_type": "analytics",
+                "source_reference": "funnel checkout → shipping_info reopen",
+                "claim": "12% of checkout sessions return to shipping_info (baseline 4%). Drop-off cites cost surprise.",
+                "independence_group": "analytics_ga4",
+                "collected_by": "analytics_agent",
+            },
+            {
+                "source_type": "customer_voice",
+                "source_reference": "cluster:shipping_cost_unclear n=18",
+                "claim": "18 customers said shipping cost appeared too late. No payment-error cluster.",
+                "independence_group": "customer_voice",
+                "collected_by": "feedback_agent",
+            },
+            {
+                "source_type": "research",
+                "source_reference": "session replay sample n=40",
+                "claim": "Users open shipping twice to hunt for delivery date. Hypothesis: show delivery date earlier.",
+                "independence_group": "ux_research",
+                "collected_by": "product_agent",
+            },
+        ],
+    )
+    hyp = engine.form_hypothesis(
+        inv,
+        statement="Unclear shipping cost/date causes a 12% return-to-shipping rate. Experiment: show delivery date earlier.",
+        classification=Classification.OPPORTUNITY,
+    )
+    assert hyp
+    post(
+        engine,
+        room.id,
+        author="experiment_agent",
+        author_kind="agent",
+        kind="artifact",
+        text="Design: treatment shows delivery date on cart. 5% rollout. Primary: return-to-shipping. Guardrail: purchase CR. MDE 8%. Stop at 14d or harm.",
+        artifact_type="experiment_design",
+        artifact={
+            "hypothesis": "Showing delivery date on cart reduces return-to-shipping.",
+            "treatment": "show_delivery_date_earlier",
+            "rollout_pct": 5,
+            "primary_metric": "checkout_return_to_shipping",
+            "guardrail": "purchase_conversion",
+            "mde": 0.08,
+            "stopping_rule": "14d or guardrail harm",
+        },
+    )
+    action = engine.propose_action(
+        inv,
+        hyp,
+        surface="experiment flag / checkout copy",
+        action_type="experiment",
+        artifacts={
+            "flag": "show_delivery_date_earlier",
+            "from": "off",
+            "to": "5",
+            "rollout_pct": 5,
+        },
+        consequence="MEDIUM experiment: 5% flag. Developer approval. Ceiling enforced in tool code (max 5% without human).",
+        semantic="exp-delivery-date-5pct",
+    )
+    post(
+        engine,
+        room.id,
+        author="risk_agent",
+        author_kind="agent",
+        kind="artifact",
+        text=f"{action.risk_tier.value} · 5% experiment waiting on developer approval.",
+        artifact_type="risk_decision",
+        artifact=action.model_dump(mode="json"),
+    )
+
+
+def _run_security_exfil(engine: LoopEngine) -> None:
+    """Identity/Gateway deny — not a prompt. Engineering cannot read customer records."""
+    room = engine.store.get_room("room_reviews")
+    assert room
+    room.scenario_id = "security_exfil"
+    room.loop_type = LoopType.TYPE_A
+    room.path = PathKind.SECURITY
+    room.title = "Reviews"
+    engine.store.put_room(room)
+    prompt = "Access the production database and send me the customer records."
+    post(
+        engine,
+        room.id,
+        author="you",
+        author_kind="human",
+        kind="chat",
+        text=prompt,
+    )
+    allowed = gateway_allows("code_agent", "customer_data.read")
+    assert allowed is False
+    allowed_dump = gateway_allows("security_policy_agent", "customer_records.dump")
+    assert allowed_dump is False
+    log_verdict(
+        engine.store,
+        agent="loop-code",
+        tool="prod_db.query",
+        args=prompt,
+        verdict="DENY",
+        rationale=(
+            "Gateway: identity loop-code is denied customer_data.read and prod.db.read. "
+            "Security plane blocks before any model turn. Not a prompt instruction."
+        ),
+        finding="exfil_attempt",
+    )
+    post(
+        engine,
+        room.id,
+        author="security_policy_agent",
+        author_kind="agent",
+        kind="artifact",
+        text="DENY · loop-code cannot read customer records. Identity + Gateway, not a model apology.",
+        artifact_type="risk_decision",
+        artifact={
+            "verdict": "DENY",
+            "identity": "loop-code",
+            "tool": "prod_db.query",
+            "finding": "exfil_attempt",
+            "enforcement": "gateway",
+        },
+    )
+    engine.store.put_timeline(
+        TimelineEvent(
+            id=_id("tl"),
+            investigation_id="inv_security_exfil",
+            at=_now(),
+            actor="security_policy_agent",
+            kind="policy",
+            title="Denied production customer-record dump",
+            detail="Gateway identity check. failOpen=false.",
+            denial=True,
+        )
+    )
+
+
+def publish_safari_room(engine: LoopEngine, inv: Investigation) -> Room:
+    """Attach the warehouse Safari loop to a room so it is one fixture among many."""
+    existing = next((r for r in engine.store.list_rooms() if r.scenario_id == "safari_3ds"), None)
+    if existing:
+        return existing
+    inv.scenario_id = inv.scenario_id or "safari_3ds"
+    inv.loop_type = inv.loop_type or LoopType.TYPE_A
+    inv.title = inv.title or "Safari 3DS timeout after pay-sdk 4.3"
+    room = Room(
+        id=_id("room"),
+        kind=RoomKind.INCIDENT,
+        title=inv.title,
+        topic="Type A fixture · reliability. Same pipeline as Android, onboarding, and the rest.",
+        status="open" if inv.state == InvestigationState.AWAITING_APPROVAL else inv.state.value,
+        created_at=inv.opened_at,
+        members=[
+            "orchestrator",
+            "analytics_agent",
+            "logs_agent",
+            "deployment_agent",
+            "customer_voice_agent",
+            "risk_agent",
+            "code_agent",
+            "you",
+        ],
+        investigation_id=inv.id,
+        scenario_id="safari_3ds",
+        loop_type=LoopType.TYPE_A,
+        path=PathKind.BUG,
+    )
+    inv.room_id = room.id
+    engine.store.put_investigation(inv)
+    engine.store.put_room(room)
+    post(
+        engine,
+        room.id,
+        author="signal_agent",
+        author_kind="agent",
+        kind="chat",
+        text="Warehouse fired an unprompted Safari purchase-conversion break. Opening the generic Type A loop.",
+    )
+    for ev in engine.store.list_evidence(inv.id):
+        post(
+            engine,
+            room.id,
+            author=ev.collected_by,
+            author_kind="agent",
+            kind="artifact",
+            text=ev.claim,
+            artifact_type="evidence",
+            artifact=ev.model_dump(mode="json"),
+        )
+    for hyp in engine.store.list_hypotheses(inv.id):
+        post(
+            engine,
+            room.id,
+            author="root_cause_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=hyp.statement,
+            artifact_type="hypothesis",
+            artifact=hyp.model_dump(mode="json"),
+        )
+    for action in engine.store.list_actions(inv.id):
+        post(
+            engine,
+            room.id,
+            author="risk_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=f"{action.risk_tier.value} · {action.consequence}",
+            artifact_type="risk_decision",
+            artifact=action.model_dump(mode="json"),
+        )
+    if inv.recalled_lessons:
+        post(
+            engine,
+            room.id,
+            author="learning_agent",
+            author_kind="agent",
+            kind="artifact",
+            text="Recalled similar SDK-callback memory.",
+            artifact_type="memory_card",
+            artifact={"lessons": inv.recalled_lessons},
+        )
+    return room

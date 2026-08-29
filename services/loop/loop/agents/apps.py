@@ -21,18 +21,22 @@ ALL_AGENT_NAMES = [
     "risk_agent",
     "decision_agent",
     "signal_agent",
+    "investigator_agent",
     "analytics_agent",
     "logs_agent",
     "deployment_agent",
     "database_agent",
     "consent_agent",
     "customer_voice_agent",
+    "customer_simulator",
     "code_agent",
     "test_agent",
     "product_agent",
+    "product_intelligence_agent",
     "coordination_agent",
     "experiment_agent",
     "learning_agent",
+    "security_policy_agent",
 ]
 
 
@@ -76,9 +80,14 @@ def build_apps(engine: LoopEngine) -> dict[str, Any]:
 
     signal = _agent(
         "signal_agent",
-        "Detect anomalies on daily warehouse tables. Classify and open an investigation. "
-        "Never investigate. Never write. Return after persisting the Investigation.",
+        "Detect anomalies on daily warehouse tables across technical, business, and customer families. "
+        "Classify Type A (broke) vs Type B (could be better). Open an investigation. Never investigate yourself.",
         [analysis_tools[0]],
+    )
+    investigator = _agent(
+        "investigator_agent",
+        "Correlate analytics, logs, deployments, and errors. Dispatch specialists in parallel. Do not write.",
+        [analysis_tools[1], analysis_tools[2], analysis_tools[3]],
     )
     analytics = _agent(
         "analytics_agent",
@@ -136,8 +145,17 @@ def build_apps(engine: LoopEngine) -> dict[str, Any]:
     voice = _agent(
         "customer_voice_agent",
         "Ask diagnostic questions via the media-bridge text fallback. Voice is optional. "
-        "Emit structured evidence, not a raw transcript.",
+        "Receive rich context (user, attempt, device, failure, history). "
+        "Emit structured evidence JSON, not a raw transcript.",
         [untrusted[1], side_tools[1]],
+    )
+    simulator = _agent(
+        "customer_simulator",
+        "Play confused, angry, or technical customer personas for voice eval. Never touch production data.",
+    )
+    security = _agent(
+        "security_policy_agent",
+        "Enforce identity → permission → gateway. Deny production customer-record dumps. Never comply.",
     )
 
     code = _agent(
@@ -155,6 +173,10 @@ def build_apps(engine: LoopEngine) -> dict[str, Any]:
         "product_agent",
         "Cluster opportunities with warehouse-quantified impact. Draft, do not send, customer email.",
         [side_tools[4], analysis_tools[1]],
+    )
+    intel = _agent(
+        "product_intelligence_agent",
+        "Universal Search across Gmail, Drive, Calendar, Chat when the user OAuth token is present. Read-only.",
     )
     coordination = _agent(
         "coordination_agent",
@@ -225,15 +247,19 @@ def build_apps(engine: LoopEngine) -> dict[str, Any]:
             "risk_agent": risk,
             "decision_agent": decision,
             "signal_agent": signal,
+            "investigator_agent": investigator,
             "analytics_agent": analytics,
             "logs_agent": logs,
             "deployment_agent": deployment,
             "database_agent": database,
             "consent_agent": consent,
             "customer_voice_agent": voice,
+            "customer_simulator": simulator,
+            "security_policy_agent": security,
             "code_agent": code,
             "test_agent": test,
             "product_agent": product,
+            "product_intelligence_agent": intel,
             "coordination_agent": coordination,
             "experiment_agent": experiment,
             "learning_agent": learning,

@@ -1,29 +1,29 @@
 import type { Metadata } from "next";
-import { Fira_Code, Fira_Sans } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { Shell } from "@/components/shell";
 import "./globals.css";
 
-const sans = Fira_Sans({
+const sans = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-sans",
 });
 
-const mono = Fira_Code({
+const mono = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500"],
   variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
-  title: "LOOP — Northstar Pay",
-  description: "Autonomous product reliability and growth loop",
+  title: "Product OS — LOOP",
+  description: "Autonomous product growth and reliability workforce",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`dark ${sans.variable} ${mono.variable}`}>
-      <body className="font-sans antialiased">
+      <body className="h-full font-sans antialiased">
         <Shell>{children}</Shell>
       </body>
     </html>

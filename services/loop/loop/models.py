@@ -65,6 +65,25 @@ class Classification(str, Enum):
     OPPORTUNITY = "OPPORTUNITY"
 
 
+class RoomKind(str, Enum):
+    INCIDENT = "incident"
+    OPPORTUNITY = "opportunity"
+    REVIEW = "review"
+    RESEARCH = "research"
+    OPS = "ops"
+
+
+class LoopType(str, Enum):
+    TYPE_A = "type_a"
+    TYPE_B = "type_b"
+
+
+class PathKind(str, Enum):
+    BUG = "bug"
+    FEATURE = "feature"
+    SECURITY = "security"
+
+
 class Segment(BaseModel):
     platform: str | None = None
     os: str | None = None
@@ -105,6 +124,10 @@ class Investigation(BaseModel):
     linked_action_ids: list[str] = Field(default_factory=list)
     verification_result: str | None = None
     recalled_lessons: list[str] = Field(default_factory=list)
+    scenario_id: str | None = None
+    room_id: str | None = None
+    loop_type: LoopType | None = None
+    title: str | None = None
 
 
 class Evidence(BaseModel):
@@ -215,3 +238,47 @@ class AgentCall(BaseModel):
     finished_at: datetime | None = None
     status: str = "running"
     summary: str = ""
+
+
+class Room(BaseModel):
+    id: str
+    kind: RoomKind
+    title: str
+    topic: str
+    status: str = "open"
+    created_at: datetime
+    members: list[str] = Field(default_factory=list)
+    investigation_id: str | None = None
+    scenario_id: str | None = None
+    loop_type: LoopType | None = None
+    path: PathKind | None = None
+    last_message_at: datetime | None = None
+
+
+class RoomMessage(BaseModel):
+    id: str
+    room_id: str
+    author: str
+    author_kind: Literal["agent", "human", "system"]
+    kind: Literal["chat", "artifact", "approval", "system"]
+    text: str
+    artifact_type: str | None = None
+    artifact: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class RegistryEntry(BaseModel):
+    id: str
+    display_name: str
+    owner: str
+    capabilities: list[str]
+    permissions_allow: list[str]
+    permissions_deny: list[str]
+    version: str
+    environment: str
+    risk_level: str
+    status: str
+    identity: str
+    room: str
+    role: str
+    trust_boundary: str

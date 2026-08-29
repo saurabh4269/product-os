@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function InvestigationsRedirect() {
+export default function RoomsIndex() {
   const router = useRouter();
   useEffect(() => {
     router.replace("/");

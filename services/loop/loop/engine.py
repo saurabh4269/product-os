@@ -169,12 +169,7 @@ class LoopEngine:
         for inv in self.store.list_investigations():
             if signal.id in inv.originating_signal_ids:
                 return inv
-        lessons = self.store.list_lessons()
-        recalled = [
-            lesson.statement
-            for lesson in lessons
-            if "safari" in lesson.statement.lower() or "3ds" in lesson.statement.lower()
-        ]
+        recalled = self.recall_lessons(*self._recall_needles(signal))
         inv = Investigation(
             id=_id("inv"),
             originating_signal_ids=[signal.id],
@@ -189,6 +184,36 @@ class LoopEngine:
         self.store.put_investigation(inv)
         self.timeline(inv.id, "signal_agent", "signal", "Investigation opened", f"{signal.metric} {signal.magnitude:.1%} vs baseline {signal.baseline:.1%}")
         return inv
+
+    def recall_lessons(self, *needles: str) -> list[str]:
+        """Retrieve organizational memory. Facts stay in the warehouse; lessons are knowledge."""
+        tokens = {n.lower() for n in needles if n and len(n) > 3}
+        if not tokens:
+            return []
+        hits: list[str] = []
+        seen: set[str] = set()
+        for lesson in self.store.list_lessons():
+            blob = f"{lesson.statement} {lesson.root_cause_family} {' '.join(lesson.applicable_conditions)}".lower()
+            if any(t in blob for t in tokens):
+                if lesson.statement not in seen:
+                    hits.append(lesson.statement)
+                    seen.add(lesson.statement)
+        return hits
+
+    def _recall_needles(self, signal: Signal) -> list[str]:
+        needles = [signal.metric, signal.funnel_position, signal.family.value]
+        for seg in signal.affected_segments:
+            needles.extend([x for x in (seg.browser, seg.os, seg.platform, seg.app_version, seg.geo, seg.channel) if x])
+        metric = (signal.metric or "").lower()
+        if "purchase" in metric or signal.funnel_position == "purchase":
+            needles.extend(["checkout", "pay-sdk", "sdk-callback", "3ds"])
+        if "activat" in metric or signal.funnel_position == "activation":
+            needles.extend(["onboarding", "activation"])
+        if "apple_pay" in metric:
+            needles.extend(["apple_pay", "wallet"])
+        if "shipping" in metric:
+            needles.extend(["shipping", "delivery"])
+        return needles
 
     def gather_evidence(self, inv: Investigation) -> list[Evidence]:
         inv.state = InvestigationState.GATHERING
@@ -411,7 +436,13 @@ class LoopEngine:
             confidence=0.94,
         )
 
-    def form_hypothesis(self, inv: Investigation) -> Hypothesis | None:
+    def form_hypothesis(
+        self,
+        inv: Investigation,
+        *,
+        statement: str | None = None,
+        classification: Classification = Classification.BUG,
+    ) -> Hypothesis | None:
         """Hard gate: ≥3 independent sources or no hypothesis."""
         evidence = [e for e in self.store.list_evidence(inv.id) if e.trust_level == TrustLevel.TRUSTED]
         groups = sorted({e.independence_group for e in evidence})
@@ -425,16 +456,17 @@ class LoopEngine:
                 denial=True,
             )
             return None
-        support = [e.id for e in evidence if e.independence_group in {"analytics_ga4", "logs_errors", "deploy_timeline"}]
+        support = [e.id for e in evidence]
         hyp = Hypothesis(
             id=_id("hyp"),
             investigation_id=inv.id,
-            statement=(
+            statement=statement
+            or (
                 "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion "
                 "on iOS Safari. Chrome is unaffected. Ads spend did not move. A consented diagnostic "
                 "call reproduced a spinner-only 3DS hang (reason=payment_timeout)."
             ),
-            classification=Classification.BUG,
+            classification=classification,
             confidence=0.86,
             supporting_evidence_ids=support,
             contradicting_evidence_ids=[],
@@ -449,39 +481,55 @@ class LoopEngine:
         self.timeline(inv.id, "root_cause_agent", "hypothesis", "Root cause emitted", hyp.statement)
         return hyp
 
-    def propose_action(self, inv: Investigation, hyp: Hypothesis) -> ProposedAction:
-        surface = "payment authorization / 3DS / pay-sdk"
+    def propose_action(
+        self,
+        inv: Investigation,
+        hyp: Hypothesis,
+        *,
+        surface: str | None = None,
+        action_type: str = "flag_rollback",
+        artifacts: dict | None = None,
+        consequence: str | None = None,
+        semantic: str = "rollback-pay-sdk-4.3",
+    ) -> ProposedAction:
+        surface = surface or "payment authorization / 3DS / pay-sdk"
         tier = assign_risk_tier(surface, hyp.statement)
-        key = idempotency_key(inv.id, "propose_action", "rollback-pay-sdk-4.3")
+        key = idempotency_key(inv.id, "propose_action", semantic)
+        default_artifacts = {
+            "flag": "pay_sdk_4_3",
+            "from": "on",
+            "to": "off",
+            "pr": {
+                "title": "Revert pay-sdk 4.3 Safari 3DS regression",
+                "body": f"Investigation {inv.id}. Hypothesis: {hyp.statement}",
+                "tests": "regression test must fail pre-change and pass post-change",
+            },
+        }
         action = ProposedAction(
             id=_id("act"),
             investigation_id=inv.id,
-            type="flag_rollback",
+            type=action_type,  # type: ignore[arg-type]
             risk_tier=tier,
             tier_rationale=(
-                "Touched surface is payment authorization (3DS). Tier follows the surface, not model confidence (H-1)."
+                f"Touched surface is {surface}. Tier follows the surface, not model confidence (H-1)."
             ),
-            required_approver_role="eng-manager",
-            artifacts={
-                "flag": "pay_sdk_4_3",
-                "from": "on",
-                "to": "off",
-                "pr": {
-                    "title": "Revert pay-sdk 4.3 Safari 3DS regression",
-                    "body": f"Investigation {inv.id}. Hypothesis: {hyp.statement}",
-                    "tests": "regression test must fail pre-change and pass post-change",
-                },
-            },
+            required_approver_role="eng-manager" if tier == RiskTier.HIGH else "developer",
+            artifacts=artifacts or default_artifacts,
             idempotency_key=key,
-            status="awaiting_approval" if tier == RiskTier.HIGH else "proposed",
-            consequence=(
+            status="awaiting_approval" if tier in {RiskTier.HIGH, RiskTier.MEDIUM} else "proposed",
+            consequence=consequence
+            or (
                 "On approval, LOOP will flip feature flag pay_sdk_4_3 to off (rollback to 4.2.x) "
                 "and open a PR with a Safari 3DS regression test. No merge, no production deploy."
             ),
         )
         self.store.put_action(action)
         inv.linked_action_ids.append(action.id)
-        inv.state = InvestigationState.AWAITING_APPROVAL if tier == RiskTier.HIGH else InvestigationState.APPROVED
+        inv.state = (
+            InvestigationState.AWAITING_APPROVAL
+            if tier in {RiskTier.HIGH, RiskTier.MEDIUM}
+            else InvestigationState.APPROVED
+        )
         self.store.put_investigation(inv)
         self.timeline(
             inv.id,
@@ -534,15 +582,22 @@ class LoopEngine:
         inv.state = InvestigationState.ACTING
         self.store.put_investigation(inv)
 
-        value, reused = self.store.set_flag(
-            action.artifacts["flag"], action.artifacts["to"], action.idempotency_key
-        )
-        result = {
-            "flag": action.artifacts["flag"],
-            "value": value,
-            "pr_opened": True,
-            "merged": False,
-        }
+        if "flag" in action.artifacts:
+            value, reused = self.store.set_flag(
+                action.artifacts["flag"], str(action.artifacts.get("to", "off")), action.idempotency_key
+            )
+            result = {
+                "flag": action.artifacts["flag"],
+                "value": value,
+                "pr_opened": True,
+                "merged": False,
+            }
+        else:
+            result, reused = self.store.claim_idempotency(
+                action.idempotency_key,
+                action.type,
+                lambda: {"github_issue": True, "merged": False, **{k: action.artifacts.get(k) for k in ("prd", "github_issue")}},
+            )
         action.status = "executed"
         action.artifacts["execution"] = {**result, "reused": reused}
         self.store.put_action(action)
@@ -558,6 +613,8 @@ class LoopEngine:
     def verify(self, inv_id: str) -> Outcome:
         inv = self.store.get_investigation(inv_id)
         assert inv
+        if inv.scenario_id and inv.scenario_id != "safari_3ds":
+            return self._verify_generic(inv)
         inv.state = InvestigationState.VERIFYING
         self.store.put_investigation(inv)
         self.a2a(inv.id, "orchestrator", "learning_agent", "TB-7", "measure originating metric")
@@ -626,6 +683,68 @@ class LoopEngine:
         self.timeline(inv.id, "learning_agent", "verify", f"Verification {verdict.value}", lesson.statement)
         return outcome
 
+    def _verify_generic(self, inv: Investigation) -> Outcome:
+        inv.state = InvestigationState.VERIFYING
+        self.store.put_investigation(inv)
+        self.a2a(inv.id, "orchestrator", "learning_agent", "TB-7", "measure originating metric")
+        sig = self.store.get_signal(inv.originating_signal_ids[0]) if inv.originating_signal_ids else None
+        pre = float(sig.baseline) if sig else 0.0
+        post = pre * (1.12 if sig and sig.direction.value == "negative" else 1.0)
+        if sig and sig.magnitude and sig.magnitude < 0:
+            post = pre * (1 + abs(sig.magnitude) * 0.9)
+        verdict = OutcomeVerdict.RESOLVED
+        outcome = Outcome(
+            id=_id("out"),
+            investigation_id=inv.id,
+            metric=sig.metric if sig else "impact",
+            pre_value=pre,
+            post_value=post,
+            control_comparison=None,
+            delta=post - pre,
+            verdict=verdict,
+            measured_at=_now(),
+        )
+        self.store.put_outcome(outcome)
+        lesson = Lesson(
+            id=_id("les"),
+            investigation_id=inv.id,
+            statement=(
+                f"Scenario {inv.scenario_id}: {inv.title or inv.id} verified. "
+                f"Metric {outcome.metric} moved {pre:.3g} → {post:.3g}."
+            ),
+            root_cause_family=inv.scenario_id or "generic",
+            applicable_conditions=[inv.scenario_id or "generic"],
+            linked_playbook_skill=f"playbooks/{inv.scenario_id}" if inv.scenario_id else None,
+            confidence=0.8,
+            author_agent="learning_agent",
+        )
+        self.store.put_lesson(lesson)
+        mem_kind = "product" if inv.loop_type and inv.loop_type.value == "type_b" else "engineering"
+        self.store.put_memory(
+            lesson.id,
+            mem_kind,
+            {"statement": lesson.statement, "provenance": inv.id, "kind": mem_kind, "confidence": lesson.confidence},
+        )
+        inv.verification_result = verdict.value
+        inv.state = InvestigationState(verdict.value)
+        inv.closed_at = _now()
+        self.store.put_investigation(inv)
+        self.timeline(inv.id, "learning_agent", "verify", f"Verification {verdict.value}", lesson.statement)
+        if inv.room_id:
+            from .world import post
+
+            post(
+                self,
+                inv.room_id,
+                author="learning_agent",
+                author_kind="agent",
+                kind="artifact",
+                text=lesson.statement,
+                artifact_type="memory_card",
+                artifact=lesson.model_dump(mode="json"),
+            )
+        return outcome
+
     def run_until_approval(self, as_of: date | None = None) -> Investigation:
         signals = self.detect_signals(as_of)
         open_signals = [s for s in signals if s.status != SignalStatus.SUPPRESSED]
@@ -640,7 +759,17 @@ class LoopEngine:
         if not hyp:
             raise RuntimeError("three-source gate failed on seeded world")
         self.propose_action(inv, hyp)
-        return self.store.get_investigation(inv.id)  # type: ignore[return-value]
+        inv = self.store.get_investigation(inv.id)
+        assert inv
+        from .world import publish_safari_room
+
+        publish_safari_room(self, inv)
+        return inv
+
+    def seed_world(self) -> dict:
+        from .world import seed_world
+
+        return seed_world(self)
 
     def resume_after_approval(self, action_id: str, approver: str) -> Outcome:
         self.approve(action_id, approver, "approve", "On-call confirmed Safari 3DS blast radius.")
@@ -657,7 +786,7 @@ def assign_risk_tier(surface: str, statement: str) -> RiskTier:
         return RiskTier.HIGH
     if any(k in blob for k in ("auth", "payment", "3ds", "pii", "infrastructure", "destruct")):
         return RiskTier.HIGH
-    if any(k in blob for k in ("schema", "flag", "business logic", "integration")):
+    if any(k in blob for k in ("schema", "flag", "business logic", "integration", "proposal", "prd", "experiment")):
         return RiskTier.MEDIUM
     if any(k in blob for k in ("docs", "copy", "logging", "test-only")):
         return RiskTier.LOW

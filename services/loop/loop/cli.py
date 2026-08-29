@@ -13,7 +13,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("seed", help="Generate synthetic warehouse")
     sub.add_parser("detect", help="Run unprompted signal detection")
-    sub.add_parser("run", help="Run loop until HIGH-tier approval gate")
+    sub.add_parser("run", help="Run the warehouse Type A loop until a risk gate")
+    sub.add_parser("world", help="Seed the full Product OS world (six fixtures, rooms, memory)")
     p_approve = sub.add_parser("approve", help="Approve an action and verify")
     p_approve.add_argument("action_id")
     p_approve.add_argument("--approver", default="oncall@northstar")
@@ -41,6 +42,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "run":
         inv = eng.run_until_approval()
         print(json.dumps({"investigation_id": inv.id, "state": inv.state.value}, indent=2))
+        return 0
+    if args.cmd == "world":
+        print(json.dumps(eng.seed_world(), indent=2))
         return 0
     if args.cmd == "approve":
         out = eng.resume_after_approval(args.action_id, args.approver)

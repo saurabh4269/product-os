@@ -6,21 +6,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#020617",
-        foreground: "#F8FAFC",
-        card: "#0E1223",
-        muted: "#1A1E2F",
-        border: "#334155",
-        accent: "#16A34A",
-        danger: "#DC2626",
-        warn: "#D97706",
+        background: "#08090a",
+        foreground: "#ececee",
+        card: "#111113",
+        muted: "#18181b",
+        border: "rgba(255,255,255,0.08)",
+        accent: "#5e6ad2",
+        copper: "#d4a27f",
+        danger: "#eb5757",
+        warn: "#e2a03f",
+        ok: "#4cb782",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "Fira Sans", "sans-serif"],
-        mono: ["var(--font-mono)", "Fira Code", "monospace"],
+        sans: ["var(--font-sans)", "IBM Plex Sans", "sans-serif"],
+        mono: ["var(--font-mono)", "IBM Plex Mono", "monospace"],
       },
       boxShadow: {
-        glow: "0 0 24px rgba(22,163,74,0.25)",
+        glow: "0 0 0 1px rgba(94,106,210,0.35), 0 12px 40px rgba(0,0,0,0.45)",
+      },
+      borderRadius: {
+        xl: "12px",
       },
     },
   },

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
-import { Card, Empty, ErrorState, Loading } from "@/components/ui";
+import { Badge, Card, Empty, ErrorState, Loading } from "@/components/ui";
 
 export default function OpportunitiesPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.opportunities>> | null>(null);
@@ -14,21 +15,21 @@ export default function OpportunitiesPage() {
 
   if (err) return <ErrorState message={err} />;
   if (!data) return <Loading />;
-  if (data.opportunities.length === 0) return <Empty title="No clusters" hint="Positive signals appear here." />;
+  if (data.opportunities.length === 0) return <Empty title="No Type B rooms" hint="Opportunities open as rooms." />;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-semibold">Opportunity board</h1>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <h1 className="text-3xl font-semibold tracking-tight">Type B · opportunities</h1>
       {data.opportunities.map((o) => (
-        <Card key={String(o.id)}>
-          <p className="text-sm font-medium">{String(o.title)}</p>
-          <p className="mt-2 font-mono text-xs text-slate-400">
-            {String(o.frequency)} customers · ${String(o.revenue_affected_usd)} · churn {String(o.churn_risk)}
-            {o.competitor_capability ? " · competitor yes" : ""}
-            {o.implementation_estimate ? ` · impl ${String(o.implementation_estimate)}` : ""}
-          </p>
-          <p className="mt-2 text-xs text-slate-500">Query: {String(o.source_query)}</p>
-        </Card>
+        <Link key={String(o.id)} href={`/rooms/${String(o.room_id ?? o.id)}`} className="block">
+          <Card className="hover:border-accent/40">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium">{String(o.title)}</p>
+              <Badge tone="ok">{String(o.loop_type ?? "type_b")}</Badge>
+            </div>
+            <p className="mt-2 font-mono text-xs text-[var(--dim)]">{String(o.status)}</p>
+          </Card>
+        </Link>
       ))}
     </div>
   );

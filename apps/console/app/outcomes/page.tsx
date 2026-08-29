@@ -16,7 +16,7 @@ export default function OutcomesPage() {
   if (err) return <ErrorState message={err} />;
   if (!data) return <Loading />;
   if (data.outcomes.length === 0) {
-    return <Empty title="No verified outcomes" hint="Approve the HIGH-tier rollback to close the loop." />;
+    return <Empty title="No verified outcomes" hint="Approve a gated action in a room to close a loop." />;
   }
 
   return (
@@ -31,7 +31,7 @@ export default function OutcomesPage() {
           <p className="mt-3 font-mono text-sm">
             {pct(Number(o.pre_value))} → {pct(Number(o.post_value))} · Δ {pct(Number(o.delta))}
           </p>
-          <p className="mt-2 text-xs text-slate-500">{when(String(o.measured_at))}</p>
+          <p className="mt-2 text-xs text-[var(--dim)]">{when(String(o.measured_at))}</p>
         </Card>
       ))}
     </div>

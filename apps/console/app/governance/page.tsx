@@ -19,7 +19,7 @@ export default function GovernancePage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-semibold">Governance</h1>
       <Card>
-        <p className="font-mono text-[11px] uppercase text-slate-500">Safety pins</p>
+        <p className="font-mono text-[11px] uppercase text-[var(--dim)]">Safety pins</p>
         <div className="mt-3 flex gap-2">
           <Badge tone={data.failOpen ? "danger" : "ok"}>failOpen={String(data.failOpen)}</Badge>
           <Badge tone="ok">tool-output screen on</Badge>
@@ -29,14 +29,14 @@ export default function GovernancePage() {
         {data.identities.map((id) => (
           <Card key={id.id}>
             <p className="font-mono text-sm">{id.id}</p>
-            <p className="mt-1 text-sm text-slate-400">{id.envelope}</p>
+            <p className="mt-1 text-sm text-[var(--dim)]">{id.envelope}</p>
           </Card>
         ))}
       </div>
       <Card>
-        <p className="font-mono text-[11px] uppercase text-slate-500">Policy verdicts</p>
+        <p className="font-mono text-[11px] uppercase text-[var(--dim)]">Policy verdicts</p>
         {data.verdicts.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-400">No blocks yet. Injected tool output is logged here.</p>
+          <p className="mt-2 text-sm text-[var(--dim)]">No blocks yet. Injected tool output is logged here.</p>
         ) : (
           data.verdicts.map((v) => (
             <p key={String(v.id)} className="mt-2 text-sm text-red-300">

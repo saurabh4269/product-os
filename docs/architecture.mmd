@@ -1,0 +1,59 @@
+flowchart TB
+  subgraph signals [Signal plane]
+    GA4[GA4 / Ads / PostHog / Firebase]
+    LOGS[Cloud Logging]
+    CRM[Support / Voice / Reviews]
+    GA4 --> BQ[(BigQuery facts)]
+    LOGS --> BQ
+    CRM --> BQ
+  end
+
+  subgraph agents [Agent plane — ADK 2]
+    SIG[Signal]
+    INV[Investigator]
+    SPEC[Analytics / Logs / Deploy / Voice]
+    RCA[Root Cause]
+    PATH{BUG vs FEATURE}
+    CODE[Code + Test]
+    PROD[Product + Experiment]
+    RISK[Risk]
+    LEARN[Learning]
+    SIG --> INV --> SPEC --> RCA --> PATH
+    PATH -->|Type A| CODE --> RISK
+    PATH -->|Type B| PROD --> RISK
+    RISK --> LEARN
+  end
+
+  subgraph security [Security plane]
+    ID[Agent Identity]
+    GW[Gateway / IAM policies]
+    MA[Model Armor]
+    SDP[Sensitive Data Protection]
+    ID --> GW --> MA --> SDP
+  end
+
+  subgraph tools [Tool plane]
+    GH[GitHub]
+    WS[Workspace MCP]
+    TEL[Telephony / Live fallback]
+    FLAG[Flags / CI]
+  end
+
+  subgraph memory [Memory / control]
+    RT[Runtime / Cloud Run]
+    MB[(Memory Bank — 4 kinds)]
+    REG[Registry]
+    OTEL[OpenTelemetry traces]
+  end
+
+  BQ --> SIG
+  LEARN --> MB
+  MB --> SIG
+  REG --> INV
+  GW --> CODE
+  GW --> PROD
+  CODE --> GH
+  PROD --> WS
+  SPEC --> TEL
+  RISK --> FLAG
+  RT --> OTEL

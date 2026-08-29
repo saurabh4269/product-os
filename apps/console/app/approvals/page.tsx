@@ -36,18 +36,18 @@ export default function ApprovalsPage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-semibold">Approval queue</h1>
       {data.pending.length === 0 ? (
-        <Empty title="Queue clear" hint="HIGH-tier payment actions land here and survive restarts." />
+        <Empty title="Queue clear" hint="Risk Agent gates land here and survive restarts." />
       ) : (
         data.pending.map((a) => (
           <Card key={a.id} className="space-y-3">
             <div className="flex justify-between">
               <Badge tone="high">{a.risk_tier}</Badge>
               <Link href={`/investigations/${a.investigation_id}`} className="font-mono text-xs text-accent">
-                {a.investigation_id}
+                open room
               </Link>
             </div>
             <p className="text-sm">{a.consequence}</p>
-            <p className="text-xs text-slate-500">{a.tier_rationale}</p>
+            <p className="text-xs text-[var(--dim)]">{a.tier_rationale}</p>
             <div className="flex gap-2">
               <Button disabled={busy === a.id} onClick={() => void decide(a, "approve")}>
                 Approve
