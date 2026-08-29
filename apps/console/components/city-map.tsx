@@ -9,17 +9,17 @@ const LQIP =
   "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/2wBDAVVaWldsY2JsbVRfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/wAARCAAEAAYDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAwT/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGdAf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//Z";
 
 const SLOTS: Record<string, { x: number; y: number }> = {
-  Incidents: { x: 26, y: 47 },
-  Ideas: { x: 55, y: 63 },
-  Reviews: { x: 41.5, y: 40 },
-  Research: { x: 78, y: 34 },
-  Ops: { x: 71.5, y: 43 },
+  Incidents: { x: 24, y: 48 },
+  Ideas: { x: 50, y: 56 },
+  Reviews: { x: 40, y: 42 },
+  Research: { x: 84, y: 42 },
+  Ops: { x: 72, y: 44 },
   Office: { x: 48, y: 52 },
 };
 
 const LANDMARKS = [
-  { href: "/memory", label: "Memory", x: 37.5, y: 67 },
-  { href: "/approvals", label: "Approvals", x: 52, y: 77 },
+  { href: "/memory", label: "Memory", x: 28, y: 72 },
+  { href: "/approvals", label: "Approvals", x: 50, y: 80 },
 ];
 
 function districtOf(title: string | null | undefined, fallback = "Ops") {
@@ -43,10 +43,24 @@ function cluster(desks: OfficeDesk[], rooms: Room[]) {
     if (!d.room_id) continue;
     groups.set(d.room_id, [...(groups.get(d.room_id) || []), d]);
   }
-  return [...groups.entries()].map(([key, people]) => {
+  const raw = [...groups.entries()].map(([key, people]) => {
     const s = slotFor(people[0], rooms);
     return { key, people, x: s.x, y: s.y };
   });
+  const bySlot = new Map<string, typeof raw>();
+  for (const g of raw) {
+    const k = `${g.x}:${g.y}`;
+    bySlot.set(k, [...(bySlot.get(k) || []), g]);
+  }
+  for (const list of bySlot.values()) {
+    const n = list.length;
+    list.forEach((g, i) => {
+      const spread = (i - (n - 1) / 2) * 5.2;
+      g.x += spread;
+      g.y += Math.abs(spread) * 0.18;
+    });
+  }
+  return raw;
 }
 
 function useImageBox(frame: HTMLElement | null, img: HTMLImageElement | null) {
