@@ -1,3 +1,4 @@
+import { PipMark, PipWave } from "@/components/mascot";
 import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, HTMLAttributes } from "react";
 
@@ -54,9 +55,12 @@ export function Empty({ title, hint }: { title: string; hint: string }) {
 
 export function ErrorState({ message }: { message: string }) {
   return (
-    <div className="page-pad">
-      <p className="text-[18px] font-medium">Can’t reach the app right now.</p>
-      <p className="mt-2 text-[14px] text-[var(--dim)]">{message}</p>
+    <div className="page-pad flex items-start gap-4">
+      <PipMark size={48} className="rounded-2xl" />
+      <div>
+        <p className="text-[18px] font-medium">Can’t reach the app right now.</p>
+        <p className="mt-2 text-[14px] text-[var(--dim)]">{message}</p>
+      </div>
     </div>
   );
 }
@@ -64,7 +68,7 @@ export function ErrorState({ message }: { message: string }) {
 export function Loading({ label = "Loading" }: { label?: string }) {
   return (
     <div className="flex items-center gap-3 page-pad">
-      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--faint)]" />
+      <PipWave />
       <p className="text-[14px] text-[var(--dim)]">{label}</p>
     </div>
   );

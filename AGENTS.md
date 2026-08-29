@@ -26,7 +26,7 @@ The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents,
 | Models | IDs only in [`config/models.yaml`](config/models.yaml). Default `gemini-3.5-flash`. Never set sampling on 3.6 / 3.5-lite. |
 | Cost | Cheap GCP only (BQ, Pub/Sub, Cloud Run, Model Armor). Agent Gateway / SGP / telephony stay **plan-only**. |
 | Hosted SQLite | Ephemeral. Cold start re-seeds the world. Room IDs change. Do not hard-code hosted room IDs. |
-| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. |
+| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. Mascot is **Pip** (cream otter, charcoal hoodie) — inspired by Grok companion cuteness, not a red panda copy. |
 | Art | Campus is `apps/console/public/city/campus.webp` (~75KB) + `campus.jpg`. **Do not re-add the 2MB PNG.** |
 | Git | Commits look human. No AI `Co-authored-by` / author overrides. |
 
@@ -52,6 +52,7 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | File | Role |
 |---|---|
 | `components/shell.tsx` | 64px icon rail + expand. Overlay on `<lg`, in-flow grow on `lg+`. `localStorage` key `loop-sidebar`. `[` toggles. |
+| `components/mascot.tsx` | Pip mark + sticker. Brand face in the rail. |
 | `components/city-map.tsx` | Painted campus. Pins **and building ellipses** are % of the contained image box. |
 | `components/iso-office.tsx` | 2:1 isometric floor (Claude City energy, no Phaser). |
 | `components/work-flipbook.tsx` | Click-the-work pages. Do not wrap room cards in a naked `<Link>`. |

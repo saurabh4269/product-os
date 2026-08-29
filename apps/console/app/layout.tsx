@@ -31,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <head>
         <link rel="preload" as="image" href="/city/campus.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/city/pip.webp" type="image/webp" />
       </head>
       <body className="h-full font-sans antialiased">
         <Shell>{children}</Shell>
