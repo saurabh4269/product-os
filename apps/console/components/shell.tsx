@@ -38,9 +38,19 @@ function isActive(path: string, href: string) {
   return href === "/" ? path === "/" : path.startsWith(href);
 }
 
-function Tip({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
+function Tip({
+  label,
+  show,
+  fill,
+  children,
+}: {
+  label: string;
+  show: boolean;
+  fill?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <span className={cn("group relative flex", show ? "justify-center" : "w-full justify-start")}>
+    <span className={cn("group relative flex", show ? "justify-center" : fill ? "w-full justify-start" : "shrink-0")}>
       {children}
       {show ? (
         <span className="pointer-events-none absolute left-full top-1/2 z-[60] ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-md bg-[#1d1d1f] px-2 py-1 text-[12px] text-white opacity-0 shadow-lg group-hover:flex group-hover:opacity-100">
@@ -108,7 +118,7 @@ function SystemLinks({
         const Icon = item.icon;
         const active = isActive(path, item.href);
         return (
-          <Tip key={item.href} label={item.label} show={collapsed}>
+          <Tip key={item.href} label={item.label} show={collapsed} fill={!collapsed}>
             <Link
               href={item.href}
               onClick={onNavigate}
@@ -202,15 +212,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
           wide ? "w-[260px]" : "w-16"
         )}
       >
-        <div className={cn("flex items-center", wide ? "justify-between px-3 pt-5 pb-4" : "flex-col gap-2 px-2 pt-4 pb-3")}>
-          <Link href="/" className={cn("flex items-center", wide ? "gap-2.5" : "h-11 w-11 justify-center")}>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1d1d1f] text-[13px] font-semibold text-white">
+        <div className={cn("flex", wide ? "items-center gap-2 px-3 pt-5 pb-4" : "flex-col items-center gap-2 px-2 pt-4 pb-3")}>
+          <Link href="/" className={cn("flex min-w-0 items-center", wide ? "flex-1 gap-2.5" : "h-11 w-11 justify-center")}>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1d1d1f] text-[13px] font-semibold text-white">
               P
             </span>
             {wide ? (
-              <span>
-                <p className="text-[15px] font-semibold leading-4 tracking-tight">Product OS</p>
-                <p className="mt-0.5 text-[11px] text-[var(--dim)]">A campus for the work</p>
+              <span className="min-w-0">
+                <p className="truncate text-[15px] font-semibold leading-5 tracking-tight">Product OS</p>
+                <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--dim)]">A campus for the work</p>
               </span>
             ) : (
               <span className="sr-only">Product OS</span>
@@ -222,9 +232,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               aria-label={expanded ? "Close sidebar" : "Open sidebar"}
               aria-expanded={expanded}
               onClick={() => setExpanded((v) => !v)}
-              className="group flex h-11 w-11 items-center justify-center rounded-xl text-[var(--dim)] transition-colors hover:bg-[var(--elev)] hover:text-foreground touch-manipulation"
+              className={cn(
+                "group flex shrink-0 items-center justify-center rounded-lg text-[var(--dim)] transition-colors hover:bg-[var(--elev)] hover:text-foreground touch-manipulation",
+                wide ? "h-8 w-8" : "h-11 w-11"
+              )}
             >
-              {expanded ? <PanelLeftClose size={18} strokeWidth={1.75} /> : <PanelLeftOpen size={18} strokeWidth={1.75} />}
+              {expanded ? <PanelLeftClose size={16} strokeWidth={1.75} /> : <PanelLeftOpen size={16} strokeWidth={1.75} />}
             </button>
           </Tip>
         </div>
