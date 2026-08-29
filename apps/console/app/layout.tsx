@@ -22,6 +22,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+      <head>
+        <link rel="preload" as="image" href="/city/campus.webp" type="image/webp" />
+      </head>
       <body className="h-full font-sans antialiased">
         <Shell>{children}</Shell>
       </body>

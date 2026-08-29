@@ -106,8 +106,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <main
         className={cn(
           "min-w-0 flex-1 bg-background",
-          inRoom || onCampus ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll",
-          onCampus && "bg-[#f4f6f4]"
+          inRoom ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll",
+          onCampus && "bg-[#eef2ee]"
         )}
       >
         {children}

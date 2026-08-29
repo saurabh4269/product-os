@@ -2,10 +2,14 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { Handoff, OfficeDesk, Room } from "@/lib/api";
 import { PixelSprite } from "@/components/pixel-office";
 import { cn } from "@/lib/utils";
+
+const LQIP =
+  "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAAbACgDASIAAhEBAxEB/8QAGQAAAgMBAAAAAAAAAAAAAAAABAUAAQMG/8QAJxAAAgIBAgYBBQEAAAAAAAAAAQIAAxEEEhMhIjFRcQUyUoGCkfD/xAAWAQEBAQAAAAAAAAAAAAAAAAABAgD/xAAaEQADAQEBAQAAAAAAAAAAAAAAARESAkFR/9oADAMBAAIRAxEAPwDrJm1yAkbxle4gOt1ri40U5XHJn8eoFizqsVCpYjOSN3uTr4byjddXW7siHLDxzE0N9Ybbu6vERoH2sK6yLAeQJ7GD63UMlRFihbScBlhphTqAcjIkiL4PUOzbd4KknI/HeSUnRQfq6NrtYik7xhiBnB9QG56uAUtXcQeTgnd/I8lEA9xn3JfFCCFXrtZCl1vFUdiOR/s1XqbPDVc/ccmNjRU31VIf1Etaq6z0Iq+hiZ8thlgej+PWhuJgKTzIA5n/AHiSHySkoUlD/9k=";
 
 type Slot = { x: number; y: number; kind: string };
 
@@ -25,9 +29,11 @@ const SLOTS: Record<string, Slot[]> = {
 };
 
 const LANDMARKS = [
-  { href: "/memory", label: "Memory", hint: "What we learned last time", x: 37.5, y: 67 },
-  { href: "/approvals", label: "Approvals", hint: "A few things waiting on you", x: 52, y: 77 },
+  { href: "/memory", label: "Memory", x: 37.5, y: 67 },
+  { href: "/approvals", label: "Approvals", x: 52, y: 77 },
 ];
+
+const CAR_COLORS = ["#0071e3", "#df1b41", "#e8b931", "#1d1d1f"];
 
 type Placed = {
   room: Room;
@@ -59,6 +65,12 @@ function kindWord(kind: string) {
   return "Ops";
 }
 
+function pathD(a: Placed, b: Placed) {
+  const midX = (a.x + b.x) / 2;
+  const midY = Math.min(a.y, b.y) - 8;
+  return `M ${a.x} ${a.y} Q ${midX} ${midY} ${b.x} ${b.y}`;
+}
+
 export function CityMap({
   rooms,
   desks,
@@ -70,8 +82,11 @@ export function CityMap({
   handoffs: Handoff[];
   working: number;
 }) {
+  const router = useRouter();
   const placed = useMemo(() => placeRooms(rooms, desks), [rooms, desks]);
   const [focus, setFocus] = useState<string | null>(null);
+  const [fly, setFly] = useState(false);
+  const [ready, setReady] = useState(false);
   const current = placed.find((p) => p.room.id === focus) ?? null;
   const byId = Object.fromEntries(placed.map((p) => [p.room.id, p]));
 
@@ -86,35 +101,67 @@ export function CityMap({
     })
     .filter(Boolean) as Array<{ id: string; a: Placed; b: Placed; summary: string }>;
 
+  function enter(spot: Placed) {
+    setFocus(spot.room.id);
+    setFly(true);
+    window.setTimeout(() => router.push(`/rooms/${spot.room.id}`), 420);
+  }
+
+  const origin = current ? `${current.x}% ${current.y}%` : "50% 48%";
+  const scale = fly ? 2.05 : current ? 1.28 : 1;
+
   return (
-    <div className="relative flex h-full min-h-0 flex-col bg-[#f4f6f4]">
+    <div className="relative h-full min-h-[640px] overflow-hidden bg-[#eef2ee]">
       <header className="pointer-events-none absolute left-6 top-6 z-20 max-w-sm">
         <p className="text-[13px] text-[var(--faint)]">Campus</p>
         <h1 className="mt-1 text-[28px] font-semibold tracking-tight">The work has a place</h1>
         <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">
-          {working} people are already in the buildings. Click a pin to look inside.
+          {working} people are already in the buildings. Click a pin to look inside — or scroll for the
+          office.
         </p>
       </header>
 
-      <div className="relative min-h-0 flex-1">
-        {/* static campus art — next/image is unused in the hosted export */}
-        <img
-          src="/city/campus.png"
-          alt="Product campus"
-          className="absolute inset-0 h-full w-full object-contain object-center"
-        />
+      <div
+        className="absolute inset-0 origin-center will-change-transform"
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: origin,
+          transition: "transform 520ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      >
+        <img src={LQIP} alt="" className="absolute inset-0 h-full w-full scale-105 object-contain blur-xl" />
+        <picture>
+          <source srcSet="/city/campus.webp" type="image/webp" />
+          <img
+            src="/city/campus.jpg"
+            alt="Product campus"
+            width={1600}
+            height={900}
+            decoding="async"
+            fetchPriority="high"
+            onLoad={() => setReady(true)}
+            className={cn(
+              "absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-500",
+              ready ? "opacity-100" : "opacity-0"
+            )}
+          />
+        </picture>
 
         <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {lines.map((line) => (
-            <path
-              key={line.id}
-              d={`M ${line.a.x} ${line.a.y} Q ${(line.a.x + line.b.x) / 2} ${Math.min(line.a.y, line.b.y) - 8} ${line.b.x} ${line.b.y}`}
-              fill="none"
-              stroke="rgba(29,29,31,0.22)"
-              strokeWidth="0.35"
-              strokeDasharray="1.2 1"
-            />
-          ))}
+          {lines.map((line, i) => {
+            const d = pathD(line.a, line.b);
+            const pid = `handoff-${line.id}`;
+            return (
+              <g key={line.id}>
+                <path id={pid} d={d} fill="none" stroke="rgba(29,29,31,0.16)" strokeWidth="0.28" strokeDasharray="1.1 0.9" />
+                <circle r="0.72" fill={CAR_COLORS[i % CAR_COLORS.length]}>
+                  <animateMotion dur={`${3.6 + (i % 3) * 0.7}s`} repeatCount="indefinite" rotate="auto">
+                    <mpath href={`#${pid}`} />
+                  </animateMotion>
+                </circle>
+              </g>
+            );
+          })}
         </svg>
 
         {LANDMARKS.map((mark) => (
@@ -137,15 +184,24 @@ export function CityMap({
             <button
               key={spot.room.id}
               type="button"
-              onClick={() => setFocus(spot.room.id)}
+              onClick={() => {
+                setFly(false);
+                setFocus(spot.room.id);
+              }}
               className="absolute z-10 -translate-x-1/2 -translate-y-[86%] text-center"
               style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
             >
               <span className="relative inline-block">
                 <img
-                  src="/city/pin.png"
+                  src="/city/pin.webp"
                   alt=""
-                  className={cn("mx-auto block drop-shadow-md transition-transform", selected ? "h-14 w-14" : "h-10 w-10", busy && "pin-bob")}
+                  width={40}
+                  height={40}
+                  className={cn(
+                    "mx-auto block drop-shadow-md transition-transform",
+                    selected ? "h-14 w-14" : "h-10 w-10",
+                    busy && "pin-bob"
+                  )}
                 />
                 <span className="absolute -bottom-1 left-1/2 flex -translate-x-1/2">
                   {spot.desks.slice(0, 3).map((desk, i) => (
@@ -168,8 +224,8 @@ export function CityMap({
         })}
       </div>
 
-      {current ? (
-        <aside className="absolute bottom-5 left-5 right-5 z-30 mx-auto max-w-md rounded-[22px] border border-border bg-white/95 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur md:left-auto md:right-6 md:mx-0">
+      {current && !fly ? (
+        <aside className="absolute bottom-8 left-5 right-5 z-30 mx-auto max-w-md rounded-[22px] border border-border bg-white/95 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur md:left-auto md:right-6 md:mx-0">
           <p className="text-[12px] text-[var(--faint)]">{kindWord(current.room.kind)}</p>
           <h2 className="mt-1 text-[18px] font-semibold leading-6 tracking-tight">{current.room.title}</h2>
           <p className="mt-2 text-[13px] leading-5 text-[var(--dim)]">{current.room.preview ?? current.room.topic}</p>
@@ -188,18 +244,23 @@ export function CityMap({
             </div>
           ) : null}
           <div className="mt-4 flex items-center gap-3">
-            <Link
-              href={`/rooms/${current.room.id}`}
+            <button
+              type="button"
+              onClick={() => enter(current)}
               className="inline-flex rounded-full bg-accent px-4 py-2 text-[14px] font-medium text-white hover:bg-[#0077ed]"
             >
               Open the room
-            </Link>
+            </button>
             <button type="button" onClick={() => setFocus(null)} className="text-[13px] text-[var(--dim)]">
               Keep looking
             </button>
           </div>
         </aside>
       ) : null}
+
+      <p className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 text-[12px] text-[var(--faint)]">
+        Scroll for the office
+      </p>
     </div>
   );
 }
