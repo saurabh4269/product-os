@@ -16,3 +16,5 @@ google-cloud-sdk/
 .env
 *-sa.json
 .credentials/
+*.egg-info/
+*.tsbuildinfo
