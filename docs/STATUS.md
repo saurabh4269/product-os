@@ -6,7 +6,7 @@ Last updated: 2026-08-30
 
 **Console + API:** https://loop-5uy6fkd7bq-uc.a.run.app
 
-`us-central1` Cloud Run service `loop` (bundle path, latest known revision `loop-00025-pp5`). Public `python:3.12-slim` + GCS tarball. SQLite is ephemeral (re-seeds the **full world** on cold start).
+`us-central1` Cloud Run service `loop` (bundle path, latest known revision `loop-00026-fql`). Public `python:3.12-slim` + GCS tarball. SQLite is ephemeral (re-seeds the **full world** on cold start).
 
 Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/deploy-gcp.sh`
 
@@ -20,20 +20,19 @@ Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/d
 - Memory Bank: customer / product / engineering / organizational. Lesson recall on similar later signals.
 - Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN).
 - Code Agent fixture targets stay in `apps/northstar-shop` (JS adapters only). Product OS does **not** host a tenant shop.
+- Tenant wire started: `/connect`, `/api/tenants`, token-gated `/api/t/{id}/flags|signals|voice`. GitHub/mail/calendar skip without secrets. Approve does not set `pr_opened` unless a PR URL exists.
 - ADK 2: 23 `LlmAgent`s / 7 Apps locally. Hosted path is the deterministic engine.
 - Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
 
-## Next (blocked on the user)
+## Next
 
-Tenant app is **not** in this repo. Waiting on a tenant git repo, a second deploy, a shared token secret, and both repos on the Cloud Agent environment. See [`docs/TENANT.md`](TENANT.md).
+Build: [`docs/PLAN_NEXT.md`](PLAN_NEXT.md) (tenant, flags Y can read, ingest, connectors that skip honestly).
+
+Still blocked on the user for a **real** Product Y: tenant git repo, second deploy, token secret, both repos on the environment. See [`docs/TENANT.md`](TENANT.md).
 
 ## PRs
 
-| PR | Status |
-|---|---|
-| [#7](https://github.com/saurabh4269/product-os/pull/7) | On `main` — control plane only; sitters off campus |
-| [#5](https://github.com/saurabh4269/product-os/pull/5) | Closed — contained in #7 |
-| [#6](https://github.com/saurabh4269/product-os/pull/6) | Commits are in history (GitHub says merged); **tip of `main` deletes the shop**. Not the product direction. |
+All numbered PRs through [#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6 shop files are **not** at tip. #8 is PLAN_NEXT + Connect + tenant APIs.
 
 ## What is mocked / mapped
 
@@ -42,5 +41,7 @@ See README “Honest Google-product mapping”. Agent Gateway, Memory Bank, Live
 ## Docs for the next agent
 
 - [`AGENTS.md`](../AGENTS.md) — handoff, commands, UI contract, named references
+- [`docs/PLAN_NEXT.md`](PLAN_NEXT.md) — next build (connectors, not a shop on this origin)
 - [`docs/TENANT.md`](TENANT.md) — tenant vs OS; what we still need from the user
 - [`docs/LEARNINGS.md`](LEARNINGS.md) — pitfalls already hit
+- [`docs/RESEARCH_LEARNINGS.md`](RESEARCH_LEARNINGS.md) — PRD research traps

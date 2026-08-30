@@ -6,7 +6,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -44,6 +44,9 @@ async def lifespan(_app: FastAPI):
         eng.seed_world()
     elif not eng.store.list_investigations():
         eng.run_until_approval()
+    from .tenant import seed_placeholder
+
+    seed_placeholder(eng.store)
     yield
 
 
@@ -76,9 +79,174 @@ class RoomPostBody(BaseModel):
     text: str
 
 
+class TenantBody(BaseModel):
+    id: str
+    name: str
+    product: str
+    repo: str = ""
+    deploy_url: str = ""
+    token: str = ""
+
+
+class IngestSignalBody(BaseModel):
+    metric: str = "purchase_conversion"
+    magnitude: float = -0.2
+    baseline: float = 0.08
+    source: str = "tenant.ingest"
+    note: str = ""
+
+
+class IngestVoiceBody(BaseModel):
+    text: str
+    tokenized_user: str = "tok_anon"
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True, "service": "loop", "hosted": bool(os.environ.get("K_SERVICE")), "region": settings().region}
+
+
+def _public_tenant(t) -> dict:
+    d = t.model_dump()
+    d.pop("token_hash", None)
+    d["has_token"] = bool(t.token_hash)
+    return d
+
+
+def _bearer(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    if authorization.lower().startswith("bearer "):
+        return authorization.split(" ", 1)[1].strip()
+    return authorization.strip()
+
+
+def _require_tenant(tenant_id: str, authorization: str | None):
+    from .tenant import token_ok
+
+    t = get_engine().store.get_tenant(tenant_id)
+    if not t:
+        raise HTTPException(404, "tenant not found")
+    if not token_ok(t, _bearer(authorization)):
+        raise HTTPException(401, "tenant token required")
+    return t
+
+
+@app.get("/api/tenants")
+def tenants():
+    from .tenant import seed_placeholder
+
+    eng = get_engine()
+    seed_placeholder(eng.store)
+    return {"tenants": [_public_tenant(t) for t in eng.store.list_tenants()]}
+
+
+@app.post("/api/tenants")
+def upsert_tenant(body: TenantBody):
+    from .tenant import Tenant, hash_token
+
+    eng = get_engine()
+    prev = eng.store.get_tenant(body.id)
+    token_hash = hash_token(body.token) if body.token else (prev.token_hash if prev else "")
+    t = Tenant(
+        id=body.id,
+        name=body.name,
+        product=body.product,
+        repo=body.repo,
+        deploy_url=body.deploy_url,
+        token_hash=token_hash,
+        connected=bool(body.repo),
+    )
+    eng.store.put_tenant(t)
+    return {"tenant": _public_tenant(t)}
+
+
+@app.get("/api/tenants/{tenant_id}")
+def tenant_detail(tenant_id: str):
+    from .tenant import flag_key
+
+    t = get_engine().store.get_tenant(tenant_id)
+    if not t:
+        raise HTTPException(404, "tenant not found")
+    flags = {
+        k.split(":", 2)[-1]: v
+        for k, v in get_engine().store.list_flags().items()
+        if k.startswith(flag_key(tenant_id, ""))
+    }
+    return {"tenant": _public_tenant(t), "flags": flags}
+
+
+@app.get("/api/t/{tenant_id}/flags")
+def tenant_flags(tenant_id: str, authorization: str | None = Header(default=None)):
+    _require_tenant(tenant_id, authorization)
+    raw = get_engine().store.list_flags()
+    flags = {k.split(":", 2)[-1]: v for k, v in raw.items() if k.startswith(f"t:{tenant_id}:")}
+    globals_ = {k: v for k, v in raw.items() if not k.startswith("t:")}
+    for name in ("pay_sdk_4_3", "onboarding_copy_exp_b", "show_delivery_date_earlier"):
+        if name not in flags:
+            default = "off" if name == "show_delivery_date_earlier" else "on"
+            flags[name] = globals_.get(name) or default
+    return {"tenant": tenant_id, "flags": flags}
+
+
+@app.post("/api/t/{tenant_id}/signals")
+def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | None = Header(default=None)):
+    from datetime import datetime, timezone
+
+    from .engine import _id
+    from .models import Direction, Segment, Signal, SignalFamily, SignalStatus
+    from .world import post as post_room
+
+    _require_tenant(tenant_id, authorization)
+    eng = get_engine()
+    sig = Signal(
+        id=_id("sig"),
+        family=SignalFamily.BUSINESS,
+        direction=Direction.NEGATIVE if body.magnitude < 0 else Direction.POSITIVE,
+        funnel_position="ingest",
+        metric=body.metric,
+        magnitude=body.magnitude,
+        baseline=body.baseline,
+        affected_segments=[Segment(channel="tenant")],
+        detection_window={"source": body.source},
+        confidence=0.6,
+        source=f"tenant.{tenant_id}",
+        status=SignalStatus.OPEN,
+        detected_at=datetime.now(timezone.utc),
+    )
+    eng.store.put_signal(sig)
+    rooms = [r for r in eng.store.list_rooms() if r.kind.value == "incident"]
+    room = rooms[0] if rooms else None
+    if room:
+        post_room(
+            eng,
+            room.id,
+            author="signal_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=body.note or f"{body.metric} {body.magnitude} from {tenant_id}",
+            artifact_type="signal",
+            artifact={"signal_id": sig.id, "tenant": tenant_id},
+        )
+    return {"signal": sig.model_dump(mode="json"), "room_id": room.id if room else None}
+
+
+@app.post("/api/t/{tenant_id}/voice")
+def tenant_voice(tenant_id: str, body: IngestVoiceBody, authorization: str | None = Header(default=None)):
+    from .engine import _id
+
+    _require_tenant(tenant_id, authorization)
+    eng = get_engine()
+    rec = {
+        "id": _id("voice"),
+        "kind": "customer",
+        "tenant": tenant_id,
+        "tokenized_user": body.tokenized_user,
+        "text": body.text[:4000],
+        "channel": "tenant.ingest",
+    }
+    eng.store.put_memory(rec["id"], "customer", rec)
+    return {"voice": rec}
 
 
 @app.post("/api/detect")

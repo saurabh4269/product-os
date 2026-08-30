@@ -221,6 +221,31 @@ export const api = {
       verdicts: Array<Record<string, unknown>>;
       failOpen: boolean;
     }>("/api/governance"),
+  tenants: () =>
+    get<{
+      tenants: Array<{
+        id: string;
+        name: string;
+        product: string;
+        repo: string;
+        deploy_url: string;
+        connected: boolean;
+        has_token: boolean;
+      }>;
+    }>("/api/tenants"),
+  tenant: (id: string) =>
+    get<{
+      tenant: {
+        id: string;
+        name: string;
+        product: string;
+        repo: string;
+        deploy_url: string;
+        connected: boolean;
+        has_token: boolean;
+      };
+      flags: Record<string, string>;
+    }>(`/api/tenants/${id}`),
   opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
   office: () => get<OfficeSnapshot>("/api/office"),
   agents: () =>

@@ -11,6 +11,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
+from .tenant import Tenant
 from .models import (
     AgentCall,
     Approval,
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS memory (
 );
 CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, room_id TEXT, json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS tenants (id TEXT PRIMARY KEY, json TEXT NOT NULL);
 """
 
 
@@ -242,6 +244,20 @@ class Store:
         with self._lock:
             row = self._conn.execute("SELECT value FROM flags WHERE name=?", (name,)).fetchone()
         return row[0] if row else None
+
+    def list_flags(self) -> dict[str, str]:
+        with self._lock:
+            rows = self._conn.execute("SELECT name, value FROM flags").fetchall()
+        return {r[0]: r[1] for r in rows}
+
+    def put_tenant(self, tenant: Tenant) -> None:
+        self._put("tenants", tenant)
+
+    def get_tenant(self, id_: str) -> Tenant | None:
+        return self._get("tenants", Tenant, id_)
+
+    def list_tenants(self) -> list[Tenant]:
+        return self._list("tenants", Tenant)
 
     def record_contact(self, tokenized_user: str, cap: int) -> bool:
         """L-4: frequency cap in tool code. Returns False if blocked."""
