@@ -49,6 +49,14 @@ Cold start is slow (apt-get every boot). First request can take a minute. Do not
 
 **Fix:** `apps/console/node_modules/.bin/next` only.
 
+### Do not host the tenant product on this origin
+
+**Symptom:** `/shop` and `/company` on `loop` Cloud Run; rail “Shop”; campus Shop pin.
+
+**Why:** That made Product OS look like a demo that includes a fake store. Production OS observes a product. It does not serve the product.
+
+**Fix:** Tenant HTML stays out of `apps/console/public` and FastAPI. `GET /api/company` does not exist. Fixture adapters stay in `apps/northstar-shop` (JS only). The real/demo shop is a **second repo and second deploy**. SPA fallback may still 200 `/shop` as the OS homepage — that is not a storefront.
+
 ### Cloud Run SQLite is disposable
 
 **Symptom:** Room IDs you bookmarked yesterday 404. Office looks freshly seeded.
@@ -196,7 +204,11 @@ Desks in compact room cards looked like “gray pedestals” under chopped bodie
 | Full-viewport campus only, no scroll | User wanted the previous office / rooms / signals **below** the island. |
 | Sidebar hidden until hamburger | “Always hidden.” They want a narrow rail + expand. |
 
-Keep the toy-town campus. Keep scroll-to-office. Keep per-bot pages at `/agents/:id`.
+| Host Northstar shop + ads on Cloud Run `loop` (`/shop`, `/company`) | User rejected. Product OS is not the tenant product. Separate repo + deploy. See [`TENANT.md`](TENANT.md). |
+| Shop pin / Shop rail on the campus | Same. Landmarks are Memory (watch) and Approvals (tram) only. |
+| `next.config` rewrite `/shop` → `/shop/index.html` | Only existed so Next could serve a storefront from `public/shop`. Removed. |
+
+Keep the toy-town campus. Keep scroll-to-office. Keep per-bot pages at `/agents/:id`. Do not put a storefront back on this origin.
 
 ---
 

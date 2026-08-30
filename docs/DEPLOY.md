@@ -26,7 +26,7 @@ Load the seeded warehouse into BigQuery (pennies):
 
 ## Hosted now
 
-Live: https://loop-5uy6fkd7bq-uc.a.run.app
+Live: https://loop-5uy6fkd7bq-uc.a.run.app (Cloud Run service `loop` — Product OS only. Do not deploy a tenant shop into this service.)
 
 This path does **not** need Cloud Build. It uploads `dist/loop-host.tgz` to
 `gs://mystical-timing-442601-q8-loop-host` and runs `python:3.12-slim` which

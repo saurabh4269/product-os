@@ -167,7 +167,7 @@ Investigation states: `OPEN → GATHERING → HYPOTHESIS → ACTION_PROPOSED →
 
 ## 5. Seeded world
 
-Synthetic tenant: **Northstar Pay** — a B2B SaaS checkout.
+Synthetic **fixture warehouse** (not a hosted company). Streams exist so the engine can detect and gate. The real tenant product is a separate repo — see [`docs/TENANT.md`](TENANT.md).
 
 | Stream | Shape | Seeded defect |
 |---|---|---|
