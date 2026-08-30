@@ -354,6 +354,11 @@ export function CityMap({
               ) : null
             }
             onOpen={selected ? () => enter(`/rooms/${selected.id}`) : undefined}
+            onPage={(index) => {
+              const page = pages[index];
+              const room = page ? rooms.find((r) => r.id === page.id) : undefined;
+              if (room) onPick(room.id, district ?? undefined);
+            }}
             onInside={
               district || selected
                 ? () => onWalkInside(district || desks.find((d) => d.room_id === selected?.id)?.district || "Office")

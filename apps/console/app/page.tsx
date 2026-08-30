@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, type OfficeSnapshot, type Room } from "@/lib/api";
 import { pct } from "@/lib/utils";
 import { ErrorState, Loading } from "@/components/ui";
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [err, setErr] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [inside, setInside] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     Promise.all([api.rooms(), api.signals(), api.office()])
@@ -96,6 +98,7 @@ export default function HomePage() {
             onPickRoom={(id, district) => {
               setPicked(id);
               if (district) setInside(district);
+              if (id) router.push(`/rooms/${id}`);
             }}
             onPickDistrict={(d) => setInside(d || null)}
           />

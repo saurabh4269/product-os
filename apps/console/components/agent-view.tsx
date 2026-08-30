@@ -2,27 +2,29 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { api, type AgentDetail } from "@/lib/api";
 import { shortName } from "@/lib/names";
+import { queryId, segmentId } from "@/lib/route-id";
 import { when } from "@/lib/utils";
 import { ErrorState, Loading } from "@/components/ui";
 import { PixelSprite } from "@/components/pixel-office";
 
 export function AgentView() {
-  const [id, setId] = useState("");
+  const path = usePathname() || "";
+  const [q, setQ] = useState("");
   const [data, setData] = useState<AgentDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const id = q || segmentId(path, "agents");
 
   useEffect(() => {
-    const parts = window.location.pathname.split("/").filter(Boolean);
-    const last = parts[parts.length - 1];
-    if (last && last !== "agents" && last !== "_") setId(last);
-    const q = new URLSearchParams(window.location.search).get("id");
-    if (q) setId(q);
-  }, []);
+    setQ(queryId(window.location.search));
+  }, [path]);
 
   useEffect(() => {
     if (!id) return;
+    setData(null);
+    setErr(null);
     api
       .agent(id)
       .then(setData)

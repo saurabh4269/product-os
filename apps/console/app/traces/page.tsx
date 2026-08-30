@@ -14,11 +14,19 @@ export default function TracesPage() {
     api
       .traces()
       .then(setData)
-      .catch((e) => setErr(e.message));
+      .catch((e) => setErr(e instanceof Error ? e.message : "failed"));
   }, []);
 
   if (err) return <ErrorState message={err} />;
   if (!data) return <Loading label="Opening traces" />;
+  if (data.traces.length === 0) {
+    return (
+      <div className="page-pad">
+        <h1 className="text-[32px] font-semibold tracking-tight">Traces</h1>
+        <p className="mt-8 text-[15px] text-[var(--dim)]">No handoffs yet. They show up as rooms start working.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-pad">

@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { api, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { shortName } from "@/lib/names";
+import { queryId, segmentId } from "@/lib/route-id";
 import { when } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
 import { PixelOffice, PixelSprite } from "@/components/pixel-office";
@@ -12,15 +14,12 @@ import { WorkFlipbook } from "@/components/work-flipbook";
 import { pagesFromRoom } from "@/lib/work-pages";
 
 function useRoomId(fallback?: string) {
-  const [id, setId] = useState(fallback ?? "");
+  const path = usePathname() || "";
+  const [q, setQ] = useState("");
   useEffect(() => {
-    const parts = window.location.pathname.split("/").filter(Boolean);
-    const last = parts[parts.length - 1];
-    if (last && last !== "rooms" && last !== "_") setId(last);
-    const q = new URLSearchParams(window.location.search).get("id");
-    if (q) setId(q);
-  }, []);
-  return id;
+    setQ(queryId(window.location.search));
+  }, [path]);
+  return q || segmentId(path, "rooms") || fallback || "";
 }
 
 function Artifact({ msg }: { msg: RoomMessage }) {
@@ -77,7 +76,10 @@ export function RoomView({ initialId }: { initialId?: string }) {
   }
 
   useEffect(() => {
-    if (id) void load(id);
+    if (!id) return;
+    setData(null);
+    setErr(null);
+    void load(id);
   }, [id]);
 
   const working = useMemo(() => {
@@ -133,6 +135,8 @@ export function RoomView({ initialId }: { initialId?: string }) {
     try {
       setData(await api.postRoom(id, text.trim()));
       setText("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "failed");
     } finally {
       setBusy(false);
     }
@@ -235,7 +239,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
       </div>
 
       <form
-        className="border-t border-border px-5 py-3 sm:px-8 lg:px-12"
+        className="flex items-center gap-2 border-t border-border px-5 py-3 sm:px-8 lg:px-12"
         onSubmit={(e) => {
           e.preventDefault();
           void send();
@@ -245,8 +249,11 @@ export function RoomView({ initialId }: { initialId?: string }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Message the room"
-          className="h-12 w-full rounded-full bg-[var(--elev)] px-5 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/25"
+          className="h-12 min-w-0 flex-1 rounded-full bg-[var(--elev)] px-5 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/25"
         />
+        <Button type="submit" disabled={busy || !text.trim()}>
+          Send
+        </Button>
       </form>
     </div>
   );

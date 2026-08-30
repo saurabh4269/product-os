@@ -97,7 +97,15 @@ Dev without `NEXT_PUBLIC_API_URL` uses `http://127.0.0.1:8080`. That is a **cros
 
 **Fix:** Keep `app/rooms/[id]/layout.tsx`, `app/agents/[id]/layout.tsx`, `app/investigations/[id]/layout.tsx`. FastAPI `_spa_file()` maps `rooms/*`, `agents/*`, `investigations/*` to that `_` HTML.
 
-Client pages then read the real id from `window.location` (see `room-view.tsx`, `agent-view.tsx`).
+Client pages then read the real id from `usePathname()` (see `lib/route-id.ts`). A mount-once `window.location` read is wrong: the `_` page is reused, so sidebar room/agent switches would keep the first id.
+
+### `/investigations/:id` is not a room id
+
+**Symptom:** Approvals “Open room” shows “Can’t reach the app” / `/api/rooms/inv_… 404`.
+
+**Why:** The room view treated the last path segment as a room id. Investigation ids are `inv_*`. `GET /api/rooms/{inv_id}` is 404.
+
+**Fix:** Resolve `investigation_id` → room, then `router.replace(/rooms/{id})`. Approvals should link the room when the list is loaded. Do not call `/api/rooms/{inv_id}`.
 
 ### Nested `<a>` in room cards
 

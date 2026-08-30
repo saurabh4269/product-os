@@ -1,25 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { RoomView } from "@/components/room-view";
-import { Loading } from "@/components/ui";
+import { segmentId } from "@/lib/route-id";
+import { ErrorState, Loading } from "@/components/ui";
 
 export default function InvestigationAsRoom() {
-  const [roomId, setRoomId] = useState<string | null>(null);
+  const path = usePathname() || "";
+  const router = useRouter();
+  const invId = segmentId(path, "investigations");
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    const parts = window.location.pathname.split("/").filter(Boolean);
-    const invId = parts[parts.length - 1];
+    if (!invId) return;
+    let live = true;
     api
       .rooms()
       .then((r) => {
+        if (!live) return;
         const match = r.rooms.find((room) => room.investigation_id === invId);
-        setRoomId(match?.id ?? invId);
+        if (!match) {
+          setErr("That room isn’t open.");
+          return;
+        }
+        router.replace(`/rooms/${match.id}`);
       })
-      .catch(() => setRoomId(invId));
-  }, []);
+      .catch((e) => {
+        if (live) setErr(e instanceof Error ? e.message : "failed");
+      });
+    return () => {
+      live = false;
+    };
+  }, [invId, router]);
 
-  if (!roomId) return <div className="p-6"><Loading label="Opening room" /></div>;
-  return <RoomView initialId={roomId} />;
+  if (err) return <ErrorState message={err} />;
+  return (
+    <div className="p-6">
+      <Loading label="Opening room" />
+    </div>
+  );
 }

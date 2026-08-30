@@ -14,7 +14,7 @@ export default function MemoryPage() {
     api
       .memory()
       .then(setData)
-      .catch((e) => setErr(e.message));
+      .catch((e) => setErr(e instanceof Error ? e.message : "failed"));
   }, []);
 
   if (err) return <ErrorState message={err} />;
@@ -26,6 +26,18 @@ export default function MemoryPage() {
       <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
         What we learned last time. The short version, kept here.
       </p>
+      {data.lessons.length ? (
+        <section className="mt-8 max-w-2xl rounded-[20px] border border-border bg-white p-6">
+          <p className="text-[13px] font-medium text-[var(--faint)]">Lessons</p>
+          <div className="mt-4 space-y-4">
+            {data.lessons.map((lesson, i) => (
+              <p key={String(lesson.id ?? i)} className="text-[14px] leading-6">
+                {String(lesson.statement ?? lesson.title ?? JSON.stringify(lesson))}
+              </p>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <div className="mt-10 grid gap-5 lg:grid-cols-2">
         {KINDS.map((kind) => (
           <section key={kind} className="rounded-[20px] border border-border bg-white p-6">

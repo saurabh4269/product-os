@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type Action } from "@/lib/api";
+import { api, type Action, type Room } from "@/lib/api";
 import { Button, Empty, ErrorState, Loading } from "@/components/ui";
 
 export default function ApprovalsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.approvals>> | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
     try {
-      setData(await api.approvals());
+      const [next, listed] = await Promise.all([api.approvals(), api.rooms()]);
+      setData(next);
+      setRooms(listed.rooms);
+      setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed");
     }
@@ -25,11 +29,21 @@ export default function ApprovalsPage() {
   if (err) return <ErrorState message={err} />;
   if (!data) return <Loading />;
 
+  function roomHref(a: Action) {
+    const room = rooms.find((r) => r.investigation_id === a.investigation_id);
+    return room ? `/rooms/${room.id}` : `/investigations/${a.investigation_id}`;
+  }
+
   async function decide(a: Action, decision: "approve" | "deny") {
     setBusy(a.id);
-    await api.approve(a.id, decision);
-    await load();
-    setBusy(null);
+    try {
+      await api.approve(a.id, decision);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "failed");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -51,7 +65,7 @@ export default function ApprovalsPage() {
                 <Button variant="ghost" disabled={busy === a.id} onClick={() => void decide(a, "deny")}>
                   Not yet
                 </Button>
-                <Link href={`/investigations/${a.investigation_id}`} className="text-[13px] text-accent">
+                <Link href={roomHref(a)} className="text-[13px] text-accent">
                   Open room
                 </Link>
               </div>
@@ -59,6 +73,20 @@ export default function ApprovalsPage() {
           ))}
         </div>
       )}
+      {data.history.length ? (
+        <div className="mt-12 max-w-xl">
+          <p className="text-[13px] text-[var(--faint)]">Already decided</p>
+          <div className="mt-4 space-y-3">
+            {data.history.slice(0, 8).map((h, i) => (
+              <p key={String(h.id ?? i)} className="text-[14px] leading-6 text-[var(--dim)]">
+                <span className="font-medium text-foreground">{String(h.decision ?? "decision")}</span>
+                {h.tier_at_decision ? ` · ${String(h.tier_at_decision)}` : ""}
+                {h.rationale ? ` — ${String(h.rationale)}` : ""}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

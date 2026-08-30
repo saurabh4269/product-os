@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { api, type Bundle } from "@/lib/api";
+import { queryId, segmentId } from "@/lib/route-id";
 import { pct, when } from "@/lib/utils";
 import { Badge, Button, Card, ErrorState, Loading } from "@/components/ui";
 import { EvidenceGraph } from "@/components/evidence-graph";
@@ -38,15 +40,12 @@ function Pixel({ name, size = 10 }: { name: string; size?: number }) {
 }
 
 function useInvestigationId(fallback?: string) {
-  const [id, setId] = useState(fallback ?? "");
+  const path = usePathname() || "";
+  const [q, setQ] = useState("");
   useEffect(() => {
-    const parts = window.location.pathname.split("/").filter(Boolean);
-    const last = parts[parts.length - 1];
-    if (last && last !== "investigations" && last !== "_") setId(last);
-    const q = new URLSearchParams(window.location.search).get("id");
-    if (q) setId(q);
-  }, []);
-  return id;
+    setQ(queryId(window.location.search));
+  }, [path]);
+  return q || segmentId(path, "investigations") || fallback || "";
 }
 
 export function InvestigationRoom({ initialId }: { initialId?: string }) {

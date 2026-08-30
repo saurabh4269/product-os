@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   BookMarked,
   CircleCheck,
+  GitBranch,
   House,
   PanelLeftClose,
   PanelLeftOpen,
@@ -23,6 +24,7 @@ const SYSTEM = [
   { href: "/registry", label: "Agents", icon: Users },
   { href: "/memory", label: "Memory", icon: BookMarked },
   { href: "/approvals", label: "Approvals", icon: CircleCheck },
+  { href: "/traces", label: "Traces", icon: GitBranch },
 ] as const;
 
 const KINDS = ["incident", "opportunity", "review", "research", "ops"] as const;
