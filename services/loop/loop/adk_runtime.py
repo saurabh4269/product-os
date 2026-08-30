@@ -21,7 +21,7 @@ from loop.config import default_model_id
 def adk_available() -> bool:
     if os.environ.get("LOOP_ADK_DISABLE") == "1":
         return False
-    if not (os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_CLOUD_PROJECT")):
+    if not (os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("LOOP_USE_VERTEX") == "1"):
         return False
     try:
         import google.adk  # noqa: F401
@@ -61,26 +61,13 @@ def fleet_status(engine: Any) -> dict[str, Any]:
 
 
 def _gemini_turn(prompt: str) -> tuple[str | None, str]:
-    key = (os.environ.get("GOOGLE_API_KEY") or "").strip()
-    if not key:
-        return None, "no GOOGLE_API_KEY"
-    from loop.config import generate_content_config_for
+    from loop.vertex_gemini import gemini_configured, generate_content
 
-    import httpx
-
-    model = default_model_id()
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
-    body: dict[str, Any] = {"contents": [{"parts": [{"text": prompt[:6000]}]}]}
-    cfg = generate_content_config_for(model)
-    if cfg:
-        body["generationConfig"] = cfg
+    if not gemini_configured():
+        return None, "no Gemini configured (LOOP_USE_VERTEX or GOOGLE_API_KEY)"
     try:
-        res = httpx.post(url, json=body, timeout=60.0)
-        if res.status_code != 200:
-            return None, res.text[:200]
-        payload = res.json()
-        text = payload["candidates"][0]["content"]["parts"][0]["text"]
-        return str(text).strip(), "ok"
+        text = generate_content(prompt[:6000], timeout=60.0)
+        return text.strip() or None, "ok"
     except Exception as exc:
         return None, str(exc)[:200]
 

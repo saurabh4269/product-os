@@ -37,7 +37,9 @@ def twilio_configured() -> bool:
 
 
 def gemini_configured() -> bool:
-    return bool(os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_CLOUD_PROJECT"))
+    from loop.vertex_gemini import gemini_configured as _cfg
+
+    return _cfg() or bool(os.environ.get("GOOGLE_CLOUD_PROJECT"))
 
 
 def normalize_e164(phone: str) -> str | None:
@@ -64,41 +66,22 @@ def put_session(call_sid: str, data: dict[str, Any]) -> None:
 
 
 def _gemini_reply(system: str, user: str, history: list[dict[str, str]]) -> str:
-    """Short spoken reply. Falls back to a scripted line if no model key."""
+    """Short spoken reply. Falls back to a scripted line if Gemini unavailable."""
+    from loop.vertex_gemini import gemini_configured, generate_content
+
     fallback = (
         "Thanks for taking the call. I am looking into what happened at checkout. "
         "Can you tell me whether the payment screen spun forever or showed an error?"
     )
-    key = os.environ.get("GOOGLE_API_KEY", "")
-    model = default_model_id()
-    # Prefer Developer API key (free tier / credits). Vertex needs more setup.
-    if not key:
+    if not gemini_configured():
         return fallback
-    parts = [{"text": f"System: {system}\n\nConversation so far:\n"}]
+    blob = f"System: {system}\n\nConversation so far:\n"
     for turn in history[-8:]:
-        parts[0]["text"] += f"{turn.get('role', 'user')}: {turn.get('message', '')}\n"
-    parts[0]["text"] += f"\nCustomer just said: {user}\nReply in under 40 spoken words. No markdown."
-    body: dict[str, Any] = {
-        "contents": [{"role": "user", "parts": parts}],
-    }
-    cfg = generate_content_config_for(model)
-    if cfg:
-        body["generationConfig"] = cfg
+        blob += f"{turn.get('role', 'user')}: {turn.get('message', '')}\n"
+    blob += f"\nCustomer just said: {user}\nReply in under 40 spoken words. No markdown."
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        with httpx.Client(timeout=25.0) as client:
-            res = client.post(url, params={"key": key}, json=body)
-            if res.status_code >= 400:
-                return fallback
-            data = res.json()
-            text = (
-                data.get("candidates", [{}])[0]
-                .get("content", {})
-                .get("parts", [{}])[0]
-                .get("text", "")
-                .strip()
-            )
-            return text or fallback
+        text = generate_content(blob, timeout=25.0).strip()
+        return text or fallback
     except Exception:
         return fallback
 

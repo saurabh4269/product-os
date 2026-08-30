@@ -152,13 +152,12 @@ def _parse_json_block(text: str) -> dict[str, Any]:
 
 
 def gemini_generate_patches(brief: dict[str, Any], files: dict[str, str]) -> tuple[dict[str, str], str]:
-    key = os.environ.get("GOOGLE_API_KEY", "")
-    if not key:
-        raise RuntimeError("GOOGLE_API_KEY required for generic code fix (no fixture_id)")
+    from loop.config import default_model_id
+    from loop.model_armor import screen_chat, screen_model_response
+    from loop.vertex_gemini import gemini_configured, generate_content_json, use_vertex
 
-    from loop.config import default_model_id, generate_content_config_for
-
-    import httpx
+    if not gemini_configured():
+        raise RuntimeError("Gemini not configured (set LOOP_USE_VERTEX=1 or GOOGLE_API_KEY)")
 
     prompt = {
         "task": "Produce a minimal code fix as JSON. Keys: files (path→full new file content), summary (string).",
@@ -176,31 +175,21 @@ def gemini_generate_patches(brief: dict[str, Any], files: dict[str, str]) -> tup
         ],
     }
     prompt_blob = json.dumps(prompt)
-    from loop.model_armor import screen_chat, screen_model_response
-
     hit, needle, _ = screen_chat(prompt_blob)
     if hit:
         raise RuntimeError(f"code-fix prompt blocked by Model Armor: {needle}")
-    model = default_model_id()
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
-    body = {
-        "contents": [{"parts": [{"text": json.dumps(prompt)}]}],
-        "generationConfig": generate_content_config_for(model),
-    }
-    res = httpx.post(url, json=body, timeout=90.0)
-    res.raise_for_status()
-    payload = res.json()
-    text = payload["candidates"][0]["content"]["parts"][0]["text"]
+
+    parsed = generate_content_json(json.dumps(prompt))
+    text = json.dumps(parsed)
     hit_r, needle_r, _ = screen_model_response(str(text))
     if hit_r:
         raise RuntimeError(f"code-fix model response blocked by Model Armor: {needle_r}")
-    parsed = _parse_json_block(text)
     out_files = parsed.get("files") if isinstance(parsed.get("files"), dict) else {}
     merged = dict(files)
     for k, v in out_files.items():
         if isinstance(v, str) and v.strip():
             merged[str(k)] = v
-    summary = str(parsed.get("summary") or "Gemini patch")
+    summary = str(parsed.get("summary") or ("Vertex patch" if use_vertex() else "Gemini patch"))
     if not any(merged.get(k) != files.get(k) for k in merged):
         raise RuntimeError("Gemini returned no file changes")
     return merged, summary

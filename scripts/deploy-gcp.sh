@@ -31,7 +31,7 @@ echo "deploy-gcp: bundle ${BUNDLE_URL}"
 if [[ -z "${LOOP_GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null; then
   LOOP_GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
 fi
-ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_REGION=${REGION},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://loop-5uy6fkd7bq-uc.a.run.app,LOOP_OAUTH_GCS_URI=gs://${BUCKET}/workspace_oauth.json,LOOP_FLAGS_GCS_URI=gs://${BUCKET}/tenant_flags.json,LOOP_STATE_GCS_URI=gs://${BUCKET}/loop_state.db,LOOP_CODE_REQUIRE_TESTS=1,LOOP_PUBSUB_TOPIC=loop.signals,LOOP_TASKS_QUEUE=loop-jobs"
+ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_REGION=${REGION},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://loop-5uy6fkd7bq-uc.a.run.app,LOOP_OAUTH_GCS_URI=gs://${BUCKET}/workspace_oauth.json,LOOP_FLAGS_GCS_URI=gs://${BUCKET}/tenant_flags.json,LOOP_STATE_GCS_URI=gs://${BUCKET}/loop_state.db,LOOP_CODE_REQUIRE_TESTS=1,LOOP_PUBSUB_TOPIC=loop.signals,LOOP_TASKS_QUEUE=loop-jobs,LOOP_USE_VERTEX=1,LOOP_ANTIGRAVITY_VERTEX=1,LOOP_VERTEX_MODEL=gemini-2.5-flash"
 : "${LOOP_TENANT_REPO:=saurabh4269/cove}"
 : "${LOOP_TENANT_DEPLOY_URL:=https://cove-5uy6fkd7bq-uc.a.run.app}"
 

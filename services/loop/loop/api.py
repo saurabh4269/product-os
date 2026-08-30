@@ -579,6 +579,7 @@ def adk_status():
     from loop.adk_runtime import adk_available, adk_inline_enabled, adk_worker_url, fleet_status
     from loop.antigravity_fix import antigravity_status
     from loop.code_fix import code_backend
+    from loop.vertex_gemini import gemini_configured, use_vertex
 
     eng = get_engine()
     worker = adk_worker_url()
@@ -596,6 +597,8 @@ def adk_status():
         "fleet": fleet,
         "antigravity": antigravity_status(),
         "code_backend": code_backend(),
+        "vertex_gemini": use_vertex(),
+        "gemini_configured": gemini_configured(),
         "pitch": "ADK orchestrates on worker; gateway + Model Armor enforce; jobs clone → test → PR.",
     }
 
