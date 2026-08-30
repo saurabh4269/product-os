@@ -20,6 +20,7 @@ Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/d
 - Memory Bank: customer / product / engineering / organizational. Lesson recall on similar later signals.
 - Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN).
 - Code Agent fixture targets stay in `apps/northstar-shop` (JS adapters only). Product OS does **not** host a tenant shop.
+- Tenant wire started: `/connect`, `/api/tenants`, token-gated `/api/t/{id}/flags|signals|voice`. GitHub/mail/calendar skip without secrets. Approve does not set `pr_opened` unless a PR URL exists.
 - ADK 2: 23 `LlmAgent`s / 7 Apps locally. Hosted path is the deterministic engine.
 - Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
 

@@ -582,22 +582,59 @@ class LoopEngine:
         inv.state = InvestigationState.ACTING
         self.store.put_investigation(inv)
 
+        from .connectors import calendar_hold, create_issue, mail_draft, open_pr
+        from .tenant import flag_key
+
+        tenants = self.store.list_tenants()
+        tenant = next((t for t in tenants if t.connected), None) or (tenants[0] if tenants else None)
+
+        reports = []
+        result: dict = {"merged": False, "pr_opened": False}
+        reused = False
         if "flag" in action.artifacts:
-            value, reused = self.store.set_flag(
-                action.artifacts["flag"], str(action.artifacts.get("to", "off")), action.idempotency_key
-            )
-            result = {
-                "flag": action.artifacts["flag"],
-                "value": value,
-                "pr_opened": True,
-                "merged": False,
-            }
+            name = str(action.artifacts["flag"])
+            value, reused = self.store.set_flag(name, str(action.artifacts.get("to", "off")), action.idempotency_key)
+            if tenant:
+                self.store.set_flag(
+                    flag_key(tenant.id, name),
+                    str(action.artifacts.get("to", "off")),
+                    action.idempotency_key + ":t",
+                )
+            result["flag"] = name
+            result["value"] = value
+            pr_meta = action.artifacts.get("pr") if isinstance(action.artifacts.get("pr"), dict) else {}
+            title = pr_meta.get("title") or f"Product OS: {name}"
+            body = pr_meta.get("body") or f"Investigation {inv.id}. Flag {name} → {value}."
+            if tenant:
+                gh, _ = self.store.claim_idempotency(
+                    action.idempotency_key + ":gh",
+                    "github.pr",
+                    lambda: open_pr(tenant, title, body).model_dump(),
+                )
+                reports.append(gh)
+                result["github"] = gh
+                if gh.get("status") == "applied" and gh.get("url"):
+                    result["pr_opened"] = True
+                    result["pr_url"] = gh["url"]
         else:
-            result, reused = self.store.claim_idempotency(
-                action.idempotency_key,
-                action.type,
-                lambda: {"github_issue": True, "merged": False, **{k: action.artifacts.get(k) for k in ("prd", "github_issue")}},
-            )
+            issue = action.artifacts.get("github_issue") if isinstance(action.artifacts.get("github_issue"), dict) else {}
+            title = issue.get("title") or "Product OS follow-up"
+            body = issue.get("body") or f"Investigation {inv.id}"
+            if tenant:
+                gh, _ = self.store.claim_idempotency(
+                    action.idempotency_key + ":gh",
+                    "github.issue",
+                    lambda: create_issue(tenant, title, body).model_dump(),
+                )
+                reports.append(gh)
+                result["github"] = gh
+                if gh.get("url"):
+                    result["github_issue_url"] = gh["url"]
+            if action.artifacts.get("gmail"):
+                reports.append(mail_draft(f"oncall@{tenant.id if tenant else 'loop'}", title, body).model_dump())
+            if action.artifacts.get("calendar"):
+                reports.append(calendar_hold(title, str(action.artifacts.get("calendar"))).model_dump())
+        result["connectors"] = reports
         action.status = "executed"
         action.artifacts["execution"] = {**result, "reused": reused}
         self.store.put_action(action)
@@ -605,7 +642,7 @@ class LoopEngine:
             inv.id,
             "code_agent",
             "action",
-            "Flag rollback executed" if not reused else "Idempotent replay — no duplicate side effect",
+            "Approved action executed" if not reused else "Idempotent replay — no duplicate side effect",
             str(result),
         )
         return {**result, "reused": reused}

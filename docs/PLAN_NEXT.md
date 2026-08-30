@@ -143,8 +143,8 @@ Tests: connector skip without token; flag GET 401 without bearer; approve + toke
 
 ## 7. Build order (this branch and after)
 
-1. **This PR:** land this file; link it from AGENTS / STATUS / README.
-2. **Same effort, next commits:** Phase A → B → C → D (skip-honest) → F. Ship to `loop` when A–D have tests.
+1. **This PR:** this file, then Phase A–D + Connect UI on the same branch.
+2. **Shipped in-repo now:** `GET/POST /api/tenants`, `GET /api/t/{id}/flags`, ingest signals/voice, connectors that skip without secrets, `execute_approved` no longer claims a PR URL it does not have, rail **Connect**.
 3. **When the user hands over repo + token + second deploy:** Phase D applied (real PRs), demo Y in the other repo, E if we load BQ.
 4. **Later:** Workspace OAuth, optional Live, Agent Gateway still plan-only.
 
