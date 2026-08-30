@@ -19,7 +19,7 @@ Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/d
 - Agent Registry (identity, permissions, version, risk). Gateway deny on production customer-record dump.
 - Memory Bank: customer / product / engineering / organizational. Lesson recall on similar later signals.
 - Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN).
-- Dummy company **Northstar**: storefront + ads at `/shop` and `/company`. Code Agent still patches `apps/northstar-shop`. Approving a HIGH gate flips shop flags (pay-sdk rollback).
+- Code Agent fixture targets stay in `apps/northstar-shop` (JS adapters only). Product OS does **not** host a tenant shop.
 - ADK 2: 23 `LlmAgent`s / 7 Apps locally. Hosted path is the deterministic engine.
 - Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
 

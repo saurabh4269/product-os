@@ -1,13 +1,9 @@
-# Northstar (dummy company)
+# northstar-shop (fixture patch targets)
 
-The company Product OS is operating. Not the Product OS UI.
+Tiny in-repo files the Code Agent is allowed to touch in engine fixtures. This is **not** a product, not a storefront, and not hosted by Product OS.
 
-**Storefront:** `web/` — home, product, checkout, onboarding, ads landing. Served at `/shop`. After a gate is approved, `/api/company` flags change and the shop pages follow (SDK rollback, copy revert, delivery date).
-
-**Code Agent targets** (no production customer data; merge is denied):
-
-- `pay-sdk-adapter.js` — payment SDK callback
-- `onboarding.js` — activation copy
+- `pay-sdk-adapter.js` — payment SDK callback (Safari / Android fixtures)
+- `onboarding.js` — activation copy (non-checkout fixture)
 - `checkout.js` — shipping / delivery-date experiment
 
-Ads live in the warehouse (`data/generate.py` → `ads.json`): US-Search-Brand and US-Shopping-Home. Spend stays flat so a conversion drop is not blamed on ads.
+No production customer data. No `web/` storefront in this repo. Merge and deploy stay denied until a real tenant repo is connected.

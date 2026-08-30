@@ -14,7 +14,6 @@ export const SLOTS: Record<string, { x: number; y: number }> = {
 export const LANDMARKS = [
   { href: "/memory", label: "Memory", x: 28, y: 72 },
   { href: "/approvals", label: "Approvals", x: 50, y: 80 },
-  { href: "/company", label: "Shop", x: 72, y: 70 },
 ] as const;
 
 /** Clickable building footprints — ellipses in image-box %. */

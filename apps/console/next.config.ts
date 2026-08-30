@@ -10,10 +10,7 @@ const nextConfig: NextConfig = {
 if (!staticExport) {
   nextConfig.rewrites = async () => {
     const api = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
-    return [
-      { source: "/backend/:path*", destination: `${api}/:path*` },
-      { source: "/shop", destination: "/shop/index.html" },
-    ];
+    return [{ source: "/backend/:path*", destination: `${api}/:path*` }];
   };
 }
 

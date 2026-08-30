@@ -284,62 +284,6 @@ def opportunities():
     return {"opportunities": items}
 
 
-@app.get("/api/company")
-def company():
-    """The dummy tenant Product OS is operating: shop, ads, flags, loop health."""
-    eng = get_engine()
-    raw = eng.wh.ads_rows()
-    stats = [r for r in raw if r.get("_table") == "ads_CampaignStats"]
-    dims = [r for r in raw if r.get("_table") == "ads_Campaign"]
-    latest = max((s.get("_DATA_DATE") or "" for s in stats), default="")
-    campaigns = []
-    seen: set[str] = set()
-    for d in dims:
-        cid = str(d.get("campaign_id") or "")
-        if not cid or cid in seen:
-            continue
-        if latest and d.get("_DATA_DATE") != latest:
-            continue
-        seen.add(cid)
-        st = next(
-            (s for s in stats if s.get("campaign_id") == cid and s.get("_DATA_DATE") == d.get("_DATA_DATE")),
-            {},
-        )
-        campaigns.append(
-            {
-                "id": cid,
-                "name": d.get("campaign_name"),
-                "impressions": st.get("impressions"),
-                "clicks": st.get("clicks"),
-                "cost": st.get("cost"),
-                "conversions": st.get("conversions"),
-                "date": d.get("_DATA_DATE"),
-            }
-        )
-    outcomes = eng.store.list_outcomes()
-    return {
-        "company": {
-            "id": "northstar",
-            "name": "Northstar",
-            "product": "Home goods from one shop",
-            "tagline": "Quiet things for a house",
-        },
-        "shop": {"path": "/shop/"},
-        "flags": {
-            "pay_sdk_4_3": eng.store.get_flag("pay_sdk_4_3") or "on",
-            "onboarding_copy_exp_b": eng.store.get_flag("onboarding_copy_exp_b") or "on",
-            "show_delivery_date_earlier": eng.store.get_flag("show_delivery_date_earlier") or "off",
-        },
-        "ads": campaigns,
-        "loop": {
-            "investigations": len(eng.store.list_investigations()),
-            "pending": len(eng.store.pending_approvals()),
-            "resolved": sum(1 for o in outcomes if "RESOLVED" in str(o.verdict).upper()),
-            "failOpen": False,
-        },
-    }
-
-
 @app.get("/api/metrics")
 def metrics():
     eng = get_engine()
@@ -448,51 +392,6 @@ def _static_dir() -> Path | None:
 
 
 _STATIC = _static_dir()
-
-
-def _shop_dir() -> Path | None:
-    env = os.environ.get("LOOP_SHOP_DIR")
-    candidates = [
-        Path(env) if env else None,
-        REPO_ROOT / "apps" / "northstar-shop" / "web",
-        Path("/app/static/shop"),
-        (_STATIC / "shop") if _STATIC else None,
-    ]
-    for c in candidates:
-        if c and (c / "index.html").exists():
-            return c
-    return None
-
-
-_SHOP = _shop_dir()
-
-
-@app.get("/shop", include_in_schema=False)
-@app.get("/shop/", include_in_schema=False)
-def shop_root():
-    if _SHOP is None:
-        raise HTTPException(404, "shop not packaged")
-    return FileResponse(_SHOP / "index.html")
-
-
-@app.get("/shop/{path:path}", include_in_schema=False)
-def shop_file(path: str):
-    if _SHOP is None:
-        raise HTTPException(404, "shop not packaged")
-    rel = path.strip("/")
-    if not rel or rel.endswith("/"):
-        target = _SHOP / rel / "index.html" if rel else _SHOP / "index.html"
-    else:
-        target = _SHOP / rel
-        if target.is_dir():
-            target = target / "index.html"
-    try:
-        target.resolve().relative_to(_SHOP.resolve())
-    except ValueError:
-        raise HTTPException(404)
-    if target.is_file():
-        return FileResponse(target)
-    raise HTTPException(404)
 
 
 def _spa_file(path: str) -> FileResponse | None:

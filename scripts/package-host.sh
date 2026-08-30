@@ -18,8 +18,6 @@ export LOOP_STATIC=1
 unset NEXT_PUBLIC_API_URL
 (cd "$ROOT/apps/console" && npm ci --silent && npm run build)
 cp -a "$ROOT/apps/console/out/." "$DIST/static/"
-mkdir -p "$DIST/static/shop"
-cp -a "$ROOT/apps/northstar-shop/web/." "$DIST/static/shop/"
 
 mkdir -p "$ROOT/dist"
 tar -C "$DIST" -czf "$ROOT/dist/loop-host.tgz" .

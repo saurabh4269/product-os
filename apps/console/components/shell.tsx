@@ -10,7 +10,6 @@ import {
   House,
   PanelLeftClose,
   PanelLeftOpen,
-  Store,
   Users,
 } from "lucide-react";
 import { api, type Room } from "@/lib/api";
@@ -26,7 +25,6 @@ const SYSTEM = [
   { href: "/memory", label: "Memory", icon: BookMarked },
   { href: "/approvals", label: "Approvals", icon: CircleCheck },
   { href: "/traces", label: "Traces", icon: GitBranch },
-  { href: "/company", label: "Shop", icon: Store },
 ] as const;
 
 const KINDS = ["incident", "opportunity", "review", "research", "ops"] as const;

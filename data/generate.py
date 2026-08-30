@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate a seeded Northstar warehouse: GA4-shaped events, logs, deploys, Ads.
+"""Generate a seeded fixture warehouse: GA4-shaped events, logs, deploys, Ads.
 
-Northstar is a home-goods shop. Safari/iOS purchase conversion drops ~25%
+Used by the Product OS engine. Safari/iOS purchase conversion drops ~25%
 from 2026-08-20 after pay-sdk 4.3.0. Recovery days (2026-08-29+) exist for
 post-approval verification only.
 """
@@ -155,30 +155,26 @@ def emit_ads() -> list[dict]:
     day = START
     while day <= END:
         ds = day.isoformat()
-        for cid, name, base, imps, clicks, conv in (
-            ("c_northstar", "US-Search-Brand", 820.0, 14000, 620, 48),
-            ("c_shop", "US-Shopping-Home", 310.0, 6200, 210, 19),
-        ):
-            cost = base + (day.weekday() * 8)
-            rows.append(
-                {
-                    "_table": "ads_Campaign",
-                    "_DATA_DATE": ds,
-                    "campaign_id": cid,
-                    "campaign_name": name,
-                }
-            )
-            rows.append(
-                {
-                    "_table": "ads_CampaignStats",
-                    "_DATA_DATE": ds,
-                    "campaign_id": cid,
-                    "impressions": imps,
-                    "clicks": clicks,
-                    "cost": cost,
-                    "conversions": conv,
-                }
-            )
+        cost = 820.0 + (day.weekday() * 12)
+        rows.append(
+            {
+                "_table": "ads_Campaign",
+                "_DATA_DATE": ds,
+                "campaign_id": "c_northstar",
+                "campaign_name": "US-Search-Brand",
+            }
+        )
+        rows.append(
+            {
+                "_table": "ads_CampaignStats",
+                "_DATA_DATE": ds,
+                "campaign_id": "c_northstar",
+                "impressions": 14000,
+                "clicks": 620,
+                "cost": cost,
+                "conversions": 48,
+            }
+        )
         day += timedelta(days=1)
     return rows
 
@@ -201,7 +197,7 @@ def main(out: Path = OUT) -> Path:
     (out / "meta.json").write_text(
         json.dumps(
             {
-                "tenant": "Northstar",
+                "tenant": "fixture",
                 "seed": 20260829,
                 "regression_start": REGRESSION.isoformat(),
                 "recovery_start": RECOVERY.isoformat(),

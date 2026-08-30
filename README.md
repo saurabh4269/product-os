@@ -52,7 +52,7 @@ Same generic pipeline for all of these:
 
 Customer Voice always receives context (user, attempt, device, failure, history) and emits structured JSON (`reason`, `severity`, `purchase_intent`, `friction`, `competitor_mentioned`, `feature_request`, `willing_to_retry`, `confidence`).
 
-Sample product repo the Code Agent patches: [`apps/northstar-shop`](apps/northstar-shop).
+In-repo fixture files the Code Agent patches today: [`apps/northstar-shop`](apps/northstar-shop). The tenant product is a separate repo and deployment — not hosted on this origin.
 
 ## Five planes
 
@@ -78,7 +78,7 @@ Engineering (`loop-code`): ALLOW GitHub r/w + CI, DENY Gmail send / prod deploy 
 | Model Armor | Cheap GCP templates applied; `ToolOutputArmorPlugin` on `after_tool_callback` (ADK does not screen tool output). `fail_open = false`. |
 | Gemini Live / Telephony | Media-bridge + transcript screening. No PSTN. |
 | Agent Observability | Local A2A traces; Cloud Trace when the project has it. |
-| Antigravity SDK | Code Agent contract + GitHub PR artifacts against `apps/northstar-shop`. |
+| Antigravity SDK | Code Agent contract + GitHub PR artifacts. Fixture targets are in-repo; production targets a connected tenant repo. |
 
 ## Stack
 

@@ -55,13 +55,14 @@ These are the named products, looks, and decisions from this chat. Open them bef
 | Hosted SQLite | Ephemeral. Cold start re-seeds the world. Room IDs change. Do not hard-code hosted room IDs. |
 | Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. **Mochi** (cream / “Bubu”) is the rail logo only. Do **not** put the sitting duo on the campus — they read as a sticker, not the product. |
 | Art | Campus is `apps/console/public/city/campus.webp` (~75KB) + `campus.jpg`. **Do not re-add the 2MB PNG.** |
+| Tenant product | Product OS is the control plane. **Do not host a customer shop, ads page, or demo storefront on this origin** (`/shop`, `/company`, `public/shop`). The tenant app lives in its own repo and deployment. |
 | Git | Commits look human. No AI `Co-authored-by` / author overrides. |
 
 ## Repo map
 
 ```
 apps/console/          Next 15 console (rooms, campus, office, agents)
-apps/northstar-shop/   Dummy company (Northstar). Storefront at /shop. Code Agent patches the JS.
+apps/northstar-shop/   Fixture patch targets only. Not a storefront. Not hosted here.
 apps/demo/             Remotion walkthrough
 services/loop/         Python control plane (engine, store, API, office, world, registry)
 config/models.yaml     Only place model IDs live
@@ -87,7 +88,6 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | `components/pixel-office.tsx` | Pixel people. Do not put sprites in a short `overflow-hidden` + `overflow-x-auto` box. |
 | `components/office-floor.tsx` | Desk grid + handoffs. 2 columns on a phone. |
 | `lib/api.ts` | `NEXT_PUBLIC_API_URL` or `""` in production (same origin). |
-| `app/company/page.tsx` | Dummy tenant desk: Northstar shop, ads, flags. |
 | `app/agents/[id]/layout.tsx` | `generateStaticParams` `{ id: "_" }` — required for static export. Same for rooms/investigations. |
 
 ### Control plane
@@ -98,7 +98,7 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | `loop/world.py` | Six fixtures → rooms. |
 | `loop/office.py` | `GET /api/office`, `GET /api/agents/{id}`. `canonical_agent()` aliases (`analytics` → `analytics_agent`). |
 | `loop/registry.py` | Identity + allow/deny. |
-| `loop/api.py` | FastAPI. CORS `*` on Cloud Run. SPA fallback includes `agents/`. Shop at `/shop`. `GET /api/company`. |
+| `loop/api.py` | FastAPI. CORS `*` on Cloud Run. SPA fallback includes `agents/`. Do **not** serve a tenant storefront from this app. |
 | `loop/store.py` | SQLite. `list_all_agent_calls`, `list_all_messages`. |
 
 `a2a()` is **not** posted as room messages. The room UI merges `bundle.agent_calls` as “handed off” rows.
