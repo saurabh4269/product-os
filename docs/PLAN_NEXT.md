@@ -88,7 +88,7 @@ These land in `product-os` now. They work against fixtures and against a tenant 
 
 ## 4. Work that **waits** on the user (do not fake)
 
-Workspace OAuth client (Gmail draft / Calendar) is a **separate** user grant. Until then, mail/calendar connectors stay `skipped`. `send_gmail` stays denied.
+Workspace OAuth **flow is wired** (Connect + `/api/oauth/google/*`, Gmail draft / Calendar hold). You still must create the Web OAuth client in Google Auth Platform and click Authorize once. `send_gmail` stays denied. Agent Identity / GEAP stay plan-only.
 
 Product Y is no longer blocked: repo `saurabh4269/northstar`, Cloud Run `northstar`.
 
@@ -135,7 +135,8 @@ Tests: connector skip without token; flag GET 401 without bearer; approve + toke
 ## 7. Build order (this branch and after)
 
 1. **Shipped:** Phases A–F. Connect form, flags Y can read, ingest opens rooms, GitHub PR on HIGH approve (never merge), Northstar on Cloud Run `northstar`.
-2. **Later:** Workspace OAuth, optional Live, Agent Gateway still plan-only.
+2. **Shipped (live layer):** WebSocket rooms, agent_callback, funnel chips, Work/Transcript, flip artifacts, typed A2A, skip-if-done HITL, scenario run, ADK 2 Workflow catalog. Story: [`HACKATHON_STORY.md`](HACKATHON_STORY.md). Contract: `packages/contracts/api.md`.
+3. **Later:** Finish Workspace OAuth client in Google Auth Platform (user paste on Connect), optional Live/PSTN, Agent Gateway still plan-only.
 
 Do not build Y inside this repo. Do not restore `/shop` on `loop`.
 

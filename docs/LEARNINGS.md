@@ -73,6 +73,26 @@ Northstar does not vendor — it is stdlib-only (`python app.py`).
 
 **Fix:** Treat hosted IDs as ephemeral. `GET /api/rooms` after boot.
 
+### Workspace OAuth client is Console-only
+
+**Symptom:** Want a Google authorize URL; `gcloud` cannot create a standard Web OAuth client for Gmail/Calendar.
+
+**Why:** Google Auth Platform clients are not the same as `gcloud iam oauth-clients` (workforce) or Agent Identity (plan-only / disabled here). The ADK Workspace codelab pattern is: create a Web client in Console → one `access_type=offline` consent → store refresh token → refresh in memory.
+
+**Fix:** Connect → paste client → `/api/oauth/google/start`. Redirect URI must be `https://loop-…/api/oauth/google/callback`. External + Testing: add yourself as a test user. Do not enable Agent Identity just for this. Hosted refresh tokens live under `LOOP_DATA_DIR` and die on cold wipe unless you also keep the client in env.
+
+### Live WebSocket vs static export
+
+**Symptom:** Console on a random port cannot open `ws://…` if `NEXT_PUBLIC_API_URL` points at localhost while the page is elsewhere; hosted static must use same-origin `wss://`.
+
+**Fix:** `roomSocket()` derives WS from `BASE` or `window.location.origin`. Package with `NEXT_PUBLIC_API_URL` unset. SPA catch-all must not steal `/ws` (FastAPI WebSocket routes are registered on the app).
+
+### ADK 2 Workflow vs SequentialAgent
+
+**Symptom:** Copying SalesShortcut ParallelAgent / LoopAgent into ADK 2 triggers deprecation; Workflow is not a drop-in `sub_agent`.
+
+**Fix:** Prefer Workflow + JoinNode + RequestInput. Workflow-as-Tool (≥2.4) needs an explicit Pydantic `input_schema` on the Workflow or NodeTool rejects it. Attach only schema'd workflows on investigator. Hosted path stays the deterministic engine — soft-fail if `google-adk` missing.
+
 ### HEAD on static files may 405
 
 **Symptom:** A health check that `HEAD /city/campus.webp` fails; `GET` is 200.

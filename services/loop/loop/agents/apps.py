@@ -86,7 +86,9 @@ def build_apps(engine: LoopEngine) -> dict[str, Any]:
     )
     investigator = _agent(
         "investigator_agent",
-        "Correlate analytics, logs, deployments, and errors. Dispatch specialists in parallel. Do not write.",
+        "Correlate analytics, logs, deployments, and errors. Dispatch specialists in parallel. "
+        "ADK 2 investigation_fanout Workflow is catalogued at GET /api/workflows (JoinNode); "
+        "hosted path uses the deterministic engine fan-out. Do not write.",
         [analysis_tools[1], analysis_tools[2], analysis_tools[3]],
     )
     analytics = _agent(

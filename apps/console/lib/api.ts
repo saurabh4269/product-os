@@ -79,6 +79,17 @@ export type Tenant = {
   last_connector?: string;
 };
 
+export type GoogleOAuth = {
+  configured: boolean;
+  connected: boolean;
+  email: string;
+  redirect_uri: string;
+  scopes: string[];
+  authorize_path: string;
+  authorize_url: string;
+  console: { overview: string; create_client: string; audience: string };
+};
+
 export type Timeline = {
   id: string;
   at: string;
@@ -135,6 +146,8 @@ export type RoomDetail = {
   messages: RoomMessage[];
   bundle: Bundle | null;
   members: string[];
+  presence?: Array<{ agentId: string; status: string; pixel?: Record<string, unknown> }>;
+  funnel?: { steps: Array<{ id: string; label: string; on: boolean }>; current: string; kind: string };
 };
 
 export type OfficeDesk = {
@@ -259,6 +272,9 @@ export const api = {
   }) => post<{ tenant: Tenant }>("/api/tenants", body),
   rotateToken: (id: string, token: string) =>
     post<{ rotated: boolean; tenant: Tenant }>(`/api/tenants/${id}/token`, { token }),
+  oauth: () => get<GoogleOAuth>("/api/oauth/google"),
+  saveGoogleClient: (client_id: string, client_secret: string) =>
+    post<GoogleOAuth>("/api/oauth/google/client", { client_id, client_secret }),
   opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
   office: () => get<OfficeSnapshot>("/api/office"),
   agents: () =>
@@ -275,6 +291,19 @@ export const api = {
       }>;
     }>("/api/agents"),
   agent: (id: string) => get<AgentDetail>(`/api/agents/${id}`),
+  scenarioRun: (slug: string) =>
+    post<{ scenario: string; room_id: string; room: Room; funnel?: RoomDetail["funnel"] }>(
+      `/api/scenarios/${slug}/run`,
+    ),
+  workflows: () =>
+    get<{
+      adk_version: string;
+      preferred_2x?: string[];
+      investigation_fanout?: string;
+      proposal_critique?: string;
+      note?: string;
+      enterprise?: Record<string, string>;
+    }>("/api/workflows"),
   metrics: () =>
     get<{
       idea_to_impact_hours_mean: number | null;
@@ -285,3 +314,10 @@ export const api = {
       failOpen: boolean;
     }>("/api/metrics"),
 };
+
+/** Same-origin or NEXT_PUBLIC_API_URL WebSocket for a room. */
+export function roomSocket(roomId: string): WebSocket {
+  const http = BASE || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:8080");
+  const ws = http.replace(/^http/, "ws");
+  return new WebSocket(`${ws}/ws/rooms/${roomId}`);
+}

@@ -51,7 +51,7 @@ These are the named products, looks, and decisions from this chat. Open them bef
 
 ## Next work
 
-Workspace OAuth (Gmail draft / Calendar). Optional Live. Agent Gateway still plan-only. Tenant **connectors** are in this repo; Product Y is the other repo. Do **not** rebuild a storefront here.
+Workspace OAuth is on Connect (`/api/oauth/google/start`) — you still create the Web client in Google Auth Platform once. Optional Live. Agent Gateway still plan-only. Tenant **connectors** are in this repo; Product Y is the other repo. Do **not** rebuild a storefront here.
 
 ## Binding rules
 

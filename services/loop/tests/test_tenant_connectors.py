@@ -180,7 +180,53 @@ def test_tenant_http_flags_and_ingest(engine, monkeypatch):
         assert "token" not in voice.json()["voice"]
 
 
-def test_console_does_not_host_a_shop():
+def test_oauth_status_start_and_never_echo_secret(tmp_path, monkeypatch, engine):
+    monkeypatch.setenv("LOOP_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        st = client.get("/api/oauth/google")
+        assert st.status_code == 200
+        body = st.json()
+        assert body["configured"] is False
+        assert body["connected"] is False
+        assert "client_secret" not in body
+        assert body["authorize_url"].endswith("/api/oauth/google/start")
+        assert "auth/overview" in body["console"]["overview"]
+        start = client.get("/api/oauth/google/start", follow_redirects=False)
+        assert start.status_code == 302
+        assert "console.cloud.google.com/auth/overview" in start.headers["location"]
+        saved = client.post(
+            "/api/oauth/google/client",
+            json={"client_id": "cid.apps.googleusercontent.com", "client_secret": "super-secret"},
+        )
+        assert saved.status_code == 200
+        assert saved.json()["configured"] is True
+        assert "super-secret" not in str(saved.json())
+        assert "client_secret" not in saved.json()
+        start2 = client.get("/api/oauth/google/start", follow_redirects=False)
+        assert start2.status_code == 302
+        loc = start2.headers["location"]
+        assert loc.startswith("https://accounts.google.com/o/oauth2/v2/auth")
+        assert "access_type=offline" in loc
+        assert "prompt=consent" in loc
+        assert "cid.apps.googleusercontent.com" in loc
+        bad = client.get("/api/oauth/google/callback?code=x&state=wrong", follow_redirects=False)
+        assert bad.status_code == 302
+        assert "workspace=error" in bad.headers["location"]
+
+
+def test_mail_draft_applies_when_gmail_ok(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOOP_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("LOOP_GMAIL_ACCESS_TOKEN", "tok")
+    monkeypatch.setattr(
+        "loop.connectors.mail.gmail_json",
+        lambda *a, **k: (200, {"id": "dr_1"}),
+    )
+    r = draft("a@b.c", "s", "b")
+    assert r.status == "applied"
+    assert r.url and "dr_1" in r.url
+    assert send().status == "denied"
     console = ROOT / "apps" / "console"
     assert not (console / "app" / "shop").exists()
     assert not (console / "app" / "company").exists()

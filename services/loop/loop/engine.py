@@ -73,6 +73,18 @@ class LoopEngine:
                 denial=denial,
             )
         )
+        from .live import HUB, room_id_for_investigation
+
+        rid = room_id_for_investigation(self.store, inv_id)
+        if rid:
+            HUB.publish(
+                rid,
+                {
+                    "type": "trace",
+                    "traceId": inv_id,
+                    "step": {"agentId": actor, "kind": kind, "summary": title, "detail": detail, "denial": denial},
+                },
+            )
 
     def a2a(self, inv_id: str, src: str, dst: str, tb: str, summary: str) -> None:
         self.store.put_agent_call(
@@ -88,6 +100,26 @@ class LoopEngine:
                 summary=summary,
             )
         )
+        from .a2a_protocol import A2AEnvelope
+        from .live import HUB, room_id_for_investigation
+
+        rid = room_id_for_investigation(self.store, inv_id) or ""
+        env = A2AEnvelope(
+            from_agent=src,
+            to_agent=dst,
+            kind="handoff",
+            trace_id=inv_id,
+            room_id=rid,
+            payload={"summary": summary, "trust_boundary": tb},
+        )
+        if rid:
+            HUB.set_presence(rid, dst, "thinking", {"label": dst, "hue": abs(hash(dst)) % 360})
+            HUB.publish(rid, env.as_event())
+
+    def presence(self, room_id: str, agent_id: str, status: str) -> None:
+        from .live import HUB
+
+        HUB.set_presence(room_id, agent_id, status, {"label": agent_id, "hue": abs(hash(agent_id)) % 360})
 
     def detect_signals(self, as_of: date | None = None) -> list[Signal]:
         """Baseline-relative, seasonality-aware, segment-mandatory (G-1, G-3). Unprompted."""

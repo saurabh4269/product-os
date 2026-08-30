@@ -6,7 +6,7 @@ Last updated: 2026-08-30
 
 **Product OS (console + API):** https://loop-5uy6fkd7bq-uc.a.run.app
 
-`us-central1` Cloud Run service `loop` (bundle path, revision `loop-00033-6mz`). Public `python:3.12-slim` + GCS tarball. `--min-instances 1` so SQLite and the UI stay warm. Vendor wheels are built **inside** `python:3.12-slim` so they match the image (local Kali is 3.13). `/shop` and `/company` 404.
+`us-central1` Cloud Run service `loop` (bundle path, revision `loop-00034-tm9`). Public `python:3.12-slim` + GCS tarball. `--min-instances 1` so SQLite and the UI stay warm. Vendor wheels are built **inside** `python:3.12-slim` so they match the image (local Kali is 3.13). `/shop` and `/company` 404. Workspace OAuth consent is on Connect.
 
 **Product Y (Northstar):** https://northstar-5uy6fkd7bq-uc.a.run.app
 
@@ -28,13 +28,14 @@ Redeploy Y: `LOOP_TENANT_TOKEN=… ./scripts/deploy.sh` in the northstar repo.
 - Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN). Tenant feedback POSTs `/api/t/{id}/voice` and opens a research room.
 - Code Agent fixture targets stay in `apps/northstar-shop` (JS adapters only). Product OS does **not** host a tenant shop.
 - Tenant wire: `/connect` form (repo, deploy URL, rotate token — never echoed). Token-gated `/api/t/{id}/flags|signals|voice`. Ingest opens or joins rooms. Approve HIGH flips `pay_sdk_4_3` and opens a real PR on the tenant repo. `merged` stays false. Mail/calendar skip without OAuth.
+- Live rooms: WebSocket `/ws/rooms/{id}`, `POST /api/agent_callback`, presence + funnel chips (handoff rail), Work/Transcript + flip artifacts, typed A2A on the bus, skip-if-done approve, `POST /api/scenarios/{slug}/run` (presence sweep), ADK 2 alignment (`GET /api/workflows`). Contract: [`packages/contracts/api.md`](../packages/contracts/api.md). Story: [`docs/HACKATHON_STORY.md`](HACKATHON_STORY.md).
 - End-to-end proven: Northstar checkout showed SDK 4.3 → HIGH approve in OS → flags off + [PR #2](https://github.com/saurabh4269/northstar/pull/2) (merged) → checkout shows 4.2.1 from live flags. Place-order then succeeds.
-- ADK 2: 23 `LlmAgent`s / 7 Apps locally. Hosted path is the deterministic engine.
+- ADK 2: 23 `LlmAgent`s / 7 Apps locally + Workflow soft-attach (JoinNode fan-out, critique). Hosted path is the deterministic engine.
 - Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
 
 ## Next
 
-Workspace OAuth for Gmail draft / Calendar. Optional Live. Agent Gateway still plan-only. See [`docs/TENANT.md`](TENANT.md).
+Create the Google Auth Platform Web client, paste it on Connect, then open `/api/oauth/google/start`. Optional Live. Agent Gateway still plan-only. See [`docs/TENANT.md`](TENANT.md).
 
 ## PRs
 

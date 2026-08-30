@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type Tenant } from "@/lib/api";
+import { api, type GoogleOAuth, type Tenant } from "@/lib/api";
 import { Button, ErrorState, Loading } from "@/components/ui";
 
 const field =
@@ -19,6 +19,9 @@ export default function ConnectPage() {
   const [repo, setRepo] = useState("");
   const [deploy, setDeploy] = useState("");
   const [token, setToken] = useState("");
+  const [oauth, setOauth] = useState<GoogleOAuth | null>(null);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
 
   async function load() {
     const listed = await api.tenants();
@@ -34,9 +37,14 @@ export default function ConnectPage() {
     setProduct(detail.tenant.product);
     setRepo(detail.tenant.repo);
     setDeploy(detail.tenant.deploy_url);
+    setOauth(await api.oauth());
   }
 
   useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const ws = q.get("workspace");
+    if (ws === "ok") setSaved("Google Workspace connected. Drafts and calendar holds can run. Send stays off.");
+    if (ws === "error") setErr(q.get("detail") || "Google authorization did not complete.");
     load()
       .catch((e) => setErr(e instanceof Error ? e.message : "failed"))
       .finally(() => setReady(true));
@@ -85,6 +93,22 @@ export default function ConnectPage() {
     }
   }
 
+  async function saveGoogle() {
+    setBusy(true);
+    setSaved(null);
+    try {
+      const next = await api.saveGoogleClient(clientId.trim(), clientSecret.trim());
+      setOauth(next);
+      setClientId("");
+      setClientSecret("");
+      setSaved("OAuth client saved. Authorize Gmail and Calendar next.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const gate = tenant.repo
     ? `Approvals will open a pull request on ${tenant.repo}. Product OS will not merge it.`
     : "Approvals will only flip an OS flag until a git repo is set.";
@@ -95,7 +119,7 @@ export default function ConnectPage() {
       <h1 className="mt-1 text-[26px] font-semibold tracking-tight sm:text-[32px]">Connect</h1>
       <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
         Their app lives on their origin. This desk holds git, the deploy URL, and a hashed token so they can read flags
-        and post voice. Mail and calendar skip until Workspace OAuth exists.
+        and post voice. Gmail drafts and calendar holds need a one-time Google consent. Send stays off.
       </p>
 
       <form
@@ -171,6 +195,71 @@ export default function ConnectPage() {
         </Button>
         {saved ? <p className="text-[14px] text-[var(--dim)]">{saved}</p> : null}
       </form>
+
+      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Google Workspace</h2>
+      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        Same pattern as Google’s ADK Workspace agent: one consent, stored refresh token, no send. Create a Web client
+        in Google Auth Platform, paste it here, then authorize.
+      </p>
+      {oauth?.connected ? (
+        <p className="mt-4 text-[14px] text-[var(--dim)]">
+          Connected{oauth.email ? ` as ${oauth.email}` : ""}. Drafts and calendar holds can run. Send stays off.
+        </p>
+      ) : (
+        <p className="mt-4 text-[14px]">
+          <a href={oauth?.authorize_url || "/api/oauth/google/start"} className="text-accent">
+            Authorize Gmail and Calendar
+          </a>
+        </p>
+      )}
+      {oauth?.redirect_uri ? (
+        <p className="mt-3 max-w-lg text-[13px] leading-5 text-[var(--faint)]">
+          Redirect URI to add on the client: {oauth.redirect_uri}
+        </p>
+      ) : null}
+      {oauth && !oauth.configured ? (
+        <form
+          className="mt-6 max-w-xl space-y-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void saveGoogle();
+          }}
+        >
+          <label className="block text-[13px] text-[var(--faint)]">
+            OAuth client ID
+            <input className={field} value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
+          </label>
+          <label className="block text-[13px] text-[var(--faint)]">
+            OAuth client secret
+            <input
+              className={field}
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              placeholder="Never shown again"
+              autoComplete="new-password"
+            />
+          </label>
+          <p className="text-[13px] leading-5 text-[var(--dim)]">
+            <a href={oauth.console.overview} className="text-accent" target="_blank" rel="noreferrer">
+              Open Google Auth Platform
+            </a>
+            {" · "}
+            <a href={oauth.console.create_client} className="text-accent" target="_blank" rel="noreferrer">
+              Create a Web client
+            </a>
+            {" · "}
+            add yourself under{" "}
+            <a href={oauth.console.audience} className="text-accent" target="_blank" rel="noreferrer">
+              Audience
+            </a>{" "}
+            as a test user.
+          </p>
+          <Button type="submit" disabled={busy || !clientId.trim() || !clientSecret.trim()}>
+            Save client
+          </Button>
+        </form>
+      ) : null}
 
       <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Flags they read</h2>
       <div className="mt-5 max-w-xl space-y-3">

@@ -215,6 +215,28 @@ def post(
     if room:
         room.last_message_at = msg.created_at
         engine.store.put_room(room)
+    from .live import HUB
+
+    event_type = "artifact" if kind == "artifact" else "message"
+    HUB.publish(
+        room_id,
+        {
+            "type": event_type,
+            "message": msg.model_dump(mode="json") if event_type == "message" else None,
+            "artifact": {
+                "id": msg.id,
+                "room_id": room_id,
+                "kind": artifact_type or kind,
+                "payload": artifact or {"text": text},
+                "text": text,
+                "created_at": msg.created_at.isoformat() if hasattr(msg.created_at, "isoformat") else str(msg.created_at),
+            }
+            if event_type == "artifact"
+            else None,
+        },
+    )
+    if author_kind == "agent":
+        HUB.set_presence(room_id, author, "speaking", {"label": author, "hue": abs(hash(author)) % 360})
     return msg
 
 

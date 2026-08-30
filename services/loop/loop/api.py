@@ -6,13 +6,14 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 
 from .config import REPO_ROOT, settings
 from .engine import LoopEngine, default_engine, log_verdict
+from .live import HUB, funnel_for
 from .models import InvestigationState
 from .office import agent_snapshot, office_snapshot
 from .registry import ENTRIES, gateway_allows
@@ -103,6 +104,11 @@ class IngestSignalBody(BaseModel):
 class IngestVoiceBody(BaseModel):
     text: str
     tokenized_user: str = "tok_anon"
+
+
+class GoogleClientBody(BaseModel):
+    client_id: str
+    client_secret: str
 
 
 @app.get("/api/health")
@@ -288,6 +294,54 @@ def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | N
     }
 
 
+@app.get("/api/oauth/google")
+def google_oauth_status(request: Request):
+    from .connectors import google_oauth
+
+    return google_oauth.status(_request_base(request))
+
+
+@app.post("/api/oauth/google/client")
+def google_oauth_client(body: GoogleClientBody):
+    from .connectors import google_oauth
+
+    if not body.client_id.strip() or not body.client_secret.strip():
+        raise HTTPException(400, "client_id and client_secret required")
+    out = google_oauth.save_client(body.client_id, body.client_secret)
+    assert "client_secret" not in out
+    return out
+
+
+@app.get("/api/oauth/google/start")
+def google_oauth_start(request: Request):
+    from .connectors import google_oauth
+
+    url = google_oauth.authorization_url(_request_base(request))
+    if not url:
+        return RedirectResponse(google_oauth.CONSOLE_OVERVIEW, status_code=302)
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/oauth/google/callback")
+def google_oauth_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    from .connectors import google_oauth
+
+    if error or not code:
+        return RedirectResponse(google_oauth.console_return(False, error or "denied"), status_code=302)
+    ok, detail = google_oauth.exchange_code(code, state, _request_base(request))
+    return RedirectResponse(google_oauth.console_return(ok, "" if ok else detail), status_code=302)
+
+
+def _request_base(request: Request) -> str:
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    if host and "run.app" in host:
+        proto = "https"
+    if host:
+        return f"{proto}://{host}"
+    return str(request.base_url).rstrip("/")
+
+
 @app.post("/api/t/{tenant_id}/voice")
 def tenant_voice(tenant_id: str, body: IngestVoiceBody, authorization: str | None = Header(default=None)):
     from .world import ingest_tenant_voice
@@ -339,11 +393,18 @@ def room_detail(room_id: str):
     if not room:
         raise HTTPException(404, "room not found")
     bundle = _bundle(eng, room.investigation_id) if room.investigation_id and eng.store.get_investigation(room.investigation_id) else None
+    awaiting = False
+    state = None
+    if bundle and bundle.get("investigation"):
+        state = bundle["investigation"].get("state")
+        awaiting = any(a.get("status") in {"proposed", "awaiting_approval"} for a in bundle.get("actions") or [])
     return {
         "room": room.model_dump(mode="json"),
         "messages": [m.model_dump(mode="json") for m in eng.store.list_messages(room_id)],
         "bundle": bundle,
         "members": room.members,
+        "presence": HUB.agents_in(room_id),
+        "funnel": funnel_for(room.loop_type, state, awaiting=awaiting),
     }
 
 
@@ -445,10 +506,31 @@ def decide(action_id: str, body: ApproveBody):
     action = eng.store.get_action(action_id)
     if not action:
         raise HTTPException(404, "action not found")
+    # Skip-if-done HITL (SalesShortcut before_tool_callback pattern).
+    if body.decision == "approve" and action.status == "executed":
+        execution = (action.artifacts or {}).get("execution") or {}
+        return {
+            "approval": "approve",
+            "reused": True,
+            "execution": execution,
+            "pr_url": execution.get("pr_url"),
+            **_bundle(eng, action.investigation_id),
+        }
     if body.decision == "approve":
         outcome = eng.resume_after_approval(action_id, body.approver, body.rationale)
         fresh = eng.store.get_action(action_id)
         execution = ((fresh.artifacts or {}).get("execution") if fresh else None) or {}
+        from .live import room_id_for_investigation
+
+        rid = room_id_for_investigation(eng.store, action.investigation_id)
+        if rid:
+            HUB.publish(
+                rid,
+                {
+                    "type": "approval_resolved",
+                    "approval": {"id": action_id, "status": "approved", "reused": False},
+                },
+            )
         return {
             "approval": "approve",
             "outcome": outcome.model_dump(mode="json"),
@@ -458,6 +540,112 @@ def decide(action_id: str, body: ApproveBody):
         }
     approval = eng.approve(action_id, body.approver, "deny", body.rationale)
     return {"approval": approval.model_dump(mode="json"), **_bundle(eng, action.investigation_id)}
+
+
+@app.post("/api/scenarios/{slug}/run")
+def scenario_run(slug: str):
+    """Eval fixture runner — explicit chip, not product shape."""
+    from .agents.graphs import run_presence_sweep
+
+    eng = get_engine()
+    eng.seed_world()
+    room = next((r for r in eng.store.list_rooms() if r.scenario_id == slug), None)
+    if not room:
+        raise HTTPException(404, f"unknown scenario {slug}")
+    for mid in room.members:
+        HUB.set_presence(room.id, mid, "idle", {"label": mid, "hue": abs(hash(mid)) % 360})
+    HUB.publish(room.id, {"type": "signal", "signal": {"scenario": slug, "roomId": room.id}})
+    lt = room.loop_type.value if hasattr(room.loop_type, "value") else str(room.loop_type or "")
+    fork = "FEATURE" if lt.lower() in {"type_b", "b", "feature"} else "BUG"
+    walked = run_presence_sweep(
+        room.id,
+        fork,
+        lambda rid, aid, st: HUB.set_presence(rid, aid, st, {"label": aid, "hue": abs(hash(aid)) % 360}),
+        HUB.publish,
+    )
+    return {
+        "scenario": slug,
+        "room_id": room.id,
+        "room": room.model_dump(mode="json"),
+        "funnel": funnel_for(room.loop_type, None),
+        "pipeline": walked,
+        "presence": HUB.agents_in(room.id),
+    }
+
+
+@app.get("/api/workflows")
+def workflows():
+    from .agents.graphs import adk2_alignment
+
+    return adk2_alignment()
+
+
+class AgentCallbackBody(BaseModel):
+    room_id: str = ""
+    agent_id: str = "orchestrator"
+    status: str = "thinking"
+    message: str = ""
+    kind: str = "agent_presence"
+    data: dict = {}
+
+
+@app.post("/api/agent_callback")
+def agent_callback(body: AgentCallbackBody):
+    """SalesShortcut-style push: agents POST updates → WebSocket fans out."""
+    rid = body.room_id
+    if not rid:
+        raise HTTPException(400, "room_id required")
+    if body.kind == "agent_presence" or body.status:
+        HUB.set_presence(rid, body.agent_id, body.status or "thinking", {"label": body.agent_id})
+    if body.message:
+        from .world import post
+
+        eng = get_engine()
+        if eng.store.get_room(rid):
+            post(
+                eng,
+                rid,
+                author=body.agent_id,
+                author_kind="agent",
+                kind="chat",
+                text=body.message,
+            )
+        else:
+            HUB.publish(
+                rid,
+                {
+                    "type": "message",
+                    "message": {
+                        "author": body.agent_id,
+                        "author_kind": "agent",
+                        "text": body.message,
+                        "kind": "chat",
+                    },
+                },
+            )
+    if body.data:
+        HUB.publish(rid, {"type": body.kind or "trace", "agentId": body.agent_id, "data": body.data})
+    return {"ok": True, "room_id": rid, "presence": HUB.agents_in(rid)}
+
+
+@app.websocket("/ws")
+async def ws_global(ws: WebSocket):
+    await HUB.connect_global(ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        HUB.disconnect("", ws)
+
+
+@app.websocket("/ws/rooms/{room_id}")
+async def ws_room(room_id: str, ws: WebSocket):
+    await HUB.connect(room_id, ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        HUB.disconnect(room_id, ws)
 
 
 @app.get("/api/outcomes")
