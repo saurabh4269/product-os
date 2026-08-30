@@ -29,5 +29,5 @@ See README “Honest Google-product mapping”. Agent Gateway, Memory Bank, Live
 
 ## Docs for the next agent
 
-- [`AGENTS.md`](../AGENTS.md) — handoff, commands, UI contract
+- [`AGENTS.md`](../AGENTS.md) — handoff, commands, UI contract, and the named references from this chat (Bubu/Mochi, OpenClaw, Claude City, …)
 - [`docs/LEARNINGS.md`](LEARNINGS.md) — pitfalls and errors already hit
