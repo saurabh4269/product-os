@@ -2,6 +2,8 @@
 
 Product OS is a production control plane. It does **not** host the customer’s product.
 
+What to build so a tenant can connect: [`PLAN_NEXT.md`](PLAN_NEXT.md).
+
 | Piece | What it is | Where it lives |
 |---|---|---|
 | Product OS | Campus, rooms, agents, approvals, memory | `github.com/saurabh4269/product-os` · Cloud Run `loop` |

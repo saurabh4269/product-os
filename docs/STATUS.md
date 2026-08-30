@@ -23,9 +23,11 @@ Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/d
 - ADK 2: 23 `LlmAgent`s / 7 Apps locally. Hosted path is the deterministic engine.
 - Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
 
-## Next (blocked on the user)
+## Next
 
-Tenant app is **not** in this repo. Waiting on a tenant git repo, a second deploy, a shared token secret, and both repos on the Cloud Agent environment. See [`docs/TENANT.md`](TENANT.md).
+Build: [`docs/PLAN_NEXT.md`](PLAN_NEXT.md) (tenant, flags Y can read, ingest, connectors that skip honestly).
+
+Still blocked on the user for a **real** Product Y: tenant git repo, second deploy, token secret, both repos on the environment. See [`docs/TENANT.md`](TENANT.md).
 
 ## PRs
 
@@ -42,5 +44,6 @@ See README “Honest Google-product mapping”. Agent Gateway, Memory Bank, Live
 ## Docs for the next agent
 
 - [`AGENTS.md`](../AGENTS.md) — handoff, commands, UI contract, named references
+- [`docs/PLAN_NEXT.md`](PLAN_NEXT.md) — next build (connectors, not a shop on this origin)
 - [`docs/TENANT.md`](TENANT.md) — tenant vs OS; what we still need from the user
 - [`docs/LEARNINGS.md`](LEARNINGS.md) — pitfalls already hit

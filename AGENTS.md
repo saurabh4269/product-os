@@ -1,6 +1,6 @@
 # AGENTS.md — handoff for the next agent
 
-You are continuing **Product OS (LOOP)**. Read this file first, then [`docs/LEARNINGS.md`](docs/LEARNINGS.md) and [`docs/TENANT.md`](docs/TENANT.md) before you change deploy, the campus map, the console API URL, or anything that looks like a shop.
+You are continuing **Product OS (LOOP)**. Read this file first, then [`docs/LEARNINGS.md`](docs/LEARNINGS.md), [`docs/TENANT.md`](docs/TENANT.md), and [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md) before you change deploy, the campus map, the console API URL, or anything that looks like a shop.
 
 Repo: `github.com/saurabh4269/product-os`  
 Live: https://loop-5uy6fkd7bq-uc.a.run.app  
@@ -46,9 +46,9 @@ These are the named products, looks, and decisions from this chat. Open them bef
 - Hosted revision: `loop-00025-pp5` (no tenant shop on this origin)
 - PRs: [#1](https://github.com/saurabh4269/product-os/pull/1)–[#4](https://github.com/saurabh4269/product-os/pull/4) merged · [#7](https://github.com/saurabh4269/product-os/pull/7) on `main` (sitters off campus + shop off this origin) · [#5](https://github.com/saurabh4269/product-os/pull/5) / [#6](https://github.com/saurabh4269/product-os/pull/6) closed
 
-## Next work (blocked)
+## Next work
 
-Do **not** rebuild a storefront in this repo. Wait for the tenant repo + second deploy + token — list in [`docs/TENANT.md`](docs/TENANT.md). Then build the demo app **there**, onboard it as a tenant, and connect flags / voice / PRs.
+Build order is [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md). Tenant **connectors** start in this repo now (honest skip if no token). The demo Product Y still waits on the user — [`docs/TENANT.md`](docs/TENANT.md). Do **not** rebuild a storefront here.
 
 ## Binding rules
 
@@ -79,6 +79,7 @@ docs/PRD.md            Spec (binding MUST)
 docs/PLAN.md           Architecture this code implements
 docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 docs/TENANT.md         Tenant app is a separate repo. What we still need.
+docs/PLAN_NEXT.md      What to build next so Company X can actually connect Product Y.
 ```
 
 ### Console (what you will edit)
