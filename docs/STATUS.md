@@ -6,11 +6,11 @@ Last updated: 2026-08-30
 
 **Product OS (console + API):** https://loop-5uy6fkd7bq-uc.a.run.app
 
-`us-central1` Cloud Run service `loop` (bundle path, revision `loop-00028-2vb`). Public `python:3.12-slim` + GCS tarball. SQLite is ephemeral (re-seeds the **full world** on cold start). Vendor wheels are built **inside** `python:3.12-slim` so they match the image (local Kali is 3.13).
+`us-central1` Cloud Run service `loop` (bundle path, revision `loop-00032-q4p`). Public `python:3.12-slim` + GCS tarball. `--min-instances 1` so SQLite and the UI stay warm. Vendor wheels are built **inside** `python:3.12-slim` so they match the image (local Kali is 3.13). `/shop` and `/company` 404.
 
 **Product Y (Northstar):** https://northstar-5uy6fkd7bq-uc.a.run.app
 
-Cloud Run service `northstar` (revision `northstar-00003-pdj`). Repo: https://github.com/saurabh4269/northstar
+Cloud Run service `northstar` (revision `northstar-00008-xj7`). Repo: https://github.com/saurabh4269/northstar
 
 Redeploy OS: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/deploy-gcp.sh`  
 (needs `LOOP_TENANT_REPO`, `LOOP_TENANT_DEPLOY_URL`, `LOOP_TENANT_BOOTSTRAP_TOKEN`, `LOOP_GITHUB_TOKEN` in the environment)
@@ -28,7 +28,7 @@ Redeploy Y: `LOOP_TENANT_TOKEN=… ./scripts/deploy.sh` in the northstar repo.
 - Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN). Tenant feedback POSTs `/api/t/{id}/voice` and opens a research room.
 - Code Agent fixture targets stay in `apps/northstar-shop` (JS adapters only). Product OS does **not** host a tenant shop.
 - Tenant wire: `/connect` form (repo, deploy URL, rotate token — never echoed). Token-gated `/api/t/{id}/flags|signals|voice`. Ingest opens or joins rooms. Approve HIGH flips `pay_sdk_4_3` and opens a real PR on the tenant repo. `merged` stays false. Mail/calendar skip without OAuth.
-- End-to-end proven: Northstar checkout showed SDK 4.3 → HIGH approve in OS → flags off + [PR #1](https://github.com/saurabh4269/northstar/pull/1) (open, not merged) → checkout shows 4.2.1 from live flags.
+- End-to-end proven: Northstar checkout showed SDK 4.3 → HIGH approve in OS → flags off + [PR #2](https://github.com/saurabh4269/northstar/pull/2) (open, not merged) → checkout shows 4.2.1 from live flags. Place-order then succeeds.
 - ADK 2: 23 `LlmAgent`s / 7 Apps locally. Hosted path is the deterministic engine.
 - Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
 

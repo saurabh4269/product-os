@@ -826,8 +826,13 @@ class LoopEngine:
 
         return seed_world(self)
 
-    def resume_after_approval(self, action_id: str, approver: str) -> Outcome:
-        self.approve(action_id, approver, "approve", "On-call confirmed Safari 3DS blast radius.")
+    def resume_after_approval(self, action_id: str, approver: str, rationale: str = "") -> Outcome:
+        self.approve(
+            action_id,
+            approver,
+            "approve",
+            rationale or "Evidence pack and risk gate reviewed.",
+        )
         self.execute_approved(action_id)
         action = self.store.get_action(action_id)
         assert action

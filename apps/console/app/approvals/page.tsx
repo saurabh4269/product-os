@@ -10,6 +10,8 @@ export default function ApprovalsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [prUrl, setPrUrl] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -37,7 +39,19 @@ export default function ApprovalsPage() {
   async function decide(a: Action, decision: "approve" | "deny") {
     setBusy(a.id);
     try {
-      await api.approve(a.id, decision);
+      const res = await api.approve(a.id, decision);
+      if (decision === "approve") {
+        if (res.pr_url) {
+          setNotice("Pull request opened. Product OS did not merge it.");
+          setPrUrl(res.pr_url);
+        } else if (res.execution?.flag) {
+          setNotice(`Flag ${res.execution.flag} is now ${String(res.execution.value ?? "updated")}.`);
+          setPrUrl(null);
+        } else {
+          setNotice("Approved.");
+          setPrUrl(null);
+        }
+      }
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed");
@@ -50,6 +64,19 @@ export default function ApprovalsPage() {
     <div className="page-pad">
       <h1 className="text-[26px] font-semibold tracking-tight sm:text-[32px]">Approvals</h1>
       <p className="mt-3 text-[15px] text-[var(--dim)]">A few changes are waiting for a yes.</p>
+      {notice ? (
+        <p className="mt-4 max-w-xl text-[14px] leading-6 text-foreground">
+          {notice}
+          {prUrl ? (
+            <>
+              {" "}
+              <a href={prUrl} className="text-accent" target="_blank" rel="noreferrer">
+                Open on GitHub
+              </a>
+            </>
+          ) : null}
+        </p>
+      ) : null}
       {data.pending.length === 0 ? (
         <Empty title="You’re all caught up." hint="New gates will show up here." />
       ) : (
@@ -65,10 +92,10 @@ export default function ApprovalsPage() {
                     : "Will only flip an OS flag. No git repo is connected.")}
               </p>
               <div className="mt-4 flex items-center gap-3">
-                <Button disabled={busy === a.id} onClick={() => void decide(a, "approve")}>
-                  Approve
+                <Button disabled={busy !== null} onClick={() => void decide(a, "approve")}>
+                  {busy === a.id ? "Working…" : "Approve"}
                 </Button>
-                <Button variant="ghost" disabled={busy === a.id} onClick={() => void decide(a, "deny")}>
+                <Button variant="ghost" disabled={busy !== null} onClick={() => void decide(a, "deny")}>
                   Not yet
                 </Button>
                 <Link href={roomHref(a)} className="text-[13px] text-accent">

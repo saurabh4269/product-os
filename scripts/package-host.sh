@@ -3,7 +3,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/dist/host"
-rm -rf "$DIST"
+if ! rm -rf "$DIST" 2>/dev/null; then
+  docker run --rm -v "$ROOT/dist:/dist" alpine:3.20 rm -rf /dist/host
+fi
 mkdir -p "$DIST/vendor" "$DIST/static" "$DIST/services/loop" "$DIST/data" "$DIST/config" "$DIST/playbooks" "$DIST/var"
 
 # Vendor for Cloud Run python:3.12-slim (local python is 3.13; native wheels must match 3.12).

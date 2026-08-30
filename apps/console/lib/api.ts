@@ -227,7 +227,12 @@ export const api = {
       gate?: { mode: string; tenant_repo: string; label: string };
     }>("/api/approvals"),
   approve: (actionId: string, decision: "approve" | "deny") =>
-    post(`/api/approvals/${actionId}`, {
+    post<{
+      approval: unknown;
+      outcome?: Record<string, unknown>;
+      execution?: { flag?: string; value?: string; pr_url?: string; pr_opened?: boolean; merged?: boolean };
+      pr_url?: string;
+    }>(`/api/approvals/${actionId}`, {
       decision,
       approver: "you@product-os",
       rationale:

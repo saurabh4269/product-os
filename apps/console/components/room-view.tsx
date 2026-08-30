@@ -41,15 +41,37 @@ function Gate({
   busy: boolean;
   onDecide: (d: "approve" | "deny") => void;
 }) {
+  const execution = (action.artifacts?.execution ?? {}) as { pr_url?: string; flag?: string; value?: string };
+  if (action.status === "executed") {
+    return (
+      <div className="my-5 max-w-[620px] rounded-2xl border border-border bg-[var(--elev)] p-5">
+        <p className="text-[13px] text-[var(--dim)]">Done</p>
+        <p className="mt-2 text-[16px] font-semibold leading-6 tracking-tight">This change already ran</p>
+        {execution.flag ? (
+          <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">
+            {execution.flag} is {String(execution.value ?? "updated")}.
+          </p>
+        ) : null}
+        {execution.pr_url ? (
+          <p className="mt-2 text-[14px]">
+            <a href={execution.pr_url} className="text-accent" target="_blank" rel="noreferrer">
+              Open the pull request
+            </a>
+          </p>
+        ) : null}
+      </div>
+    );
+  }
   if (!["proposed", "awaiting_approval"].includes(action.status)) return null;
   return (
     <div className="my-5 max-w-[620px] rounded-2xl border border-border bg-[var(--elev)] p-5">
       <p className="text-[13px] text-[var(--dim)]">Needs a look · {action.risk_tier}</p>
       <p className="mt-2 text-[16px] font-semibold leading-6 tracking-tight">This change is waiting on you</p>
       <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">{action.consequence}</p>
+      {action.gate ? <p className="mt-2 text-[13px] leading-5 text-[var(--dim)]">{action.gate}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button onClick={() => onDecide("approve")} disabled={busy}>
-          Approve
+          {busy ? "Working…" : "Approve"}
         </Button>
         <Button variant="ghost" onClick={() => onDecide("deny")} disabled={busy}>
           Not yet
@@ -147,6 +169,8 @@ export function RoomView({ initialId }: { initialId?: string }) {
     try {
       await api.approve(actionId, decision);
       await load(id);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "failed");
     } finally {
       setBusy(false);
     }

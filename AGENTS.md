@@ -44,7 +44,7 @@ These are the named products, looks, and decisions from this chat. Open them bef
 
 - Console + API: https://loop-5uy6fkd7bq-uc.a.run.app (also `https://loop-632958340118.us-central1.run.app`)
 - This agent run: https://cursor.com/agents/bc-8c53e2be-2abe-4034-a712-16e9ff15e32b
-- Hosted revision: `loop-00028-2vb` (Connect + tenant APIs + GitHub PR on approve; no shop on this origin)
+- Hosted revision: `loop-00032-q4p` (Connect + tenant APIs + GitHub PR on approve; `/shop` 404; min-instances 1)
 - PRs [#1](https://github.com/saurabh4269/product-os/pull/1)–[#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6’s shop commits are in history but **deleted at tip**. Do not restore `/shop`.
 
 **Product Y:** https://github.com/saurabh4269/northstar · https://northstar-5uy6fkd7bq-uc.a.run.app (Cloud Run `northstar`)

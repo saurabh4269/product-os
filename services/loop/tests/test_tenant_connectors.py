@@ -143,6 +143,14 @@ def test_tenant_http_flags_and_ingest(engine, monkeypatch):
         gates = client.get("/api/approvals")
         assert gates.json()["gate"]["mode"] == "github_pr"
         assert "saurabh4269/northstar" in gates.json()["gate"]["label"]
+        pending = gates.json()["pending"]
+        flag_rows = [p for p in pending if (p.get("artifacts") or {}).get("flag")]
+        issue_rows = [p for p in pending if (p.get("artifacts") or {}).get("github_issue")]
+        assert flag_rows
+        assert all(p["gate_mode"] == "github_pr" for p in flag_rows)
+        if issue_rows:
+            assert issue_rows[0]["gate_mode"] == "github_issue"
+            assert "issue" in issue_rows[0]["gate"]
         sig = client.post(
             "/api/t/acme/signals",
             headers={"Authorization": "Bearer newer-secret"},
@@ -183,3 +191,5 @@ def test_console_does_not_host_a_shop():
     assert "Shop" not in campus
     assert "x: 28, y: 72" in campus
     assert "x: 50, y: 80" in campus
+    api_src = (ROOT / "services" / "loop" / "loop" / "api.py").read_text()
+    assert 'rel.split("/", 1)[0] in {"shop", "company"}' in api_src

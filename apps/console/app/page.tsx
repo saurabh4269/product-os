@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type OfficeSnapshot, type Room } from "@/lib/api";
 import { pct } from "@/lib/utils";
-import { ErrorState, Loading } from "@/components/ui";
+import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
 import { IsoOffice } from "@/components/iso-office";
 import { OfficeFloor } from "@/components/office-floor";
@@ -17,7 +17,7 @@ function magLabel(raw: unknown) {
 }
 
 export default function HomePage() {
-  const [rooms, setRooms] = useState<Room[] | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [signals, setSignals] = useState<Array<Record<string, unknown>>>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -37,8 +37,9 @@ export default function HomePage() {
   }, []);
 
   if (err) return <ErrorState message={err} />;
-  if (!rooms || !office) return <Loading label="Opening the campus" />;
 
+  const desks = office?.desks ?? [];
+  const handoffs = office?.handoffs ?? [];
   const chambers = rooms.filter((r) => r.scenario_id || ["review", "research", "ops"].includes(r.kind));
 
   function walkInside(district: string) {
@@ -53,8 +54,8 @@ export default function HomePage() {
       <section className="lg:h-full">
         <CityMap
           rooms={chambers}
-          desks={office.desks}
-          handoffs={office.handoffs}
+          desks={desks}
+          handoffs={handoffs}
           picked={picked}
           onPick={(id) => setPicked(id)}
           onWalkInside={walkInside}
@@ -90,9 +91,9 @@ export default function HomePage() {
 
         <div id="inside" className="mt-12 scroll-mt-6">
           <IsoOffice
-            desks={office.desks}
+            desks={desks}
             rooms={chambers}
-            handoffs={office.handoffs}
+            handoffs={handoffs}
             focus={inside}
             picked={picked}
             onPickRoom={(id, district) => {
@@ -105,7 +106,7 @@ export default function HomePage() {
         </div>
 
         <div className="mt-12">
-          <OfficeFloor desks={office.desks} handoffs={office.handoffs} working={office.working} />
+          <OfficeFloor desks={desks} handoffs={handoffs} working={office?.working ?? 0} />
         </div>
 
         <div className="mt-12 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -114,7 +115,7 @@ export default function HomePage() {
         </div>
         <div className="rise mt-5 grid grid-cols-1 gap-8 sm:gap-10 lg:grid-cols-2 xl:grid-cols-3">
           {chambers.map((room) => (
-            <RoomCard key={room.id} room={room} desks={office.desks} />
+            <RoomCard key={room.id} room={room} desks={desks} />
           ))}
         </div>
       </section>

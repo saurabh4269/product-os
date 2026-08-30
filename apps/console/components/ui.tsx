@@ -60,6 +60,13 @@ export function ErrorState({ message }: { message: string }) {
       <div>
         <p className="text-[18px] font-medium">Can’t reach the app right now.</p>
         <p className="mt-2 text-[14px] text-[var(--dim)]">{message}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 text-[14px] font-medium text-accent"
+        >
+          Try again
+        </button>
       </div>
     </div>
   );

@@ -6,6 +6,19 @@ import { ErrorState, Loading } from "@/components/ui";
 
 const KINDS = ["customer", "product", "engineering", "organizational"] as const;
 
+function memoryLine(card: Record<string, unknown>): string {
+  if (typeof card.statement === "string" && card.statement.trim()) return card.statement;
+  if (typeof card.text === "string" && card.text.trim()) return card.text;
+  const structured = card.structured;
+  if (structured && typeof structured === "object") {
+    const o = structured as Record<string, unknown>;
+    if (typeof o.reason === "string") return o.reason.replace(/_/g, " ");
+    if (typeof o.statement === "string") return o.statement;
+  }
+  if (typeof card.reason === "string") return card.reason.replace(/_/g, " ");
+  return "";
+}
+
 export default function MemoryPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.memory>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -48,7 +61,7 @@ export default function MemoryPage() {
               ) : (
                 (data.memory[kind] ?? []).map((card, i) => (
                   <p key={String(card.id ?? i)} className="text-[14px] leading-6">
-                    {String(card.statement ?? JSON.stringify(card.structured ?? card))}
+                    {memoryLine(card) || "A note is stored here."}
                   </p>
                 ))
               )}

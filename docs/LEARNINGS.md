@@ -31,9 +31,7 @@ Production console must use `BASE = ""` (same origin as FastAPI).
 
 1. `package-host.sh` writes `dist/loop-host.tgz` (vendor wheels + `loop/` + static `out/`).
 2. Upload to `gs://mystical-timing-442601-q8-loop-host/loop-host.tgz` (object is world-readable so the container can `curl` it).
-3. `gcloud run deploy loop --image python:3.12-slim` with a bash `-c` that apt-gets curl, extracts the tarball, runs uvicorn.
-
-Cold start is slow (apt-get every boot). First request can take a minute. Do not treat that as a code bug.
+**Fix:** Keep the known-good `apt-get` + `curl` boot (gcloud `--args` splits on commas, so a Python `urlretrieve(url, path)` will cut the script in half and the revision never listens). Set `--min-instances 1` so apt-get only runs on deploy, not on every user. Warm TTFB should be hundreds of ms. Do not treat that as a code bug.
 
 ### `LOOP_STATIC` left on breaks `next dev`
 
@@ -55,7 +53,7 @@ Cold start is slow (apt-get every boot). First request can take a minute. Do not
 
 **Why:** That made Product OS look like a demo that includes a fake store. Production OS observes a product. It does not serve the product.
 
-**Fix:** Tenant HTML stays out of `apps/console/public` and FastAPI. `GET /api/company` does not exist. Fixture adapters stay in `apps/northstar-shop` (JS only). The real/demo shop is a **second repo and second deploy**. SPA fallback may still 200 `/shop` as the OS homepage — that is not a storefront.
+**Fix:** Tenant HTML stays out of `apps/console/public` and FastAPI. `GET /api/company` does not exist. Fixture adapters stay in `apps/northstar-shop` (JS only). The real/demo shop is a **second repo and second deploy**. SPA fallback **404s** `/shop` and `/company` so they are not a fake storefront.
 
 ### Vendor for Cloud Run is Python 3.12
 

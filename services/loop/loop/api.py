@@ -110,6 +110,18 @@ def health():
     return {"ok": True, "service": "loop", "hosted": bool(os.environ.get("K_SERVICE")), "region": settings().region}
 
 
+def _visible_flags(eng, tenant_id: str) -> dict[str, str]:
+    raw = eng.store.list_flags()
+    flags = {k.split(":", 2)[-1]: v for k, v in raw.items() if k.startswith(f"t:{tenant_id}:")}
+    globals_ = {k: v for k, v in raw.items() if not k.startswith("t:")}
+    for name in ("pay_sdk_4_3", "onboarding_copy_exp_b", "show_delivery_date_earlier"):
+        if name not in flags:
+            default = "off" if name == "show_delivery_date_earlier" else "on"
+            flags[name] = globals_.get(name) or default
+    flags["pay_sdk"] = "4.2.1" if flags.get("pay_sdk_4_3") == "off" else "4.3.0"
+    return flags
+
+
 def _public_tenant(t) -> dict:
     d = t.model_dump()
     d.pop("token_hash", None)
@@ -146,13 +158,52 @@ def _gate(eng) -> dict:
         return {
             "mode": "github_pr",
             "tenant_repo": t.repo,
-            "label": f"Will open a pull request on {t.repo}. Product OS will not merge it.",
+            "label": f"Flag changes will open a pull request on {t.repo}. Product OS will not merge it.",
         }
     return {
         "mode": "flag_only",
         "tenant_repo": "",
         "label": "Will only flip an OS flag. No git repo is connected.",
     }
+
+
+def _action_gate(eng, action) -> dict:
+    tenants = eng.store.list_tenants()
+    t = next((x for x in tenants if getattr(x, "repo", None)), None)
+    repo = (t.repo if t else "") or ""
+    arts = action.artifacts or {}
+    if "flag" in arts and repo:
+        return {
+            "mode": "github_pr",
+            "tenant_repo": repo,
+            "label": f"Will open a pull request on {repo}. Product OS will not merge it.",
+        }
+    if isinstance(arts.get("github_issue"), dict) and repo:
+        return {
+            "mode": "github_issue",
+            "tenant_repo": repo,
+            "label": f"Will open a GitHub issue on {repo}. Product OS will not merge or deploy.",
+        }
+    if "flag" in arts:
+        return {
+            "mode": "flag_only",
+            "tenant_repo": "",
+            "label": "Will only flip an OS flag. No git repo is connected.",
+        }
+    return {
+        "mode": "internal",
+        "tenant_repo": repo,
+        "label": "This approval stays inside Product OS. No git change.",
+    }
+
+
+def _action_row(eng, action) -> dict:
+    row = action.model_dump(mode="json")
+    gate = _action_gate(eng, action)
+    row["gate"] = gate["label"]
+    row["gate_mode"] = gate["mode"]
+    row["tenant_repo"] = gate["tenant_repo"]
+    return row
 
 
 @app.get("/api/tenants")
@@ -204,30 +255,16 @@ def rotate_token(tenant_id: str, body: TokenRotateBody):
 
 @app.get("/api/tenants/{tenant_id}")
 def tenant_detail(tenant_id: str):
-    from .tenant import flag_key
-
     t = get_engine().store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(404, "tenant not found")
-    flags = {
-        k.split(":", 2)[-1]: v
-        for k, v in get_engine().store.list_flags().items()
-        if k.startswith(flag_key(tenant_id, ""))
-    }
-    return {"tenant": _public_tenant(t), "flags": flags}
+    return {"tenant": _public_tenant(t), "flags": _visible_flags(get_engine(), tenant_id)}
 
 
 @app.get("/api/t/{tenant_id}/flags")
 def tenant_flags(tenant_id: str, authorization: str | None = Header(default=None)):
     _require_tenant(tenant_id, authorization)
-    raw = get_engine().store.list_flags()
-    flags = {k.split(":", 2)[-1]: v for k, v in raw.items() if k.startswith(f"t:{tenant_id}:")}
-    globals_ = {k: v for k, v in raw.items() if not k.startswith("t:")}
-    for name in ("pay_sdk_4_3", "onboarding_copy_exp_b", "show_delivery_date_earlier"):
-        if name not in flags:
-            default = "off" if name == "show_delivery_date_earlier" else "on"
-            flags[name] = globals_.get(name) or default
-    return {"tenant": tenant_id, "flags": flags}
+    return {"tenant": tenant_id, "flags": _visible_flags(get_engine(), tenant_id)}
 
 
 @app.post("/api/t/{tenant_id}/signals")
@@ -397,13 +434,7 @@ def investigation(inv_id: str):
 def approvals():
     eng = get_engine()
     gate = _gate(eng)
-    pending = []
-    for a in eng.store.pending_approvals():
-        row = a.model_dump(mode="json")
-        row["gate"] = gate["label"]
-        row["gate_mode"] = gate["mode"]
-        row["tenant_repo"] = gate["tenant_repo"]
-        pending.append(row)
+    pending = [_action_row(eng, a) for a in eng.store.pending_approvals()]
     history = [a.model_dump(mode="json") for a in eng.store.list_approvals()]
     return {"pending": pending, "history": history, "gate": gate}
 
@@ -415,8 +446,16 @@ def decide(action_id: str, body: ApproveBody):
     if not action:
         raise HTTPException(404, "action not found")
     if body.decision == "approve":
-        outcome = eng.resume_after_approval(action_id, body.approver)
-        return {"approval": "approve", "outcome": outcome.model_dump(mode="json"), **_bundle(eng, action.investigation_id)}
+        outcome = eng.resume_after_approval(action_id, body.approver, body.rationale)
+        fresh = eng.store.get_action(action_id)
+        execution = ((fresh.artifacts or {}).get("execution") if fresh else None) or {}
+        return {
+            "approval": "approve",
+            "outcome": outcome.model_dump(mode="json"),
+            "execution": execution,
+            "pr_url": execution.get("pr_url"),
+            **_bundle(eng, action.investigation_id),
+        }
     approval = eng.approve(action_id, body.approver, "deny", body.rationale)
     return {"approval": approval.model_dump(mode="json"), **_bundle(eng, action.investigation_id)}
 
@@ -549,7 +588,7 @@ def _bundle(eng: LoopEngine, inv_id: str) -> dict:
         ],
         "evidence": [e.model_dump(mode="json") for e in eng.store.list_evidence(inv_id)],
         "hypotheses": [h.model_dump(mode="json") for h in eng.store.list_hypotheses(inv_id)],
-        "actions": [a.model_dump(mode="json") for a in eng.store.list_actions(inv_id)],
+        "actions": [_action_row(eng, a) for a in eng.store.list_actions(inv_id)],
         "approvals": [
             ap.model_dump(mode="json")
             for a in eng.store.list_actions(inv_id)
@@ -586,6 +625,8 @@ def _spa_file(path: str) -> FileResponse | None:
     if path.startswith("api/"):
         return None
     rel = path.strip("/")
+    if rel.split("/", 1)[0] in {"shop", "company"}:
+        return None
     if not rel:
         return FileResponse(_STATIC / "index.html")
     direct = _STATIC / rel

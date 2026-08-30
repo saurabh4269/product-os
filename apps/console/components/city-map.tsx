@@ -145,8 +145,9 @@ export function CityMap({
           The work has a place.
         </h1>
         <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[#6e6e73]">
-          {desks.filter((d) => d.status !== "idle").length} people are already in the buildings. Tap a
-          building, then flip the work.
+          {desks.length
+            ? `${desks.filter((d) => d.status !== "idle").length} people are already in the buildings. Tap a building, then flip the work.`
+            : "Tap a building, then flip the work."}
         </p>
       </header>
 

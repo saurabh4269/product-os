@@ -13,6 +13,7 @@ export default function ConnectPage() {
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
   const [name, setName] = useState("");
   const [product, setProduct] = useState("");
   const [repo, setRepo] = useState("");
@@ -22,7 +23,10 @@ export default function ConnectPage() {
   async function load() {
     const listed = await api.tenants();
     const first = listed.tenants[0];
-    if (!first) return;
+    if (!first) {
+      setTenant(null);
+      return;
+    }
     const detail = await api.tenant(first.id);
     setTenant(detail.tenant);
     setFlags(detail.flags);
@@ -33,11 +37,23 @@ export default function ConnectPage() {
   }
 
   useEffect(() => {
-    load().catch((e) => setErr(e instanceof Error ? e.message : "failed"));
+    load()
+      .catch((e) => setErr(e instanceof Error ? e.message : "failed"))
+      .finally(() => setReady(true));
   }, []);
 
   if (err) return <ErrorState message={err} />;
-  if (!tenant) return <Loading label="Opening connect" />;
+  if (!ready) return <Loading label="Opening connect" />;
+  if (!tenant) {
+    return (
+      <div className="page-pad">
+        <h1 className="text-[26px] font-semibold tracking-tight">Connect</h1>
+        <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+          No tenant is registered yet. Seed one, then come back.
+        </p>
+      </div>
+    );
+  }
 
   async function save() {
     if (!tenant) return;
@@ -132,6 +148,7 @@ export default function ConnectPage() {
         <p className="text-[13px] text-[var(--faint)]">
           {tenant.has_token ? "Token is set" : "No tenant token"}
           {tenant.last_connector ? ` · ${tenant.last_connector}` : ""}
+          {tenant.last_ingest_at ? ` · last ingest ${tenant.last_ingest_at.slice(0, 16).replace("T", " ")}` : ""}
         </p>
         {tenant.last_pr_url ? (
           <p className="text-[14px]">
