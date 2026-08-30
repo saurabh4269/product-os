@@ -32,11 +32,7 @@ Still blocked on the user for a **real** Product Y: tenant git repo, second depl
 
 ## PRs
 
-| PR | Status |
-|---|---|
-| [#7](https://github.com/saurabh4269/product-os/pull/7) | On `main` — control plane only; sitters off campus |
-| [#5](https://github.com/saurabh4269/product-os/pull/5) | Closed — contained in #7 |
-| [#6](https://github.com/saurabh4269/product-os/pull/6) | Commits are in history (GitHub says merged); **tip of `main` deletes the shop**. Not the product direction. |
+All numbered PRs through [#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6 shop files are **not** at tip. #8 is PLAN_NEXT + Connect + tenant APIs.
 
 ## What is mocked / mapped
 
@@ -48,3 +44,4 @@ See README “Honest Google-product mapping”. Agent Gateway, Memory Bank, Live
 - [`docs/PLAN_NEXT.md`](PLAN_NEXT.md) — next build (connectors, not a shop on this origin)
 - [`docs/TENANT.md`](TENANT.md) — tenant vs OS; what we still need from the user
 - [`docs/LEARNINGS.md`](LEARNINGS.md) — pitfalls already hit
+- [`docs/RESEARCH_LEARNINGS.md`](RESEARCH_LEARNINGS.md) — PRD research traps

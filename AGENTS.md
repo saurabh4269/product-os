@@ -1,6 +1,6 @@
 # AGENTS.md — handoff for the next agent
 
-You are continuing **Product OS (LOOP)**. Read this file first, then [`docs/LEARNINGS.md`](docs/LEARNINGS.md), [`docs/TENANT.md`](docs/TENANT.md), and [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md) before you change deploy, the campus map, the console API URL, or anything that looks like a shop.
+You are continuing **Product OS (LOOP)**. Start from **`main`**. Read this file first, then [`docs/LEARNINGS.md`](docs/LEARNINGS.md), [`docs/RESEARCH_LEARNINGS.md`](docs/RESEARCH_LEARNINGS.md), [`docs/TENANT.md`](docs/TENANT.md), and [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md) before you change deploy, the campus map, the console API URL, or anything that looks like a shop.
 
 Repo: `github.com/saurabh4269/product-os`  
 Live: https://loop-5uy6fkd7bq-uc.a.run.app  
@@ -43,8 +43,8 @@ These are the named products, looks, and decisions from this chat. Open them bef
 
 - Console + API: https://loop-5uy6fkd7bq-uc.a.run.app (also `https://loop-632958340118.us-central1.run.app`)
 - This agent run: https://cursor.com/agents/bc-8c53e2be-2abe-4034-a712-16e9ff15e32b
-- Hosted revision: `loop-00025-pp5` (no tenant shop on this origin)
-- PRs: [#1](https://github.com/saurabh4269/product-os/pull/1)–[#4](https://github.com/saurabh4269/product-os/pull/4) merged · [#7](https://github.com/saurabh4269/product-os/pull/7) on `main` (sitters off campus + shop off this origin) · [#5](https://github.com/saurabh4269/product-os/pull/5) / [#6](https://github.com/saurabh4269/product-os/pull/6) closed
+- Hosted revision: `loop-00026-fql` (Connect + tenant APIs; no shop on this origin)
+- PRs [#1](https://github.com/saurabh4269/product-os/pull/1)–[#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6’s shop commits are in history but **deleted at tip**. Do not restore `/shop`.
 
 ## Next work
 
@@ -77,9 +77,10 @@ infra/terraform/cheap  Applied. gated/ is plan-only
 scripts/               boot, verify, package-host, deploy-gcp
 docs/PRD.md            Spec (binding MUST)
 docs/PLAN.md           Architecture this code implements
-docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
-docs/TENANT.md         Tenant app is a separate repo. What we still need.
-docs/PLAN_NEXT.md      What to build next so Company X can actually connect Product Y.
+docs/LEARNINGS.md          Pitfalls — read before you touch host/UI
+docs/RESEARCH_LEARNINGS.md PRD research traps (failOpen, telephony, quotas)
+docs/TENANT.md             Tenant app is a separate repo. What we still need.
+docs/PLAN_NEXT.md          What to build next so Company X can actually connect Product Y.
 ```
 
 ### Console (what you will edit)
