@@ -36,4 +36,4 @@ Not needed yet: custom domain, real GA4/Ads/BQ, GitHub App review, second GCP pr
 - Serve tenant HTML from FastAPI or `apps/console/public`.
 - Add a Shop rail item or campus Shop pin.
 - Treat `apps/northstar-shop` as a company.
-- Merge PRs that put a storefront on the `loop` origin (that was [#6](https://github.com/saurabh4269/product-os/pull/6); closed).
+- Treat [#6](https://github.com/saurabh4269/product-os/pull/6) as product direction. GitHub marked it merged because those commits sit in history; the **tip of `main` deletes the shop**. Follow #7.

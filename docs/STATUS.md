@@ -29,11 +29,11 @@ Tenant app is **not** in this repo. Waiting on a tenant git repo, a second deplo
 
 ## PRs
 
-| PR | Action |
+| PR | Status |
 |---|---|
-| [#7](https://github.com/saurabh4269/product-os/pull/7) | Merge — OS is the control plane; sitters off campus; no `/shop` |
-| [#5](https://github.com/saurabh4269/product-os/pull/5) | Close — contained in #7 |
-| [#6](https://github.com/saurabh4269/product-os/pull/6) | Close — hosted the shop on this origin |
+| [#7](https://github.com/saurabh4269/product-os/pull/7) | On `main` — control plane only; sitters off campus |
+| [#5](https://github.com/saurabh4269/product-os/pull/5) | Closed — contained in #7 |
+| [#6](https://github.com/saurabh4269/product-os/pull/6) | Commits are in history (GitHub says merged); **tip of `main` deletes the shop**. Not the product direction. |
 
 ## What is mocked / mapped
 

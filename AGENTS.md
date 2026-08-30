@@ -44,7 +44,7 @@ These are the named products, looks, and decisions from this chat. Open them bef
 - Console + API: https://loop-5uy6fkd7bq-uc.a.run.app (also `https://loop-632958340118.us-central1.run.app`)
 - This agent run: https://cursor.com/agents/bc-8c53e2be-2abe-4034-a712-16e9ff15e32b
 - Hosted revision: `loop-00025-pp5` (no tenant shop on this origin)
-- PRs: [#1](https://github.com/saurabh4269/product-os/pull/1)–[#4](https://github.com/saurabh4269/product-os/pull/4) merged earlier · **[#7](https://github.com/saurabh4269/product-os/pull/7) merge this** (sitters off campus + shop off origin) · [#5](https://github.com/saurabh4269/product-os/pull/5) close (in #7) · [#6](https://github.com/saurabh4269/product-os/pull/6) close (shop on this origin)
+- PRs: [#1](https://github.com/saurabh4269/product-os/pull/1)–[#4](https://github.com/saurabh4269/product-os/pull/4) merged · [#7](https://github.com/saurabh4269/product-os/pull/7) on `main` (sitters off campus + shop off this origin) · [#5](https://github.com/saurabh4269/product-os/pull/5) / [#6](https://github.com/saurabh4269/product-os/pull/6) closed
 
 ## Next work (blocked)
 
