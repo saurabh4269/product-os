@@ -5,5 +5,7 @@ from __future__ import annotations
 from .calendar import hold as calendar_hold
 from .github import create_issue, open_pr
 from .mail import draft as mail_draft
+from .voice import place_call
+from .warehouse import publish_signal
 
-__all__ = ["calendar_hold", "create_issue", "mail_draft", "open_pr"]
+__all__ = ["calendar_hold", "create_issue", "mail_draft", "open_pr", "place_call", "publish_signal"]

@@ -61,6 +61,22 @@ export type Action = {
   status: string;
   consequence: string;
   artifacts: Record<string, unknown>;
+  gate?: string;
+  gate_mode?: string;
+  tenant_repo?: string;
+};
+
+export type Tenant = {
+  id: string;
+  name: string;
+  product: string;
+  repo: string;
+  deploy_url: string;
+  connected: boolean;
+  has_token: boolean;
+  last_pr_url?: string;
+  last_ingest_at?: string;
+  last_connector?: string;
 };
 
 export type Timeline = {
@@ -204,7 +220,12 @@ export const api = {
     }>("/api/investigations"),
   investigation: (id: string) => get<Bundle>(`/api/investigations/${id}`),
   signals: () => get<{ signals: Array<Record<string, unknown>> }>("/api/signals"),
-  approvals: () => get<{ pending: Action[]; history: Array<Record<string, unknown>> }>("/api/approvals"),
+  approvals: () =>
+    get<{
+      pending: Action[];
+      history: Array<Record<string, unknown>>;
+      gate?: { mode: string; tenant_repo: string; label: string };
+    }>("/api/approvals"),
   approve: (actionId: string, decision: "approve" | "deny") =>
     post(`/api/approvals/${actionId}`, {
       decision,
@@ -221,31 +242,18 @@ export const api = {
       verdicts: Array<Record<string, unknown>>;
       failOpen: boolean;
     }>("/api/governance"),
-  tenants: () =>
-    get<{
-      tenants: Array<{
-        id: string;
-        name: string;
-        product: string;
-        repo: string;
-        deploy_url: string;
-        connected: boolean;
-        has_token: boolean;
-      }>;
-    }>("/api/tenants"),
-  tenant: (id: string) =>
-    get<{
-      tenant: {
-        id: string;
-        name: string;
-        product: string;
-        repo: string;
-        deploy_url: string;
-        connected: boolean;
-        has_token: boolean;
-      };
-      flags: Record<string, string>;
-    }>(`/api/tenants/${id}`),
+  tenants: () => get<{ tenants: Tenant[]; gate?: { mode: string; tenant_repo: string; label: string } }>("/api/tenants"),
+  tenant: (id: string) => get<{ tenant: Tenant; flags: Record<string, string> }>(`/api/tenants/${id}`),
+  upsertTenant: (body: {
+    id: string;
+    name: string;
+    product: string;
+    repo: string;
+    deploy_url: string;
+    token?: string;
+  }) => post<{ tenant: Tenant }>("/api/tenants", body),
+  rotateToken: (id: string, token: string) =>
+    post<{ rotated: boolean; tenant: Tenant }>(`/api/tenants/${id}/token`, { token }),
   opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
   office: () => get<OfficeSnapshot>("/api/office"),
   agents: () =>

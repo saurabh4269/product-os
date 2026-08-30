@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Binding for the next build. Start here, then code. |
+| Status | Phases A–F shipped. Start here only for later work (Workspace OAuth, Live, Gateway). |
 | Date | 2026-08-30 |
 | Spec | [`PRD.md`](PRD.md) remains binding (safety, risk tiers, no autonomous merge/deploy) |
 | Architecture | [`PLAN.md`](PLAN.md) is what the fixture engine already implements |
-| Tenant split | [`TENANT.md`](TENANT.md) — Product Y is never hosted on Cloud Run `loop` |
+| Tenant split | [`TENANT.md`](TENANT.md) — Product Y is Northstar, never hosted on Cloud Run `loop` |
 
 This is the plan for everything that is **specified but not wired**. The campus and the fixture loop stay. We stop pretending `pr_opened: True` is a pull request.
 
@@ -14,19 +14,17 @@ This is the plan for everything that is **specified but not wired**. The campus 
 
 ## 0. Honest now vs Company X
 
-If Company X arrived today with Product Y, we could give them the **OS UI** (campus, rooms, approvals, memory) running on **our** Cloud Run. We could **not**:
+If Company X arrived today with Product Y, we can give them the **OS UI** and a real wire: token-gated flags, signal/voice ingest into rooms, and a GitHub PR on approve (no merge, no tenant deploy).
 
-- watch their live app
-- onboard their org / git / deploy
-- draft or send their mail
+We still cannot:
+
+- draft or send their mail (Workspace OAuth)
 - put a meeting on their calendar
-- call their customers
-- change a flag their app reads
-- open, push, or merge a PR on their GitHub
-
-`execute_approved` writes a SQLite flag (or a `github_issue: true` boolean) and always sets `merged: False`. That is the whole side-effect path.
+- call their customers (no PSTN; Live not entitled)
 
 The six fixtures and `data/generate.py` warehouse stay as **evals**. They are not Company X.
+
+Demo tenant: **Northstar** at `github.com/saurabh4269/northstar`, Cloud Run `northstar`.
 
 ---
 
@@ -90,16 +88,9 @@ These land in `product-os` now. They work against fixtures and against a tenant 
 
 ## 4. Work that **waits** on the user (do not fake)
 
-From [`TENANT.md`](TENANT.md):
+Workspace OAuth client (Gmail draft / Calendar) is a **separate** user grant. Until then, mail/calendar connectors stay `skipped`. `send_gmail` stays denied.
 
-1. Empty tenant git repo + write access (PAT secret or repo on this Cloud Agent).
-2. Second deploy (e.g. Cloud Run `northstar` in the same project — confirm).
-3. Shared token secret **name**.
-4. Both repos on the environment.
-
-Then, **in that other repo**, build the demo Product Y: pages, flag client against `/api/t/.../flags`, voice POST, ads landing. OS never serves those pages.
-
-Workspace OAuth client (Gmail draft / Calendar) is a **separate** user grant. Until then, mail/calendar connectors stay `skipped`.
+Product Y is no longer blocked: repo `saurabh4269/northstar`, Cloud Run `northstar`.
 
 ---
 
@@ -143,12 +134,10 @@ Tests: connector skip without token; flag GET 401 without bearer; approve + toke
 
 ## 7. Build order (this branch and after)
 
-1. **This PR:** this file, then Phase A–D + Connect UI on the same branch.
-2. **Shipped in-repo now:** `GET/POST /api/tenants`, `GET /api/t/{id}/flags`, ingest signals/voice, connectors that skip without secrets, `execute_approved` no longer claims a PR URL it does not have, rail **Connect**.
-3. **When the user hands over repo + token + second deploy:** Phase D applied (real PRs), demo Y in the other repo, E if we load BQ.
-4. **Later:** Workspace OAuth, optional Live, Agent Gateway still plan-only.
+1. **Shipped:** Phases A–F. Connect form, flags Y can read, ingest opens rooms, GitHub PR on HIGH approve (never merge), Northstar on Cloud Run `northstar`.
+2. **Later:** Workspace OAuth, optional Live, Agent Gateway still plan-only.
 
-Do not block A–D on the tenant repo. Do not build Y inside this repo.
+Do not build Y inside this repo. Do not restore `/shop` on `loop`.
 
 ---
 

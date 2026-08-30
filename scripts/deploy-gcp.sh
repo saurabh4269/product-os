@@ -28,6 +28,17 @@ BUNDLE_URL="https://storage.googleapis.com/${BUCKET}/${OBJECT}"
 echo "deploy-gcp: bundle ${BUNDLE_URL}"
 
 # python:3.12-slim is public; Cloud Build is not required.
+if [[ -z "${LOOP_GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null; then
+  LOOP_GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
+fi
+ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},LOOP_CONSOLE_ORIGIN=*"
+for key in LOOP_GITHUB_TOKEN LOOP_TENANT_REPO LOOP_TENANT_DEPLOY_URL LOOP_TENANT_BOOTSTRAP_TOKEN; do
+  val="${!key:-}"
+  if [[ -n "$val" ]]; then
+    ENV_VARS="${ENV_VARS},${key}=${val}"
+  fi
+done
+
 set +e
 gcloud run deploy "${SERVICE}" \
   --image python:3.12-slim \
@@ -42,7 +53,7 @@ gcloud run deploy "${SERVICE}" \
   --cpu-boost \
   --command bash \
   --args="-c,apt-get update -qq && apt-get install -y -qq curl ca-certificates python3-pip && curl -fsSL ${BUNDLE_URL} -o /tmp/loop.tgz && mkdir -p /app && tar -xzf /tmp/loop.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=* PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT},LOOP_CONSOLE_ORIGIN=*" \
+  --set-env-vars "${ENV_VARS}" \
   --quiet
 STATUS=$?
 set -e

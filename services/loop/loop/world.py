@@ -292,6 +292,167 @@ def _open_typed(
     return inv, room
 
 
+def ingest_tenant_signal(
+    engine: LoopEngine,
+    tenant: Any,
+    *,
+    metric: str,
+    magnitude: float,
+    baseline: float,
+    note: str = "",
+    source: str = "tenant.ingest",
+) -> dict[str, Any]:
+    """Posted tenant events open or join a room the same way warehouse detect does."""
+    from .tenant import Tenant
+
+    assert isinstance(tenant, Tenant)
+    scenario = f"t:{tenant.id}:{metric}"
+    sig = Signal(
+        id=_id("sig"),
+        family=SignalFamily.BUSINESS,
+        direction=Direction.NEGATIVE if magnitude < 0 else Direction.POSITIVE,
+        funnel_position="checkout" if "conversion" in metric or "checkout" in metric else "product",
+        metric=metric,
+        magnitude=magnitude,
+        baseline=baseline,
+        affected_segments=[Segment(channel=f"tenant.{tenant.id}")],
+        detection_window={"source": source},
+        confidence=0.6,
+        source=f"tenant.{tenant.id}",
+        status=SignalStatus.OPEN,
+        detected_at=_now(),
+    )
+    existing = next(
+        (r for r in engine.store.list_rooms() if r.scenario_id == scenario and r.status == "open"),
+        None,
+    )
+    text = note or f"{metric} {magnitude} from {tenant.product}"
+    tenant.last_ingest_at = _now().isoformat()
+    if existing:
+        engine.store.put_signal(sig)
+        inv = engine.store.get_investigation(existing.investigation_id) if existing.investigation_id else None
+        if inv:
+            inv.originating_signal_ids.append(sig.id)
+            engine.store.put_investigation(inv)
+        post(
+            engine,
+            existing.id,
+            author="signal_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=text,
+            artifact_type="signal",
+            artifact={"signal_id": sig.id, "tenant": tenant.id, "joined": True},
+        )
+        engine.store.put_tenant(tenant)
+        return {"signal": sig, "room_id": existing.id, "joined": True}
+    kind = RoomKind.INCIDENT if magnitude < 0 else RoomKind.OPPORTUNITY
+    loop_type = LoopType.TYPE_A if magnitude < 0 else LoopType.TYPE_B
+    path = PathKind.BUG if magnitude < 0 else PathKind.FEATURE
+    _inv, room = _open_typed(
+        engine,
+        sig,
+        scenario_id=scenario,
+        title=f"{tenant.product}: {metric}",
+        topic=text,
+        kind=kind,
+        loop_type=loop_type,
+        path=path,
+        members=["orchestrator", "signal_agent", "you"],
+    )
+    engine.store.put_tenant(tenant)
+    return {"signal": sig, "room_id": room.id, "joined": False}
+
+
+def ingest_tenant_voice(
+    engine: LoopEngine,
+    tenant: Any,
+    *,
+    text: str,
+    tokenized_user: str = "tok_anon",
+) -> dict[str, Any]:
+    """Customer voice from Product Y lands in a room — join if one is already open."""
+    from .tenant import Tenant
+
+    assert isinstance(tenant, Tenant)
+    clipped = text[:4000]
+    rec = {
+        "id": _id("voice"),
+        "kind": "customer",
+        "tenant": tenant.id,
+        "tokenized_user": tokenized_user,
+        "text": clipped,
+        "channel": "tenant.ingest",
+    }
+    engine.store.put_memory(rec["id"], "customer", rec)
+    scenario = f"t:{tenant.id}:voice"
+    existing = next((r for r in engine.store.list_rooms() if r.scenario_id == scenario), None)
+    standing = engine.store.get_room("room_research")
+    if standing is None:
+        _ensure_standing_rooms(engine)
+        standing = engine.store.get_room("room_research")
+    tenant.last_ingest_at = _now().isoformat()
+    engine.store.put_tenant(tenant)
+    if existing:
+        post(
+            engine,
+            existing.id,
+            author="customer_voice",
+            author_kind="agent",
+            kind="chat",
+            text=clipped,
+            artifact_type="voice",
+            artifact=rec,
+        )
+        if standing and standing.id != existing.id:
+            post(
+                engine,
+                standing.id,
+                author="customer_voice",
+                author_kind="agent",
+                kind="artifact",
+                text=f"Voice from {tenant.product} joined {existing.title}",
+                artifact_type="voice",
+                artifact={"room_id": existing.id, "tenant": tenant.id},
+            )
+        return {"voice": rec, "room_id": existing.id, "joined": True}
+    room = Room(
+        id=_id("room"),
+        kind=RoomKind.RESEARCH,
+        title=f"{tenant.product}: customer voice",
+        topic="Feedback posted from the tenant app.",
+        status="open",
+        created_at=_now(),
+        members=["customer_voice", "you"],
+        scenario_id=scenario,
+        loop_type=LoopType.TYPE_B,
+        path=PathKind.FEATURE,
+    )
+    engine.store.put_room(room)
+    post(
+        engine,
+        room.id,
+        author="customer_voice",
+        author_kind="agent",
+        kind="chat",
+        text=clipped,
+        artifact_type="voice",
+        artifact=rec,
+    )
+    if standing:
+        post(
+            engine,
+            standing.id,
+            author="customer_voice",
+            author_kind="agent",
+            kind="artifact",
+            text=f"Opened {room.title}",
+            artifact_type="voice",
+            artifact={"room_id": room.id, "tenant": tenant.id},
+        )
+    return {"voice": rec, "room_id": room.id, "joined": False}
+
+
 def _add_facts(engine: LoopEngine, inv: Investigation, facts: list[dict[str, Any]]) -> None:
     inv.state = InvestigationState.GATHERING
     inv.assigned_agents = list(dict.fromkeys(inv.assigned_agents + [f["collected_by"] for f in facts]))

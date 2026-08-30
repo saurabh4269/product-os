@@ -17,6 +17,9 @@ class Tenant(BaseModel):
     deploy_url: str = ""
     token_hash: str = ""
     connected: bool = False
+    last_pr_url: str = ""
+    last_ingest_at: str = ""
+    last_connector: str = ""
 
 
 class ConnectorReport(BaseModel):
@@ -48,8 +51,8 @@ def seed_placeholder(store: Any) -> Tenant:
     repo = os.environ.get("LOOP_TENANT_REPO", "")
     t = Tenant(
         id="acme",
-        name="Acme",
-        product="Product Y",
+        name="Northstar",
+        product="Northstar",
         repo=repo,
         deploy_url=os.environ.get("LOOP_TENANT_DEPLOY_URL", ""),
         token_hash=hash_token(token) if token else "",

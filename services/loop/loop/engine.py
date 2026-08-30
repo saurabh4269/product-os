@@ -592,6 +592,8 @@ class LoopEngine:
         result: dict = {"merged": False, "pr_opened": False}
         reused = False
         if "flag" in action.artifacts:
+            import json as json_lib
+
             name = str(action.artifacts["flag"])
             value, reused = self.store.set_flag(name, str(action.artifacts.get("to", "off")), action.idempotency_key)
             if tenant:
@@ -605,17 +607,33 @@ class LoopEngine:
             pr_meta = action.artifacts.get("pr") if isinstance(action.artifacts.get("pr"), dict) else {}
             title = pr_meta.get("title") or f"Product OS: {name}"
             body = pr_meta.get("body") or f"Investigation {inv.id}. Flag {name} → {value}."
+            flags_doc: dict[str, str] = {name: str(value)}
+            if name == "pay_sdk_4_3":
+                flags_doc["pay_sdk"] = "4.2.1" if str(value) == "off" else "4.3.0"
+            file_content = json_lib.dumps(flags_doc, indent=2) + "\n"
             if tenant:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.pr",
-                    lambda: open_pr(tenant, title, body).model_dump(),
+                    lambda: open_pr(
+                        tenant,
+                        title,
+                        body,
+                        file_path="config/flags.json",
+                        file_content=file_content,
+                    ).model_dump(),
                 )
                 reports.append(gh)
                 result["github"] = gh
                 if gh.get("status") == "applied" and gh.get("url"):
                     result["pr_opened"] = True
                     result["pr_url"] = gh["url"]
+                    tenant.last_pr_url = str(gh["url"])
+                    tenant.last_connector = "github.pr applied"
+                    self.store.put_tenant(tenant)
+                elif gh.get("detail"):
+                    tenant.last_connector = str(gh.get("detail"))
+                    self.store.put_tenant(tenant)
         else:
             issue = action.artifacts.get("github_issue") if isinstance(action.artifacts.get("github_issue"), dict) else {}
             title = issue.get("title") or "Product OS follow-up"

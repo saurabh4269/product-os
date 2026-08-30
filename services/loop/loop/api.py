@@ -88,6 +88,10 @@ class TenantBody(BaseModel):
     token: str = ""
 
 
+class TokenRotateBody(BaseModel):
+    token: str
+
+
 class IngestSignalBody(BaseModel):
     metric: str = "purchase_conversion"
     magnitude: float = -0.2
@@ -132,13 +136,32 @@ def _require_tenant(tenant_id: str, authorization: str | None):
     return t
 
 
+def _gate(eng) -> dict:
+    from .tenant import seed_placeholder
+
+    seed_placeholder(eng.store)
+    tenants = eng.store.list_tenants()
+    t = next((x for x in tenants if x.repo), None) or (tenants[0] if tenants else None)
+    if t and t.repo:
+        return {
+            "mode": "github_pr",
+            "tenant_repo": t.repo,
+            "label": f"Will open a pull request on {t.repo}. Product OS will not merge it.",
+        }
+    return {
+        "mode": "flag_only",
+        "tenant_repo": "",
+        "label": "Will only flip an OS flag. No git repo is connected.",
+    }
+
+
 @app.get("/api/tenants")
 def tenants():
     from .tenant import seed_placeholder
 
     eng = get_engine()
     seed_placeholder(eng.store)
-    return {"tenants": [_public_tenant(t) for t in eng.store.list_tenants()]}
+    return {"tenants": [_public_tenant(t) for t in eng.store.list_tenants()], "gate": _gate(eng)}
 
 
 @app.post("/api/tenants")
@@ -156,9 +179,27 @@ def upsert_tenant(body: TenantBody):
         deploy_url=body.deploy_url,
         token_hash=token_hash,
         connected=bool(body.repo),
+        last_pr_url=prev.last_pr_url if prev else "",
+        last_ingest_at=prev.last_ingest_at if prev else "",
+        last_connector=prev.last_connector if prev else "",
     )
     eng.store.put_tenant(t)
     return {"tenant": _public_tenant(t)}
+
+
+@app.post("/api/tenants/{tenant_id}/token")
+def rotate_token(tenant_id: str, body: TokenRotateBody):
+    from .tenant import hash_token
+
+    if not body.token.strip():
+        raise HTTPException(400, "token required")
+    t = get_engine().store.get_tenant(tenant_id)
+    if not t:
+        raise HTTPException(404, "tenant not found")
+    t.token_hash = hash_token(body.token.strip())
+    t.connected = bool(t.repo)
+    get_engine().store.put_tenant(t)
+    return {"rotated": True, "tenant": _public_tenant(t)}
 
 
 @app.get("/api/tenants/{tenant_id}")
@@ -191,62 +232,32 @@ def tenant_flags(tenant_id: str, authorization: str | None = Header(default=None
 
 @app.post("/api/t/{tenant_id}/signals")
 def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | None = Header(default=None)):
-    from datetime import datetime, timezone
+    from .world import ingest_tenant_signal
 
-    from .engine import _id
-    from .models import Direction, Segment, Signal, SignalFamily, SignalStatus
-    from .world import post as post_room
-
-    _require_tenant(tenant_id, authorization)
-    eng = get_engine()
-    sig = Signal(
-        id=_id("sig"),
-        family=SignalFamily.BUSINESS,
-        direction=Direction.NEGATIVE if body.magnitude < 0 else Direction.POSITIVE,
-        funnel_position="ingest",
+    t = _require_tenant(tenant_id, authorization)
+    out = ingest_tenant_signal(
+        get_engine(),
+        t,
         metric=body.metric,
         magnitude=body.magnitude,
         baseline=body.baseline,
-        affected_segments=[Segment(channel="tenant")],
-        detection_window={"source": body.source},
-        confidence=0.6,
-        source=f"tenant.{tenant_id}",
-        status=SignalStatus.OPEN,
-        detected_at=datetime.now(timezone.utc),
+        note=body.note,
+        source=body.source,
     )
-    eng.store.put_signal(sig)
-    rooms = [r for r in eng.store.list_rooms() if r.kind.value == "incident"]
-    room = rooms[0] if rooms else None
-    if room:
-        post_room(
-            eng,
-            room.id,
-            author="signal_agent",
-            author_kind="agent",
-            kind="artifact",
-            text=body.note or f"{body.metric} {body.magnitude} from {tenant_id}",
-            artifact_type="signal",
-            artifact={"signal_id": sig.id, "tenant": tenant_id},
-        )
-    return {"signal": sig.model_dump(mode="json"), "room_id": room.id if room else None}
+    return {
+        "signal": out["signal"].model_dump(mode="json"),
+        "room_id": out["room_id"],
+        "joined": out["joined"],
+    }
 
 
 @app.post("/api/t/{tenant_id}/voice")
 def tenant_voice(tenant_id: str, body: IngestVoiceBody, authorization: str | None = Header(default=None)):
-    from .engine import _id
+    from .world import ingest_tenant_voice
 
-    _require_tenant(tenant_id, authorization)
-    eng = get_engine()
-    rec = {
-        "id": _id("voice"),
-        "kind": "customer",
-        "tenant": tenant_id,
-        "tokenized_user": body.tokenized_user,
-        "text": body.text[:4000],
-        "channel": "tenant.ingest",
-    }
-    eng.store.put_memory(rec["id"], "customer", rec)
-    return {"voice": rec}
+    t = _require_tenant(tenant_id, authorization)
+    out = ingest_tenant_voice(get_engine(), t, text=body.text, tokenized_user=body.tokenized_user)
+    return {"voice": out["voice"], "room_id": out["room_id"], "joined": out["joined"]}
 
 
 @app.post("/api/detect")
@@ -385,9 +396,16 @@ def investigation(inv_id: str):
 @app.get("/api/approvals")
 def approvals():
     eng = get_engine()
-    pending = [a.model_dump(mode="json") for a in eng.store.pending_approvals()]
+    gate = _gate(eng)
+    pending = []
+    for a in eng.store.pending_approvals():
+        row = a.model_dump(mode="json")
+        row["gate"] = gate["label"]
+        row["gate_mode"] = gate["mode"]
+        row["tenant_repo"] = gate["tenant_repo"]
+        pending.append(row)
     history = [a.model_dump(mode="json") for a in eng.store.list_approvals()]
-    return {"pending": pending, "history": history}
+    return {"pending": pending, "history": history, "gate": gate}
 
 
 @app.post("/api/approvals/{action_id}")

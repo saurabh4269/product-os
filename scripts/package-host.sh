@@ -6,7 +6,12 @@ DIST="$ROOT/dist/host"
 rm -rf "$DIST"
 mkdir -p "$DIST/vendor" "$DIST/static" "$DIST/services/loop" "$DIST/data" "$DIST/config" "$DIST/playbooks" "$DIST/var"
 
-python3 -m pip install -q -r "$ROOT/services/loop/requirements-host.txt" --target "$DIST/vendor"
+# Vendor for Cloud Run python:3.12-slim (local python is 3.13; native wheels must match 3.12).
+docker run --rm \
+  -v "$ROOT/services/loop/requirements-host.txt:/req.txt:ro" \
+  -v "$DIST/vendor:/vendor" \
+  python:3.12-slim \
+  bash -c "pip install -q --upgrade pip && pip install -q -r /req.txt --target /vendor"
 cp -a "$ROOT/services/loop/loop" "$DIST/services/loop/loop"
 cp -a "$ROOT/services/loop/pyproject.toml" "$DIST/services/loop/"
 cp -a "$ROOT/data/." "$DIST/data/"

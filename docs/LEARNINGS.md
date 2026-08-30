@@ -57,6 +57,16 @@ Cold start is slow (apt-get every boot). First request can take a minute. Do not
 
 **Fix:** Tenant HTML stays out of `apps/console/public` and FastAPI. `GET /api/company` does not exist. Fixture adapters stay in `apps/northstar-shop` (JS only). The real/demo shop is a **second repo and second deploy**. SPA fallback may still 200 `/shop` as the OS homepage — that is not a storefront.
 
+### Vendor for Cloud Run is Python 3.12
+
+**Symptom:** New `loop` revision exits on boot: `No module named 'pydantic_core._pydantic_core'`. Previous revision still serves.
+
+**Why:** `package-host.sh` used local `python3` (Kali 3.13). Cloud Run is `python:3.12-slim`. Native wheels are ABI-specific.
+
+**Fix:** `package-host.sh` runs `pip install --target vendor` **inside** `docker run python:3.12-slim`. Confirm `pydantic_core/_pydantic_core.cpython-312-*.so` in the tarball.
+
+Northstar does not vendor — it is stdlib-only (`python app.py`).
+
 ### Cloud Run SQLite is disposable
 
 **Symptom:** Room IDs you bookmarked yesterday 404. Office looks freshly seeded.

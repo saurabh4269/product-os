@@ -5,7 +5,10 @@ from __future__ import annotations
 import base64
 import json
 import os
+import shutil
+import subprocess
 import urllib.error
+import urllib.parse
 import urllib.request
 from uuid import uuid4
 
@@ -13,7 +16,24 @@ from loop.tenant import ConnectorReport, Tenant
 
 
 def _token() -> str:
-    return os.environ.get("LOOP_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+    for key in ("LOOP_GITHUB_TOKEN", "GITHUB_TOKEN"):
+        val = (os.environ.get(key) or "").strip()
+        if val:
+            return val
+    gh = shutil.which("gh")
+    if not gh:
+        return ""
+    try:
+        out = subprocess.run(
+            [gh, "auth", "token"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        return (out.stdout or "").strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
 
 
 def _request(method: str, url: str, token: str, body: dict | None = None) -> tuple[int, dict]:
@@ -43,6 +63,23 @@ def _request(method: str, url: str, token: str, body: dict | None = None) -> tup
         return e.code, parsed
 
 
+def _put_file(repo: str, token: str, branch: str, path: str, content: str, message: str) -> tuple[int, dict]:
+    encoded = urllib.parse.quote(path, safe="/")
+    st, existing = _request(
+        "GET",
+        f"https://api.github.com/repos/{repo}/contents/{encoded}?ref={urllib.parse.quote(branch)}",
+        token,
+    )
+    payload: dict = {
+        "message": message,
+        "content": base64.b64encode(content.encode()).decode(),
+        "branch": branch,
+    }
+    if st == 200 and existing.get("sha"):
+        payload["sha"] = existing["sha"]
+    return _request("PUT", f"https://api.github.com/repos/{repo}/contents/{encoded}", token, payload)
+
+
 def open_pr(
     tenant: Tenant,
     title: str,
@@ -57,7 +94,7 @@ def open_pr(
         return ConnectorReport(
             status="skipped",
             connector="github.pr",
-            detail="no LOOP_GITHUB_TOKEN/GITHUB_TOKEN or tenant.repo",
+            detail="no LOOP_GITHUB_TOKEN/GITHUB_TOKEN/gh auth or tenant.repo",
         )
     repo = tenant.repo.strip()
     st, meta = _request("GET", f"https://api.github.com/repos/{repo}", token)
@@ -79,25 +116,21 @@ def open_pr(
     )
     if st not in {200, 201}:
         return ConnectorReport(status="skipped", connector="github.pr", detail=f"branch {st}: {created}")
-    path = file_path or f".product-os/{head.replace('/', '-')}.md"
+    path = file_path or "config/flags.json"
     content = file_content or f"# Product OS change\n\n{title}\n\n{body}\n"
-    st, put = _request(
-        "PUT",
-        f"https://api.github.com/repos/{repo}/contents/{path}",
-        token,
-        {
-            "message": title,
-            "content": base64.b64encode(content.encode()).decode(),
-            "branch": head,
-        },
-    )
+    st, put = _put_file(repo, token, head, path, content, title)
     if st not in {200, 201}:
         return ConnectorReport(status="skipped", connector="github.pr", detail=f"commit {st}: {put}")
     st, pr = _request(
         "POST",
         f"https://api.github.com/repos/{repo}/pulls",
         token,
-        {"title": title, "body": body + "\n\nProduct OS does not merge this.", "head": head, "base": base},
+        {
+            "title": title,
+            "body": body + "\n\nProduct OS does not merge this. A human must merge. OS never production-deploys the tenant app.",
+            "head": head,
+            "base": base,
+        },
     )
     url = pr.get("html_url")
     if st in {200, 201} and url:
@@ -111,7 +144,7 @@ def create_issue(tenant: Tenant, title: str, body: str) -> ConnectorReport:
         return ConnectorReport(
             status="skipped",
             connector="github.issue",
-            detail="no LOOP_GITHUB_TOKEN/GITHUB_TOKEN or tenant.repo",
+            detail="no LOOP_GITHUB_TOKEN/GITHUB_TOKEN/gh auth or tenant.repo",
         )
     st, payload = _request(
         "POST",

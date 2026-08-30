@@ -18,7 +18,7 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Architecture: [`docs/architecture.mmd`](docs
 
 API `:8080`, console `:3000`. On boot the warehouse is generated and `seed_world` opens six fixtures into rooms.
 
-**Hosted:** https://loop-5uy6fkd7bq-uc.a.run.app
+**Hosted:** https://loop-5uy6fkd7bq-uc.a.run.app · Product Y: https://northstar-5uy6fkd7bq-uc.a.run.app
 
 ```bash
 ./scripts/verify.sh

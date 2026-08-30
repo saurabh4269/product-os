@@ -4,7 +4,8 @@ You are continuing **Product OS (LOOP)**. Start from **`main`**. Read this file 
 
 Repo: `github.com/saurabh4269/product-os`  
 Live: https://loop-5uy6fkd7bq-uc.a.run.app  
-GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`
+GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`  
+Product Y: `github.com/saurabh4269/northstar` · Cloud Run `northstar` · https://northstar-5uy6fkd7bq-uc.a.run.app
 
 ## What this product is
 
@@ -43,12 +44,14 @@ These are the named products, looks, and decisions from this chat. Open them bef
 
 - Console + API: https://loop-5uy6fkd7bq-uc.a.run.app (also `https://loop-632958340118.us-central1.run.app`)
 - This agent run: https://cursor.com/agents/bc-8c53e2be-2abe-4034-a712-16e9ff15e32b
-- Hosted revision: `loop-00026-fql` (Connect + tenant APIs; no shop on this origin)
+- Hosted revision: `loop-00028-2vb` (Connect + tenant APIs + GitHub PR on approve; no shop on this origin)
 - PRs [#1](https://github.com/saurabh4269/product-os/pull/1)–[#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6’s shop commits are in history but **deleted at tip**. Do not restore `/shop`.
+
+**Product Y:** https://github.com/saurabh4269/northstar · https://northstar-5uy6fkd7bq-uc.a.run.app (Cloud Run `northstar`)
 
 ## Next work
 
-Build order is [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md). Tenant **connectors** start in this repo now (honest skip if no token). The demo Product Y still waits on the user — [`docs/TENANT.md`](docs/TENANT.md). Do **not** rebuild a storefront here.
+Workspace OAuth (Gmail draft / Calendar). Optional Live. Agent Gateway still plan-only. Tenant **connectors** are in this repo; Product Y is the other repo. Do **not** rebuild a storefront here.
 
 ## Binding rules
 

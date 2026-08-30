@@ -58,6 +58,12 @@ export default function ApprovalsPage() {
             <article key={a.id} className="rounded-[20px] border border-border bg-white p-6">
               <p className="text-[13px] text-[var(--faint)]">{a.risk_tier}</p>
               <p className="mt-2 text-[15px] leading-6">{a.consequence}</p>
+              <p className="mt-2 text-[13px] leading-5 text-[var(--dim)]">
+                {a.gate ||
+                  (a.tenant_repo
+                    ? `Will open a pull request on ${a.tenant_repo}. Product OS will not merge it.`
+                    : "Will only flip an OS flag. No git repo is connected.")}
+              </p>
               <div className="mt-4 flex items-center gap-3">
                 <Button disabled={busy === a.id} onClick={() => void decide(a, "approve")}>
                   Approve

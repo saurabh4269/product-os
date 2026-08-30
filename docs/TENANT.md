@@ -2,40 +2,37 @@
 
 Product OS is a production control plane. It does **not** host the customer’s product.
 
-What to build so a tenant can connect: [`PLAN_NEXT.md`](PLAN_NEXT.md).
-
 | Piece | What it is | Where it lives |
 |---|---|---|
-| Product OS | Campus, rooms, agents, approvals, memory | `github.com/saurabh4269/product-os` · Cloud Run `loop` |
-| Tenant app | The thing customers use (shop, SaaS, …) | **Separate git repo + separate deploy** |
-| Connection | Flags, signals, customer voice, PRs | After onboard: OS talks to that repo and that URL |
+| Product OS | Campus, rooms, agents, approvals, memory | `github.com/saurabh4269/product-os` · Cloud Run `loop` · https://loop-5uy6fkd7bq-uc.a.run.app |
+| Tenant app | Northstar (Product Y) | `github.com/saurabh4269/northstar` · Cloud Run `northstar` · https://northstar-5uy6fkd7bq-uc.a.run.app |
+| Connection | Flags, signals, customer voice, PRs | Tenant id `acme`. Connect desk at `/connect` |
 
-A sales demo is the first tenant, on the same path a real customer would use. Do not put a storefront back on `loop` (`/shop`, `/company`, `public/shop`).
+Do not put a storefront back on `loop` (`/shop`, `/company`, `public/shop`).
 
 `apps/northstar-shop` in this repo is **fixture JS only** (engine Code Agent targets). It is not the demo app.
 
-## Blocked on the user
+## What is wired
 
-The next agent cannot create a GitHub org or a second repo (`gh` is read-only). Wait for:
+1. **Connect** — repo, deploy URL, hashed token (never echoed). Rotate via `POST /api/tenants/{id}/token`.
+2. **Flags** — `GET /api/t/acme/flags` with `Authorization: Bearer`. Approve HIGH flips `pay_sdk_4_3` off. Northstar checkout reads that live.
+3. **Signals / voice** — `POST /api/t/acme/signals` and `/voice` open or join rooms (generic, not Safari-special).
+4. **GitHub** — HIGH approve opens a PR on `saurabh4269/northstar` that writes `config/flags.json`. OS never merges. OS never prod-deploys Northstar.
+5. **Mail / calendar** — skip until Workspace OAuth. `send_gmail` stays denied.
 
-1. **Empty tenant repo** — e.g. `saurabh4269/northstar` or `org/northstar`. Write access for this agent (add the repo to the Cloud Agent environment, or a fine-grained PAT as a **secret**, not in chat).
-   - Scopes: `contents:write`, `pull_requests:write`, `issues:write`, `metadata:read`.
-2. **Second deploy** — new Cloud Run service (e.g. `northstar` in `mystical-timing-442601-q8`) **or** Vercel / other. Confirm if the same GCP project is OK.
-3. **Shared service token** — Cloud Run secret on both services (name only in chat): shop reads flags / posts voice; OS verifies the token.
-4. **Cursor environment** — both repos on the same Cloud Agent run.
+Hosted SQLite is ephemeral. Cold start re-seeds the tenant from `LOOP_TENANT_REPO`, `LOOP_TENANT_DEPLOY_URL`, and `LOOP_TENANT_BOOTSTRAP_TOKEN`.
 
-Not needed yet: custom domain, real GA4/Ads/BQ, GitHub App review, second GCP project, SSO.
+## Secrets (names only)
 
-## After those land
+On Cloud Run `loop`: `LOOP_GITHUB_TOKEN`, `LOOP_TENANT_BOOTSTRAP_TOKEN`, `LOOP_TENANT_REPO`, `LOOP_TENANT_DEPLOY_URL`.
 
-1. Build the demo shop **in the tenant repo**.
-2. Deploy it to the second service.
-3. Onboard that org in Product OS (repo + deploy URL + token).
-4. Flags and PRs point at **their** git. Approve in OS → PR on tenant repo → their deploy updates. OS never merges or deploys the tenant app.
+On Cloud Run `northstar`: `LOOP_TENANT_TOKEN` (same raw value as the bootstrap token), `LOOP_OS_URL`, `LOOP_TENANT_ID`.
+
+Still needs the user: Gmail/Calendar OAuth (`LOOP_GMAIL_ACCESS_TOKEN`, `LOOP_CALENDAR_ACCESS_TOKEN`). No PSTN. No second GCP project.
 
 ## Do not
 
 - Serve tenant HTML from FastAPI or `apps/console/public`.
 - Add a Shop rail item or campus Shop pin.
 - Treat `apps/northstar-shop` as a company.
-- Treat [#6](https://github.com/saurabh4269/product-os/pull/6) as product direction. GitHub marked it merged because those commits sit in history; the **tip of `main` deletes the shop**. Follow #7.
+- Treat [#6](https://github.com/saurabh4269/product-os/pull/6) as product direction. The **tip of `main` deletes the shop**. Follow #7.
