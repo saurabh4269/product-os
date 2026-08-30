@@ -13,7 +13,7 @@ Redeploy: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/d
 ## What works
 
 - Generic Type A / Type B pipeline. Six fixtures, one engine. Safari is a fixture.
-- Campus home: painted island, clickable buildings, isometric floor, generated furniture, flipbook rooms. Mochi (cream) is the brand face; she and Bean sit on campus without a plate. Both show on phone. Memory on the watch, Approvals on the tram.
+- Campus home: painted island, clickable buildings, isometric floor, generated furniture, flipbook rooms. Mochi (cream / Bubu) is the rail logo only — the sitting pair is off the campus. Memory on the watch, Approvals on the tram.
 - Icon-rail sidebar (always on) + expand in place on every width (no second flyout). Traces is on the rail.
 - Rooms, per-bot chats (`/agents/:id`), visible handoffs. Pixel people unclipped on phone cards.
 - Agent Registry (identity, permissions, version, risk). Gateway deny on production customer-record dump.

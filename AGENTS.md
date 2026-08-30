@@ -24,8 +24,8 @@ These are the named products, looks, and decisions from this chat. Open them bef
 
 | What they said | What it means here | Look it up |
 |---|---|---|
-| **Bubu** (cream sit-bear) | User name for the **white/cream** bear. In code she is **Mochi** — brand face, rail mark, phone header. | User screenshot: two sitting bears, cream + cocoa, no plate. |
-| **Bean** (cocoa sit-bear) | The brown bear who sits with her. Not the rail face. | `apps/console/public/city/bean-sit.png` |
+| **Bubu** (cream bear) | User name for the cream bear. In code she is **Mochi** — **rail logo only**, not a campus sticker. | `apps/console/public/city/mochi.png` · `BeanMark` in `shell.tsx` |
+| **Bean / the duo on campus** | User asked them **off the homepage** — too prominent, off-vibe. Files can stay; do not re-mount `CampusSticker` on the map. | `bean-sit.png` is unused on campus now |
 | **Bubu & Dudu / 黄油小熊** | Visual *register* only. Official pair is 黄小B’s **一二 (Yier)** cream panda + **布布 (Bubu)** brown bear. Fan name “Dudu” is unofficial. **Do not paste or trace their art.** Ours are original Mochi + Bean. | [Weibo 黄小B](https://weibo.com/u/2623471650) · [Yier & Bubu names](https://en.akkogear.com/bubu-dudu-or-yier-bubu-meet-the-real-creator-behind-the-internets-favorite-panda-and-bear/) · [FAQ](https://getbubududu.com/faq-all-about-bubu-and-dudu/) |
 | **Pip** | Old otter mascot. **Do not restore.** `PipMark` / `PipSticker` are deprecated aliases. | `apps/console/components/mascot.tsx` |
 | **Grok** | Multi-room chat, presence, not a dashboard. | [grok.com](https://grok.com) |
@@ -37,7 +37,7 @@ These are the named products, looks, and decisions from this chat. Open them bef
 | **Google Doc as “the office”** | Tried; unreadable (auth). Office is in-product. | `office-floor.tsx` + iso floor |
 | **Safari / 3DS** | One **fixture**, not the product. Do not bias UI or architecture around it. | `safari_3ds` in the fixture table |
 
-**Mascot rules the user repeated:** both bears on the phone (do not hide the duo behind `lg:block`); PNG only (`mochi.png`, `bean-sit.png` — iPad Safari drops WebP alpha and shows a plate); no sage/mint square behind them; they breathe, glance, lean toward a hovered building, hop when you pick, Mochi waves on the home-link hover.
+**Mascot now:** Mochi is the 32px rail mark (waves on home-link hover). PNG only — iPad Safari drops WebP alpha. No sitting pair on campus, phone or desktop. Do not restore Pip.
 
 **Live / GitHub**
 
@@ -53,7 +53,7 @@ These are the named products, looks, and decisions from this chat. Open them bef
 | Models | IDs only in [`config/models.yaml`](config/models.yaml). Default `gemini-3.5-flash`. Never set sampling on 3.6 / 3.5-lite. |
 | Cost | Cheap GCP only (BQ, Pub/Sub, Cloud Run, Model Armor). Agent Gateway / SGP / telephony stay **plan-only**. |
 | Hosted SQLite | Ephemeral. Cold start re-seeds the world. Room IDs change. Do not hard-code hosted room IDs. |
-| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. Mascots are **Mochi** (cream bear, brand face) and **Bean** (cocoa). Both show on phone — do not hide the duo behind `lg:block`. |
+| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. **Mochi** (cream / “Bubu”) is the rail logo only. Do **not** put the sitting duo on the campus — they read as a sticker, not the product. |
 | Art | Campus is `apps/console/public/city/campus.webp` (~75KB) + `campus.jpg`. **Do not re-add the 2MB PNG.** |
 | Git | Commits look human. No AI `Co-authored-by` / author overrides. |
 
