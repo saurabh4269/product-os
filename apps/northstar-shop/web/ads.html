@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>From the ad — Northstar</title>
+    <link rel="stylesheet" href="./shop.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <a href="./index.html"><strong>Northstar</strong></a>
+      </nav>
+      <h1>You clicked the ad.</h1>
+      <p class="lead">US-Search-Brand and US-Shopping-Home buy this page. Spend stayed flat while checkout slipped — so the OS did not blame ads.</p>
+      <a class="btn" href="./linen.html">See the linen</a>
+      <div class="grid" id="ads" style="margin-top: 2rem"></div>
+    </div>
+    <script type="module">
+      import { loadCompany } from "./runtime.js";
+      const box = document.getElementById("ads");
+      try {
+        const c = await loadCompany();
+        box.innerHTML = (c.ads || [])
+          .map(
+            (a) =>
+              `<article class="card"><h2>${a.name}</h2><p>${a.clicks} clicks · $${Math.round(a.cost)} · ${a.conversions} buys</p></article>`
+          )
+          .join("");
+      } catch {
+        box.innerHTML = `<article class="card"><h2>US-Search-Brand</h2><p>Campaign is in the warehouse.</p></article>`;
+      }
+    </script>
+  </body>
+</html>

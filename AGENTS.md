@@ -61,7 +61,7 @@ These are the named products, looks, and decisions from this chat. Open them bef
 
 ```
 apps/console/          Next 15 console (rooms, campus, office, agents)
-apps/northstar-shop/   Sample product the Code Agent patches
+apps/northstar-shop/   Dummy company (Northstar). Storefront at /shop. Code Agent patches the JS.
 apps/demo/             Remotion walkthrough
 services/loop/         Python control plane (engine, store, API, office, world, registry)
 config/models.yaml     Only place model IDs live
@@ -87,6 +87,7 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | `components/pixel-office.tsx` | Pixel people. Do not put sprites in a short `overflow-hidden` + `overflow-x-auto` box. |
 | `components/office-floor.tsx` | Desk grid + handoffs. 2 columns on a phone. |
 | `lib/api.ts` | `NEXT_PUBLIC_API_URL` or `""` in production (same origin). |
+| `app/company/page.tsx` | Dummy tenant desk: Northstar shop, ads, flags. |
 | `app/agents/[id]/layout.tsx` | `generateStaticParams` `{ id: "_" }` — required for static export. Same for rooms/investigations. |
 
 ### Control plane
@@ -97,7 +98,7 @@ docs/LEARNINGS.md      Pitfalls — read before you touch host/UI
 | `loop/world.py` | Six fixtures → rooms. |
 | `loop/office.py` | `GET /api/office`, `GET /api/agents/{id}`. `canonical_agent()` aliases (`analytics` → `analytics_agent`). |
 | `loop/registry.py` | Identity + allow/deny. |
-| `loop/api.py` | FastAPI. CORS `*` on Cloud Run. SPA fallback includes `agents/`. |
+| `loop/api.py` | FastAPI. CORS `*` on Cloud Run. SPA fallback includes `agents/`. Shop at `/shop`. `GET /api/company`. |
 | `loop/store.py` | SQLite. `list_all_agent_calls`, `list_all_messages`. |
 
 `a2a()` is **not** posted as room messages. The room UI merges `bundle.agent_calls` as “handed off” rows.

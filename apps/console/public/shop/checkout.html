@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Checkout — Northstar</title>
+    <link rel="stylesheet" href="./shop.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <a href="./index.html"><strong>Northstar</strong></a>
+        <a href="./start.html">Start</a>
+      </nav>
+      <h1>Checkout</h1>
+      <p class="lead">Stone linen · $68. Shipping is shown here. Delivery date is an experiment the OS can turn on.</p>
+      <div class="card">
+        <div class="row"><span>Item</span><span>Stone linen</span></div>
+        <div class="row"><span>Shipping</span><span>$8</span></div>
+        <div class="row" id="date-row" hidden><span>Arrives</span><span>Thu, 3 Sep</span></div>
+        <div class="row"><span>Pay SDK</span><span id="sdk">…</span></div>
+      </div>
+      <p class="flag" id="flag"></p>
+    </div>
+    <script type="module">
+      import { loadCompany, paySdk, showDeliveryDate } from "./runtime.js";
+      const sdk = document.getElementById("sdk");
+      const flag = document.getElementById("flag");
+      const dateRow = document.getElementById("date-row");
+      try {
+        const c = await loadCompany();
+        const v = paySdk(c.flags);
+        sdk.textContent = v;
+        dateRow.hidden = !showDeliveryDate(c.flags);
+        flag.textContent =
+          c.flags.pay_sdk_4_3 === "off"
+            ? "Product OS rolled 4.3 back. This page is on 4.2.1."
+            : "Live shop is still on pay-sdk 4.3 — a HIGH gate is waiting in Approvals.";
+      } catch (e) {
+        sdk.textContent = "4.3.0";
+        flag.textContent = String(e.message);
+      }
+    </script>
+  </body>
+</html>

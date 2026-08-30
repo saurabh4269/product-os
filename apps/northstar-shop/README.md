@@ -1,11 +1,13 @@
-# northstar-shop (sample product)
+# Northstar (dummy company)
 
-Tiny commerce surface the Code Agent patches. Not the Product OS UI.
+The company Product OS is operating. Not the Product OS UI.
 
-Files the agent is allowed to touch:
+**Storefront:** `web/` — home, product, checkout, onboarding, ads landing. Served at `/shop`. After a gate is approved, `/api/company` flags change and the shop pages follow (SDK rollback, copy revert, delivery date).
 
-- `pay-sdk-adapter.js` — payment SDK callback (Safari / Android fixtures)
-- `onboarding.js` — activation copy (non-checkout fixture)
+**Code Agent targets** (no production customer data; merge is denied):
+
+- `pay-sdk-adapter.js` — payment SDK callback
+- `onboarding.js` — activation copy
 - `checkout.js` — shipping / delivery-date experiment
 
-No production customer data lives here. PRs stay in this tree. Merge and deploy are denied by the gateway.
+Ads live in the warehouse (`data/generate.py` → `ads.json`): US-Search-Brand and US-Shopping-Home. Spend stays flat so a conversion drop is not blamed on ads.

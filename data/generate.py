@@ -154,26 +154,30 @@ def emit_ads() -> list[dict]:
     day = START
     while day <= END:
         ds = day.isoformat()
-        cost = 820.0 + (day.weekday() * 12)
-        rows.append(
-            {
-                "_table": "ads_Campaign",
-                "_DATA_DATE": ds,
-                "campaign_id": "c_northstar",
-                "campaign_name": "US-Search-Brand",
-            }
-        )
-        rows.append(
-            {
-                "_table": "ads_CampaignStats",
-                "_DATA_DATE": ds,
-                "campaign_id": "c_northstar",
-                "impressions": 14000,
-                "clicks": 620,
-                "cost": cost,
-                "conversions": 48,
-            }
-        )
+        for cid, name, base, imps, clicks, conv in (
+            ("c_northstar", "US-Search-Brand", 820.0, 14000, 620, 48),
+            ("c_shop", "US-Shopping-Home", 310.0, 6200, 210, 19),
+        ):
+            cost = base + (day.weekday() * 8)
+            rows.append(
+                {
+                    "_table": "ads_Campaign",
+                    "_DATA_DATE": ds,
+                    "campaign_id": cid,
+                    "campaign_name": name,
+                }
+            )
+            rows.append(
+                {
+                    "_table": "ads_CampaignStats",
+                    "_DATA_DATE": ds,
+                    "campaign_id": cid,
+                    "impressions": imps,
+                    "clicks": clicks,
+                    "cost": cost,
+                    "conversions": conv,
+                }
+            )
         day += timedelta(days=1)
     return rows
 
@@ -196,7 +200,7 @@ def main(out: Path = OUT) -> Path:
     (out / "meta.json").write_text(
         json.dumps(
             {
-                "tenant": "Northstar Pay",
+                "tenant": "Northstar",
                 "seed": 20260829,
                 "regression_start": REGRESSION.isoformat(),
                 "recovery_start": RECOVERY.isoformat(),

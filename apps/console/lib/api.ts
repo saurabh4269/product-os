@@ -221,6 +221,22 @@ export const api = {
       verdicts: Array<Record<string, unknown>>;
       failOpen: boolean;
     }>("/api/governance"),
+  company: () =>
+    get<{
+      company: { id: string; name: string; product: string; tagline: string };
+      shop: { path: string };
+      flags: Record<string, string>;
+      ads: Array<{
+        id: string;
+        name: string;
+        impressions?: number;
+        clicks?: number;
+        cost?: number;
+        conversions?: number;
+        date?: string;
+      }>;
+      loop: { investigations: number; pending: number; resolved: number; failOpen: boolean };
+    }>("/api/company"),
   opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
   office: () => get<OfficeSnapshot>("/api/office"),
   agents: () =>
