@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Generate a seeded Northstar Pay warehouse: GA4-shaped events, logs, deploys, Ads.
+"""Generate a seeded Northstar warehouse: GA4-shaped events, logs, deploys, Ads.
 
-Safari/iOS purchase conversion drops ~25% from 2026-08-20 after pay-sdk 4.3.0.
-Recovery days (2026-08-29+) exist for post-approval verification only.
+Northstar is a home-goods shop. Safari/iOS purchase conversion drops ~25%
+from 2026-08-20 after pay-sdk 4.3.0. Recovery days (2026-08-29+) exist for
+post-approval verification only.
 """
 
 from __future__ import annotations
