@@ -117,6 +117,9 @@ def _ensure_standing_rooms(engine: LoopEngine) -> None:
 
 
 def _plant_organizational_memory(engine: LoopEngine) -> None:
+    from .abandon_research import plant_abandon_memory
+
+    plant_abandon_memory(engine.store)
     cards = [
         Lesson(
             id="les_prior_sdk",
@@ -344,6 +347,21 @@ def ingest_tenant_signal(
         status=SignalStatus.OPEN,
         detected_at=_now(),
     )
+    try:
+        from .connectors.warehouse import publish_signal
+
+        publish_signal(
+            {
+                "signal_id": sig.id,
+                "tenant_id": tenant.id,
+                "metric": metric,
+                "magnitude": magnitude,
+                "baseline": baseline,
+                "source": source,
+            }
+        )
+    except Exception:
+        pass
     existing = next(
         (r for r in engine.store.list_rooms() if r.scenario_id == scenario and r.status == "open"),
         None,
@@ -392,12 +410,15 @@ def ingest_tenant_voice(
     *,
     text: str,
     tokenized_user: str = "tok_anon",
+    phone: str = "",
 ) -> dict[str, Any]:
     """Customer voice from Product Y lands in a room — join if one is already open."""
+    from .classify import classify_voice
     from .tenant import Tenant
 
     assert isinstance(tenant, Tenant)
     clipped = text[:4000]
+    classified = classify_voice(clipped)
     rec = {
         "id": _id("voice"),
         "kind": "customer",
@@ -405,6 +426,12 @@ def ingest_tenant_voice(
         "tokenized_user": tokenized_user,
         "text": clipped,
         "channel": "tenant.ingest",
+        "phone": phone or None,
+        "classification": {
+            "kind": classified["kind"],
+            "label": classified["label"],
+            "confidence": classified["confidence"],
+        },
     }
     engine.store.put_memory(rec["id"], "customer", rec)
     scenario = f"t:{tenant.id}:voice"
@@ -415,7 +442,15 @@ def ingest_tenant_voice(
         standing = engine.store.get_room("room_research")
     tenant.last_ingest_at = _now().isoformat()
     engine.store.put_tenant(tenant)
+    label = classified["label"]
     if existing:
+        # Re-tag open room when classification is stronger than research default
+        if existing.loop_type == LoopType.TYPE_B and classified["loop_type"] == LoopType.TYPE_A:
+            existing.loop_type = classified["loop_type"]
+            existing.path = classified["path"]
+            existing.kind = classified["room_kind"]
+            existing.topic = f"{label}. {existing.topic}"
+            engine.store.put_room(existing)
         post(
             engine,
             existing.id,
@@ -425,6 +460,16 @@ def ingest_tenant_voice(
             text=clipped,
             artifact_type="voice",
             artifact=rec,
+        )
+        post(
+            engine,
+            existing.id,
+            author="conversation_classifier",
+            author_kind="agent",
+            kind="artifact",
+            text=f"Classified as {label}",
+            artifact_type="classification",
+            artifact=rec["classification"],
         )
         if standing and standing.id != existing.id:
             post(
@@ -437,18 +482,18 @@ def ingest_tenant_voice(
                 artifact_type="voice",
                 artifact={"room_id": existing.id, "tenant": tenant.id},
             )
-        return {"voice": rec, "room_id": existing.id, "joined": True}
+        return {"voice": rec, "room_id": existing.id, "joined": True, "classification": rec["classification"]}
     room = Room(
         id=_id("room"),
-        kind=RoomKind.RESEARCH,
-        title=f"{tenant.product}: customer voice",
-        topic="Feedback posted from the tenant app.",
+        kind=classified["room_kind"],
+        title=f"{tenant.product}: {label}",
+        topic=clipped[:240] or "Feedback posted from the tenant app.",
         status="open",
         created_at=_now(),
-        members=["customer_voice", "you"],
+        members=["customer_voice", "conversation_classifier", "you"],
         scenario_id=scenario,
-        loop_type=LoopType.TYPE_B,
-        path=PathKind.FEATURE,
+        loop_type=classified["loop_type"],
+        path=classified["path"],
     )
     engine.store.put_room(room)
     post(
@@ -461,6 +506,16 @@ def ingest_tenant_voice(
         artifact_type="voice",
         artifact=rec,
     )
+    post(
+        engine,
+        room.id,
+        author="conversation_classifier",
+        author_kind="agent",
+        kind="artifact",
+        text=f"Classified as {label}",
+        artifact_type="classification",
+        artifact=rec["classification"],
+    )
     if standing:
         post(
             engine,
@@ -472,7 +527,7 @@ def ingest_tenant_voice(
             artifact_type="voice",
             artifact={"room_id": room.id, "tenant": tenant.id},
         )
-    return {"voice": rec, "room_id": room.id, "joined": False}
+    return {"voice": rec, "room_id": room.id, "joined": False, "classification": rec["classification"]}
 
 
 def _add_facts(engine: LoopEngine, inv: Investigation, facts: list[dict[str, Any]]) -> None:
@@ -716,15 +771,30 @@ def _run_android_sdk(engine: LoopEngine) -> None:
         semantic="rollback-android-sdk-3.8",
     )
     engine.a2a(inv.id, "orchestrator", "coordination_agent", "TB-5", "schedule review + draft mail")
-    post(
+    from .coordination import CoordinationRequest, run_coordination
+
+    run_coordination(
         engine,
-        room.id,
-        author="coordination_agent",
-        author_kind="agent",
-        kind="artifact",
-        text="CODEOWNERS: android-payments@. Calendar hold 16:00Z. Gmail draft queued (gateway denies send).",
-        artifact_type="coordination",
-        artifact={"calendar": "2026-08-29T16:00:00Z", "gmail": "draft", "codeowners": ["android-payments@northstar"]},
+        CoordinationRequest(
+            kind="review_request",
+            title="Android pay-sdk rollback review",
+            subject="HIGH gate: flag rollback + PR — payment surface",
+            surface="payment authorization / android pay-sdk",
+            risk_tier="HIGH",
+            prefer_meet=True,
+            duration_minutes=45,
+            room_id=room.id,
+            investigation_id=inv.id,
+            notify_channels=["gmail_draft", "room"],
+            dimensions={
+                "codeowners": {"payment": ["android-payments@northstar"], "*": ["eng-oncall@northstar"]},
+                "forced_slot": {
+                    "start": "2026-08-29T16:00:00Z",
+                    "end": "2026-08-29T16:45:00Z",
+                    "duration_minutes": 45,
+                },
+            },
+        ),
     )
 
 
@@ -822,201 +892,26 @@ def _run_onboarding(engine: LoopEngine) -> None:
 
 
 def _run_apple_pay(engine: LoopEngine) -> None:
-    signal = _signal(
-        family=SignalFamily.CUSTOMER,
-        direction=Direction.POSITIVE,
-        funnel_position="purchase",
-        metric="feature_request_apple_pay",
-        magnitude=37,
-        baseline=4,
-        affected_segments=[Segment(os="iOS", platform="ios")],
-        confidence=0.86,
-        source="customer_voice cluster + app reviews",
-    )
-    inv, room = _open_typed(
+    """Fixture recipe on product-intelligence infra — N requests → one proposal."""
+    from .investigation import example_feature_mentions, run_product_intelligence
+
+    run_product_intelligence(
         engine,
-        signal,
+        example_feature_mentions(),
+        theme="Apple Pay",
         scenario_id="apple_pay",
         title="37 customers asked for Apple Pay",
-        topic="Type B · opportunity. Feature path: proposal + impact + human approval.",
-        kind=RoomKind.OPPORTUNITY,
-        loop_type=LoopType.TYPE_B,
-        path=PathKind.FEATURE,
-        members=["orchestrator", "feedback_agent", "product_agent", "risk_agent", "you"],
-    )
-    _add_facts(
-        engine,
-        inv,
-        [
-            {
-                "source_type": "customer_voice",
-                "source_reference": "cluster:feature_request=apple_pay n=37",
-                "claim": "37 distinct customers requested Apple Pay in 14 days (reviews + voice + chat).",
-                "independence_group": "customer_voice",
-                "collected_by": "feedback_agent",
-            },
-            {
-                "source_type": "analytics",
-                "source_reference": "iOS checkout_start without wallet",
-                "claim": "iOS checkout start 12.4k; wallet-capable devices 9.1k; estimated capture 6–9% of iOS GMV.",
-                "independence_group": "analytics_ga4",
-                "collected_by": "analytics_agent",
-            },
-            {
-                "source_type": "research",
-                "source_reference": "competitor:wallet_presence",
-                "claim": "Two direct competitors already offer Apple Pay. Churn mentions cite 'had to type the card'.",
-                "independence_group": "competitor_research",
-                "collected_by": "product_intelligence_agent",
-            },
-        ],
-    )
-    hyp = engine.form_hypothesis(
-        inv,
-        statement="Apple Pay is a ranked opportunity: frequency 37, revenue $82k, high churn risk, competitor-present. Not a bug.",
-        classification=Classification.OPPORTUNITY,
-    )
-    assert hyp
-    post(
-        engine,
-        room.id,
-        author="product_agent",
-        author_kind="agent",
-        kind="artifact",
-        text="PRD: Apple Pay on iOS checkout. Impact: frequency 37, revenue $82k, churn high, estimate medium.",
-        artifact_type="prd",
-        artifact={
-            "title": "Apple Pay on iOS checkout",
-            "frequency": 37,
-            "revenue_affected_usd": 82000,
-            "churn_risk": "high",
-            "competitor_capability": True,
-            "implementation_estimate": "medium",
-            "github_issue": "apps/northstar-shop#issue (opened on PM approve)",
-        },
-    )
-    action = engine.propose_action(
-        inv,
-        hyp,
-        surface="feature proposal / prd / github issue",
-        action_type="product_proposal",
-        artifacts={
-            "prd": "Apple Pay on iOS checkout",
-            "github_issue": {"repo": "apps/northstar-shop", "title": "Add Apple Pay to iOS checkout"},
-        },
-        consequence="MEDIUM: PM approval opens a GitHub issue. No payment authorization code ships from this loop.",
-        semantic="apple-pay-proposal",
-    )
-    post(
-        engine,
-        room.id,
-        author="risk_agent",
-        author_kind="agent",
-        kind="artifact",
-        text=f"{action.risk_tier.value} · PM approve to open the GitHub issue.",
-        artifact_type="risk_decision",
-        artifact=action.model_dump(mode="json"),
+        competitor_capability=True,
+        implementation_estimate="medium",
+        revenue_affected_usd=82000,
     )
 
 
 def _run_shipping_experiment(engine: LoopEngine) -> None:
-    signal = _signal(
-        family=SignalFamily.BUSINESS,
-        direction=Direction.NEGATIVE,
-        funnel_position="shipping_info",
-        metric="checkout_return_to_shipping",
-        magnitude=0.12,
-        baseline=0.04,
-        affected_segments=[Segment(platform="web")],
-        confidence=0.84,
-        source="ga4 checkout funnel",
-    )
-    inv, room = _open_typed(
-        engine,
-        signal,
-        scenario_id="shipping_ux",
-        title="12% of checkout users return to shipping",
-        topic="Type B · UX opportunity. Experiment path, not a payment SDK story.",
-        kind=RoomKind.OPPORTUNITY,
-        loop_type=LoopType.TYPE_B,
-        path=PathKind.FEATURE,
-        members=["orchestrator", "experiment_agent", "analytics_agent", "product_agent", "you"],
-    )
-    _add_facts(
-        engine,
-        inv,
-        [
-            {
-                "source_type": "analytics",
-                "source_reference": "funnel checkout → shipping_info reopen",
-                "claim": "12% of checkout sessions return to shipping_info (baseline 4%). Drop-off cites cost surprise.",
-                "independence_group": "analytics_ga4",
-                "collected_by": "analytics_agent",
-            },
-            {
-                "source_type": "customer_voice",
-                "source_reference": "cluster:shipping_cost_unclear n=18",
-                "claim": "18 customers said shipping cost appeared too late. No payment-error cluster.",
-                "independence_group": "customer_voice",
-                "collected_by": "feedback_agent",
-            },
-            {
-                "source_type": "research",
-                "source_reference": "session replay sample n=40",
-                "claim": "Users open shipping twice to hunt for delivery date. Hypothesis: show delivery date earlier.",
-                "independence_group": "ux_research",
-                "collected_by": "product_agent",
-            },
-        ],
-    )
-    hyp = engine.form_hypothesis(
-        inv,
-        statement="Unclear shipping cost/date causes a 12% return-to-shipping rate. Experiment: show delivery date earlier.",
-        classification=Classification.OPPORTUNITY,
-    )
-    assert hyp
-    post(
-        engine,
-        room.id,
-        author="experiment_agent",
-        author_kind="agent",
-        kind="artifact",
-        text="Design: treatment shows delivery date on cart. 5% rollout. Primary: return-to-shipping. Guardrail: purchase CR. MDE 8%. Stop at 14d or harm.",
-        artifact_type="experiment_design",
-        artifact={
-            "hypothesis": "Showing delivery date on cart reduces return-to-shipping.",
-            "treatment": "show_delivery_date_earlier",
-            "rollout_pct": 5,
-            "primary_metric": "checkout_return_to_shipping",
-            "guardrail": "purchase_conversion",
-            "mde": 0.08,
-            "stopping_rule": "14d or guardrail harm",
-        },
-    )
-    action = engine.propose_action(
-        inv,
-        hyp,
-        surface="experiment flag / checkout copy",
-        action_type="experiment",
-        artifacts={
-            "flag": "show_delivery_date_earlier",
-            "from": "off",
-            "to": "5",
-            "rollout_pct": 5,
-        },
-        consequence="MEDIUM experiment: 5% flag. Developer approval. Ceiling enforced in tool code (max 5% without human).",
-        semantic="exp-delivery-date-5pct",
-    )
-    post(
-        engine,
-        room.id,
-        author="risk_agent",
-        author_kind="agent",
-        kind="artifact",
-        text=f"{action.risk_tier.value} · 5% experiment waiting on developer approval.",
-        artifact_type="risk_decision",
-        artifact=action.model_dump(mode="json"),
-    )
+    """Fixture recipe on shared product-improvement infra (not hardcoded pipeline)."""
+    from .product_improvement import seed_shipping_opportunity
+
+    seed_shipping_opportunity(engine, simulate_outcome=False)
 
 
 def _run_security_exfil(engine: LoopEngine) -> None:

@@ -51,8 +51,8 @@ def seed_placeholder(store: Any) -> Tenant:
     repo = os.environ.get("LOOP_TENANT_REPO", "")
     t = Tenant(
         id="acme",
-        name="Northstar",
-        product="Northstar",
+        name="Cove",
+        product="Cove",
         repo=repo,
         deploy_url=os.environ.get("LOOP_TENANT_DEPLOY_URL", ""),
         token_hash=hash_token(token) if token else "",

@@ -32,7 +32,7 @@ class CritiqueIn(BaseModel):
 
 
 def build_investigation_workflow() -> Any | None:
-    """Parallel fan-out of analytics / logs / deploy → JoinNode (ADK 2 Workflow)."""
+    """Parallel fan-out of analytics/logs/deploy/db/customer/code → JoinNode (ADK 2)."""
     try:
         from google.adk import Workflow
         from google.adk.workflow import START, JoinNode
@@ -54,6 +54,15 @@ def build_investigation_workflow() -> Any | None:
     async def deploy_node(_inp=None):
         return {"source": "deploy", "independence_group": "release"}
 
+    async def database_node(_inp=None):
+        return {"source": "database", "independence_group": "database"}
+
+    async def customer_node(_inp=None):
+        return {"source": "customer", "independence_group": "customer_voice"}
+
+    async def code_node(_inp=None):
+        return {"source": "code", "independence_group": "code"}
+
     def join_evidence(node_input=None, **_k):
         if isinstance(node_input, dict) and any(
             k.startswith("fetch") or k.endswith("_node") for k in node_input
@@ -63,10 +72,21 @@ def build_investigation_workflow() -> Any | None:
             parts = [p for p in (node_input if isinstance(node_input, list) else []) if p]
             if not parts and isinstance(node_input, dict) and "source" in node_input:
                 parts = [node_input]
+        groups = sorted({p["independence_group"] for p in parts if "independence_group" in p})
         return {
             "evidence": parts,
-            "groups": sorted({p["independence_group"] for p in parts if "independence_group" in p}),
+            "groups": groups,
+            "confidence": round(min(0.97, 0.5 + 0.08 * len(groups)), 3),
         }
+
+    fanout = [
+        analytics_node,
+        logs_node,
+        deploy_node,
+        database_node,
+        customer_node,
+        code_node,
+    ]
 
     try:
         if JoinNode is not None:
@@ -74,29 +94,17 @@ def build_investigation_workflow() -> Any | None:
             return Workflow(
                 name="investigation_fanout",
                 description=(
-                    "Fan-out analytics/logs/deploy evidence, then join. "
+                    "Fan-out analytics/logs/deploy/db/customer/code evidence, then join. "
                     "Replaces ParallelAgent from ADK 1.x / SalesShortcut."
                 ),
                 input_schema=InvestigationIn,
-                edges=[
-                    (START, analytics_node, joiner),
-                    (START, logs_node, joiner),
-                    (START, deploy_node, joiner),
-                    (joiner, join_evidence),
-                ],
+                edges=[(START, node, joiner) for node in fanout] + [(joiner, join_evidence)],
             )
         return Workflow(
             name="investigation_fanout",
-            description="Fan-out analytics/logs/deploy evidence, then join.",
+            description="Fan-out six investigators, then join.",
             input_schema=InvestigationIn,
-            edges=[
-                ("START", analytics_node),
-                ("START", logs_node),
-                ("START", deploy_node),
-                (analytics_node, join_evidence),
-                (logs_node, join_evidence),
-                (deploy_node, join_evidence),
-            ],
+            edges=[("START", n) for n in fanout] + [(n, join_evidence) for n in fanout],
         )
     except TypeError:
         return None

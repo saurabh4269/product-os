@@ -78,6 +78,8 @@ export function RoomView({ initialId }: { initialId?: string }) {
   const [data, setData] = useState<RoomDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const [callPhone, setCallPhone] = useState("");
+  const [callNote, setCallNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"work" | "transcript">("work");
   const [livePresence, setLivePresence] = useState<Record<string, string>>({});
@@ -181,6 +183,23 @@ export function RoomView({ initialId }: { initialId?: string }) {
                 [String(step.agentId)]: step.denial ? "idle" : "tool",
               }));
             }
+          }
+          if (e.type === "funnel_stage" && e.stage) {
+            const stage = String(e.stage);
+            setData((r) => {
+              if (!r?.funnel) return r;
+              const steps = r.funnel.steps.map((s, i, arr) => {
+                const cur = arr.findIndex((x) => x.id === stage);
+                return { ...s, on: cur >= 0 ? i <= cur : s.on };
+              });
+              return { ...r, funnel: { ...r.funnel, current: stage, steps } };
+            });
+            if (e.agentId) {
+              setLivePresence((prev) => ({ ...prev, [String(e.agentId)]: "thinking" }));
+            }
+          }
+          if (e.type === "agent_callback" && e.agentId) {
+            setLivePresence((prev) => ({ ...prev, [String(e.agentId)]: String(e.status || "speaking") }));
           }
         } catch {
           /* ignore bad frames */
@@ -288,6 +307,29 @@ export function RoomView({ initialId }: { initialId?: string }) {
     }
   }
 
+  async function callCustomer() {
+    if (!callPhone.trim()) {
+      setCallNote("Add a phone number first.");
+      return;
+    }
+    setBusy(true);
+    setCallNote(null);
+    try {
+      const out = await api.placeCall({
+        to_number: callPhone.trim(),
+        reason: data?.room.topic || data?.room.title || "customer follow-up",
+        room_id: id,
+        product: "Cove",
+      });
+      setCallNote(out.report.detail);
+      await load(id);
+    } catch (e) {
+      setCallNote(e instanceof Error ? e.message : "Call failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   let lastAuthor = "";
 
   return (
@@ -310,6 +352,23 @@ export function RoomView({ initialId }: { initialId?: string }) {
             />
           </div>
         ) : null}
+        <div className="mt-5 flex max-w-xl flex-wrap items-end gap-2">
+          <label className="min-w-[11rem] flex-1 text-[12px] text-[var(--faint)]">
+            Call customer
+            <input
+              className="mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] text-foreground outline-none focus:border-accent"
+              value={callPhone}
+              onChange={(e) => setCallPhone(e.target.value)}
+              placeholder="+1…"
+              inputMode="tel"
+              autoComplete="tel"
+            />
+          </label>
+          <Button type="button" onClick={() => void callCustomer()} disabled={busy}>
+            {busy ? "Calling…" : "Place call"}
+          </Button>
+        </div>
+        {callNote ? <p className="mt-2 max-w-xl text-[13px] leading-5 text-[var(--dim)]">{callNote}</p> : null}
       </div>
 
       <div className="mx-5 overflow-hidden rounded-[20px] border border-border sm:mx-8 lg:mx-12">

@@ -1,0 +1,45 @@
+# Product OS — copy to .env locally. Never commit real secrets.
+
+# Console
+# LOOP_CONSOLE_ORIGIN=http://127.0.0.1:3000
+# NEXT_PUBLIC_API_URL=   # MUST unset when packaging for Cloud Run
+
+# Tenant (Product Y = Cove)
+# LOOP_TENANT_REPO=saurabh4269/cove
+# LOOP_TENANT_DEPLOY_URL=https://cove-5uy6fkd7bq-uc.a.run.app
+# LOOP_TENANT_BOOTSTRAP_TOKEN=
+# LOOP_GITHUB_TOKEN=     # fine-grained: contents+PRs on cove only; or `gh auth token`
+
+# Public URL (Twilio webhooks + OAuth redirects)
+# LOOP_PUBLIC_URL=https://loop-5uy6fkd7bq-uc.a.run.app
+
+# Workspace OAuth (Gmail draft / Calendar — send stays denied)
+# Prefer paste once on /connect; optional env so client survives wipe:
+# LOOP_GOOGLE_OAUTH_CLIENT_ID=
+# LOOP_GOOGLE_OAUTH_CLIENT_SECRET=
+# Scopes used: gmail.compose, calendar.events, userinfo.email
+
+# Phone (Twilio free trial + Gemini — no ElevenLabs)
+# TWILIO_ACCOUNT_SID=
+# TWILIO_AUTH_TOKEN=
+# TWILIO_FROM_NUMBER=
+# GOOGLE_API_KEY=          # AI Studio / GCP for Say/Gather dialogue
+# LOOP_GTP_PHONE_NUMBER=   # optional Google inbound-only callback number
+
+# Production hardening (see docs/PLAN_PRODUCTION.md)
+# LOOP_STATE_GCS_URI=gs://PROJECT-loop-host/loop_state.db
+# LOOP_ADMIN_TOKEN=        # Bearer for approve, tenant admin, worker tick
+# LOOP_CODE_REQUIRE_TESTS=1
+# LOOP_CODE_TEST_CMD=      # override e.g. cd repo && npm test -- --run
+# LOOP_PUBSUB_TOPIC=loop.signals
+# LOOP_TASKS_QUEUE=loop-jobs
+# LOOP_TASKS_DISABLE=1     # force inline worker threads (no Cloud Tasks)
+# LOOP_CODE_BACKEND=auto|antigravity|gemini|deterministic|fixture
+# LOOP_ADK_WORKER_URL=       # loop-adk Cloud Run URL (main service forwards signals)
+# LOOP_ADK_ENABLED=1         # inline ADK on same process (worker service sets this)
+# LOOP_ANTIGRAVITY_VERTEX=1  # use Vertex ADC instead of GOOGLE_API_KEY for Antigravity
+
+# Optional
+# GOOGLE_CLOUD_PROJECT=mystical-timing-442601-q8
+# LOOP_WAREHOUSE_PATH=
+# LOOP_DATA_DIR=           # OAuth refresh token storage (ephemeral on Cloud Run disk)

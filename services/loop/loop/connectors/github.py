@@ -138,6 +138,70 @@ def open_pr(
     return ConnectorReport(status="skipped", connector="github.pr", detail=f"pull {st}: {pr}")
 
 
+def open_pr_multi_file(
+    tenant: Tenant,
+    title: str,
+    body: str,
+    files: dict[str, str],
+    *,
+    branch: str | None = None,
+) -> ConnectorReport:
+    """Commit multiple files on a branch and open one PR."""
+    token = _token()
+    if not token or not tenant.repo:
+        return ConnectorReport(
+            status="skipped",
+            connector="github.pr",
+            detail="no LOOP_GITHUB_TOKEN/GITHUB_TOKEN/gh auth or tenant.repo",
+        )
+    if not files:
+        return ConnectorReport(status="skipped", connector="github.pr", detail="no files to commit")
+    repo = tenant.repo.strip()
+    st, meta = _request("GET", f"https://api.github.com/repos/{repo}", token)
+    if st != 200:
+        return ConnectorReport(status="skipped", connector="github.pr", detail=f"repo {st}: {meta}")
+    base = meta.get("default_branch") or "main"
+    st, ref = _request("GET", f"https://api.github.com/repos/{repo}/git/ref/heads/{base}", token)
+    if st != 200:
+        return ConnectorReport(status="skipped", connector="github.pr", detail=f"ref {st}: {ref}")
+    sha = (ref.get("object") or {}).get("sha")
+    if not sha:
+        return ConnectorReport(status="skipped", connector="github.pr", detail="no base sha")
+    head = branch or f"loop/code-{uuid4().hex[:10]}"
+    st, created = _request(
+        "POST",
+        f"https://api.github.com/repos/{repo}/git/refs",
+        token,
+        {"ref": f"refs/heads/{head}", "sha": sha},
+    )
+    if st not in {200, 201}:
+        return ConnectorReport(status="skipped", connector="github.pr", detail=f"branch {st}: {created}")
+    for path, content in files.items():
+        st, put = _put_file(repo, token, head, path, content, f"{title} — {path}")
+        if st not in {200, 201}:
+            return ConnectorReport(status="skipped", connector="github.pr", detail=f"commit {path} {st}: {put}")
+    st, pr = _request(
+        "POST",
+        f"https://api.github.com/repos/{repo}/pulls",
+        token,
+        {
+            "title": title,
+            "body": body + "\n\nProduct OS does not merge this. A human must merge. OS never production-deploys the tenant app.",
+            "head": head,
+            "base": base,
+        },
+    )
+    url = pr.get("html_url")
+    if st in {200, 201} and url:
+        return ConnectorReport(
+            status="applied",
+            connector="github.pr",
+            detail=f"pull request opened ({len(files)} files)",
+            url=str(url),
+        )
+    return ConnectorReport(status="skipped", connector="github.pr", detail=f"pull {st}: {pr}")
+
+
 def create_issue(tenant: Tenant, title: str, body: str) -> ConnectorReport:
     token = _token()
     if not token or not tenant.repo:

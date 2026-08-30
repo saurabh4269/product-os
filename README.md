@@ -18,7 +18,7 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Architecture: [`docs/architecture.mmd`](docs
 
 API `:8080`, console `:3000`. On boot the warehouse is generated and `seed_world` opens six fixtures into rooms.
 
-**Hosted:** https://loop-5uy6fkd7bq-uc.a.run.app · Product Y: https://northstar-5uy6fkd7bq-uc.a.run.app
+**Hosted:** https://loop-5uy6fkd7bq-uc.a.run.app · Product Y: https://cove-5uy6fkd7bq-uc.a.run.app
 
 ```bash
 ./scripts/verify.sh
@@ -78,7 +78,7 @@ Engineering (`loop-code`): ALLOW GitHub r/w + CI, DENY Gmail send / prod deploy 
 | Model Armor | Cheap GCP templates applied; `ToolOutputArmorPlugin` on `after_tool_callback` (ADK does not screen tool output). `fail_open = false`. |
 | Gemini Live / Telephony | Media-bridge + transcript screening. No PSTN. |
 | Agent Observability | Local A2A traces; Cloud Trace when the project has it. |
-| Antigravity SDK | Code Agent contract + GitHub PR artifacts. Fixture targets are in-repo; production targets a connected tenant repo. |
+| Antigravity SDK | Optional preview backend (`LOOP_CODE_BACKEND=auto`) on `loop-adk` worker; main path is clone → test → PR with deterministic Safari fallback. |
 
 ## Stack
 

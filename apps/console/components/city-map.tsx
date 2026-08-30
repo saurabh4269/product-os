@@ -138,7 +138,7 @@ export function CityMap({
       : [];
 
   return (
-    <section className="relative flex min-h-0 flex-col bg-[#eef2ee] lg:h-full">
+    <section className="relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]">
       <header className="relative z-20 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
         <h1 className="mt-1 font-display text-[1.65rem] leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.6rem]">
@@ -154,7 +154,7 @@ export function CityMap({
       <div className="relative mx-auto w-full max-w-[1100px] lg:absolute lg:inset-0 lg:max-w-none">
         <div
           ref={setFrameEl}
-          className="relative mx-auto aspect-[3/2] w-full max-h-[min(56vh,400px)] sm:max-h-[min(64vh,560px)] md:max-h-[min(70vh,680px)] lg:absolute lg:inset-0 lg:mx-0 lg:aspect-auto lg:h-full lg:max-h-none"
+          className="relative mx-auto aspect-[3/2] w-full max-h-[min(62vh,480px)] sm:max-h-[min(68vh,560px)] md:max-h-[min(72vh,640px)] lg:absolute lg:inset-0 lg:mx-0 lg:aspect-auto lg:h-full lg:max-h-none"
         >
           <picture>
             <source srcSet="/city/campus.webp" type="image/webp" />

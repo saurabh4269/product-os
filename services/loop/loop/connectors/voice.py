@@ -1,22 +1,35 @@
-"""Outbound call stays text-fallback. Ingest is HTTP, not this connector."""
+"""Outbound call connector — Twilio + Gemini (GCP credits / free trial)."""
 
 from __future__ import annotations
 
-import os
+from typing import Any
 
+from loop.telephony import place_call as _place
 from loop.tenant import ConnectorReport
 
 
-def place_call(tokenized_user: str, reason: str) -> ConnectorReport:
-    if not os.environ.get("LOOP_LIVE_ENTITLED"):
+def place_call(
+    tokenized_user: str,
+    reason: str,
+    *,
+    to_number: str = "",
+    room_id: str = "",
+    product: str = "Cove",
+    brief: dict[str, Any] | None = None,
+    system_prompt: str = "",
+) -> ConnectorReport:
+    if not to_number:
         return ConnectorReport(
             status="skipped",
             connector="voice.place_call",
-            detail="Live API not entitled — text fallback only, no PSTN",
+            detail="No phone number — ask the customer for a callback number first",
         )
-    _ = tokenized_user, reason
-    return ConnectorReport(
-        status="skipped",
-        connector="voice.place_call",
-        detail="Live entitled but outbound call is not implemented; no PSTN",
+    return _place(
+        to_number=to_number,
+        reason=reason,
+        room_id=room_id,
+        product=product,
+        tokenized_user=tokenized_user,
+        brief=brief,
+        system_prompt=system_prompt,
     )

@@ -5,7 +5,7 @@ You are continuing **Product OS (LOOP)**. Start from **`main`**. Read this file 
 Repo: `github.com/saurabh4269/product-os`  
 Live: https://loop-5uy6fkd7bq-uc.a.run.app  
 GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`  
-Product Y: `github.com/saurabh4269/northstar` · Cloud Run `northstar` · https://northstar-5uy6fkd7bq-uc.a.run.app
+Product Y: `github.com/saurabh4269/cove` · Cloud Run `cove` · https://cove-5uy6fkd7bq-uc.a.run.app
 
 ## What this product is
 
@@ -47,11 +47,11 @@ These are the named products, looks, and decisions from this chat. Open them bef
 - Hosted revision: `loop-00033-6mz` (Connect + tenant APIs + GitHub PR on approve; `/shop` 404; min-instances 1)
 - PRs [#1](https://github.com/saurabh4269/product-os/pull/1)–[#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6’s shop commits are in history but **deleted at tip**. Do not restore `/shop`.
 
-**Product Y:** https://github.com/saurabh4269/northstar · https://northstar-5uy6fkd7bq-uc.a.run.app (Cloud Run `northstar`)
+**Product Y:** https://github.com/saurabh4269/cove · https://cove-5uy6fkd7bq-uc.a.run.app (Cloud Run `cove`). Fork of Epic-Design-Labs nextjs-ecommerce-starter + LOOP wire. Northstar is retired as the demo tenant.
 
 ## Next work
 
-Workspace OAuth is on Connect (`/api/oauth/google/start`) — you still create the Web client in Google Auth Platform once. Optional Live. Agent Gateway still plan-only. Tenant **connectors** are in this repo; Product Y is the other repo. Do **not** rebuild a storefront here.
+Workspace OAuth is on Connect (`/api/oauth/google/start`) — you still create the Web client in Google Auth Platform once. Optional Live. Agent Gateway still plan-only. Tenant **connectors** are in this repo; Product Y is the other repo (`cove`). Do **not** rebuild a storefront here.
 
 ## Binding rules
 

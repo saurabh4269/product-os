@@ -23,6 +23,12 @@ def warehouse_dir(tmp_path_factory) -> Path:
     return dest
 
 
+@pytest.fixture(autouse=True)
+def _no_background_job_dispatch(monkeypatch):
+    """Enqueue must not spawn Cloud Tasks or daemon threads during unit tests."""
+    monkeypatch.setattr("loop.jobs.dispatch", lambda _job, _store: None)
+
+
 @pytest.fixture()
 def engine(tmp_path, warehouse_dir) -> LoopEngine:
     store = Store(tmp_path / "loop.db")

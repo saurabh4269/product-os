@@ -42,6 +42,95 @@ def blob_path() -> Path:
     return root / "workspace_oauth.json"
 
 
+def _oauth_gcs_uri() -> str:
+    explicit = (os.environ.get("LOOP_OAUTH_GCS_URI") or "").strip()
+    if explicit:
+        return explicit
+    if os.environ.get("K_SERVICE"):
+        project = os.environ.get("GOOGLE_CLOUD_PROJECT", PROJECT)
+        return f"gs://{project}-loop-host/workspace_oauth.json"
+    return ""
+
+
+def _parse_gs_uri(uri: str) -> tuple[str, str]:
+    if not uri.startswith("gs://"):
+        raise ValueError("expected gs://bucket/object")
+    rest = uri[5:]
+    bucket, _, obj = rest.partition("/")
+    if not bucket or not obj:
+        raise ValueError("expected gs://bucket/object")
+    return bucket, obj
+
+
+def _metadata_access_token() -> str:
+    try:
+        req = urllib.request.Request(
+            "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+            headers={"Metadata-Flavor": "Google"},
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return json.loads(resp.read()).get("access_token") or ""
+    except (OSError, urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+        return ""
+
+
+def _gcs_read_json() -> dict[str, Any]:
+    uri = _oauth_gcs_uri()
+    if not uri:
+        return {}
+    try:
+        bucket, obj = _parse_gs_uri(uri)
+    except ValueError:
+        return {}
+    token = _metadata_access_token()
+    if not token:
+        return {}
+    quoted = urllib.parse.quote(obj, safe="")
+    url = f"https://storage.googleapis.com/storage/v1/b/{bucket}/o/{quoted}?alt=media"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {}
+        return {}
+    except (OSError, urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+        return {}
+
+
+def _gcs_write_json(data: dict[str, Any]) -> None:
+    uri = _oauth_gcs_uri()
+    if not uri or not data.get("refresh_token"):
+        return
+    try:
+        bucket, obj = _parse_gs_uri(uri)
+    except ValueError:
+        return
+    token = _metadata_access_token()
+    if not token:
+        return
+    payload = json.dumps(data, indent=2).encode()
+    quoted = urllib.parse.quote(obj, safe="")
+    url = (
+        f"https://storage.googleapis.com/upload/storage/v1/b/{bucket}/o"
+        f"?uploadType=media&name={quoted}"
+    )
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        urllib.request.urlopen(req, timeout=15)
+    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+        return
+
+
 def _load() -> dict[str, Any]:
     path = blob_path()
     data: dict[str, Any] = {}
@@ -50,6 +139,10 @@ def _load() -> dict[str, Any]:
             data = json.loads(path.read_text())
         except (OSError, json.JSONDecodeError):
             data = {}
+    if not data.get("refresh_token"):
+        remote = _gcs_read_json()
+        if remote.get("refresh_token"):
+            data.update(remote)
     cid = (os.environ.get("LOOP_GOOGLE_OAUTH_CLIENT_ID") or "").strip()
     csec = (os.environ.get("LOOP_GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
     if cid and csec:
@@ -62,6 +155,7 @@ def _save(data: dict[str, Any]) -> None:
     path = blob_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n")
+    _gcs_write_json(data)
 
 
 def _http(method: str, url: str, body: dict | None = None, token: str = "") -> tuple[int, dict]:
@@ -147,10 +241,24 @@ def connected(data: dict[str, Any] | None = None) -> bool:
 
 def save_client(client_id: str, client_secret: str) -> dict[str, Any]:
     blob = _load()
-    blob["client_id"] = client_id.strip()
-    blob["client_secret"] = client_secret.strip()
+    blob["client_id"] = _clean_client_id(client_id)
+    blob["client_secret"] = (client_secret or "").strip().strip('"').strip("'")
+    if not blob["client_id"] or not blob["client_secret"]:
+        raise ValueError("client_id and client_secret required")
+    if "apps.googleusercontent.com" not in blob["client_id"]:
+        raise ValueError("client_id must look like ….apps.googleusercontent.com")
     _save(blob)
     return status()
+
+
+def _clean_client_id(raw: str) -> str:
+    """Strip common paste mistakes that cause Google invalid_client."""
+    import re
+
+    s = (raw or "").strip().strip('"').strip("'")
+    s = re.sub(r"^https?://", "", s, flags=re.I).strip().strip("/")
+    m = re.search(r"([0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com)", s, re.I)
+    return m.group(1) if m else s
 
 
 def status(request_base: str = "") -> dict[str, Any]:

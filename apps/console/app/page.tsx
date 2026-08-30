@@ -9,6 +9,8 @@ import { CityMap } from "@/components/city-map";
 import { IsoOffice } from "@/components/iso-office";
 import { OfficeFloor } from "@/components/office-floor";
 import { RoomCard } from "@/components/work-flipbook";
+import { ScenarioChips } from "@/components/scenario-chips";
+import { StatusStrip } from "@/components/status-strip";
 
 function magLabel(raw: unknown) {
   const n = Number(raw);
@@ -51,7 +53,7 @@ export default function HomePage() {
 
   return (
     <>
-      <section className="lg:h-full">
+      <section className="relative shrink-0 min-h-[min(68vh,520px)] sm:min-h-[min(72vh,580px)] lg:h-[100dvh] lg:max-h-[100dvh]">
         <CityMap
           rooms={chambers}
           desks={desks}
@@ -63,7 +65,9 @@ export default function HomePage() {
       </section>
 
       <section className="page-pad bg-background">
-        <header className="max-w-xl">
+        <StatusStrip />
+        <ScenarioChips />
+        <header className="max-w-xl mt-10 sm:mt-12">
           <p className="text-[13px] text-[var(--faint)]">Below the campus</p>
           <h2 className="mt-1 text-[24px] font-semibold tracking-tight sm:text-[28px]">The office, up close</h2>
           <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">

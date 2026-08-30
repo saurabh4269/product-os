@@ -531,10 +531,24 @@ class LoopEngine:
             "flag": "pay_sdk_4_3",
             "from": "on",
             "to": "off",
+            "code_fix": True,
+            "code_brief": {
+                "issue": "Safari 3DS callback regression after pay-sdk 4.3",
+                "likely_files": [
+                    "payment/callback.ts",
+                    "payment/3ds.ts",
+                    "src/app/(store)/checkout/page.tsx",
+                    "src/lib/loop.ts",
+                ],
+                "expected_behavior": "Safari checkout completes; 3DS callback returns within timeout.",
+                "regression_test": "Safari checkout does not hang when pay_sdk_4_3 is off.",
+                "surface": "payment authorization / 3DS",
+                "hypothesis": hyp.statement,
+            },
             "pr": {
-                "title": "Revert pay-sdk 4.3 Safari 3DS regression",
+                "title": "Fix Safari 3DS checkout regression (pay-sdk 4.3)",
                 "body": f"Investigation {inv.id}. Hypothesis: {hyp.statement}",
-                "tests": "regression test must fail pre-change and pass post-change",
+                "tests": "tests/regression/safari-3ds-checkout.test.ts",
             },
         }
         action = ProposedAction(
@@ -623,6 +637,7 @@ class LoopEngine:
         reports = []
         result: dict = {"merged": False, "pr_opened": False}
         reused = False
+        code_fix_job: dict | None = None
         if "flag" in action.artifacts:
             import json as json_lib
 
@@ -643,7 +658,24 @@ class LoopEngine:
             if name == "pay_sdk_4_3":
                 flags_doc["pay_sdk"] = "4.2.1" if str(value) == "off" else "4.3.0"
             file_content = json_lib.dumps(flags_doc, indent=2) + "\n"
-            if tenant:
+            code_fix = action.artifacts.get("code_fix", True) is not False
+            brief = None
+            if code_fix:
+                from .code_fix import resolve_brief
+
+                brief = resolve_brief(action, inv, self.store)
+                if brief and tenant:
+                    code_fix_job = {
+                        "action_id": action_id,
+                        "tenant": tenant,
+                        "inv": inv,
+                        "brief": brief,
+                        "flag_patch": flags_doc,
+                        "pr_title": str(pr_meta.get("title") or title),
+                        "pr_body": str(pr_meta.get("body") or body),
+                    }
+                    result["code_fix"] = "queued"
+            if tenant and not (code_fix and brief):
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.pr",
@@ -666,6 +698,8 @@ class LoopEngine:
                 elif gh.get("detail"):
                     tenant.last_connector = str(gh.get("detail"))
                     self.store.put_tenant(tenant)
+            elif code_fix and brief:
+                result["pr_note"] = "Code fix PR opening in background (multi-file)"
         else:
             issue = action.artifacts.get("github_issue") if isinstance(action.artifacts.get("github_issue"), dict) else {}
             title = issue.get("title") or "Product OS follow-up"
@@ -688,6 +722,10 @@ class LoopEngine:
         action.status = "executed"
         action.artifacts["execution"] = {**result, "reused": reused}
         self.store.put_action(action)
+        if code_fix_job:
+            from .code_fix import enqueue_code_fix_job
+
+            enqueue_code_fix_job(self, **code_fix_job)
         self.timeline(
             inv.id,
             "code_agent",
@@ -890,23 +928,11 @@ def json_dumps_lower(d: dict) -> str:
 
 
 def screen_tool_output(text: str) -> tuple[bool, str]:
-    """Deterministic injection screen used by M-10 plugin and tests."""
-    needles = [
-        "ignore previous instructions",
-        "ignore all previous instructions",
-        "system override",
-        "disable model armor",
-        "export_pii_table",
-        "dump all customer",
-        "exfiltrate",
-        "send me the customer records",
-        "access the production database",
-    ]
-    low = text.lower()
-    for n in needles:
-        if n in low:
-            return True, n
-    return False, ""
+    """Deterministic + Model Armor layered screen (M-10)."""
+    from .model_armor import screen_tool_output as layered
+
+    hit, needle, _backend = layered(text)
+    return hit, needle
 
 
 def redact_pii(text: str) -> str:

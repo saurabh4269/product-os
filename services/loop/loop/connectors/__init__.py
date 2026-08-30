@@ -2,10 +2,27 @@
 
 from __future__ import annotations
 
-from .calendar import hold as calendar_hold
+from .calendar import (
+    check_availability,
+    create_event,
+    hold as calendar_hold,
+    list_events,
+    suggest_times,
+)
 from .github import create_issue, open_pr
 from .mail import draft as mail_draft
 from .voice import place_call
 from .warehouse import publish_signal
 
-__all__ = ["calendar_hold", "create_issue", "mail_draft", "open_pr", "place_call", "publish_signal"]
+__all__ = [
+    "calendar_hold",
+    "check_availability",
+    "create_event",
+    "create_issue",
+    "list_events",
+    "mail_draft",
+    "open_pr",
+    "place_call",
+    "publish_signal",
+    "suggest_times",
+]

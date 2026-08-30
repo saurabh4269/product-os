@@ -17,14 +17,19 @@ This is the plan for everything that is **specified but not wired**. The campus 
 If Company X arrived today with Product Y, we can give them the **OS UI** and a real wire: token-gated flags, signal/voice ingest into rooms, and a GitHub PR on approve (no merge, no tenant deploy).
 
 We still cannot:
-
 - draft or send their mail (Workspace OAuth)
 - put a meeting on their calendar
-- call their customers (no PSTN; Live not entitled)
+- dial outbound on **Google** telephony (GTP/CX = inbound only; optional Twilio trial for PSTN)
 
-The six fixtures and `data/generate.py` warehouse stay as **evals**. They are not Company X.
+We can run **generic research events** (`POST /api/research`): probes → brief → simulated or Twilio call → structured evidence. Checkout abandon is one recipe on that infra, not the architecture.
 
-Demo tenant: **Northstar** at `github.com/saurabh4269/northstar`, Cloud Run `northstar`.
+We can run the **Type A / Type B product loop** (`POST /api/improve`): detect → evidence → hypothesis → fix **or** experiment → measure → learn. Shipping UX / conversion-drop examples are recipes only.
+
+We can run **developer coordination** (`POST /api/coordinate`): owners → Calendar → schedule/Meet → Gmail draft → await human. Never merges. Low-risk vs high-risk payment recipes only supply the request payload.
+
+We can run **investigation** (`POST /api/investigate`): catalog signals → 6-way fan-out → evidence pack → hypothesis → voice/code briefs → risk. Product intel clusters N feature requests into one proposal (`POST /api/product-intel`).
+
+Demo tenant: **Cove** at `github.com/saurabh4269/cove`, Cloud Run `cove`.
 
 ---
 
@@ -90,7 +95,7 @@ These land in `product-os` now. They work against fixtures and against a tenant 
 
 Workspace OAuth **flow is wired** (Connect + `/api/oauth/google/*`, Gmail draft / Calendar hold). You still must create the Web OAuth client in Google Auth Platform and click Authorize once. `send_gmail` stays denied. Agent Identity / GEAP stay plan-only.
 
-Product Y is no longer blocked: repo `saurabh4269/northstar`, Cloud Run `northstar`.
+Product Y is no longer blocked: repo `saurabh4269/cove`, Cloud Run `cove`.
 
 ---
 
@@ -103,7 +108,7 @@ Product Y is no longer blocked: repo `saurabh4269/northstar`, Cloud Run `northst
 | Draft mail | `mail.draft` record; Gmail API when OAuth | Claiming send |
 | Send mail | Still **denied** by default (`GMAIL_CANNOT_SEND`) | Silent send |
 | Calendar | `calendar.hold` record; Calendar API when OAuth | Fake Meet links as if created |
-| Call customer | Freq-cap + text fallback; Live only if entitled | PSTN |
+| Call customer | Twilio free trial + Gemini (`GOOGLE_API_KEY`) Say/Gather; skip if unset | ElevenLabs paid; fake PSTN |
 | Feedback | `POST /voice` → structured JSON → room | Only fixture dialogue |
 | Flags | Token-gated GET; approve writes tenant flags | Shop on this origin reading `/api/company` |
 | Open PR | GitHub REST/Octokit when token+repo | `pr_opened: true` with no URL |
@@ -134,7 +139,7 @@ Tests: connector skip without token; flag GET 401 without bearer; approve + toke
 
 ## 7. Build order (this branch and after)
 
-1. **Shipped:** Phases A–F. Connect form, flags Y can read, ingest opens rooms, GitHub PR on HIGH approve (never merge), Northstar on Cloud Run `northstar`.
+1. **Shipped:** Phases A–F. Connect form, flags Y can read, ingest opens rooms, GitHub PR on HIGH approve (never merge), Cove on Cloud Run `cove` (Northstar retired as demo tenant).
 2. **Shipped (live layer):** WebSocket rooms, agent_callback, funnel chips, Work/Transcript, flip artifacts, typed A2A, skip-if-done HITL, scenario run, ADK 2 Workflow catalog. Story: [`HACKATHON_STORY.md`](HACKATHON_STORY.md). Contract: `packages/contracts/api.md`.
 3. **Later:** Finish Workspace OAuth client in Google Auth Platform (user paste on Connect), optional Live/PSTN, Agent Gateway still plan-only.
 

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
-
-import pytest
 
 from loop.engine import log_verdict, redact_pii, screen_tool_output
 from loop.plugins.tool_output_armor import ToolOutputArmorPlugin
@@ -20,13 +19,12 @@ def test_injection_patterns_caught():
     assert needle
 
 
-@pytest.mark.asyncio
-async def test_after_tool_callback_blocks_and_logs(engine):
+def test_after_tool_callback_blocks_and_logs(engine):
     plugin = ToolOutputArmorPlugin(engine.store)
     tools = make_untrusted_tools()
     read_issue = tools[0]
     payload = read_issue(1847)
-    blocked = await plugin.after_tool_callback(tool_name="read_github_issue", result=payload)
+    blocked = asyncio.run(plugin.after_tool_callback(tool_name="read_github_issue", result=payload))
     assert blocked is not None
     assert blocked["blocked"] is True
     assert blocked["reason"] == "prompt_injection"
@@ -36,10 +34,9 @@ async def test_after_tool_callback_blocks_and_logs(engine):
     assert verdicts[-1].finding_type == "prompt_injection"
 
 
-@pytest.mark.asyncio
-async def test_empty_tool_output_fails_closed(engine):
+def test_empty_tool_output_fails_closed(engine):
     plugin = ToolOutputArmorPlugin(engine.store, block_on_screening_failure=True)
-    blocked = await plugin.after_tool_callback(tool_name="read_github_issue", result="")
+    blocked = asyncio.run(plugin.after_tool_callback(tool_name="read_github_issue", result=""))
     assert blocked["reason"] == "screening_failure"
 
 

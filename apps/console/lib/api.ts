@@ -211,6 +211,16 @@ export type AgentDetail = {
 
 export const api = {
   health: () => get<{ ok: boolean }>("/api/health"),
+  status: () =>
+    get<{
+      ok: boolean;
+      rooms: { total: number; open: number; by_kind: Record<string, number> };
+      approvals_pending: number;
+      presence: { agents: number; by_status: Record<string, number> };
+      funnel: { signal: number; approve: number; learn: number };
+      workspace: { connected: boolean; email: string };
+      patterns: string[];
+    }>("/api/status"),
   run: () => post<Bundle>("/api/loop/run"),
   seedWorld: () => post<{ rooms: string[]; scenarios: Array<Record<string, unknown>> }>("/api/world/seed"),
   rooms: () => get<{ rooms: Room[] }>("/api/rooms"),
@@ -233,6 +243,34 @@ export const api = {
     }>("/api/investigations"),
   investigation: (id: string) => get<Bundle>(`/api/investigations/${id}`),
   signals: () => get<{ signals: Array<Record<string, unknown>> }>("/api/signals"),
+  postSignal: (body: {
+    source?: string;
+    polarity?: string;
+    domain?: string;
+    metric: string;
+    delta?: number;
+    title?: string;
+    dimensions?: Record<string, unknown>;
+    fork?: string;
+    scenario?: string;
+  }) =>
+    post<{
+      signalId: string;
+      roomId: string;
+      room_id: string;
+      trace_id: string;
+      fork: string;
+      pipeline?: string[];
+      steps?: number;
+    }>("/api/signals", body),
+  rememberMemory: (body: {
+    type: string;
+    title: string;
+    body?: string;
+    tags?: string[];
+    room_id?: string;
+  }) => post<Record<string, unknown>>("/api/memory", body),
+  trace: (id: string) => get<Record<string, unknown>>(`/api/traces/${id}`),
   approvals: () =>
     get<{
       pending: Action[];
@@ -243,7 +281,15 @@ export const api = {
     post<{
       approval: unknown;
       outcome?: Record<string, unknown>;
-      execution?: { flag?: string; value?: string; pr_url?: string; pr_opened?: boolean; merged?: boolean };
+      execution?: {
+        flag?: string;
+        value?: string;
+        pr_url?: string;
+        pr_opened?: boolean;
+        merged?: boolean;
+        job_id?: string;
+        code_fix?: string | { status?: string; job_id?: string };
+      };
       pr_url?: string;
     }>(`/api/approvals/${actionId}`, {
       decision,
@@ -253,6 +299,14 @@ export const api = {
           ? "Evidence pack and risk gate reviewed in-room."
           : "Need more evidence before this change ships.",
     }),
+  approvalStatus: (actionId: string) =>
+    get<{
+      action_id: string;
+      status: string;
+      execution: Record<string, unknown>;
+      job: { id: string; status: string; result?: Record<string, unknown>; error?: string } | null;
+      pr_url?: string;
+    }>(`/api/approvals/${actionId}/status`),
   outcomes: () => get<{ outcomes: Array<Record<string, unknown>> }>("/api/outcomes"),
   governance: () =>
     get<{
@@ -275,6 +329,95 @@ export const api = {
   oauth: () => get<GoogleOAuth>("/api/oauth/google"),
   saveGoogleClient: (client_id: string, client_secret: string) =>
     post<GoogleOAuth>("/api/oauth/google/client", { client_id, client_secret }),
+  telephony: () =>
+    get<{
+      twilio: boolean;
+      gemini: boolean;
+      google_inbound?: boolean;
+      google_outbound?: boolean;
+      mode: string;
+      detail: string;
+    }>("/api/telephony"),
+  adkStatus: () =>
+    get<{
+      adk_installed: boolean;
+      adk_inline: boolean;
+      adk_worker_url: string | null;
+      worker_reachable: boolean;
+      fleet: Record<string, unknown> | null;
+      antigravity: {
+        installed: boolean;
+        configured: boolean;
+        backend_preference: string;
+        preview: boolean;
+        note: string;
+      };
+      code_backend: string;
+      pitch: string;
+    }>("/api/adk/status"),
+  research: (body: {
+    kind: string;
+    user_id: string;
+    title?: string;
+    topic?: string;
+    phone?: string;
+    dimensions?: Record<string, unknown>;
+    memory_conditions?: string[];
+    place_real_call?: boolean;
+    scenario_id?: string;
+  }) => post<Record<string, unknown>>("/api/research", body),
+  improve: (body: {
+    kind: string;
+    metric: string;
+    magnitude?: number;
+    baseline?: number;
+    title?: string;
+    polarity?: "negative" | "positive";
+    loop_type?: string;
+    dimensions?: Record<string, unknown>;
+    memory_conditions?: string[];
+    scenario_id?: string;
+    simulate_outcome?: boolean;
+  }) => post<Record<string, unknown>>("/api/improve", body),
+  coordinate: (body: {
+    kind?: string;
+    title: string;
+    subject?: string;
+    surface?: string;
+    risk_tier?: string;
+    owners?: string[];
+    duration_minutes?: number;
+    prefer_meet?: boolean;
+    notify_channels?: string[];
+    room_id?: string;
+    action_id?: string;
+    pr_url?: string;
+    dimensions?: Record<string, unknown>;
+  }) => post<Record<string, unknown>>("/api/coordinate", body),
+  signalsCatalog: () => get<Record<string, unknown>>("/api/signals/catalog"),
+  investigate: (body: {
+    kind: string;
+    metric: string;
+    title?: string;
+    family?: string;
+    magnitude?: number;
+    baseline?: number;
+    dimensions?: Record<string, unknown>;
+    scenario_id?: string;
+  }) => post<Record<string, unknown>>("/api/investigate", body),
+  productIntel: (body: {
+    mentions: Array<{ text: string; user_id?: string; channel?: string; revenue_hint_usd?: number }>;
+    theme?: string;
+    title?: string;
+    scenario_id?: string;
+    revenue_affected_usd?: number;
+  }) => post<Record<string, unknown>>("/api/product-intel", body),
+  calendar: () => get<{ oauth: boolean; mode: string; detail: string; tools: string[] }>("/api/calendar"),
+  placeCall: (body: { to_number: string; reason?: string; room_id?: string; product?: string }) =>
+    post<{ report: { status: string; connector: string; detail: string; url?: string | null } }>(
+      "/api/calls",
+      body,
+    ),
   opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
   office: () => get<OfficeSnapshot>("/api/office"),
   agents: () =>
@@ -292,9 +435,16 @@ export const api = {
     }>("/api/agents"),
   agent: (id: string) => get<AgentDetail>(`/api/agents/${id}`),
   scenarioRun: (slug: string) =>
-    post<{ scenario: string; room_id: string; room: Room; funnel?: RoomDetail["funnel"] }>(
-      `/api/scenarios/${slug}/run`,
-    ),
+    post<{
+      scenario: string;
+      room_id: string;
+      room: Room;
+      funnel?: RoomDetail["funnel"];
+      pipeline?: string[];
+      trace_id?: string;
+      steps?: number;
+      presence?: RoomDetail["presence"];
+    }>(`/api/scenarios/${slug}/run`),
   workflows: () =>
     get<{
       adk_version: string;

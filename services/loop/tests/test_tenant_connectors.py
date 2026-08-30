@@ -77,22 +77,42 @@ def test_open_pr_applied_when_github_returns_url(monkeypatch):
 
 
 def test_execute_records_pr_url_and_never_merges(engine, monkeypatch):
-    engine.seed_world()
-    engine.store.put_tenant(
-        Tenant(id="acme", name="Northstar", product="Y", repo="saurabh4269/northstar", connected=True, token_hash=hash_token("dev-token"))
-    )
+    pr_url = "https://github.com/saurabh4269/cove/pull/1"
     monkeypatch.setattr(
-        "loop.connectors.open_pr",
-        lambda *a, **k: ConnectorReport(
+        "loop.code_fix.run_code_fix",
+        lambda **k: ConnectorReport(
             status="applied",
             connector="github.pr",
-            detail="pull request opened",
-            url="https://github.com/saurabh4269/northstar/pull/1",
+            detail="pull request opened (3 files)",
+            url=pr_url,
         ),
     )
+
+    def sync_enqueue(engine, **kwargs):
+        from loop.code_fix import run_code_fix_job
+        from loop.jobs import enqueue_code_fix
+
+        job = enqueue_code_fix(
+            engine.store,
+            action_id=kwargs["action_id"],
+            investigation_id=kwargs["inv"].id,
+            tenant_id=kwargs["tenant"].id,
+            brief=kwargs["brief"],
+            flag_patch=kwargs["flag_patch"],
+            pr_title=kwargs["pr_title"],
+            pr_body=kwargs["pr_body"],
+        )
+        run_code_fix_job(engine, job)
+
+    engine.seed_world()
+    engine.store.put_tenant(
+        Tenant(id="acme", name="Cove", product="Y", repo="saurabh4269/cove", connected=True, token_hash=hash_token("dev-token"))
+    )
+    monkeypatch.setattr("loop.code_fix.enqueue_code_fix_job", sync_enqueue)
     high = next(a for a in engine.store.pending_approvals() if a.risk_tier == RiskTier.HIGH)
     engine.resume_after_approval(high.id, "oncall@acme")
     exe = engine.store.get_action(high.id).artifacts["execution"]
+    assert exe.get("code_fix") == "queued" or isinstance(exe.get("code_fix"), dict)
     assert exe["pr_opened"] is True
     assert exe["merged"] is False
     assert exe["pr_url"].endswith("/pull/1")
@@ -125,13 +145,13 @@ def test_tenant_http_flags_and_ingest(engine, monkeypatch):
                 "id": "acme",
                 "name": "Northstar",
                 "product": "Northstar",
-                "repo": "saurabh4269/northstar",
+                "repo": "saurabh4269/cove",
                 "deploy_url": "https://example.test",
                 "token": "dev-token",
             },
         )
         assert saved.status_code == 200
-        assert saved.json()["tenant"]["repo"] == "saurabh4269/northstar"
+        assert saved.json()["tenant"]["repo"] == "saurabh4269/cove"
         assert "token" not in saved.json()["tenant"]
         assert saved.json()["tenant"]["has_token"] is True
         rotated = client.post("/api/tenants/acme/token", json={"token": "newer-secret"})
@@ -142,7 +162,7 @@ def test_tenant_http_flags_and_ingest(engine, monkeypatch):
         assert client.get("/api/t/acme/flags", headers={"Authorization": "Bearer newer-secret"}).status_code == 200
         gates = client.get("/api/approvals")
         assert gates.json()["gate"]["mode"] == "github_pr"
-        assert "saurabh4269/northstar" in gates.json()["gate"]["label"]
+        assert "saurabh4269/cove" in gates.json()["gate"]["label"]
         pending = gates.json()["pending"]
         flag_rows = [p for p in pending if (p.get("artifacts") or {}).get("flag")]
         issue_rows = [p for p in pending if (p.get("artifacts") or {}).get("github_issue")]
@@ -182,6 +202,12 @@ def test_tenant_http_flags_and_ingest(engine, monkeypatch):
 
 def test_oauth_status_start_and_never_echo_secret(tmp_path, monkeypatch, engine):
     monkeypatch.setenv("LOOP_DATA_DIR", str(tmp_path))
+    for key in (
+        "LOOP_GOOGLE_OAUTH_CLIENT_ID",
+        "LOOP_GOOGLE_OAUTH_CLIENT_SECRET",
+        "LOOP_OAUTH_GCS_URI",
+    ):
+        monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(api_mod, "_engine", engine)
     monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
     with TestClient(api_mod.app) as client:
@@ -195,7 +221,8 @@ def test_oauth_status_start_and_never_echo_secret(tmp_path, monkeypatch, engine)
         assert "auth/overview" in body["console"]["overview"]
         start = client.get("/api/oauth/google/start", follow_redirects=False)
         assert start.status_code == 302
-        assert "console.cloud.google.com/auth/overview" in start.headers["location"]
+        assert "/connect" in start.headers["location"]
+        assert "workspace=error" in start.headers["location"]
         saved = client.post(
             "/api/oauth/google/client",
             json={"client_id": "cid.apps.googleusercontent.com", "client_secret": "super-secret"},

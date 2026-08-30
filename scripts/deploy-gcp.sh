@@ -31,8 +31,26 @@ echo "deploy-gcp: bundle ${BUNDLE_URL}"
 if [[ -z "${LOOP_GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null; then
   LOOP_GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
 fi
-ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://loop-5uy6fkd7bq-uc.a.run.app"
-for key in LOOP_GITHUB_TOKEN LOOP_TENANT_REPO LOOP_TENANT_DEPLOY_URL LOOP_TENANT_BOOTSTRAP_TOKEN LOOP_GOOGLE_OAUTH_CLIENT_ID LOOP_GOOGLE_OAUTH_CLIENT_SECRET; do
+ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_REGION=${REGION},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://loop-5uy6fkd7bq-uc.a.run.app,LOOP_OAUTH_GCS_URI=gs://${BUCKET}/workspace_oauth.json,LOOP_FLAGS_GCS_URI=gs://${BUCKET}/tenant_flags.json,LOOP_STATE_GCS_URI=gs://${BUCKET}/loop_state.db,LOOP_CODE_REQUIRE_TESTS=1,LOOP_PUBSUB_TOPIC=loop.signals,LOOP_TASKS_QUEUE=loop-jobs"
+: "${LOOP_TENANT_REPO:=saurabh4269/cove}"
+: "${LOOP_TENANT_DEPLOY_URL:=https://cove-5uy6fkd7bq-uc.a.run.app}"
+
+# Cloud Tasks queue for durable background jobs (best-effort; inline fallback if missing).
+if gcloud services list --enabled --project="$PROJECT" --filter="name:cloudtasks.googleapis.com" --format="value(name)" 2>/dev/null | grep -q cloudtasks; then
+  gcloud tasks queues describe loop-jobs --location="$REGION" --project="$PROJECT" >/dev/null 2>&1 \
+    || gcloud tasks queues create loop-jobs --location="$REGION" --project="$PROJECT" --max-dispatches-per-second=2 --max-concurrent-dispatches=1 \
+    || ENV_VARS="${ENV_VARS},LOOP_TASKS_DISABLE=1"
+else
+  ENV_VARS="${ENV_VARS},LOOP_TASKS_DISABLE=1"
+fi
+
+# Wire ADK worker when loop-adk is already deployed (optional second service).
+ADK_URL="$(gcloud run services describe loop-adk --project="$PROJECT" --region="$REGION" --format='value(status.url)' 2>/dev/null || true)"
+if [[ -n "$ADK_URL" ]]; then
+  ENV_VARS="${ENV_VARS},LOOP_ADK_WORKER_URL=${ADK_URL}"
+  echo "deploy-gcp: ADK worker ${ADK_URL}"
+fi
+for key in LOOP_GITHUB_TOKEN LOOP_TENANT_REPO LOOP_TENANT_DEPLOY_URL LOOP_TENANT_BOOTSTRAP_TOKEN LOOP_GOOGLE_OAUTH_CLIENT_ID LOOP_GOOGLE_OAUTH_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM_NUMBER GOOGLE_API_KEY LOOP_ADMIN_TOKEN LOOP_ADK_WORKER_URL; do
   val="${!key:-}"
   if [[ -n "$val" ]]; then
     ENV_VARS="${ENV_VARS},${key}=${val}"
@@ -45,14 +63,14 @@ gcloud run deploy "${SERVICE}" \
   --project "${PROJECT}" \
   --region "${REGION}" \
   --allow-unauthenticated \
-  --memory 1Gi \
+  --memory 2Gi \
   --cpu 1 \
   --min-instances 1 \
   --max-instances 2 \
   --timeout 300 \
   --cpu-boost \
   --command bash \
-  --args="-c,apt-get update -qq && apt-get install -y -qq curl ca-certificates python3-pip && curl -fsSL ${BUNDLE_URL} -o /tmp/loop.tgz && mkdir -p /app && tar -xzf /tmp/loop.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=* PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
+  --args="-c,apt-get update -qq && apt-get install -y -qq curl ca-certificates python3-pip git nodejs npm && curl -fsSL ${BUNDLE_URL} -o /tmp/loop.tgz && mkdir -p /app && tar -xzf /tmp/loop.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=* PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
   --set-env-vars "${ENV_VARS}" \
   --quiet
 STATUS=$?

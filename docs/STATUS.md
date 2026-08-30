@@ -8,14 +8,15 @@ Last updated: 2026-08-30
 
 `us-central1` Cloud Run service `loop` (bundle path, revision `loop-00034-tm9`). Public `python:3.12-slim` + GCS tarball. `--min-instances 1` so SQLite and the UI stay warm. Vendor wheels are built **inside** `python:3.12-slim` so they match the image (local Kali is 3.13). `/shop` and `/company` 404. Workspace OAuth consent is on Connect.
 
-**Product Y (Northstar):** https://northstar-5uy6fkd7bq-uc.a.run.app
+**Product Y (Cove):** https://cove-5uy6fkd7bq-uc.a.run.app
 
-Cloud Run service `northstar` (revision `northstar-00009-mgg`). Repo: https://github.com/saurabh4269/northstar
+Cloud Run service `cove` (revision `cove-00001-s5b`). Repo: https://github.com/saurabh4269/cove  
+Real Next.js storefront (Epic Design Labs ecommerce starter + LOOP flags/signals/voice). Northstar is retired as Product Y.
 
 Redeploy OS: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/deploy-gcp.sh`  
-(needs `LOOP_TENANT_REPO`, `LOOP_TENANT_DEPLOY_URL`, `LOOP_TENANT_BOOTSTRAP_TOKEN`, `LOOP_GITHUB_TOKEN` in the environment)
+(needs `LOOP_TENANT_REPO=saurabh4269/cove`, `LOOP_TENANT_DEPLOY_URL`, `LOOP_TENANT_BOOTSTRAP_TOKEN`, `LOOP_GITHUB_TOKEN` in the environment)
 
-Redeploy Y: `LOOP_TENANT_TOKEN=… ./scripts/deploy.sh` in the northstar repo.
+Redeploy Y: `LOOP_TENANT_TOKEN=… ./scripts/deploy.sh` in the cove repo.
 
 ## What works
 
@@ -28,8 +29,8 @@ Redeploy Y: `LOOP_TENANT_TOKEN=… ./scripts/deploy.sh` in the northstar repo.
 - Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN). Tenant feedback POSTs `/api/t/{id}/voice` and opens a research room.
 - Code Agent fixture targets stay in `apps/northstar-shop` (JS adapters only). Product OS does **not** host a tenant shop.
 - Tenant wire: `/connect` form (repo, deploy URL, rotate token — never echoed). Token-gated `/api/t/{id}/flags|signals|voice`. Ingest opens or joins rooms. Approve HIGH flips `pay_sdk_4_3` and opens a real PR on the tenant repo. `merged` stays false. Mail/calendar skip without OAuth.
-- Live rooms: WebSocket `/ws/rooms/{id}`, `POST /api/agent_callback`, presence + funnel chips (handoff rail), Work/Transcript + flip artifacts, typed A2A on the bus, skip-if-done approve, `POST /api/scenarios/{slug}/run` (presence sweep), ADK 2 alignment (`GET /api/workflows`). Contract: [`packages/contracts/api.md`](../packages/contracts/api.md). Story: [`docs/HACKATHON_STORY.md`](HACKATHON_STORY.md).
-- End-to-end proven: Northstar checkout showed SDK 4.3 → HIGH approve in OS → flags off + [PR #2](https://github.com/saurabh4269/northstar/pull/2) (merged) → checkout shows 4.2.1 from live flags. Place-order then succeeds.
+- Live rooms: WebSocket hub, agent_callback, presence handoff rail, Work/Transcript + flip artifacts (kind tones), typed A2A, skip-if-done approve, **live fleet graph** (parallel fan-out, review/critique `output_key`, funnel_stage bus), `POST /api/signals`, `POST /api/memory`, `GET /api/status` + campus StatusStrip + scenario chips, gateway deny artifacts. Contract: [`packages/contracts/api.md`](../packages/contracts/api.md).
+- End-to-end path: Cove checkout with SDK 4.3 hangs → signal into OS → HIGH approve → flags off + PR on `saurabh4269/cove` → checkout shows 4.2.1. (Earlier proof used Northstar PR #2; Cove is the live tenant now.)
 - ADK 2: 23 `LlmAgent`s / 7 Apps locally + Workflow soft-attach (JoinNode fan-out, critique). Hosted path is the deterministic engine.
 - Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
 
@@ -49,6 +50,6 @@ See README “Honest Google-product mapping”. Agent Gateway, Memory Bank, Live
 
 - [`AGENTS.md`](../AGENTS.md) — handoff, commands, UI contract, named references
 - [`docs/PLAN_NEXT.md`](PLAN_NEXT.md) — later work (OAuth, Live, Gateway)
-- [`docs/TENANT.md`](TENANT.md) — Northstar vs OS; secret **names**
+- [`docs/TENANT.md`](TENANT.md) — Cove vs OS; secret **names**
 - [`docs/LEARNINGS.md`](LEARNINGS.md) — pitfalls already hit
 - [`docs/RESEARCH_LEARNINGS.md`](RESEARCH_LEARNINGS.md) — PRD research traps

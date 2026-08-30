@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS memory (
 CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, room_id TEXT, json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS tenants (id TEXT PRIMARY KEY, json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, json TEXT NOT NULL);
 """
 
 
@@ -238,7 +240,27 @@ class Store:
             return {"name": name, "value": value}
 
         result, reused = self.claim_idempotency(key, "set_flag", _set)
+        if not reused:
+            try:
+                from loop.flags_persist import persist_flags
+
+                persist_flags(self)
+            except Exception:
+                pass
         return result["value"], reused
+
+    def restore_flags(self, flags: dict[str, str]) -> None:
+        """Restore flags from GCS without idempotency (cold start hydrate)."""
+        if not flags:
+            return
+        with self._lock:
+            for name, value in flags.items():
+                self._conn.execute(
+                    "INSERT INTO flags (name, value, updated_at, last_key) VALUES (?,?,?,?) "
+                    "ON CONFLICT(name) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at, last_key=excluded.last_key",
+                    (name, value, _now(), "gcs-restore"),
+                )
+            self._conn.commit()
 
     def get_flag(self, name: str) -> str | None:
         with self._lock:
@@ -314,3 +336,67 @@ class Store:
     def list_messages(self, room_id: str) -> list[RoomMessage]:
         msgs = self._list("messages", RoomMessage, "WHERE room_id=?", (room_id,))
         return sorted(msgs, key=lambda m: m.created_at)
+
+    def put_job(self, job: Any) -> None:
+        from .jobs import Job
+
+        assert isinstance(job, Job)
+        self._put("jobs", job)
+
+    def get_job(self, id_: str) -> Any | None:
+        from .jobs import Job
+
+        return self._get("jobs", Job, id_)
+
+    def list_jobs(self, *, status: str | None = None, kind: str | None = None, limit: int = 50) -> list[Any]:
+        from .jobs import Job
+
+        clauses: list[str] = []
+        args: list[Any] = []
+        if status:
+            clauses.append("json LIKE ?")
+            args.append(f'%"status": "{status}"%')
+        if kind:
+            clauses.append("json LIKE ?")
+            args.append(f'%"kind": "{kind}"%')
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = self._list("jobs", Job, where, tuple(args))
+        rows.sort(key=lambda j: j.created_at, reverse=True)
+        return rows[:limit]
+
+    def claim_job(self, kinds: list[str]) -> Any | None:
+        from .jobs import Job
+
+        now = _now()
+        placeholders = ",".join("?" * len(kinds))
+        with self._lock:
+            rows = self._conn.execute("SELECT id, json FROM jobs").fetchall()
+        candidates: list[Job] = []
+        for _id, raw in rows:
+            job = Job.model_validate_json(raw)
+            if job.status != "queued" or job.kind not in kinds:
+                continue
+            if job.run_after and job.run_after > now:
+                continue
+            candidates.append(job)
+        if not candidates:
+            return None
+        candidates.sort(key=lambda j: j.created_at)
+        job = candidates[0]
+        job.status = "running"
+        job.updated_at = now
+        self.put_job(job)
+        return job
+
+    def put_audit(self, event: Any) -> None:
+        from .audit import AuditEvent
+
+        assert isinstance(event, AuditEvent)
+        self._put("audit", event)
+
+    def list_audit(self, limit: int = 100) -> list[Any]:
+        from .audit import AuditEvent
+
+        rows = self._list("audit", AuditEvent)
+        rows.sort(key=lambda e: e.at, reverse=True)
+        return rows[:limit]

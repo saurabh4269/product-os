@@ -6,10 +6,10 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, RedirectResponse, Response
+from pydantic import BaseModel, Field
 
 from .config import REPO_ROOT, settings
 from .engine import LoopEngine, default_engine, log_verdict
@@ -33,6 +33,9 @@ def get_engine() -> LoopEngine:
 async def lifespan(_app: FastAPI):
     cfg = settings()
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
+    from loop.state_persist import hydrate_db
+
+    hydrate_db(cfg.db_path())
     if not (cfg.warehouse_path() / "meta.json").exists():
         import sys
 
@@ -41,6 +44,9 @@ async def lifespan(_app: FastAPI):
 
         gen(cfg.warehouse_path())
     eng = get_engine()
+    from loop.flags_persist import hydrate_flags
+
+    hydrate_flags(eng.store)
     if not eng.store.list_rooms():
         eng.seed_world()
     elif not eng.store.list_investigations():
@@ -80,6 +86,26 @@ class RoomPostBody(BaseModel):
     text: str
 
 
+class SignalInBody(BaseModel):
+    source: str = "ga4"
+    polarity: str = "negative"
+    domain: str = "technical"
+    metric: str = "conversion"
+    delta: float | None = None
+    title: str | None = None
+    dimensions: dict = {}
+    fork: str | None = None
+    scenario: str | None = None
+
+
+class MemoryInBody(BaseModel):
+    type: str = "engineering"
+    title: str
+    body: str = ""
+    tags: list[str] = []
+    room_id: str | None = None
+
+
 class TenantBody(BaseModel):
     id: str
     name: str
@@ -104,6 +130,117 @@ class IngestSignalBody(BaseModel):
 class IngestVoiceBody(BaseModel):
     text: str
     tokenized_user: str = "tok_anon"
+    phone: str = ""
+    sentiment: str = ""
+    meta: dict = Field(default_factory=dict)
+
+
+class PlaceCallBody(BaseModel):
+    to_number: str
+    reason: str = "checkout issue"
+    room_id: str = ""
+    product: str = "Cove"
+    tokenized_user: str = "tok_anon"
+
+
+class ResearchEventBody(BaseModel):
+    """Generic research event — any recipe posts one of these; abandon is just an example."""
+
+    kind: str
+    user_id: str
+    title: str = ""
+    topic: str = ""
+    phone: str = ""
+    metric: str = "customer_research"
+    funnel_position: str = "product"
+    dimensions: dict = Field(default_factory=dict)
+    memory_conditions: list[str] = Field(default_factory=list)
+    place_real_call: bool = False
+    scenario_id: str | None = None
+    loop_type: str = "type_a"
+    path: str = "bug"
+    room_kind: str = "research"
+
+
+class ImproveEventBody(BaseModel):
+    """Generic Type A/B product signal — detect → hypothesize → fix|experiment → measure → learn."""
+
+    kind: str
+    metric: str
+    magnitude: float = 0.0
+    baseline: float = 0.0
+    title: str = ""
+    topic: str = ""
+    funnel_position: str = "product"
+    confidence: float = 0.8
+    source: str = "warehouse"
+    family: str = "business"
+    polarity: str | None = None
+    loop_type: str | None = None
+    path: str | None = None
+    room_kind: str | None = None
+    dimensions: dict = Field(default_factory=dict)
+    memory_conditions: list[str] = Field(default_factory=list)
+    scenario_id: str | None = None
+    simulate_outcome: bool = True
+
+
+class CoordinateBody(BaseModel):
+    """Generic HITL coordination — owners → calendar → schedule → notify (never auto-merge)."""
+
+    kind: str = "review_request"
+    title: str
+    subject: str = ""
+    surface: str = ""
+    risk_tier: str = "MEDIUM"
+    owners: list[str] = Field(default_factory=list)
+    duration_minutes: int | None = None
+    prefer_meet: bool | None = None
+    notify_channels: list[str] = Field(default_factory=lambda: ["gmail_draft", "room"])
+    room_id: str | None = None
+    action_id: str | None = None
+    investigation_id: str | None = None
+    pr_url: str | None = None
+    dimensions: dict = Field(default_factory=dict)
+    apply_calendar: bool = True
+
+
+class InvestigateBody(BaseModel):
+    """Broad anomaly → parallel investigators → evidence pack → hypothesis → briefs."""
+
+    kind: str
+    metric: str
+    title: str = ""
+    family: str = "business"
+    magnitude: float = 0.0
+    baseline: float = 0.0
+    funnel_position: str = "product"
+    polarity: str | None = None
+    dimensions: dict = Field(default_factory=dict)
+    scenario_id: str | None = None
+    propose_action: bool = True
+    action_type: str = "code_change"
+    surface: str | None = None
+
+
+class ProductIntelBody(BaseModel):
+    """N customer mentions → one product proposal (not N GitHub issues)."""
+
+    mentions: list[dict] = Field(default_factory=list)
+    theme: str | None = None
+    title: str | None = None
+    scenario_id: str | None = None
+    competitor_capability: bool | None = None
+    implementation_estimate: str = "medium"
+    revenue_affected_usd: float | None = None
+
+
+class CalendarSuggestBody(BaseModel):
+    duration_minutes: int = 30
+    calendars: list[str] | None = None
+    time_min: str = ""
+    time_max: str = ""
+    limit: int = 5
 
 
 class GoogleClientBody(BaseModel):
@@ -114,6 +251,42 @@ class GoogleClientBody(BaseModel):
 @app.get("/api/health")
 def health():
     return {"ok": True, "service": "loop", "hosted": bool(os.environ.get("K_SERVICE")), "region": settings().region}
+
+
+@app.get("/api/status")
+def status():
+    """SalesShortcut dashboard energy — funnel counts, presence, gates (not a CRUD board)."""
+    eng = get_engine()
+    rooms = eng.store.list_rooms()
+    pending = eng.store.pending_approvals()
+    presence_n = sum(len(v) for v in HUB.presence.values())
+    open_rooms = [r for r in rooms if r.status == "open"]
+    by_kind: dict[str, int] = {}
+    for r in rooms:
+        k = r.kind.value if hasattr(r.kind, "value") else str(r.kind)
+        by_kind[k] = by_kind.get(k, 0) + 1
+    stages: dict[str, int] = {}
+    for rid, agents in HUB.presence.items():
+        for ev in agents.values():
+            st = str(ev.get("status") or "idle")
+            stages[st] = stages.get(st, 0) + 1
+    from .connectors import google_oauth
+
+    oauth = google_oauth.status()
+    return {
+        "ok": True,
+        "running": True,
+        "rooms": {"total": len(rooms), "open": len(open_rooms), "by_kind": by_kind},
+        "approvals_pending": len(pending),
+        "presence": {"agents": presence_n, "by_status": stages},
+        "funnel": {
+            "signal": by_kind.get("incident", 0) + by_kind.get("opportunity", 0),
+            "approve": len(pending),
+            "learn": len(eng.store.list_lessons()),
+        },
+        "workspace": {"connected": bool(oauth.get("connected")), "email": oauth.get("email") or ""},
+        "patterns": ["parallel_fanout", "review_critique", "skip_if_done", "agent_callback"],
+    }
 
 
 def _visible_flags(eng, tenant_id: str) -> dict[str, str]:
@@ -222,7 +395,11 @@ def tenants():
 
 
 @app.post("/api/tenants")
-def upsert_tenant(body: TenantBody):
+def upsert_tenant(body: TenantBody, authorization: str | None = Header(default=None)):
+    from .auth import require_admin
+    from .audit import record
+
+    actor = require_admin(authorization, actor=f"tenant:{body.id}")
     from .tenant import Tenant, hash_token
 
     eng = get_engine()
@@ -241,11 +418,16 @@ def upsert_tenant(body: TenantBody):
         last_connector=prev.last_connector if prev else "",
     )
     eng.store.put_tenant(t)
+    record(eng.store, actor=actor, action="tenant.upsert", resource=f"tenant:{t.id}", detail={"repo": t.repo})
     return {"tenant": _public_tenant(t)}
 
 
 @app.post("/api/tenants/{tenant_id}/token")
-def rotate_token(tenant_id: str, body: TokenRotateBody):
+def rotate_token(tenant_id: str, body: TokenRotateBody, authorization: str | None = Header(default=None)):
+    from .auth import require_admin
+    from .audit import record
+
+    actor = require_admin(authorization, actor=f"tenant:{tenant_id}")
     from .tenant import hash_token
 
     if not body.token.strip():
@@ -256,6 +438,7 @@ def rotate_token(tenant_id: str, body: TokenRotateBody):
     t.token_hash = hash_token(body.token.strip())
     t.connected = bool(t.repo)
     get_engine().store.put_tenant(t)
+    record(get_engine().store, actor=actor, action="tenant.rotate_token", resource=f"tenant:{tenant_id}")
     return {"rotated": True, "tenant": _public_tenant(t)}
 
 
@@ -302,12 +485,18 @@ def google_oauth_status(request: Request):
 
 
 @app.post("/api/oauth/google/client")
-def google_oauth_client(body: GoogleClientBody):
+def google_oauth_client(body: GoogleClientBody, authorization: str | None = Header(default=None)):
+    from .auth import require_admin
+
+    require_admin(authorization, actor="oauth")
     from .connectors import google_oauth
 
     if not body.client_id.strip() or not body.client_secret.strip():
         raise HTTPException(400, "client_id and client_secret required")
-    out = google_oauth.save_client(body.client_id, body.client_secret)
+    try:
+        out = google_oauth.save_client(body.client_id, body.client_secret)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     assert "client_secret" not in out
     return out
 
@@ -318,7 +507,12 @@ def google_oauth_start(request: Request):
 
     url = google_oauth.authorization_url(_request_base(request))
     if not url:
-        return RedirectResponse(google_oauth.CONSOLE_OVERVIEW, status_code=302)
+        # Do not send users to Cloud Console — that page often shows "denied"
+        # when they only need to paste a Web client on Connect first.
+        return RedirectResponse(
+            google_oauth.console_return(False, "Paste OAuth client ID and secret on Connect first"),
+            status_code=302,
+        )
     return RedirectResponse(url, status_code=302)
 
 
@@ -347,8 +541,419 @@ def tenant_voice(tenant_id: str, body: IngestVoiceBody, authorization: str | Non
     from .world import ingest_tenant_voice
 
     t = _require_tenant(tenant_id, authorization)
-    out = ingest_tenant_voice(get_engine(), t, text=body.text, tokenized_user=body.tokenized_user)
-    return {"voice": out["voice"], "room_id": out["room_id"], "joined": out["joined"]}
+    phone = body.phone or str((body.meta or {}).get("phone") or "")
+    out = ingest_tenant_voice(
+        get_engine(),
+        t,
+        text=body.text,
+        tokenized_user=body.tokenized_user,
+        phone=phone,
+    )
+    return {
+        "voice": out["voice"],
+        "room_id": out["room_id"],
+        "joined": out["joined"],
+        "classification": out.get("classification"),
+    }
+
+
+@app.get("/api/telephony")
+def telephony_status():
+    from .customer_research import telephony_capabilities
+
+    caps = telephony_capabilities()
+    return {
+        "twilio": caps["twilio_outbound"],
+        "gemini": caps["gemini"],
+        "google_inbound": caps["google_telephony"]["inbound"],
+        "google_outbound": False,
+        "mode": caps["default_mode"],
+        "detail": caps["google_telephony"]["detail"],
+        "capabilities": caps,
+    }
+
+
+@app.get("/api/adk/status")
+def adk_status():
+    """Connect / judges — ADK fleet + Antigravity + worker routing (honest)."""
+    from loop.adk_runtime import adk_available, adk_inline_enabled, adk_worker_url, fleet_status
+    from loop.antigravity_fix import antigravity_status
+    from loop.code_fix import code_backend
+
+    eng = get_engine()
+    worker = adk_worker_url()
+    fleet = None
+    if adk_available():
+        try:
+            fleet = fleet_status(eng)
+        except Exception as exc:
+            fleet = {"error": str(exc)[:200]}
+    return {
+        "adk_installed": adk_available(),
+        "adk_inline": adk_inline_enabled(),
+        "adk_worker_url": worker or None,
+        "worker_reachable": bool(worker),
+        "fleet": fleet,
+        "antigravity": antigravity_status(),
+        "code_backend": code_backend(),
+        "pitch": "ADK orchestrates on worker; gateway + Model Armor enforce; jobs clone → test → PR.",
+    }
+
+
+@app.post("/api/research")
+def research_event(body: ResearchEventBody):
+    """Generic event → probes → brief → call → structured evidence (recipe-agnostic)."""
+    from .adk_runtime import adk_inline_enabled, forward_post, run_adk_research
+    from .customer_research import ResearchEvent, run_customer_research
+    from .models import LoopType, PathKind, RoomKind
+
+    eng = get_engine()
+    eng.seed_world()
+    lt = LoopType.TYPE_A if body.loop_type.lower() in {"type_a", "a", "bug"} else LoopType.TYPE_B
+    path = PathKind.BUG if body.path.lower() in {"bug", "a"} else PathKind.FEATURE
+    try:
+        rk = RoomKind(body.room_kind)
+    except ValueError:
+        rk = RoomKind.RESEARCH
+    event = ResearchEvent(
+        kind=body.kind,
+        user_id=body.user_id,
+        title=body.title,
+        topic=body.topic,
+        phone=body.phone,
+        metric=body.metric,
+        funnel_position=body.funnel_position,
+        dimensions=body.dimensions,
+        memory_conditions=body.memory_conditions,
+        loop_type=lt,
+        path=path,
+        room_kind=rk,
+    )
+    kwargs = {
+        "place_real_call": body.place_real_call,
+        "scenario_id": body.scenario_id,
+    }
+    forwarded = forward_post(
+        "/internal/adk/research",
+        {"event": event.model_dump(mode="json"), "kwargs": kwargs},
+    )
+    if forwarded and "error" not in forwarded:
+        out = forwarded
+    elif adk_inline_enabled():
+        out = run_adk_research(eng, event, **kwargs)
+    else:
+        out = run_customer_research(eng, event, **kwargs)
+    room = eng.store.get_room(out["room_id"])
+    return {
+        **out,
+        "room": room.model_dump(mode="json") if room else None,
+        "pipeline": ["investigate", "brief", "memory", "call", "structured_evidence"],
+        "presence": HUB.agents_in(out["room_id"]) if out.get("room_id") else [],
+    }
+
+
+@app.post("/api/improve")
+def improve_event(body: ImproveEventBody):
+    """Type A/B product loop — detect → hypothesize → fix|experiment → measure → learn."""
+    from .models import LoopType, PathKind, RoomKind
+    from .product_improvement import ProductSignalEvent, run_product_loop
+
+    eng = get_engine()
+    eng.seed_world()
+    lt = None
+    if body.loop_type:
+        lt = LoopType.TYPE_A if body.loop_type.lower() in {"type_a", "a", "bug"} else LoopType.TYPE_B
+    path = None
+    if body.path:
+        path = PathKind.BUG if body.path.lower() in {"bug", "a", "security"} else PathKind.FEATURE
+    rk = None
+    if body.room_kind:
+        try:
+            rk = RoomKind(body.room_kind)
+        except ValueError:
+            rk = None
+    polarity = body.polarity if body.polarity in {"negative", "positive"} else None
+    event = ProductSignalEvent(
+        kind=body.kind,
+        metric=body.metric,
+        magnitude=body.magnitude,
+        baseline=body.baseline,
+        title=body.title,
+        topic=body.topic,
+        funnel_position=body.funnel_position,
+        confidence=body.confidence,
+        source=body.source,
+        family=body.family if body.family in {"business", "technical", "customer"} else "business",
+        polarity=polarity,  # type: ignore[arg-type]
+        loop_type=lt,
+        path=path,
+        room_kind=rk,
+        dimensions=body.dimensions,
+        memory_conditions=body.memory_conditions,
+    )
+    out = run_product_loop(
+        eng,
+        event,
+        scenario_id=body.scenario_id,
+        simulate_outcome=body.simulate_outcome,
+    )
+    room = eng.store.get_room(out["room_id"])
+    return {
+        **out,
+        "room": room.model_dump(mode="json") if room else None,
+        "presence": HUB.agents_in(out["room_id"]) if out.get("room_id") else [],
+    }
+
+
+@app.get("/api/calendar")
+def calendar_status():
+    from .connectors import calendar as cal
+
+    return cal.capabilities()
+
+
+@app.post("/api/calendar/suggest")
+def calendar_suggest(body: CalendarSuggestBody):
+    from .connectors import calendar as cal
+
+    return cal.suggest_times(
+        duration_minutes=body.duration_minutes,
+        calendars=body.calendars,
+        time_min=body.time_min,
+        time_max=body.time_max,
+        limit=body.limit,
+    )
+
+
+@app.post("/api/coordinate")
+def coordinate(body: CoordinateBody):
+    """HITL in company workflow: resolve owners → calendar → schedule → notify. Never merges."""
+    from .coordination import CoordinationRequest, coordinate_for_action, run_coordination
+
+    eng = get_engine()
+    if body.action_id:
+        out = coordinate_for_action(
+            eng,
+            body.action_id,
+            kind=body.kind,
+            title=body.title,
+            surface=body.surface,
+            owners=body.owners,
+            duration_minutes=body.duration_minutes,
+            prefer_meet=body.prefer_meet,
+            notify_channels=body.notify_channels,
+            dimensions=body.dimensions,
+        )
+        return out
+
+    tier = body.risk_tier.upper() if body.risk_tier else "MEDIUM"
+    if tier not in {"LOW", "MEDIUM", "HIGH"}:
+        tier = "MEDIUM"
+    req = CoordinationRequest(
+        kind=body.kind,
+        title=body.title,
+        subject=body.subject,
+        surface=body.surface,
+        risk_tier=tier,  # type: ignore[arg-type]
+        owners=body.owners,
+        duration_minutes=body.duration_minutes,
+        prefer_meet=body.prefer_meet,
+        notify_channels=body.notify_channels,
+        room_id=body.room_id,
+        investigation_id=body.investigation_id,
+        pr_url=body.pr_url,
+        dimensions=body.dimensions,
+    )
+    return run_coordination(eng, req, apply_calendar=body.apply_calendar)
+
+
+@app.get("/api/signals/catalog")
+def signals_catalog():
+    from .investigation import catalog
+
+    return catalog()
+
+
+@app.post("/api/investigate")
+def investigate(body: InvestigateBody):
+    """Parallel investigation workflow — not 'conversion dropped' alone."""
+    from .investigation import AnomalyEvent, run_investigation
+
+    eng = get_engine()
+    eng.seed_world()
+    family = body.family if body.family in {"funnel", "technical", "business", "customer"} else "business"
+    polarity = body.polarity if body.polarity in {"negative", "positive"} else None
+    event = AnomalyEvent(
+        kind=body.kind,
+        metric=body.metric,
+        title=body.title,
+        family=family,  # type: ignore[arg-type]
+        magnitude=body.magnitude,
+        baseline=body.baseline,
+        funnel_position=body.funnel_position,
+        polarity=polarity,  # type: ignore[arg-type]
+        dimensions=body.dimensions,
+    )
+    out = run_investigation(
+        eng,
+        event,
+        scenario_id=body.scenario_id,
+        propose_action=body.propose_action,
+        action_type=body.action_type,
+        surface=body.surface,
+    )
+    room = eng.store.get_room(out["room_id"])
+    return {
+        **out,
+        "room": room.model_dump(mode="json") if room else None,
+        "presence": HUB.agents_in(out["room_id"]) if out.get("room_id") else [],
+    }
+
+
+@app.post("/api/product-intel")
+def product_intel(body: ProductIntelBody):
+    """Cluster feature requests → one PM proposal."""
+    from .investigation import FeatureMention, run_product_intelligence
+
+    eng = get_engine()
+    eng.seed_world()
+    mentions = [
+        FeatureMention(
+            text=str(m.get("text") or ""),
+            user_id=str(m.get("user_id") or ""),
+            channel=str(m.get("channel") or "voice"),
+            revenue_hint_usd=m.get("revenue_hint_usd"),
+        )
+        for m in body.mentions
+        if m.get("text")
+    ]
+    est = body.implementation_estimate if body.implementation_estimate in {"low", "medium", "high"} else "medium"
+    out = run_product_intelligence(
+        eng,
+        mentions,
+        theme=body.theme,
+        title=body.title,
+        scenario_id=body.scenario_id,
+        competitor_capability=body.competitor_capability,
+        implementation_estimate=est,  # type: ignore[arg-type]
+        revenue_affected_usd=body.revenue_affected_usd,
+    )
+    return out
+
+
+@app.post("/api/calls")
+def place_outbound_call(body: PlaceCallBody):
+    """Human-triggered outbound call from a room (SalesShortcut OutreachCaller energy)."""
+    from .connectors.voice import place_call
+    from .world import post as room_post
+
+    eng = get_engine()
+    report = place_call(
+        body.tokenized_user,
+        body.reason,
+        to_number=body.to_number,
+        room_id=body.room_id,
+        product=body.product,
+    )
+    if body.room_id and eng.store.get_room(body.room_id):
+        room_post(
+            eng,
+            body.room_id,
+            author="outreach_caller",
+            author_kind="agent",
+            kind="artifact",
+            text=report.detail,
+            artifact_type="call",
+            artifact=report.model_dump(),
+        )
+    return {"report": report.model_dump()}
+
+
+@app.post("/api/twilio/voice")
+async def twilio_voice(
+    request: Request,
+    room: str = Query(default=""),
+    reason: str = Query(default="checkout"),
+    product: str = Query(default="Cove"),
+):
+    from .telephony import put_session, twiml_open
+
+    form = await request.form()
+    call_sid = str(form.get("CallSid") or "")
+    if call_sid:
+        put_session(
+            call_sid,
+            {
+                "to": str(form.get("To") or ""),
+                "room_id": room,
+                "reason": reason,
+                "product": product,
+                "status": "in-progress",
+                "turns": 0,
+                "transcript": [],
+            },
+        )
+    xml = twiml_open(room, reason, product)
+    return Response(content=xml, media_type="application/xml")
+
+
+@app.post("/api/twilio/gather")
+async def twilio_gather(request: Request, room: str = Query(default="")):
+    from .telephony import twiml_gather
+
+    form = await request.form()
+    call_sid = str(form.get("CallSid") or "")
+    speech = str(form.get("SpeechResult") or form.get("UnstableSpeechResult") or "")
+    xml = twiml_gather(call_sid, speech, room)
+    return Response(content=xml, media_type="application/xml")
+
+
+@app.post("/api/twilio/status")
+async def twilio_status(request: Request):
+    from .telephony import finalize_call
+    from .world import post as room_post
+
+    form = await request.form()
+    call_sid = str(form.get("CallSid") or "")
+    status = str(form.get("CallStatus") or "completed")
+    result = finalize_call(call_sid, status)
+    sess = (result.get("session") or {}) if result.get("ok") else {}
+    room_id = sess.get("room_id") or ""
+    eng = get_engine()
+    if room_id and eng.store.get_room(room_id):
+        outcome = result.get("outcome") or {}
+        structured = result.get("structured") or sess.get("structured") or {}
+        room_post(
+            eng,
+            room_id,
+            author="outreach_caller",
+            author_kind="agent",
+            kind="artifact",
+            text=f"Call {status}. {outcome.get('label', 'Transcript ready')}.",
+            artifact_type="call_transcript",
+            artifact={
+                "call_sid": call_sid,
+                "status": status,
+                "transcript": sess.get("transcript") or [],
+                "outcome": outcome,
+            },
+        )
+        if structured:
+            room_post(
+                eng,
+                room_id,
+                author="customer_voice_agent",
+                author_kind="agent",
+                kind="artifact",
+                text=(
+                    f"Structured evidence · {structured.get('reason')} · "
+                    f"intent={structured.get('purchase_intent')} · "
+                    f"friction={structured.get('friction')}"
+                ),
+                artifact_type="call_evidence",
+                artifact={"structured": structured, "transcript": sess.get("transcript") or []},
+            )
+    return {"ok": True}
 
 
 @app.post("/api/detect")
@@ -446,18 +1051,62 @@ def registry():
 
 
 @app.get("/api/memory")
-def memory():
+def memory(q: str = "", type: str | None = None):
     eng = get_engine()
     by_kind: dict[str, list] = {"customer": [], "product": [], "engineering": [], "organizational": []}
-    for item in eng.store.list_memory():
-        kind = item.get("kind") or "organizational"
+    items = eng.store.list_memory(type) if type else eng.store.list_memory()
+    if q:
+        ql = q.lower()
+        items = [
+            i
+            for i in items
+            if ql in str(i.get("title", "")).lower()
+            or ql in str(i.get("body", "")).lower()
+            or ql in str(i.get("statement", "")).lower()
+            or ql in str(i.get("text", "")).lower()
+        ]
+    for item in items:
+        kind = item.get("kind") or item.get("type") or "organizational"
         by_kind.setdefault(kind, []).append(item)
     return {"memory": by_kind, "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons()]}
 
 
+@app.post("/api/memory")
+def memory_remember(body: MemoryInBody):
+    valid = {"customer", "product", "engineering", "organizational"}
+    if body.type not in valid:
+        raise HTTPException(400, f"type must be one of {sorted(valid)}")
+    eng = get_engine()
+    mid = f"mem-{abs(hash(body.title + body.body)) % 10_000_000}"
+    payload = {
+        "id": mid,
+        "type": body.type,
+        "kind": body.type,
+        "title": body.title,
+        "body": body.body,
+        "tags": body.tags,
+        "room_id": body.room_id,
+    }
+    eng.store.put_memory(mid, body.type, payload)
+    return payload
+
+
 @app.get("/api/scenarios")
 def scenarios():
-    return {"scenarios": get_engine().seed_world().get("scenarios")}
+    rows = list(get_engine().seed_world().get("scenarios") or [])
+    if not any(str(r.get("id")) == "checkout_abandon" for r in rows):
+        rows.append(
+            {
+                "id": "checkout_abandon",
+                "title": "Checkout abandon → call",
+                "kind": "research",
+                "loop_type": "type_a",
+                "path": "bug",
+                "recipe": True,
+                "note": "Example ResearchEvent recipe on /api/research infra",
+            }
+        )
+    return {"scenarios": rows}
 
 
 @app.get("/api/traces")
@@ -469,9 +1118,97 @@ def traces():
     return {"traces": calls, "verdicts": [v.model_dump(mode="json") for v in eng.store.list_verdicts()]}
 
 
+@app.get("/api/traces/{trace_id}")
+def trace_detail(trace_id: str):
+    eng = get_engine()
+    inv = eng.store.get_investigation(trace_id)
+    if inv:
+        return {
+            "id": trace_id,
+            "investigation": inv.model_dump(mode="json"),
+            "agent_calls": [c.model_dump(mode="json") for c in eng.store.list_agent_calls(trace_id)],
+            "timeline": [t.model_dump(mode="json") for t in eng.store.list_timeline(trace_id)],
+        }
+    # Live graph trace ids are ephemeral UUIDs buffered on the Hub.
+    buffered = []
+    for events in HUB.buffer.values():
+        for ev in events:
+            if ev.get("type") == "trace" and ev.get("traceId") == trace_id:
+                buffered.append(ev.get("step"))
+    if not buffered:
+        raise HTTPException(404, "trace not found")
+    return {"id": trace_id, "steps": buffered}
+
+
 @app.get("/api/signals")
 def signals():
     return {"signals": [s.model_dump(mode="json") for s in get_engine().store.list_signals()]}
+
+
+@app.post("/api/signals")
+def post_signal(body: SignalInBody):
+    """v2-style: ingest a signal → open/join a room → run the live fleet graph."""
+    from .agents.graphs import run_live_graph
+    from .adk_runtime import dispatch_signal
+    from .engine import _id, _now
+    from .models import LoopType, Room, RoomKind
+
+    eng = get_engine()
+    eng.seed_world()
+    fork = (body.fork or ("FEATURE" if body.polarity == "positive" else "BUG")).upper()
+    kind = RoomKind.OPPORTUNITY if fork == "FEATURE" else RoomKind.INCIDENT
+    title = body.title or f"{body.metric} ({body.polarity})"
+    # Prefer an open room for the same metric/scenario when present.
+    room = None
+    if body.scenario:
+        room = next((r for r in eng.store.list_rooms() if r.scenario_id == body.scenario), None)
+    if room is None:
+        room = Room(
+            id=_id("room"),
+            kind=kind,
+            title=title,
+            topic=f"{body.source} · {body.domain} · {body.metric}",
+            members=["orchestrator", "signal_agent", "investigator_agent", "risk_agent"],
+            status="open",
+            created_at=_now(),
+            last_message_at=_now(),
+            loop_type=LoopType.TYPE_B if fork == "FEATURE" else LoopType.TYPE_A,
+            scenario_id=body.scenario,
+        )
+        eng.store.put_room(room)
+    sig = {
+        "source": body.source,
+        "polarity": body.polarity,
+        "domain": body.domain,
+        "metric": body.metric,
+        "delta": body.delta,
+        "dimensions": body.dimensions,
+        "fork": fork,
+        "scenario": body.scenario,
+        "title": title,
+    }
+    try:
+        from .connectors.warehouse import publish_signal
+
+        publish_signal({**sig, "room_id": room.id, "path": "api.signals"})
+    except Exception:
+        pass
+    result = dispatch_signal(
+        eng,
+        room.id,
+        sig,
+        fork=fork,
+        probe_exfil=body.scenario in {"security_exfil", "pii-exfil-deny"},
+    )
+    return {
+        "signalId": f"sig-{result['trace_id'][:8]}",
+        "roomId": room.id,
+        "room_id": room.id,
+        "trace_id": result["trace_id"],
+        "fork": result["fork"],
+        "pipeline": result.get("pipeline"),
+        "steps": result.get("steps"),
+    }
 
 
 @app.get("/api/investigations")
@@ -501,7 +1238,9 @@ def approvals():
 
 
 @app.post("/api/approvals/{action_id}")
-def decide(action_id: str, body: ApproveBody):
+def decide(action_id: str, body: ApproveBody, authorization: str | None = Header(default=None)):
+    from .audit import record
+
     eng = get_engine()
     action = eng.store.get_action(action_id)
     if not action:
@@ -531,6 +1270,13 @@ def decide(action_id: str, body: ApproveBody):
                     "approval": {"id": action_id, "status": "approved", "reused": False},
                 },
             )
+        record(
+            eng.store,
+            actor=body.approver,
+            action="approval.approve",
+            resource=f"action:{action_id}",
+            detail={"rationale": body.rationale, "execution": execution},
+        )
         return {
             "approval": "approve",
             "outcome": outcome.model_dump(mode="json"),
@@ -539,36 +1285,167 @@ def decide(action_id: str, body: ApproveBody):
             **_bundle(eng, action.investigation_id),
         }
     approval = eng.approve(action_id, body.approver, "deny", body.rationale)
+    record(
+        eng.store,
+        actor=body.approver,
+        action="approval.deny",
+        resource=f"action:{action_id}",
+        detail={"rationale": body.rationale},
+    )
     return {"approval": approval.model_dump(mode="json"), **_bundle(eng, action.investigation_id)}
 
 
+@app.get("/api/jobs")
+def list_jobs(
+    authorization: str | None = Header(default=None),
+    status: str | None = Query(default=None),
+    kind: str | None = Query(default=None),
+):
+    from .auth import require_admin
+
+    require_admin(authorization)
+    eng = get_engine()
+    rows = eng.store.list_jobs(status=status, kind=kind)
+    return {"jobs": [j.model_dump(mode="json") for j in rows]}
+
+
+@app.get("/api/jobs/{job_id}")
+def job_detail(job_id: str, authorization: str | None = Header(default=None)):
+    from .auth import require_admin
+
+    require_admin(authorization)
+    job = get_engine().store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "job not found")
+    return {"job": job.model_dump(mode="json")}
+
+
+@app.post("/api/internal/worker/run/{job_id}")
+def worker_run_job(
+    job_id: str,
+    authorization: str | None = Header(default=None),
+    x_loop_worker: str | None = Header(default=None, alias="X-Loop-Worker"),
+):
+    from .auth import require_admin_or_internal
+    from .jobs import process_job
+
+    require_admin_or_internal(authorization, internal_header=x_loop_worker)
+    eng = get_engine()
+    result = process_job(eng.store, eng, job_id)
+    if not result:
+        raise HTTPException(404, "job not found or not runnable")
+    return {"result": result}
+
+
+@app.post("/api/internal/worker/tick")
+def worker_tick(
+    authorization: str | None = Header(default=None),
+    x_loop_worker: str | None = Header(default=None, alias="X-Loop-Worker"),
+    limit: int = Query(default=3, ge=1, le=10),
+):
+    from .auth import require_admin_or_internal
+    from .jobs import process_one
+
+    require_admin_or_internal(authorization, internal_header=x_loop_worker)
+    eng = get_engine()
+    processed: list[dict] = []
+    for _ in range(limit):
+        result = process_one(eng.store, eng)
+        if not result:
+            break
+        processed.append(result)
+    return {"processed": processed, "count": len(processed)}
+
+
+@app.get("/api/approvals/{action_id}/status")
+def approval_execution_status(action_id: str):
+    """Console polling — job + execution without admin bearer."""
+    eng = get_engine()
+    action = eng.store.get_action(action_id)
+    if not action:
+        raise HTTPException(404, "action not found")
+    execution = dict((action.artifacts or {}).get("execution") or {})
+    job_id = execution.get("job_id")
+    job = eng.store.get_job(str(job_id)) if job_id else None
+    pr_url = execution.get("pr_url") or execution.get("code_pr_url")
+    return {
+        "action_id": action_id,
+        "status": action.status,
+        "execution": execution,
+        "job": job.model_dump(mode="json") if job else None,
+        "pr_url": pr_url,
+    }
+
+
+@app.get("/api/audit")
+def audit_log(authorization: str | None = Header(default=None), limit: int = Query(default=100, ge=1, le=500)):
+    from .auth import require_admin
+
+    require_admin(authorization)
+    rows = get_engine().store.list_audit(limit=limit)
+    return {"events": [e.model_dump(mode="json") for e in rows]}
+
+
 @app.post("/api/scenarios/{slug}/run")
-def scenario_run(slug: str):
-    """Eval fixture runner — explicit chip, not product shape."""
-    from .agents.graphs import run_presence_sweep
+def scenario_run(slug: str, request: Request):
+    """Eval fixture runner — live fleet walk into the scenario room."""
+    from .agents.graphs import run_live_graph
 
     eng = get_engine()
     eng.seed_world()
+
+    if slug in {"checkout_abandon", "abandon", "checkout-abandon"}:
+        from .abandon_research import run_abandon_research
+
+        q = request.query_params
+        out = run_abandon_research(
+            eng,
+            user_id=q.get("user_id") or "8472",
+            phone=q.get("phone") or "",
+            place_real_call=q.get("call") == "1",
+        )
+        room = eng.store.get_room(out["room_id"])
+        return {
+            **out,
+            "room": room.model_dump(mode="json") if room else None,
+            "funnel": funnel_for("type_a", "HYPOTHESIS", awaiting=False),
+            "pipeline": ["investigate", "brief", "memory", "call", "structured_evidence"],
+            "presence": HUB.agents_in(out["room_id"]) if out.get("room_id") else [],
+        }
+
     room = next((r for r in eng.store.list_rooms() if r.scenario_id == slug), None)
     if not room:
         raise HTTPException(404, f"unknown scenario {slug}")
     for mid in room.members:
         HUB.set_presence(room.id, mid, "idle", {"label": mid, "hue": abs(hash(mid)) % 360})
-    HUB.publish(room.id, {"type": "signal", "signal": {"scenario": slug, "roomId": room.id}})
     lt = room.loop_type.value if hasattr(room.loop_type, "value") else str(room.loop_type or "")
     fork = "FEATURE" if lt.lower() in {"type_b", "b", "feature"} else "BUG"
-    walked = run_presence_sweep(
+    signal = {
+        "scenario": slug,
+        "metric": slug,
+        "source": "fixture",
+        "polarity": "positive" if fork == "FEATURE" else "negative",
+        "domain": "technical",
+        "delta": -0.18 if fork == "BUG" else 0.12,
+        "dimensions": {"flow": slug, "hypothesis": room.topic},
+        "fork": fork,
+        "title": room.title,
+    }
+    result = run_live_graph(
+        eng,
         room.id,
-        fork,
-        lambda rid, aid, st: HUB.set_presence(rid, aid, st, {"label": aid, "hue": abs(hash(aid)) % 360}),
-        HUB.publish,
+        signal,
+        fork=fork,
+        probe_exfil=slug in {"security_exfil", "pii-exfil-deny"},
     )
     return {
         "scenario": slug,
         "room_id": room.id,
         "room": room.model_dump(mode="json"),
         "funnel": funnel_for(room.loop_type, None),
-        "pipeline": walked,
+        "pipeline": result.get("pipeline"),
+        "trace_id": result.get("trace_id"),
+        "steps": result.get("steps"),
         "presence": HUB.agents_in(room.id),
     }
 

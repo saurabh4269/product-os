@@ -22,6 +22,14 @@ export default function ConnectPage() {
   const [oauth, setOauth] = useState<GoogleOAuth | null>(null);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [telephony, setTelephony] = useState<{
+    twilio: boolean;
+    gemini: boolean;
+    google_inbound?: boolean;
+    mode: string;
+    detail: string;
+  } | null>(null);
+  const [adk, setAdk] = useState<Awaited<ReturnType<typeof api.adkStatus>> | null>(null);
 
   async function load() {
     const listed = await api.tenants();
@@ -38,6 +46,8 @@ export default function ConnectPage() {
     setRepo(detail.tenant.repo);
     setDeploy(detail.tenant.deploy_url);
     setOauth(await api.oauth());
+    setTelephony(await api.telephony());
+    setAdk(await api.adkStatus());
   }
 
   useEffect(() => {
@@ -196,20 +206,82 @@ export default function ConnectPage() {
         {saved ? <p className="text-[14px] text-[var(--dim)]">{saved}</p> : null}
       </form>
 
+      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Phone calls</h2>
+      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        Google Telephony / CX Phone Gateway is inbound-only (no Google outbound PSTN). Optional Twilio free trial for
+        dial-out + Gemini for dialogue; otherwise research runs simulated and still emits structured evidence. Set{" "}
+        <code className="text-[13px]">LOOP_GTP_PHONE_NUMBER</code> and/or{" "}
+        <code className="text-[13px]">TWILIO_*</code> + <code className="text-[13px]">GOOGLE_API_KEY</code> on Cloud Run{" "}
+        <code className="text-[13px]">loop</code>.
+      </p>
+      {telephony ? (
+        <p className="mt-4 text-[14px] text-[var(--dim)]">
+          Google inbound {telephony.google_inbound ? "ready" : "not set"} · Twilio outbound{" "}
+          {telephony.twilio ? "ready" : "not set"} · Gemini {telephony.gemini ? "ready" : "not set"} · mode{" "}
+          {telephony.mode} · {telephony.detail}
+        </p>
+      ) : null}
+
+      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">ADK &amp; code agent</h2>
+      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        ADK 2 fleet runs on an optional <code className="text-[13px]">loop-adk</code> worker. Main{" "}
+        <code className="text-[13px]">loop</code> keeps the deterministic engine as fallback. Code-fix jobs: clone →
+        test → PR; Antigravity is an optional preview editor behind{" "}
+        <code className="text-[13px]">LOOP_CODE_BACKEND</code>.
+      </p>
+      {adk ? (
+        <div className="mt-4 max-w-xl space-y-2 text-[14px] text-[var(--dim)]">
+          <p>
+            ADK SDK on this service:{" "}
+            <span className="font-medium text-foreground">{adk.adk_installed ? "yes" : "no (main host)"}</span>
+            {adk.adk_worker_url ? (
+              <>
+                {" "}
+                · worker{" "}
+                <a href={adk.adk_worker_url} className="text-accent" target="_blank" rel="noreferrer">
+                  {adk.adk_worker_url.replace(/^https:\/\//, "")}
+                </a>
+              </>
+            ) : (
+              " · no worker URL (deploy loop-adk)"
+            )}
+          </p>
+          <p>
+            Fleet:{" "}
+            {adk.fleet && typeof adk.fleet.agents === "number"
+              ? `${adk.fleet.agents} agents · ${Array.isArray(adk.fleet.apps) ? adk.fleet.apps.length : 0} apps · workflow tools ${String(adk.fleet.workflow_tools ?? 0)}`
+              : "deterministic fallback on main service"}
+          </p>
+          <p>
+            Antigravity (preview): {adk.antigravity.installed ? "installed" : "not on slim host"} · code backend{" "}
+            <code className="text-[13px]">{adk.code_backend}</code>
+          </p>
+        </div>
+      ) : null}
+
       <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Google Workspace</h2>
       <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Same pattern as Google’s ADK Workspace agent: one consent, stored refresh token, no send. Create a Web client
-        in Google Auth Platform, paste it here, then authorize.
+        Coordination uses Calendar (list / free-busy / suggest / create + Meet) and Gmail drafts for review asks —
+        HITL in the real workflow, not only an Approvals button. Send stays denied. Create a Web client in Google Auth
+        Platform, paste it here, then authorize.
       </p>
       {oauth?.connected ? (
         <p className="mt-4 text-[14px] text-[var(--dim)]">
-          Connected{oauth.email ? ` as ${oauth.email}` : ""}. Drafts and calendar holds can run. Send stays off.
+          Connected{oauth.email ? ` as ${oauth.email}` : ""}. Calendar + Gmail draft ready. Send stays off. Never
+          auto-merges.
+        </p>
+      ) : oauth?.configured ? (
+        <p className="mt-4 text-[14px]">
+          Client saved.{" "}
+          <a href={oauth.authorize_url || "/api/oauth/google/start"} className="text-accent">
+            Authorize Gmail and Calendar
+          </a>{" "}
+          with the Google account you added as a test user.
         </p>
       ) : (
-        <p className="mt-4 text-[14px]">
-          <a href={oauth?.authorize_url || "/api/oauth/google/start"} className="text-accent">
-            Authorize Gmail and Calendar
-          </a>
+        <p className="mt-4 text-[14px] text-[var(--dim)]">
+          OAuth client not saved yet — paste ID and secret below first. Authorizing before that sends you to a Google
+          deny page.
         </p>
       )}
       {oauth?.redirect_uri ? (

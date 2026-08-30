@@ -12,6 +12,43 @@ export default function ApprovalsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [prUrl, setPrUrl] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+
+  async function pollJob(actionId: string, attempts = 0) {
+    if (attempts > 40) {
+      setJobStatus("Still running — check the room for updates.");
+      return;
+    }
+    try {
+      const st = await api.approvalStatus(actionId);
+      const job = st.job;
+      const url = st.pr_url || (st.execution?.pr_url as string | undefined);
+      if (url) {
+        setNotice("Pull request opened. Product OS did not merge it.");
+        setPrUrl(url);
+        setJobStatus(null);
+        return;
+      }
+      if (job?.status === "failed" || job?.status === "dead") {
+        setJobStatus(`Code fix failed: ${job.error || "see room for details"}`);
+        return;
+      }
+      if (job?.status === "succeeded") {
+        const resultUrl = (job.result?.url as string | undefined) || url;
+        if (resultUrl) {
+          setNotice("Pull request opened. Product OS did not merge it.");
+          setPrUrl(resultUrl);
+        } else {
+          setJobStatus("Job finished — check the room for the PR link.");
+        }
+        return;
+      }
+      setJobStatus(`Code fix ${job?.status ?? "queued"}…`);
+      window.setTimeout(() => void pollJob(actionId, attempts + 1), 3000);
+    } catch {
+      window.setTimeout(() => void pollJob(actionId, attempts + 1), 4000);
+    }
+  }
 
   async function load() {
     try {
@@ -44,12 +81,19 @@ export default function ApprovalsPage() {
         if (res.pr_url) {
           setNotice("Pull request opened. Product OS did not merge it.");
           setPrUrl(res.pr_url);
+          setJobStatus(null);
         } else if (res.execution?.flag) {
           setNotice(`Flag ${res.execution.flag} is now ${String(res.execution.value ?? "updated")}.`);
           setPrUrl(null);
+          setJobStatus(null);
+        } else if (res.execution?.job_id) {
+          setNotice("Approved — opening a pull request in the background.");
+          setPrUrl(null);
+          void pollJob(a.id);
         } else {
           setNotice("Approved.");
           setPrUrl(null);
+          setJobStatus(null);
         }
       }
       await load();
@@ -67,6 +111,7 @@ export default function ApprovalsPage() {
       {notice ? (
         <p className="mt-4 max-w-xl text-[14px] leading-6 text-foreground">
           {notice}
+          {jobStatus ? <span className="block mt-1 text-[var(--dim)]">{jobStatus}</span> : null}
           {prUrl ? (
             <>
               {" "}
