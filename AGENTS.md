@@ -95,6 +95,7 @@ docs/PLAN_NEXT.md      What to build next so Company X can actually connect Prod
 | `components/pixel-office.tsx` | Pixel people. Do not put sprites in a short `overflow-hidden` + `overflow-x-auto` box. |
 | `components/office-floor.tsx` | Desk grid + handoffs. 2 columns on a phone. |
 | `lib/api.ts` | `NEXT_PUBLIC_API_URL` or `""` in production (same origin). |
+| `app/connect/page.tsx` | Tenant wire. Not a shop. |
 | `app/agents/[id]/layout.tsx` | `generateStaticParams` `{ id: "_" }` — required for static export. Same for rooms/investigations. |
 
 ### Control plane
