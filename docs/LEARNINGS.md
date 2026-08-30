@@ -163,7 +163,7 @@ Rooms that share a district **fan out** so three Ideas pins do not stack.
 
 **Why:** `hidden md:flex` still shows the desktop aside from 768px, and some phones / “desktop mode” hit that.
 
-**What we do now:** 64px **icon rail always**. Expand button (Linear / Notion). `<lg`: flyout overlay (`left-16`) so the campus width does not collapse. `lg+`: aside width `64 → 260`. Key: `loop-sidebar`. Do not bring back hamburger-only (users thought the app had no nav) or a permanent wide column on a phone.
+**What we do now:** 64px **icon rail always**. Expand button (Linear / Notion). **Same aside** grows in place on every width — the phone flyout was a second rail (second mark, second nav) and the user rejected it. Key: `loop-sidebar`. Do not bring back hamburger-only, a second overlay panel, or a permanent wide column on a phone.
 
 ### `overflow-x-auto` clips heads
 

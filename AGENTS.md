@@ -18,6 +18,33 @@ It is **not** a Safari / 3DS / payments app. Those six scenarios are **fixtures*
 
 The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents, visible handoffs, per-bot chats. It is not a CRUD dashboard and not a dark “war room.”
 
+## References the user pointed at
+
+These are the named products, looks, and decisions from this chat. Open them before you change campus, mascots, or the rail. Do not copy licensed art.
+
+| What they said | What it means here | Look it up |
+|---|---|---|
+| **Bubu** (cream sit-bear) | User name for the **white/cream** bear. In code she is **Mochi** — brand face, rail mark, phone header. | User screenshot: two sitting bears, cream + cocoa, no plate. |
+| **Bean** (cocoa sit-bear) | The brown bear who sits with her. Not the rail face. | `apps/console/public/city/bean-sit.png` |
+| **Bubu & Dudu / 黄油小熊** | Visual *register* only. Official pair is 黄小B’s **一二 (Yier)** cream panda + **布布 (Bubu)** brown bear. Fan name “Dudu” is unofficial. **Do not paste or trace their art.** Ours are original Mochi + Bean. | [Weibo 黄小B](https://weibo.com/u/2623471650) · [Yier & Bubu names](https://en.akkogear.com/bubu-dudu-or-yier-bubu-meet-the-real-creator-behind-the-internets-favorite-panda-and-bear/) · [FAQ](https://getbubududu.com/faq-all-about-bubu-and-dudu/) |
+| **Pip** | Old otter mascot. **Do not restore.** `PipMark` / `PipSticker` are deprecated aliases. | `apps/console/components/mascot.tsx` |
+| **Grok** | Multi-room chat, presence, not a dashboard. | [grok.com](https://grok.com) |
+| **OpenClaw** | Same energy: rooms, agents, handoffs, a control surface that feels like chat. | [Control UI](https://docs.openclaw.ai/web/control-ui) · [repo](https://github.com/openclaw/openclaw) |
+| **Claude City** | 2:1 isometric office floor, desks you can tap. No Phaser / Three / `react-isometric-grid`. | `components/iso-office.tsx` |
+| **Apple / Stripe / “cloud”** | Light, welcoming. User **rejected** the dark ink + coral + Instrument Serif war-room. | Apple-like: bg `#f5f5f7`, campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. |
+| **Linear / Notion rail** | 64px icon rail always on; expand grows the **same** aside. No second flyout, no hamburger-only. | `components/shell.tsx` |
+| **Memory watch / Approvals tram** | Campus landmarks, % of the **contained image box**. | Watch `28, 72` · tram `50, 80` in `lib/campus.ts` |
+| **Google Doc as “the office”** | Tried; unreadable (auth). Office is in-product. | `office-floor.tsx` + iso floor |
+| **Safari / 3DS** | One **fixture**, not the product. Do not bias UI or architecture around it. | `safari_3ds` in the fixture table |
+
+**Mascot rules the user repeated:** both bears on the phone (do not hide the duo behind `lg:block`); PNG only (`mochi.png`, `bean-sit.png` — iPad Safari drops WebP alpha and shows a plate); no sage/mint square behind them; they breathe, glance, lean toward a hovered building, hop when you pick, Mochi waves on the home-link hover.
+
+**Live / GitHub**
+
+- Console + API: https://loop-5uy6fkd7bq-uc.a.run.app (also `https://loop-632958340118.us-central1.run.app`)
+- This agent run: https://cursor.com/agents/bc-8c53e2be-2abe-4034-a712-16e9ff15e32b
+- PRs: [#1](https://github.com/saurabh4269/product-os/pull/1) hosted loop · [#2](https://github.com/saurabh4269/product-os/pull/2) campus + rail + this file · [#3](https://github.com/saurabh4269/product-os/pull/3) clickable campus · [#4](https://github.com/saurabh4269/product-os/pull/4) Mochi/Bean + core-flow fixes
+
 ## Binding rules
 
 | Rule | Detail |
@@ -123,7 +150,7 @@ After deploy: hard-refresh the hosted URL. Confirm `/city/campus.webp` is 200 an
 
 ## UI contract (do not regress)
 
-1. **Rail always visible** (64px). Expand opens labels + rooms. Phone: overlay. Laptop: width grows. Do not go back to hamburger-only or a squeezed always-on 248px column on a phone.
+1. **Rail always visible** (64px). Expand grows **the same aside** on every width (`w-16` ↔ `w-[min(16.25rem,calc(100vw-3.5rem))]`). No second flyout, no second Mochi. Phone still auto-collapses on navigate. Do not go back to hamburger-only or a squeezed always-on 248px column on a phone.
 2. **Campus pins** are measured against the **drawn image box** (`object-contain` + `ResizeObserver`). Memory = pocket watch. Approvals = tram.
 3. **People** in room cards and the office must show full sprites. No `h-[80px]` + `overflow-hidden` people strip. `overflow-x-auto` also clips Y — pad inside the scrollport.
 4. **Rooms are one column on a phone** (`lg:grid-cols-2`).
