@@ -80,6 +80,8 @@ def _query(client, sql: str, params: dict[str, Any] | None = None) -> list[dict[
             qparams.append(bigquery.ScalarQueryParameter(key, "DATE", val.isoformat()))
         elif isinstance(val, str):
             qparams.append(bigquery.ScalarQueryParameter(key, "STRING", val))
+        elif isinstance(val, bool):
+            qparams.append(bigquery.ScalarQueryParameter(key, "BOOL", val))
         elif isinstance(val, int):
             qparams.append(bigquery.ScalarQueryParameter(key, "INT64", val))
         elif isinstance(val, float):
@@ -88,71 +90,215 @@ def _query(client, sql: str, params: dict[str, Any] | None = None) -> list[dict[
     return [dict(row) for row in job.result()]
 
 
+def _rows_to_conversion(rows: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for row in rows:
+        browser = str(row.get("browser") or "unknown")
+        bc = float(row.get("begin_checkout") or 0)
+        pu = float(row.get("purchase") or 0)
+        den = bc or 1.0
+        out[browser] = {
+            "begin_checkout": bc,
+            "purchase": pu,
+            "conversion": pu / den,
+        }
+    return out
+
+
+def _query_ga4_conversion(
+    client,
+    cfg: BqConfig,
+    start: date,
+    end: date,
+    *,
+    include_recovery: bool,
+) -> list[dict[str, Any]]:
+    suffix_start = start.strftime("%Y%m%d")
+    suffix_end = end.strftime("%Y%m%d")
+    recovery_clause = ""
+    if not include_recovery:
+        recovery_clause = f"AND _TABLE_SUFFIX < '{RECOVERY_START.strftime('%Y%m%d')}'"
+    sql = f"""
+        SELECT
+          COALESCE(device.web_info.browser, 'unknown') AS browser,
+          COUNTIF(event_name = 'begin_checkout') AS begin_checkout,
+          COUNTIF(event_name = 'purchase') AS purchase
+        FROM `{cfg.project}.{cfg.ga4_dataset}.events_*`
+        WHERE _TABLE_SUFFIX BETWEEN @suffix_start AND @suffix_end
+          {recovery_clause}
+          AND event_name IN ('begin_checkout', 'purchase')
+        GROUP BY browser
+    """
+    return _query(client, sql, {"suffix_start": suffix_start, "suffix_end": suffix_end})
+
+
+def _query_raw_conversion(
+    client,
+    cfg: BqConfig,
+    start: date,
+    end: date,
+    *,
+    include_recovery: bool,
+) -> list[dict[str, Any]]:
+    recovery_clause = ""
+    if not include_recovery:
+        recovery_clause = f"AND event_date < '{RECOVERY_START.isoformat()}'"
+    sql = f"""
+        SELECT browser,
+          SUM(CASE WHEN event_name = 'begin_checkout' THEN 1 ELSE 0 END) AS begin_checkout,
+          SUM(CASE WHEN event_name = 'purchase' THEN 1 ELSE 0 END) AS purchase
+        FROM `{cfg.project}.{cfg.raw_dataset}.events`
+        WHERE event_date BETWEEN @start AND @end
+          {recovery_clause}
+        GROUP BY browser
+    """
+    return _query(client, sql, {"start": start, "end": end})
+
+
 def conversion_by_browser(
     tenant: Tenant,
     start: date,
     end: date,
     *,
     include_recovery: bool = False,
+    prefer: str = "",
 ) -> dict[str, dict[str, float]]:
-    """Purchase / begin_checkout by browser — loop_raw.events or GA4 events_* export."""
+    """Purchase / begin_checkout by browser — GA4 export and/or loop_raw.events.
+
+    In ``auto`` mode, tries GA4 first then falls through to ``loop_raw`` when GA4
+    returns no rows (common when export is empty but synthetic BQ is loaded).
+    """
     cfg = resolve_bq_config(tenant)
     if not cfg:
         return {}
     try:
         client = _client(cfg.project)
-        if cfg.ga4_dataset and cfg.warehouse_mode in {"auto", "ga4"}:
-            suffix_start = start.strftime("%Y%m%d")
-            suffix_end = end.strftime("%Y%m%d")
-            recovery_clause = ""
-            if not include_recovery:
-                recovery_clause = f"AND _TABLE_SUFFIX < '{RECOVERY_START.strftime('%Y%m%d')}'"
-            sql = f"""
-                SELECT
-                  COALESCE(device.web_info.browser, 'unknown') AS browser,
-                  COUNTIF(event_name = 'begin_checkout') AS begin_checkout,
-                  COUNTIF(event_name = 'purchase') AS purchase
-                FROM `{cfg.project}.{cfg.ga4_dataset}.events_*`
-                WHERE _TABLE_SUFFIX BETWEEN @suffix_start AND @suffix_end
-                  {recovery_clause}
-                  AND event_name IN ('begin_checkout', 'purchase')
-                GROUP BY browser
-            """
-            rows = _query(
-                client,
-                sql,
-                {"suffix_start": suffix_start, "suffix_end": suffix_end},
-            )
-        elif cfg.raw_dataset:
-            recovery_clause = ""
-            if not include_recovery:
-                recovery_clause = f"AND event_date < '{RECOVERY_START.isoformat()}'"
-            sql = f"""
-                SELECT browser,
-                  SUM(CASE WHEN event_name = 'begin_checkout' THEN 1 ELSE 0 END) AS begin_checkout,
-                  SUM(CASE WHEN event_name = 'purchase' THEN 1 ELSE 0 END) AS purchase
-                FROM `{cfg.project}.{cfg.raw_dataset}.events`
-                WHERE event_date BETWEEN @start AND @end
-                  {recovery_clause}
-                GROUP BY browser
-            """
-            rows = _query(client, sql, {"start": start, "end": end})
-        else:
-            return {}
-        out: dict[str, dict[str, float]] = {}
-        for row in rows:
-            browser = str(row.get("browser") or "unknown")
-            bc = float(row.get("begin_checkout") or 0)
-            pu = float(row.get("purchase") or 0)
-            den = bc or 1.0
-            out[browser] = {
-                "begin_checkout": bc,
-                "purchase": pu,
-                "conversion": pu / den,
-            }
-        return out
     except Exception:
         return {}
+
+    mode = cfg.warehouse_mode
+    want = (prefer or "").strip().lower()
+    try_ga4 = bool(cfg.ga4_dataset) and (
+        want == "ga4" or (not want and mode in {"auto", "ga4"})
+    )
+    try_raw = bool(cfg.raw_dataset) and (
+        want == "raw" or want == "bq_raw" or (not want and mode in {"auto", "bq_raw"})
+    )
+    if want == "ga4":
+        try_raw = False
+    if want in {"raw", "bq_raw"}:
+        try_ga4 = False
+
+    try:
+        if try_ga4:
+            rows = _query_ga4_conversion(client, cfg, start, end, include_recovery=include_recovery)
+            out = _rows_to_conversion(rows)
+            if out or mode == "ga4" or want == "ga4":
+                return out
+        if try_raw:
+            rows = _query_raw_conversion(client, cfg, start, end, include_recovery=include_recovery)
+            return _rows_to_conversion(rows)
+    except Exception:
+        return {}
+    return {}
+
+
+def metrics_daily_rows(tenant: Tenant, metric: str, *, limit: int = 14) -> list[dict[str, Any]]:
+    """Recent metrics_daily points for proof tables."""
+    cfg = resolve_bq_config(tenant)
+    if not cfg or not cfg.metrics_dataset:
+        return []
+    try:
+        client = _client(cfg.project)
+        return _query(
+            client,
+            f"""
+            SELECT CAST(day AS STRING) AS day, value
+            FROM `{cfg.project}.{cfg.metrics_dataset}.metrics_daily`
+            WHERE tenant_id = @tenant AND metric = @metric
+            ORDER BY day DESC
+            LIMIT @limit
+            """,
+            {"tenant": tenant.id, "metric": metric, "limit": int(limit)},
+        )
+    except Exception:
+        return []
+
+
+def conversion_probe(
+    tenant: Tenant,
+    start: date,
+    end: date,
+    *,
+    include_recovery: bool = True,
+    prefer: str = "",
+) -> dict[str, Any]:
+    """Like conversion_by_browser but returns source + error for trust UI."""
+    cfg = resolve_bq_config(tenant)
+    if not cfg:
+        return {"rows": {}, "source": None, "error": "no BQ config"}
+    mode = cfg.warehouse_mode
+    want = (prefer or "").strip().lower()
+    try:
+        client = _client(cfg.project)
+    except Exception as exc:
+        return {"rows": {}, "source": None, "error": f"BQ client: {exc}"}
+
+    errors: list[str] = []
+    try_ga4 = bool(cfg.ga4_dataset) and (
+        want == "ga4" or (not want and mode in {"auto", "ga4"})
+    )
+    try_raw = bool(cfg.raw_dataset) and (
+        want in {"raw", "bq_raw"} or (not want and mode in {"auto", "bq_raw"})
+    )
+    if want == "ga4":
+        try_raw = False
+    if want in {"raw", "bq_raw"}:
+        try_ga4 = False
+
+    if try_ga4:
+        try:
+            rows = _rows_to_conversion(
+                _query_ga4_conversion(client, cfg, start, end, include_recovery=include_recovery)
+            )
+            if rows or mode == "ga4" or want == "ga4":
+                return {
+                    "rows": rows,
+                    "source": "ga4_export",
+                    "dataset": cfg.ga4_dataset,
+                    "table": "events_*",
+                    "error": None if rows else "GA4 export returned no rows in window",
+                }
+            if not rows:
+                errors.append("GA4 empty")
+        except Exception as exc:
+            errors.append(f"GA4: {exc}")
+            if mode == "ga4" or want == "ga4":
+                return {"rows": {}, "source": "ga4_export", "dataset": cfg.ga4_dataset, "table": "events_*", "error": str(exc)[:240]}
+
+    if try_raw:
+        try:
+            rows = _rows_to_conversion(
+                _query_raw_conversion(client, cfg, start, end, include_recovery=include_recovery)
+            )
+            return {
+                "rows": rows,
+                "source": "bigquery",
+                "dataset": cfg.raw_dataset,
+                "table": "events",
+                "error": None if rows else "loop_raw.events returned no rows in window",
+            }
+        except Exception as exc:
+            errors.append(f"raw: {exc}")
+            return {
+                "rows": {},
+                "source": "bigquery",
+                "dataset": cfg.raw_dataset,
+                "table": "events",
+                "error": str(exc)[:240],
+            }
+
+    return {"rows": {}, "source": None, "error": "; ".join(errors) or "no dataset matched mode"}
 
 
 def read_metric_window(
@@ -213,8 +359,11 @@ def read_metric_window(
     wh = getattr(engine, "wh", None)
     if wh and hasattr(wh, "conversion_by_browser") and "conversion" in metric.lower():
         browser = "Safari" if "safari" in metric.lower() else "Chrome"
+        # Use the fixture detect window — post-RECOVERY days are empty by design
         end = date.today()
-        start = end - timedelta(days=3)
+        if end >= RECOVERY_START:
+            end = RECOVERY_START - timedelta(days=1)
+        start = end - timedelta(days=2)
         try:
             conv = wh.conversion_by_browser(start, end).get(browser, {}).get("conversion")
             if conv is not None:
@@ -362,18 +511,27 @@ def enrich_anomaly_dimensions(store: Any, tenant: Tenant, dims: dict[str, Any]) 
     baseline_start = baseline_end - timedelta(days=13)
     cur = conversion_by_browser(tenant, start, end)
     base = conversion_by_browser(tenant, baseline_start, baseline_end)
-    safari_cur = cur.get("Safari", {}).get("conversion", 0)
-    safari_base = base.get("Safari", {}).get("conversion", 0)
-    chrome_cur = cur.get("Chrome", {}).get("conversion", 0)
-    chrome_base = base.get("Chrome", {}).get("conversion", 0)
-    if safari_cur or chrome_cur:
-        out.setdefault(
-            "analytics_claim",
-            (
-                f"Safari purchase conversion {safari_cur:.1%} vs baseline {safari_base:.1%}; "
-                f"Chrome {chrome_cur:.1%} vs {chrome_base:.1%} (BQ GA4/loop_raw)."
+    segs = out.get("segments") if isinstance(out.get("segments"), dict) else {}
+    focus = str(segs.get("browser") or "") or None
+    if not focus and cur:
+        focus = max(
+            cur.keys(),
+            key=lambda n: abs(
+                float(cur[n].get("conversion") or 0)
+                - float((base.get(n) or {}).get("conversion") or 0)
             ),
         )
+    if focus and (cur.get(focus) or base.get(focus)):
+        focus_cur = float((cur.get(focus) or {}).get("conversion") or 0)
+        focus_base = float((base.get(focus) or {}).get("conversion") or 0)
+        control = next((n for n in cur if n != focus), None)
+        claim = f"{focus} conversion {focus_cur:.1%} vs baseline {focus_base:.1%}"
+        if control:
+            c_cur = float((cur.get(control) or {}).get("conversion") or 0)
+            c_base = float((base.get(control) or {}).get("conversion") or 0)
+            claim += f"; {control} {c_cur:.1%} vs {c_base:.1%}"
+        claim += " (BQ)."
+        out.setdefault("analytics_claim", claim)
     ads = ads_attribution(tenant)
     if ads.get("claim"):
         out.setdefault("ads_claim", ads["claim"])

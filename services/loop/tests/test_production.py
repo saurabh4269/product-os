@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
@@ -11,9 +10,9 @@ from fastapi.testclient import TestClient
 
 from loop import api as api_mod
 from loop.auth import admin_required, require_admin
-from loop.jobs import Job, enqueue, fail, complete, process_one
-from loop.state_persist import hydrate_db, persist_db, schedule_snapshot
-from loop.code_worker import apply_patches, detect_test_command, run_tests
+from loop.code_worker import apply_patches, run_tests
+from loop.jobs import complete, enqueue, fail
+from loop.state_persist import hydrate_db, persist_db
 
 
 def test_admin_open_locally_without_token():

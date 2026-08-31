@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useGlobalWs, type ActivityEvent } from "@/lib/use-global-ws";
 import { shortName } from "@/lib/names";
 import { cn } from "@/lib/utils";
+import { AgentBadge } from "@/components/agent-badge";
 
 function relTime(ts?: string) {
   if (!ts) return "";
@@ -30,11 +31,12 @@ function Row({ e, fresh, hideRoom }: { e: ActivityEvent; fresh?: boolean; hideRo
       )}
     >
       <span className="w-14 shrink-0 text-[var(--faint)]">{relTime(e.ts)}</span>
-      <span className="w-24 shrink-0 truncate font-medium text-foreground/80">{who}</span>
+      <AgentBadge name={e.agent_id || "system"} status="working" size={20} variant="initial" className="mt-0.5 shrink-0" />
+      <span className="w-20 shrink-0 truncate font-medium text-foreground/80">{who}</span>
       <span className="min-w-0 flex-1 truncate">{e.message}</span>
       {room && !hideRoom ? (
-        <Link href={`/rooms/${room}`} className="shrink-0 text-accent hover:underline">
-          room
+        <Link href={`/rooms/${room}`} className="shrink-0 text-accent">
+          →
         </Link>
       ) : null}
     </div>
@@ -46,11 +48,13 @@ export function ActivityLog({
   compact,
   defaultScope,
   defaultOpen = true,
+  className,
 }: {
   roomId?: string;
   compact?: boolean;
   defaultScope?: "all" | "room";
   defaultOpen?: boolean;
+  className?: string;
 }) {
   const { activity: live, tick } = useGlobalWs();
   const [seed, setSeed] = useState<ActivityEvent[]>([]);
@@ -75,14 +79,14 @@ export function ActivityLog({
   }, [live, seed, roomId, scope, compact]);
 
   return (
-    <div className={cn("rounded-2xl border border-border bg-white px-4 py-3", compact ? "" : "mt-8")}>
+    <div className={cn("surface-lg px-4 py-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           className="flex items-center gap-2 text-left"
           onClick={() => setOpen((o) => !o)}
         >
-          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">Live feed</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Live feed</p>
           {rows.length ? (
             <span className="rounded-full bg-[var(--elev)] px-2 py-0.5 text-[10px] font-medium text-[var(--dim)]">
               {rows.length}
@@ -124,16 +128,12 @@ export function ActivityLog({
         </div>
       </div>
       {open ? (
-        <div className={cn("mt-2 space-y-1 overflow-y-auto", compact ? "max-h-32" : "max-h-40")}>
+        <div className={cn("mt-2 space-y-1 overflow-y-auto", compact ? "max-h-32" : "max-h-52")}>
           {rows.length ? (
             rows.map((e, i) => (
               <Row key={`${e.ts}-${e.agent_id}-${i}`} e={e} fresh={i === 0 && live.length > 0} hideRoom={Boolean(roomId)} />
             ))
-          ) : (
-            <p className="text-[12px] text-[var(--faint)]">
-              {roomId && scope === "room" ? "No activity in this room yet." : "Fleet idle — run demo to see agents work."}
-            </p>
-          )}
+          ) : null}
         </div>
       ) : null}
     </div>

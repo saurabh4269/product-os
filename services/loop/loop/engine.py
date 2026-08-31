@@ -6,6 +6,7 @@ import hashlib
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from .config import settings
 from .models import (
@@ -34,6 +35,67 @@ from .store import Store
 from .warehouse import RECOVERY_START, REGRESSION_START, Warehouse
 
 SAFARI = "Safari"
+
+
+def re_split_tokens(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    import re
+
+    return [t for t in re.split(r"[^a-z0-9]+", str(raw).lower()) if len(t) >= 3]
+
+
+def _log_signature_for(sig: Signal) -> str:
+    """Derive a log search needle from the signal — not a fixed 3DS string."""
+    blob = f"{sig.metric} {sig.funnel_position} {sig.family.value}".lower()
+    if "3ds" in blob or "payment" in blob or "purchase" in blob:
+        return "3DS"
+    if "activat" in blob or "onboard" in blob:
+        return "ACTIVATION"
+    if "ship" in blob or "deliver" in blob:
+        return "SHIPPING"
+    if "auth" in blob or "login" in blob:
+        return "AUTH"
+    # Fall back to first metric token uppercased
+    toks = re_split_tokens(sig.metric)
+    return (toks[0].upper() if toks else "ERROR")
+
+
+def signal_fingerprint(metric: str, segments: list) -> tuple[str, str, str, str]:
+    """Stable key for dedupe: metric + primary segment dimensions."""
+    seg = segments[0] if segments else None
+    if seg is None:
+        return (metric, "", "", "")
+    browser = getattr(seg, "browser", None) or (seg.get("browser") if isinstance(seg, dict) else None) or ""
+    os_name = getattr(seg, "os", None) or (seg.get("os") if isinstance(seg, dict) else None) or ""
+    platform = getattr(seg, "platform", None) or (seg.get("platform") if isinstance(seg, dict) else None) or ""
+    return (metric, str(browser), str(os_name), str(platform))
+
+
+def stable_signal_id(metric: str, segments: list, *, prefix: str = "sig_wh") -> str:
+    metric, browser, os_name, platform = signal_fingerprint(metric, segments)
+    slug = "_".join(
+        p.lower().replace(" ", "_").replace("/", "_")
+        for p in (metric, browser or "all", os_name or "any", platform or "web")
+        if p
+    )
+    return f"{prefix}_{slug}"[:64]
+
+
+def dedupe_signals(signals: list) -> list:
+    """One row per metric+segment — keeps newest detected_at (fixes legacy duplicate ids)."""
+    best: dict[tuple[str, str, str, str], Any] = {}
+    for s in signals:
+        fp = signal_fingerprint(s.metric, s.affected_segments)
+        prev = best.get(fp)
+        if prev is None:
+            best[fp] = s
+            continue
+        prev_at = getattr(prev, "detected_at", None) or ""
+        cur_at = getattr(s, "detected_at", None) or ""
+        if str(cur_at) >= str(prev_at):
+            best[fp] = s
+    return sorted(best.values(), key=lambda x: str(getattr(x, "detected_at", "") or ""), reverse=True)
 MIN_INDEPENDENCE = 3
 PAYMENT_SURFACES = {"payment", "checkout", "3ds", "authorization", "pay-sdk"}
 
@@ -87,6 +149,9 @@ class LoopEngine:
             )
 
     def a2a(self, inv_id: str, src: str, dst: str, tb: str, summary: str) -> None:
+        from .narrate import humanize_handoff
+
+        line = humanize_handoff(src, dst, summary)
         self.store.put_agent_call(
             AgentCall(
                 id=_id("a2a"),
@@ -97,7 +162,7 @@ class LoopEngine:
                 started_at=_now(),
                 finished_at=_now(),
                 status="ok",
-                summary=summary,
+                summary=line,
             )
         )
         from .a2a_protocol import A2AEnvelope
@@ -110,7 +175,7 @@ class LoopEngine:
             kind="handoff",
             trace_id=inv_id,
             room_id=rid,
-            payload={"summary": summary, "trust_boundary": tb},
+            payload={"summary": line, "trust_boundary": tb},
         )
         if rid:
             HUB.set_presence(rid, dst, "thinking", {"label": dst, "hue": abs(hash(dst)) % 360})
@@ -147,29 +212,48 @@ class LoopEngine:
             rel = (cur["conversion"] - base["conversion"]) / base["conversion"]
             if rel > -0.12:
                 continue
-            sig = Signal(
-                id=_id("sig"),
-                family=SignalFamily.BUSINESS,
-                direction=Direction.NEGATIVE,
-                funnel_position="purchase",
-                metric="purchase_conversion",
-                magnitude=rel,
-                baseline=base["conversion"],
-                affected_segments=[Segment(browser=browser, os="iOS" if browser == SAFARI else None, platform="web")],
-                detection_window={
+            segments = [Segment(browser=browser, os="iOS" if browser == SAFARI else None, platform="web")]
+            sig_id = stable_signal_id("purchase_conversion", segments)
+            existing = self.store.get_signal(sig_id)
+            if existing:
+                existing.magnitude = rel
+                existing.baseline = base["conversion"]
+                existing.detection_window = {
                     "start": window_start.isoformat(),
                     "end": window_end.isoformat(),
                     "baseline_start": baseline_start.isoformat(),
                     "baseline_end": baseline_end.isoformat(),
-                },
-                confidence=min(0.95, 0.55 + abs(rel)),
-                source="warehouse.events_daily",
-                status=SignalStatus.OPEN,
-                detected_at=_now(),
-            )
-            if self._should_suppress(sig):
-                sig.status = SignalStatus.SUPPRESSED
-                sig.suppression_reason = "open_investigation_or_known_benign"
+                }
+                existing.confidence = min(0.95, 0.55 + abs(rel))
+                existing.detected_at = _now()
+                if self._should_suppress(existing):
+                    existing.status = SignalStatus.SUPPRESSED
+                    existing.suppression_reason = "open_investigation_or_known_benign"
+                sig = existing
+            else:
+                sig = Signal(
+                    id=sig_id,
+                    family=SignalFamily.BUSINESS,
+                    direction=Direction.NEGATIVE,
+                    funnel_position="purchase",
+                    metric="purchase_conversion",
+                    magnitude=rel,
+                    baseline=base["conversion"],
+                    affected_segments=segments,
+                    detection_window={
+                        "start": window_start.isoformat(),
+                        "end": window_end.isoformat(),
+                        "baseline_start": baseline_start.isoformat(),
+                        "baseline_end": baseline_end.isoformat(),
+                    },
+                    confidence=min(0.95, 0.55 + abs(rel)),
+                    source="warehouse.events_daily",
+                    status=SignalStatus.OPEN,
+                    detected_at=_now(),
+                )
+                if self._should_suppress(sig):
+                    sig.status = SignalStatus.SUPPRESSED
+                    sig.suppression_reason = "open_investigation_or_known_benign"
             self.store.put_signal(sig)
             found.append(sig)
         return found
@@ -238,22 +322,42 @@ class LoopEngine:
 
     def recall_lessons(self, *needles: str, tenant_id: str | None = None) -> list[str]:
         """Retrieve organizational memory. Facts stay in the warehouse; lessons are knowledge."""
-        tokens = {n.lower() for n in needles if n and len(n) > 3}
+        import re
+
+        raw = [n for n in needles if n]
+        tokens: set[str] = set()
+        for n in raw:
+            s = str(n).strip().lower()
+            if not s:
+                continue
+            tokens.add(s)
+            tokens.update(re_split_tokens(s))
+        tokens = {t for t in tokens if len(t) >= 3}
         if not tokens:
             return []
+
+        def _hits(blob: str) -> bool:
+            for t in tokens:
+                if len(t) >= 5:
+                    if t in blob:
+                        return True
+                elif re.search(rf"(?<![a-z0-9]){re.escape(t)}(?![a-z0-9])", blob):
+                    return True
+            return False
+
         hits: list[str] = []
         seen: set[str] = set()
         for lesson in self.store.list_lessons():
             if tenant_id and lesson.tenant_id and lesson.tenant_id != tenant_id:
                 continue
             blob = f"{lesson.statement} {lesson.root_cause_family} {' '.join(lesson.applicable_conditions)}".lower()
-            if any(t in blob for t in tokens):
+            if _hits(blob):
                 if lesson.statement not in seen:
                     hits.append(lesson.statement)
                     seen.add(lesson.statement)
         for mem in self.store.list_memory(tenant_id=tenant_id):
             blob = f"{mem.get('statement', '')} {mem.get('body', '')} {mem.get('title', '')}".lower()
-            if any(t in blob for t in tokens):
+            if _hits(blob):
                 stmt = str(mem.get("statement") or mem.get("title") or "")
                 if stmt and stmt not in seen:
                     hits.append(stmt)
@@ -261,18 +365,21 @@ class LoopEngine:
         return hits
 
     def _recall_needles(self, signal: Signal) -> list[str]:
-        needles = [signal.metric, signal.funnel_position, signal.family.value]
+        needles = [signal.metric, signal.funnel_position, signal.family.value, signal.source or ""]
         for seg in signal.affected_segments:
-            needles.extend([x for x in (seg.browser, seg.os, seg.platform, seg.app_version, seg.geo, seg.channel) if x])
-        metric = (signal.metric or "").lower()
-        if "feature_request" in metric or "apple_pay" in metric:
-            needles.extend(["apple_pay", "wallet"])
-        elif "shipping" in metric:
-            needles.extend(["shipping", "delivery"])
-        elif "purchase" in metric or signal.funnel_position == "purchase":
-            needles.extend(["checkout", "pay-sdk", "sdk-callback", "3ds"])
-        if "activat" in metric or signal.funnel_position == "activation":
-            needles.extend(["onboarding", "activation"])
+            needles.extend(
+                [x for x in (seg.browser, seg.os, seg.platform, seg.app_version, seg.geo, seg.channel) if x]
+            )
+        for part in re_split_tokens(signal.metric) + re_split_tokens(signal.funnel_position) + re_split_tokens(
+            signal.source or ""
+        ):
+            if part and part not in needles:
+                needles.append(part)
+        for seg in signal.affected_segments:
+            for field in (seg.app_version, seg.channel, seg.browser, seg.os, seg.platform):
+                for part in re_split_tokens(str(field or "")):
+                    if part and part not in needles:
+                        needles.append(part)
         return needles
 
     def gather_evidence(self, inv: Investigation) -> list[Evidence]:
@@ -290,31 +397,41 @@ class LoopEngine:
         items: list[Evidence] = []
 
         # Analytics — daily tables only (file warehouse or tenant BQ)
+        from .connectors.bigquery import conversion_by_browser as bq_conversion
+        from .connectors.bigquery import has_bq
         from .tenant import resolve_tenant
-        from .connectors.bigquery import conversion_by_browser as bq_conversion, has_bq
 
         tenant = resolve_tenant(self.store, investigation=inv)
         if tenant and has_bq(tenant):
             cur = bq_conversion(tenant, w_start, w_end)
             base = bq_conversion(tenant, b_start, b_end)
-            src_label = "bigquery"
         else:
             cur = self.wh.conversion_by_browser(w_start, w_end)
             base = self.wh.conversion_by_browser(b_start, b_end)
-        self.a2a(inv.id, "orchestrator", "analytics_agent", "TB-2", "funnel conversion by browser")
-        safari_cur = cur.get(SAFARI, {}).get("conversion", 0)
-        safari_base = base.get(SAFARI, {}).get("conversion", 0)
-        chrome_cur = cur.get("Chrome", {}).get("conversion", 0)
-        chrome_base = base.get("Chrome", {}).get("conversion", 0)
+        self.a2a(inv.id, "orchestrator", "analytics_agent", "TB-2", f"{sig.metric} by segment")
+        focus = (sig.affected_segments[0].browser if sig.affected_segments else None) or None
+        if not focus and cur:
+            focus = max(
+                cur.keys(),
+                key=lambda n: abs(
+                    float(cur[n].get("conversion") or 0) - float((base.get(n) or {}).get("conversion") or 0)
+                ),
+            )
+        focus = focus or (next(iter(cur), None) if cur else None) or "all"
+        control = next((n for n in cur if n != focus), "control")
+        focus_cur = float((cur.get(focus) or {}).get("conversion") or 0)
+        focus_base = float((base.get(focus) or {}).get("conversion") or 0)
+        control_cur = float((cur.get(control) or {}).get("conversion") or 0)
+        control_base = float((base.get(control) or {}).get("conversion") or 0)
         items.append(
             self._evidence(
                 inv,
                 source_type="analytics",
-                source_reference=f"events_{w_start:%Y%m%d}..events_{w_end:%Y%m%d} browser=Safari metric=purchase/begin_checkout",
+                source_reference=f"events_{w_start:%Y%m%d}..events_{w_end:%Y%m%d} segment={focus} metric={sig.metric}",
                 claim=(
-                    f"Safari purchase conversion was {safari_cur:.1%} in the detection window versus "
-                    f"{safari_base:.1%} in the 14-day baseline ({((safari_cur-safari_base)/safari_base) if safari_base else 0:.1%}). "
-                    f"Chrome held {chrome_cur:.1%} vs {chrome_base:.1%}."
+                    f"{sig.metric}: {focus} was {focus_cur:.1%} in the detection window versus "
+                    f"{focus_base:.1%} baseline ({((focus_cur-focus_base)/focus_base) if focus_base else 0:.1%}). "
+                    f"{control} held {control_cur:.1%} vs {control_base:.1%}."
                 ),
                 independence_group="analytics_ga4",
                 collected_by="analytics_agent",
@@ -328,18 +445,20 @@ class LoopEngine:
         end_dt = datetime.combine(w_end, datetime.max.time(), tzinfo=timezone.utc)
         base_start_dt = datetime.combine(b_start, datetime.min.time(), tzinfo=timezone.utc)
         base_end_dt = datetime.combine(b_end, datetime.max.time(), tzinfo=timezone.utc)
-        now_counts = self.wh.error_counts(start_dt, end_dt, "3DS")
-        then_counts = self.wh.error_counts(base_start_dt, base_end_dt, "3DS")
-        safari_now = sum(v for k, v in now_counts.items() if k.startswith("Safari"))
-        safari_then = sum(v for k, v in then_counts.items() if k.startswith("Safari"))
+        log_sig = _log_signature_for(sig)
+        focus_b = (sig.affected_segments[0].browser if sig.affected_segments else None) or focus
+        now_counts = self.wh.error_counts(start_dt, end_dt, log_sig)
+        then_counts = self.wh.error_counts(base_start_dt, base_end_dt, log_sig)
+        now_n = sum(v for k, v in now_counts.items() if str(k).startswith(focus_b)) or sum(now_counts.values())
+        then_n = sum(v for k, v in then_counts.items() if str(k).startswith(focus_b)) or sum(then_counts.values())
         items.append(
             self._evidence(
                 inv,
                 source_type="logs",
-                source_reference=f"Cloud Logging signature=3DS_TIMEOUT browser=Safari {w_start}..{w_end}",
+                source_reference=f"Cloud Logging signature={log_sig} segment={focus_b} {w_start}..{w_end}",
                 claim=(
-                    f"3DS_TIMEOUT errors on Safari rose from {safari_then} in the baseline window "
-                    f"to {safari_now} after {REGRESSION_START.isoformat()}."
+                    f"{log_sig} errors on {focus_b} rose from {then_n} in the baseline window "
+                    f"to {now_n} in the detection window."
                 ),
                 independence_group="logs_errors",
                 collected_by="logs_agent",
@@ -349,17 +468,22 @@ class LoopEngine:
 
         # Deployments
         self.a2a(inv.id, "orchestrator", "deployment_agent", "TB-2", "release timeline correlation")
-        deploys = [d for d in self.wh.deploys() if "pay-sdk" in json_dumps_lower(d)]
-        correlated = [d for d in self.wh.deploys() if d.get("at", "").startswith(str(REGRESSION_START))]
-        desc = correlated[0] if correlated else (deploys[0] if deploys else {})
+        all_deploys = list(self.wh.deploys())
+        window_deploys = [
+            d for d in all_deploys
+            if str(w_start) <= str(d.get("at") or "")[:10] <= str(w_end)
+        ]
+        desc = window_deploys[0] if window_deploys else (all_deploys[0] if all_deploys else {})
+        focus_b = (sig.affected_segments[0].browser if sig.affected_segments else None) or "segment"
         items.append(
             self._evidence(
                 inv,
                 source_type="deployment",
                 source_reference=f"deploy:{desc.get('id', 'unknown')} sha={desc.get('sha', '')}",
                 claim=(
-                    f"Release {desc.get('version', 'pay-sdk')} shipped {desc.get('at', REGRESSION_START.isoformat())} "
-                    f"({desc.get('note', 'payment SDK bump')}). Onset aligns with the Safari conversion break."
+                    f"Release {desc.get('version', desc.get('service', 'app'))} shipped "
+                    f"{desc.get('at', 'near onset')} ({desc.get('note', 'deploy in window')}). "
+                    f"Timing aligns with the {sig.metric} break on {focus_b}."
                 ),
                 independence_group="deploy_timeline",
                 collected_by="deployment_agent",
@@ -455,13 +579,17 @@ class LoopEngine:
         bridge = MediaBridge()
         session_id = f"voice_{inv.id}"
         bridge.open_session(session_id)
+        sig = self.store.get_signal(inv.originating_signal_ids[0]) if inv.originating_signal_ids else None
+        metric = (sig.metric if sig else "checkout") or "checkout"
+        seg = sig.affected_segments[0] if sig and sig.affected_segments else None
+        device = " · ".join(x for x in [(seg.browser if seg else None), (seg.os if seg else None)] if x) or "their device"
         turns = [
-            ("agent", "I see a failed checkout on Safari after a ₹4,200 attempt. What did you see on screen?"),
-            ("customer", "The payment page kept loading."),
-            ("agent", "Did you see an error message, or did it remain on the loading screen?"),
-            ("customer", "Just loading."),
-            ("agent", "Did this happen on another browser?"),
-            ("customer", "Chrome on my laptop worked. iPhone Safari failed twice."),
+            ("agent", f"We saw trouble around {metric} on {device}. What did you see on screen?"),
+            ("customer", "It kept loading / would not finish."),
+            ("agent", "Did you see an error message, or did it hang?"),
+            ("customer", "Mostly hung. No clear error."),
+            ("agent", "Did another device or browser work?"),
+            ("customer", "Yes — another setup worked; this one failed twice."),
         ]
         fixtures = Path(__file__).resolve().parents[3] / "data" / "fixtures" / "pii_transcript.json"
         if fixtures.exists():
@@ -474,7 +602,7 @@ class LoopEngine:
         blocked = sum(1 for t in screened if t.get("blocked"))
         pii_holder = next((t["redacted"] for t in screened if "[EMAIL_ADDRESS]" in t.get("redacted", "")), "")
         structured = {
-            "reason": "payment_timeout",
+            "reason": f"{metric}_friction",
             "severity": "high",
             "purchase_intent": "high",
             "friction": "technical",
@@ -482,7 +610,7 @@ class LoopEngine:
             "feature_request": None,
             "willing_to_retry": True,
             "confidence": 0.94,
-            "user_token": "tok_sarah_safari",
+            "user_token": f"tok_{inv.id[-8:]}",
             "channel": "voice_text_fallback",
             "injection_turns_blocked": blocked,
         }
@@ -494,10 +622,10 @@ class LoopEngine:
         return self._evidence(
             inv,
             source_type="customer_voice",
-            source_reference=f"media-bridge:{session_id} structured.reason=payment_timeout",
+            source_reference=f"media-bridge:{session_id} structured.reason={metric}_friction",
             claim=(
-                "Consented diagnostic (not a survey): spinner-only hang on iPhone Safari, Chrome succeeded, "
-                f"willing to retry. Structured reason=payment_timeout confidence=0.94. "
+                f"Consented diagnostic on {device}: hang/friction around {metric}, "
+                f"willing to retry. Structured reason={metric}_friction confidence=0.94. "
                 f"PII redacted; {blocked} injected/unsafe turns blocked."
             ),
             independence_group="customer_voice",
@@ -526,15 +654,19 @@ class LoopEngine:
             )
             return None
         support = [e.id for e in evidence]
+        if not statement:
+            bits = [e.claim.split(".")[0].strip() for e in evidence[:3] if e.claim]
+            sig0 = self.store.get_signal(inv.originating_signal_ids[0]) if inv.originating_signal_ids else None
+            metric = sig0.metric if sig0 else "metric"
+            statement = (
+                (" · ".join(bits) + f". Scoped fix for {metric}.")
+                if bits
+                else f"Multi-source agreement on {metric}; propose a scoped fix."
+            )
         hyp = Hypothesis(
             id=_id("hyp"),
             investigation_id=inv.id,
-            statement=statement
-            or (
-                "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion "
-                "on iOS Safari. Chrome is unaffected. Ads spend did not move. A consented diagnostic "
-                "call reproduced a spinner-only 3DS hang (reason=payment_timeout)."
-            ),
+            statement=statement,
             classification=classification,
             confidence=0.86,
             supporting_evidence_ids=support,
@@ -681,7 +813,12 @@ class LoopEngine:
             title = pr_meta.get("title") or f"Product OS: {name}"
             body = pr_meta.get("body") or f"Investigation {inv.id}. Flag {name} → {value}."
             flags_doc: dict[str, str] = {name: str(value)}
-            if name == "pay_sdk_4_3":
+            companions = action.artifacts.get("companion_flags")
+            if isinstance(companions, dict):
+                for ck, cv in companions.items():
+                    flags_doc[str(ck)] = str(cv)
+            elif name == "pay_sdk_4_3":
+                # Safari fixture only: keep demo flags.json dual-key in sync.
                 flags_doc["pay_sdk"] = "4.2.1" if str(value) == "off" else "4.3.0"
             file_content = json_lib.dumps(flags_doc, indent=2) + "\n"
             code_fix = action.artifacts.get("code_fix", True) is not False
@@ -752,6 +889,46 @@ class LoopEngine:
             from .code_fix import enqueue_code_fix_job
 
             enqueue_code_fix_job(self, **code_fix_job)
+            # Running receipt so the user sees work in flight (Cursor-style).
+            if inv.room_id:
+                from .receipts import post_receipt
+
+                post_receipt(
+                    self,
+                    inv.room_id,
+                    kind="github",
+                    title="Opening pull request on Product Y",
+                    agent="code_agent",
+                    status="running",
+                    detail="Cloning · patching · opening PR…",
+                    proof={
+                        "kind": "github",
+                        "status": "running",
+                        "title": "Opening pull request…",
+                        "subtitle": (tenant.repo if tenant else "") or "repo",
+                        "detail": "Code fix job queued",
+                        "state": "open",
+                    },
+                )
+        # Visible receipts for everything that actually ran (flag, mail, calendar, issue).
+        if inv.room_id and not reused:
+            from .receipts import post_connector_receipts
+
+            post_connector_receipts(
+                self,
+                inv.room_id,
+                flag=(
+                    {
+                        "name": result.get("flag"),
+                        "value": result.get("value"),
+                        "from": action.artifacts.get("from"),
+                    }
+                    if result.get("flag")
+                    else None
+                ),
+                connectors=reports,
+                pr_url=result.get("pr_url"),
+            )
         self.timeline(
             inv.id,
             "code_agent",
@@ -764,55 +941,81 @@ class LoopEngine:
     def verify(self, inv_id: str) -> Outcome:
         inv = self.store.get_investigation(inv_id)
         assert inv
-        if inv.scenario_id and inv.scenario_id != "safari_3ds":
-            return self._verify_generic(inv)
+        sig = self.store.get_signal(inv.originating_signal_ids[0]) if inv.originating_signal_ids else None
+        # Data-driven browser recovery when warehouse has conversion-by-browser for this signal.
+        if sig and sig.affected_segments and any(s.browser for s in sig.affected_segments):
+            return self._verify_segment_conversion(inv, sig)
+        return self._verify_generic(inv)
+
+    def _verify_segment_conversion(self, inv: Investigation, sig: Signal) -> Outcome:
+        """Measure the signal's own browser/segment — not a scenario_id branch."""
         inv.state = InvestigationState.VERIFYING
         self.store.put_investigation(inv)
         self.a2a(inv.id, "orchestrator", "learning_agent", "TB-7", "measure originating metric")
-        sig = self.store.get_signal(inv.originating_signal_ids[0])
-        assert sig
+        browser = next((s.browser for s in sig.affected_segments if s.browser), None) or "all"
+        control = next(
+            (s.browser for s in sig.affected_segments if s.browser and s.browser != browser),
+            None,
+        )
         w_start = date.fromisoformat(sig.detection_window["start"])
         w_end = date.fromisoformat(sig.detection_window["end"])
-        pre = self.wh.conversion_by_browser(w_start, w_end).get(SAFARI, {}).get("conversion", 0)
-        post = (
-            self.wh.conversion_by_browser(RECOVERY_START, RECOVERY_START + timedelta(days=3), include_recovery=True)
-            .get(SAFARI, {})
-            .get("conversion", 0)
+        by_pre = self.wh.conversion_by_browser(w_start, w_end)
+        by_post = self.wh.conversion_by_browser(
+            RECOVERY_START, RECOVERY_START + timedelta(days=3), include_recovery=True
         )
-        flag = self.store.get_flag("pay_sdk_4_3")
-        if flag == "off" and post > pre * 1.1:
+        if browser == "all" and by_pre:
+            browser = max(
+                by_pre.keys(),
+                key=lambda n: abs(float((by_pre.get(n) or {}).get("conversion") or 0)),
+            )
+        if not control:
+            control = next((n for n in by_pre if n != browser), "control")
+        pre = (by_pre.get(browser) or {}).get("conversion", 0)
+        post = (by_post.get(browser) or {}).get("conversion", 0)
+        # Any flag flipped off (or companion rollback) counts as recovery attempt
+        flags = self.store.list_flags() if hasattr(self.store, "list_flags") else {}
+        flag_off = any(str(v).lower() == "off" for v in (flags.values() if isinstance(flags, dict) else []))
+        if not flag_off:
+            for act in self.store.list_actions(inv.id):
+                art = act.artifacts or {}
+                fname = art.get("flag")
+                if fname and self.store.get_flag(str(fname)) == "off":
+                    flag_off = True
+                    break
+        if flag_off and post > pre * 1.1:
             verdict = OutcomeVerdict.RESOLVED
-        elif flag == "off":
+        elif flag_off:
             verdict = OutcomeVerdict.PARTIALLY_RESOLVED
         else:
             verdict = OutcomeVerdict.NOT_RESOLVED
         outcome = Outcome(
             id=_id("out"),
             investigation_id=inv.id,
-            metric="purchase_conversion.Safari",
+            metric=f"{sig.metric}.{browser}",
             pre_value=pre,
             post_value=post,
             control_comparison=self.wh.conversion_by_browser(
                 RECOVERY_START, RECOVERY_START + timedelta(days=3), include_recovery=True
             )
-            .get("Chrome", {})
+            .get(control, {})
             .get("conversion"),
             delta=post - pre,
             verdict=verdict,
             measured_at=_now(),
         )
         self.store.put_outcome(outcome)
+        drop = ((pre - sig.baseline) / sig.baseline) if sig.baseline else 0
         lesson = Lesson(
             id=_id("les"),
             investigation_id=inv.id,
             statement=(
-                "Safari 3DS regressions after payment SDK upgrades require a Safari WebKit regression test. "
-                f"pay-sdk 4.3 caused a {((pre - sig.baseline) / sig.baseline) if sig.baseline else 0:.0%} conversion drop; "
-                "rolling the flag back recovered the funnel."
+                f"{browser} regressions on {sig.metric} need a segment regression test. "
+                f"Observed ~{drop:.0%} drop vs baseline; flag rollback "
+                f"{'recovered' if verdict == OutcomeVerdict.RESOLVED else 'partially recovered' if verdict == OutcomeVerdict.PARTIALLY_RESOLVED else 'did not recover'} the funnel."
             ),
-            root_cause_family="safari-3ds-sdk",
-            applicable_conditions=["browser=Safari", "surface=checkout", "dep=pay-sdk"],
-            linked_playbook_skill="playbooks/safari-payment-sdk",
+            root_cause_family=f"{browser.lower()}-{sig.funnel_position or 'funnel'}",
+            applicable_conditions=[f"browser={browser}", f"metric={sig.metric}"],
+            linked_playbook_skill=f"playbooks/{inv.scenario_id}" if inv.scenario_id else None,
             confidence=0.84,
             author_agent="learning_agent",
         )
@@ -832,6 +1035,20 @@ class LoopEngine:
         inv.closed_at = _now()
         self.store.put_investigation(inv)
         self.timeline(inv.id, "learning_agent", "verify", f"Verification {verdict.value}", lesson.statement)
+        if inv.room_id:
+            from .receipts import memory_proof, post_receipt
+
+            post_receipt(
+                self,
+                inv.room_id,
+                kind="memory",
+                title="Lesson written to Memory Bank",
+                agent="learning_agent",
+                status="done",
+                detail=lesson.statement,
+                proof=memory_proof(statement=lesson.statement, lesson_id=lesson.id),
+                extra={"lesson": lesson.model_dump(mode="json")},
+            )
         return outcome
 
     def _verify_generic(self, inv: Investigation) -> Outcome:
@@ -852,7 +1069,6 @@ class LoopEngine:
             reading = read_metric_window(self, tenant, sig.metric, baseline=pre)
         if reading and reading.get("value") is not None:
             post = float(reading["value"])
-            delta = post - pre
             if sig and sig.direction == Direction.NEGATIVE:
                 if post >= pre * 1.05:
                     verdict = OutcomeVerdict.RESOLVED
@@ -873,7 +1089,7 @@ class LoopEngine:
             metric=sig.metric if sig else "impact",
             pre_value=pre,
             post_value=post,
-            control_comparison=reading.get("source") if reading else None,
+            control_comparison=None,
             delta=post - pre,
             verdict=verdict,
             measured_at=_now(),
@@ -920,17 +1136,18 @@ class LoopEngine:
         self.store.put_investigation(inv)
         self.timeline(inv.id, "learning_agent", "verify", f"Verification {verdict.value}", lesson.statement)
         if inv.room_id:
-            from .world import post
+            from .receipts import memory_proof, post_receipt
 
-            post(
+            post_receipt(
                 self,
                 inv.room_id,
-                author="learning_agent",
-                author_kind="agent",
-                kind="artifact",
-                text=lesson.statement,
-                artifact_type="memory_card",
-                artifact=lesson.model_dump(mode="json"),
+                kind="memory",
+                title="Lesson written to Memory Bank",
+                agent="learning_agent",
+                status="done",
+                detail=lesson.statement,
+                proof=memory_proof(statement=lesson.statement, lesson_id=lesson.id),
+                extra={"lesson": lesson.model_dump(mode="json")},
             )
         return outcome
 
@@ -939,22 +1156,25 @@ class LoopEngine:
         open_signals = [s for s in signals if s.status != SignalStatus.SUPPRESSED]
         if not open_signals:
             raise RuntimeError("no unsuppressed signal — seeded regression missing")
-        # Prefer the Safari segment signal (G-3)
-        safari = next((s for s in open_signals if any(seg.browser == SAFARI for seg in s.affected_segments)), open_signals[0])
-        inv = self.open_investigation(safari)
+        # Prefer the strongest open signal (largest |magnitude|); Safari is one fixture among many.
+        pick = max(open_signals, key=lambda s: abs(float(s.magnitude or 0)))
+        inv = self.open_investigation(pick)
         assert inv
         self.gather_evidence(inv)
         hyp = self.form_hypothesis(inv)
         if not hyp:
             raise RuntimeError("three-source gate failed on seeded world")
-        inv.scenario_id = inv.scenario_id or "safari_3ds"
+        # Only attach safari_3ds scenario when the signal itself is that warehouse fixture.
+        if any(seg.browser == SAFARI for seg in pick.affected_segments) and "purchase" in (pick.metric or ""):
+            inv.scenario_id = inv.scenario_id or "safari_3ds"
         self.store.put_investigation(inv)
         self.propose_action(inv, hyp)
         inv = self.store.get_investigation(inv.id)
         assert inv
         from .world import publish_safari_room
 
-        publish_safari_room(self, inv)
+        if inv.scenario_id == "safari_3ds":
+            publish_safari_room(self, inv)
         return inv
 
     def seed_world(self) -> dict:

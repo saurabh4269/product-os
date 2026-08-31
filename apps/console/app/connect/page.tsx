@@ -3,12 +3,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type GoogleOAuth, type Tenant } from "@/lib/api";
-import { Button, ErrorState, Loading } from "@/components/ui";
+import { Button, ErrorState, Loading, PageHeader } from "@/components/ui";
 import { SignalSourcesDiagram } from "@/components/diagrams/signal-sources-diagram";
 import { TenantWireDiagram } from "@/components/diagrams/tenant-wire-diagram";
+import { WorkflowLinksPanel } from "@/components/workflow-links";
 
 const field =
-  "mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] text-foreground outline-none focus:border-accent";
+  "field-input mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20";
+
+type CloudRunService = { id: string; name: string; url: string; repo_hint?: string };
+type VerifyCheck = { id: string; ok: boolean; label: string; detail?: string; room_id?: string };
+
+const COVE_PRESET = {
+  service: "cove",
+  repo: "saurabh4269/cove",
+  name: "Cove",
+  product: "Cove",
+  tenant_id: "cove",
+};
 
 export default function ConnectPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
@@ -49,16 +61,22 @@ export default function ConnectPage() {
   const [adk, setAdk] = useState<Awaited<ReturnType<typeof api.adkStatus>> | null>(null);
 
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
+  const [services, setServices] = useState<CloudRunService[]>([]);
+  const [servicesDetail, setServicesDetail] = useState("");
+  const [pickService, setPickService] = useState("");
+  const [wireRepo, setWireRepo] = useState("");
+  const [wireName, setWireName] = useState("");
+  const [wireProduct, setWireProduct] = useState("");
+  const [wireTenantId, setWireTenantId] = useState("");
+  const [wireProgress, setWireProgress] = useState<string | null>(null);
+  const [onceToken, setOnceToken] = useState<string | null>(null);
+  const [verifyChecks, setVerifyChecks] = useState<VerifyCheck[]>([]);
+  const [verifyReady, setVerifyReady] = useState(false);
+  const [verifyRoomId, setVerifyRoomId] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [wireHint, setWireHint] = useState<string | null>(null);
 
-  async function load(selectedId?: string) {
-    const listed = await api.tenants();
-    setAllTenants(listed.tenants);
-    const pick = selectedId || tenant?.id || listed.tenants[0]?.id;
-    if (!pick) {
-      setTenant(null);
-      return;
-    }
-    const detail = await api.tenant(pick);
+  function applyTenantFields(detail: { tenant: Tenant; flags: Record<string, string> }) {
     setTenant(detail.tenant);
     setFlags(detail.flags);
     setName(detail.tenant.name);
@@ -78,10 +96,41 @@ export default function ConnectPage() {
     setWarehouseMode(detail.tenant.warehouse_mode ?? "auto");
     setPrimaryMetric(detail.tenant.primary_metric ?? "purchase_conversion");
     setFunnelEvents((detail.tenant.funnel_events ?? []).join(", "));
+    if (!wireRepo) setWireRepo(detail.tenant.repo || "");
+    if (!wireName) setWireName(detail.tenant.name || "");
+    if (!wireProduct) setWireProduct(detail.tenant.product || "");
+    if (!wireTenantId) setWireTenantId(detail.tenant.id || "");
+  }
+
+  async function load(selectedId?: string) {
+    const listed = await api.tenants();
+    setAllTenants(listed.tenants);
+    const pick = selectedId || tenant?.id || listed.tenants[0]?.id;
+    if (!pick) {
+      setTenant(null);
+    } else {
+      const detail = await api.tenant(pick);
+      applyTenantFields(detail);
+    }
     setOauth(await api.oauth());
     setGa4Ready((await api.ga4Status()).ready);
     setTelephony(await api.telephony());
     setAdk(await api.adkStatus());
+    try {
+      const svc = await api.onboardServices();
+      setServices(svc.services || []);
+      setServicesDetail(svc.detail || svc.status);
+      if (!pickService && svc.services?.length) {
+        const cove = svc.services.find((s) => s.id === "cove");
+        if (cove) {
+          setPickService(cove.id);
+          if (cove.repo_hint) setWireRepo(cove.repo_hint);
+          if (cove.url) setDeploy(cove.url);
+        }
+      }
+    } catch {
+      setServicesDetail("Could not list Cloud Run services (admin token or IAM). Paste a service name below.");
+    }
   }
 
   useEffect(() => {
@@ -97,17 +146,79 @@ export default function ConnectPage() {
       .finally(() => setReady(true));
   }, []);
 
-  if (err) return <ErrorState message={err} />;
+  if (err && !ready) return <ErrorState message={err} />;
   if (!ready) return <Loading label="Opening connect" />;
-  if (!tenant) {
-    return (
-      <div className="page-pad">
-        <h1 className="text-[26px] font-semibold tracking-tight">Connect</h1>
-        <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-          No tenant is registered yet. Seed one, then come back.
-        </p>
-      </div>
-    );
+
+  function applyCovePreset() {
+    setPickService(COVE_PRESET.service);
+    setWireRepo(COVE_PRESET.repo);
+    setWireName(COVE_PRESET.name);
+    setWireProduct(COVE_PRESET.product);
+    setWireTenantId(COVE_PRESET.tenant_id);
+    const hit = services.find((s) => s.id === COVE_PRESET.service);
+    if (hit?.url) setDeploy(hit.url);
+    setSaved("Cove preset loaded. Wire & verify next.");
+  }
+
+  async function wireAndVerify() {
+    const service = pickService.trim();
+    const r = wireRepo.trim();
+    if (!service && !deploy.trim()) {
+      setSaved("Pick a Cloud Run service or set a deploy URL in Advanced.");
+      return;
+    }
+    if (!r) {
+      setSaved("GitHub repo is required (org/name).");
+      return;
+    }
+    setBusy(true);
+    setSaved(null);
+    setOnceToken(null);
+    setWireHint(null);
+    setVerifyChecks([]);
+    setVerifyReady(false);
+    setVerifyRoomId(null);
+    setWireProgress("Creating tenant and minting token…");
+    try {
+      const onboarded = await api.onboardTenant({
+        cloud_run_service: service,
+        repo: r,
+        tenant_id: wireTenantId.trim() || undefined,
+        name: wireName.trim() || undefined,
+        product: wireProduct.trim() || undefined,
+        deploy_url: deploy.trim() || undefined,
+        wire: Boolean(service),
+      });
+      if (onboarded.token) setOnceToken(onboarded.token);
+      const wireStatus = onboarded.wire?.status || "";
+      if (wireStatus === "skipped") {
+        setWireHint(onboarded.wire?.hint || onboarded.wire?.detail || "Wire skipped — set LOOP_* on Product Y manually if needed.");
+        if (onboarded.wire?.manual) setWireHint((h) => `${h || ""}\n${onboarded.wire?.manual}`);
+      }
+      setWireProgress(
+        wireStatus === "applied"
+          ? "Env pushed to Cloud Run. Verifying…"
+          : wireStatus === "reused"
+            ? "Already wired. Verifying…"
+            : "Tenant saved. Verifying…"
+      );
+      const verified = await api.verifyTenant(onboarded.tenant_id);
+      setVerifyChecks(verified.checks || []);
+      setVerifyReady(Boolean(verified.ready || verified.ready_for_demo));
+      setVerifyRoomId(verified.room_id || null);
+      await load(onboarded.tenant_id);
+      setWireProgress(null);
+      setSaved(
+        verified.ready || verified.ready_for_demo
+          ? "Connected. Product OS can ingest signals and open rooms."
+          : "Partial — check the checklist below."
+      );
+    } catch (e) {
+      setWireProgress(null);
+      setSaved(e instanceof Error ? e.message : "Wire failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function save() {
@@ -178,19 +289,19 @@ export default function ConnectPage() {
     }
   }
 
-  const gate = tenant.repo
-    ? `Approvals will open a pull request on ${tenant.repo}. Product OS will not merge it.`
+  const gate = (tenant?.repo || wireRepo)
+    ? `Approvals will open a pull request on ${tenant?.repo || wireRepo}. Product OS will not merge it.`
     : "Approvals will only flip an OS flag until a git repo is set.";
 
   return (
-    <div className="page-pad">
-      <p className="text-[13px] text-[var(--faint)]">{tenant.id}</p>
+    <div className="page-pad fade-in">
+      {tenant ? <p className="text-[13px] text-[var(--faint)]">{tenant.id}</p> : null}
       {allTenants.length > 1 ? (
         <label className="mt-2 block text-[13px] text-[var(--faint)]">
           Tenant
           <select
             className={field}
-            value={tenant.id}
+            value={tenant?.id || ""}
             onChange={(e) => {
               void load(e.target.value);
             }}
@@ -203,370 +314,458 @@ export default function ConnectPage() {
           </select>
         </label>
       ) : null}
-      <h1 className="mt-1 text-[26px] font-semibold tracking-tight sm:text-[32px]">Connect</h1>
-      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Their app lives on their origin. This desk holds git, the deploy URL, and a hashed token so they can read flags
-        and post voice. Gmail drafts and calendar holds need a one-time Google consent. Send stays off.{" "}
-        <Link href="/labs/architecture?tab=overview" className="text-accent hover:underline">
-          View tenant wire architecture
-        </Link>
-      </p>
+      <PageHeader
+        title="Connect"
+        className="mt-1"
+        action={
+          <Link href="/labs/architecture?tab=overview" className="text-[13px] text-accent">
+            Wire →
+          </Link>
+        }
+      />
 
-      <section className="mt-10 max-w-4xl">
-        <h2 className="text-[20px] font-semibold tracking-tight">Tenant wire</h2>
-        <p className="mt-2 max-w-lg text-[14px] leading-6 text-[var(--dim)]">
-          Product Y on its deploy URL talks to Product OS through the loop wire. Connect stores credentials; the engine
-          pulls warehouse facts and pushes outcomes (PR, flags, calendar).
+      <section className="surface-lg mt-10 max-w-xl space-y-5 p-5 sm:p-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">
+          Wire product (GCP)
         </p>
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-border bg-white p-4">
-          <TenantWireDiagram productName={product || name} deployUrl={deploy} repo={repo} />
-        </div>
-      </section>
-
-      <section className="mt-12 max-w-4xl">
-        <h2 className="text-[20px] font-semibold tracking-tight">Signal sources</h2>
-        <p className="mt-2 max-w-lg text-[14px] leading-6 text-[var(--dim)]">
-          Push opens rooms from the tenant app. Pull reads GA4 / Ads / logs from BigQuery during investigation.
+        <p className="text-[14px] text-[var(--dim)]">
+          Pick the Cloud Run service for Product Y and its GitHub repo. Product OS mints the tenant token and
+          pushes <code className="text-[13px]">LOOP_*</code> env vars — no copy-paste.
         </p>
-        <div className="mt-4">
-          <SignalSourcesDiagram />
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" disabled={busy} onClick={applyCovePreset}>
+            Start with Cove
+          </Button>
         </div>
-      </section>
-
-      <form
-        className="mt-10 max-w-xl space-y-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save();
-        }}
-      >
         <label className="block text-[13px] text-[var(--faint)]">
-          Name
-          <input className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+          Cloud Run service
+          {services.length > 0 ? (
+            <select
+              className={field}
+              value={pickService}
+              onChange={(e) => {
+                const id = e.target.value;
+                setPickService(id);
+                const hit = services.find((s) => s.id === id);
+                if (hit?.repo_hint) setWireRepo(hit.repo_hint);
+                if (hit?.url) setDeploy(hit.url);
+                if (id && !wireTenantId) setWireTenantId(id);
+                if (id && !wireName) setWireName(id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
+              }}
+            >
+              <option value="">Select…</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.url ? ` · ${s.url.replace(/^https:\/\//, "")}` : ""}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className={field}
+              value={pickService}
+              onChange={(e) => setPickService(e.target.value)}
+              placeholder="cove"
+              autoComplete="off"
+            />
+          )}
         </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Product
-          <input className={field} value={product} onChange={(e) => setProduct(e.target.value)} autoComplete="off" />
-        </label>
+        {servicesDetail ? <p className="text-[12px] text-[var(--faint)]">{servicesDetail}</p> : null}
         <label className="block text-[13px] text-[var(--faint)]">
           GitHub repo
           <input
             className={field}
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
+            value={wireRepo}
+            onChange={(e) => setWireRepo(e.target.value)}
             placeholder="org/product-y"
             autoComplete="off"
           />
         </label>
         <label className="block text-[13px] text-[var(--faint)]">
-          Deploy URL
-          <input
-            className={field}
-            value={deploy}
-            onChange={(e) => setDeploy(e.target.value)}
-            placeholder="https://…"
-            autoComplete="off"
-          />
+          Display name
+          <input className={field} value={wireName} onChange={(e) => setWireName(e.target.value)} autoComplete="off" />
         </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Feature flags (comma-separated names)
-          <input
-            className={field}
-            value={flagNames}
-            onChange={(e) => setFlagNames(e.target.value)}
-            placeholder="new_checkout_flow, pay_sdk_4_3"
-            autoComplete="off"
-          />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Code paths for fixes (comma-separated)
-          <input
-            className={field}
-            value={codePaths}
-            onChange={(e) => setCodePaths(e.target.value)}
-            placeholder="app/checkout.rb, lib/payments.ts"
-            autoComplete="off"
-          />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Test command
-          <input
-            className={field}
-            value={testCommand}
-            onChange={(e) => setTestCommand(e.target.value)}
-            placeholder="npm test -- --run"
-            autoComplete="off"
-          />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Rotate tenant token
-          <input
-            className={field}
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder={tenant.has_token ? "Leave blank to keep the current token" : "Set a token"}
-            autoComplete="new-password"
-          />
-        </label>
-        <p className="text-[13px] leading-5 text-[var(--dim)]">{gate}</p>
-        <p className="text-[13px] text-[var(--faint)]">
-          {tenant.has_token ? "Token is set" : "No tenant token"}
-          {tenant.last_connector ? ` · ${tenant.last_connector}` : ""}
-          {tenant.last_ingest_at ? ` · last ingest ${tenant.last_ingest_at.slice(0, 16).replace("T", " ")}` : ""}
-        </p>
-        {tenant.last_pr_url ? (
-          <p className="text-[14px]">
-            Last pull request:{" "}
-            <a href={tenant.last_pr_url} className="text-accent" target="_blank" rel="noreferrer">
-              {tenant.last_pr_url}
-            </a>
-          </p>
-        ) : null}
-        {tenant.deploy_url ? (
-          <p className="text-[14px]">
-            Product:{" "}
-            <a href={tenant.deploy_url} className="text-accent" target="_blank" rel="noreferrer">
-              {tenant.deploy_url}
-            </a>
-          </p>
-        ) : null}
-        <Button type="submit" disabled={busy}>
-          Save
+        <Button type="button" disabled={busy || (!pickService.trim() && !deploy.trim()) || !wireRepo.trim()} onClick={() => void wireAndVerify()}>
+          Wire & verify
         </Button>
+        {wireProgress ? <p className="text-[14px] text-[var(--dim)]">{wireProgress}</p> : null}
+        {wireHint ? <p className="whitespace-pre-wrap text-[13px] text-[var(--faint)]">{wireHint}</p> : null}
+        {onceToken ? (
+          <p className="rounded-xl border border-border bg-[#fbfbfd] px-3 py-2 text-[13px] text-[var(--dim)]">
+            Token minted once (already pushed if wire succeeded). Reveal:{" "}
+            <code className="break-all text-[12px]">{onceToken}</code>
+          </p>
+        ) : null}
+        {verifyChecks.length > 0 ? (
+          <ul className="divide-y divide-border rounded-xl border border-border">
+            {verifyChecks.map((c) => (
+              <li key={c.id} className="flex items-start justify-between gap-4 px-3 py-2.5 text-[14px]">
+                <span>
+                  <span className={c.ok ? "text-[var(--dim)]" : "text-[var(--faint)]"}>{c.ok ? "✓" : "·"} </span>
+                  {c.label}
+                  {c.detail ? <span className="mt-0.5 block text-[12px] text-[var(--faint)]">{c.detail}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {verifyReady ? (
+          <div className="flex flex-wrap gap-3 text-[14px]">
+            {verifyRoomId ? (
+              <Link href={`/rooms/${verifyRoomId}`} className="text-accent">
+                Open verify room →
+              </Link>
+            ) : null}
+            <Link href="/" className="text-accent">
+              Open campus →
+            </Link>
+            {(tenant?.deploy_url || deploy) ? (
+              <a href={tenant?.deploy_url || deploy} className="text-accent" target="_blank" rel="noreferrer">
+                Open product →
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+        <p className="text-[13px] text-[var(--faint)]">{gate}</p>
         {saved ? <p className="text-[14px] text-[var(--dim)]">{saved}</p> : null}
-      </form>
+      </section>
 
-      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Warehouse (GA4 · Ads · BigQuery)</h2>
-      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Product OS reads facts from BigQuery — not your app. Link a GA4 property export, optional Ads transfer, and
-        loop_raw for synthetic or log sinks. Agents use these datasets for detect, evidence, and verify.
-      </p>
-      <form
-        className="mt-6 max-w-xl space-y-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void save();
-        }}
-      >
-        <label className="block text-[13px] text-[var(--faint)]">
-          Mode
-          <select className={field} value={warehouseMode} onChange={(e) => setWarehouseMode(e.target.value)}>
-            <option value="auto">auto (BQ when datasets set)</option>
-            <option value="file">file (fixtures only)</option>
-            <option value="bq_raw">bq_raw (loop_raw tables)</option>
-            <option value="ga4">ga4 (analytics_* export)</option>
-          </select>
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          BQ project
-          <input className={field} value={bqProject} onChange={(e) => setBqProject(e.target.value)} placeholder="mystical-timing-442601-q8" />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Raw dataset (loop_raw)
-          <input className={field} value={bqRaw} onChange={(e) => setBqRaw(e.target.value)} placeholder="loop_raw" />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Metrics dataset
-          <input className={field} value={bqMetrics} onChange={(e) => setBqMetrics(e.target.value)} placeholder="loop_metrics" />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          GA4 property ID
-          <input className={field} value={ga4Property} onChange={(e) => setGa4Property(e.target.value)} placeholder="123456789" />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          GA4 BQ dataset (analytics_*)
-          <input className={field} value={ga4Dataset} onChange={(e) => setGa4Dataset(e.target.value)} placeholder="analytics_123456789" />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Ads dataset
-          <input className={field} value={adsDataset} onChange={(e) => setAdsDataset(e.target.value)} placeholder="loop_raw or google_ads_transfer" />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Ads customer ID
-          <input className={field} value={adsCustomer} onChange={(e) => setAdsCustomer(e.target.value)} placeholder="1234567890" />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Primary metric
-          <input className={field} value={primaryMetric} onChange={(e) => setPrimaryMetric(e.target.value)} />
-        </label>
-        <label className="block text-[13px] text-[var(--faint)]">
-          Funnel events (comma-separated)
-          <input
-            className={field}
-            value={funnelEvents}
-            onChange={(e) => setFunnelEvents(e.target.value)}
-            placeholder="page_view, view_item, begin_checkout, add_payment_info, purchase"
-          />
-        </label>
-        <Button type="submit" disabled={busy}>
-          Save warehouse config
-        </Button>
-      </form>
-
-      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">GA4 Admin OAuth</h2>
-      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Warehouse reads GA4 exports from BigQuery. Automating property + export setup needs a separate consent with{" "}
-        <code className="text-[13px]">analytics.edit</code> — not included in Workspace OAuth above.
-      </p>
-      {ga4Ready ? (
-        <p className="mt-4 text-[14px] text-[var(--dim)]">
-          GA4 Admin ready. Hosted token saved — run warehouse setup or{" "}
-          <code className="text-[13px]">scripts/setup-ga4-cove.py</code> to link export.
-        </p>
-      ) : oauth?.configured ? (
-        <p className="mt-4 text-[14px]">
-          <a href="/api/oauth/ga4/start" className="text-accent">
-            Authorize GA4 Admin
-          </a>{" "}
-          with the Google account that owns the Analytics property.
-        </p>
-      ) : (
-        <p className="mt-4 text-[14px] text-[var(--dim)]">
-          Save the OAuth Web client below first — the same client works for Workspace and GA4 flows.
-        </p>
-      )}
-
-      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Phone calls</h2>
-      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Google Telephony / CX Phone Gateway is inbound-only (no Google outbound PSTN). Optional Twilio free trial for
-        dial-out + Gemini for dialogue; otherwise research runs simulated and still emits structured evidence. Set{" "}
-        <code className="text-[13px]">LOOP_GTP_PHONE_NUMBER</code> and/or{" "}
-        <code className="text-[13px]">TWILIO_*</code> + <code className="text-[13px]">GOOGLE_API_KEY</code> on Cloud Run{" "}
-        <code className="text-[13px]">loop</code>.
-      </p>
-      {telephony ? (
-        <p className="mt-4 text-[14px] text-[var(--dim)]">
-          Google inbound {telephony.google_inbound ? "ready" : "not set"} · Twilio outbound{" "}
-          {telephony.twilio ? "ready" : "not set"} · Gemini {telephony.gemini ? "ready" : "not set"} · mode{" "}
-          {telephony.mode} · {telephony.detail}
-        </p>
-      ) : null}
-
-      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">ADK &amp; code agent</h2>
-      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        ADK 2 fleet runs on an optional <code className="text-[13px]">loop-adk</code> worker. Main{" "}
-        <code className="text-[13px]">loop</code> keeps the deterministic engine as fallback. Code-fix jobs: clone →
-        test → PR; Antigravity is an optional preview editor behind{" "}
-        <code className="text-[13px]">LOOP_CODE_BACKEND</code>.
-      </p>
-      {adk ? (
-        <div className="mt-4 max-w-xl space-y-2 text-[14px] text-[var(--dim)]">
-          <p>
-            ADK SDK on this service:{" "}
-            <span className="font-medium text-foreground">{adk.adk_installed ? "yes" : "no (main host)"}</span>
-            {adk.adk_worker_url ? (
-              <>
-                {" "}
-                · worker{" "}
-                <a href={adk.adk_worker_url} className="text-accent" target="_blank" rel="noreferrer">
-                  {adk.adk_worker_url.replace(/^https:\/\//, "")}
-                </a>
-              </>
-            ) : (
-              " · no worker URL (deploy loop-adk)"
-            )}
-          </p>
-          <p>
-            Fleet:{" "}
-            {adk.fleet && typeof adk.fleet.agents === "number"
-              ? `${adk.fleet.agents} agents · ${Array.isArray(adk.fleet.apps) ? adk.fleet.apps.length : 0} apps · workflow tools ${String(adk.fleet.workflow_tools ?? 0)}`
-              : "deterministic fallback on main service"}
-          </p>
-          <p>
-            Antigravity (preview): {adk.antigravity.installed ? "installed" : "not on slim host"} · code backend{" "}
-            <code className="text-[13px]">{adk.code_backend}</code>
-          </p>
+      <section className="surface-lg mt-8 max-w-4xl p-4 sm:p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Tenant wire</p>
+        <div className="mt-4 overflow-x-auto">
+          <TenantWireDiagram productName={product || wireProduct || name || wireName} deployUrl={deploy} repo={repo || wireRepo} />
         </div>
-      ) : null}
+      </section>
 
-      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Google Workspace</h2>
-      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Coordination uses Calendar (list / free-busy / suggest / create + Meet) and Gmail drafts for review asks —
-        HITL in the real workflow, not only an Approvals button. Send stays denied. Create a Web client in Google Auth
-        Platform, paste it here, then authorize.
-      </p>
-      {oauth?.connected ? (
-        <p className="mt-4 text-[14px] text-[var(--dim)]">
-          Connected{oauth.email ? ` as ${oauth.email}` : ""}. Calendar + Gmail draft ready. Send stays off. Never
-          auto-merges.
-        </p>
-      ) : oauth?.configured ? (
-        <p className="mt-4 text-[14px]">
-          Client saved.{" "}
-          <a href={oauth.authorize_url || "/api/oauth/google/start"} className="text-accent">
-            Authorize Gmail and Calendar
-          </a>{" "}
-          with the Google account you added as a test user.
-        </p>
-      ) : (
-        <p className="mt-4 text-[14px] text-[var(--dim)]">
-          OAuth client not saved yet — paste ID and secret below first. Authorizing before that sends you to a Google
-          deny page.
-        </p>
-      )}
-      {oauth?.redirect_uri ? (
-        <p className="mt-3 max-w-lg text-[13px] leading-5 text-[var(--faint)]">
-          Redirect URI to add on the client: {oauth.redirect_uri}
-        </p>
-      ) : null}
-      {oauth && !oauth.configured ? (
-        <form
-          className="mt-6 max-w-xl space-y-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void saveGoogle();
-          }}
-        >
-          <label className="block text-[13px] text-[var(--faint)]">
-            OAuth client ID
-            <input className={field} value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
-          </label>
-          <label className="block text-[13px] text-[var(--faint)]">
-            OAuth client secret
-            <input
-              className={field}
-              type="password"
-              value={clientSecret}
-              onChange={(e) => setClientSecret(e.target.value)}
-              placeholder="Never shown again"
-              autoComplete="new-password"
-            />
-          </label>
-          <p className="text-[13px] leading-5 text-[var(--dim)]">
-            <a href={oauth.console.overview} className="text-accent" target="_blank" rel="noreferrer">
-              Open Google Auth Platform
-            </a>
-            {" · "}
-            <a href={oauth.console.create_client} className="text-accent" target="_blank" rel="noreferrer">
-              Create a Web client
-            </a>
-            {" · "}
-            add yourself under{" "}
-            <a href={oauth.console.audience} className="text-accent" target="_blank" rel="noreferrer">
-              Audience
-            </a>{" "}
-            as a test user.
+      <section className="mt-8 max-w-4xl">
+        <WorkflowLinksPanel />
+      </section>
+
+      <section className="surface-lg mt-8 max-w-4xl p-4 sm:p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Signal sources</p>
+        <div className="mt-4">
+          <SignalSourcesDiagram />
+        </div>
+      </section>
+
+      <section className="surface-lg mt-8 max-w-xl p-5 sm:p-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Google Workspace</p>
+        {oauth?.connected ? (
+          <p className="mt-4 text-[14px] text-[var(--dim)]">
+            Connected{oauth.email ? ` · ${oauth.email}` : ""}
           </p>
-          <Button type="submit" disabled={busy || !clientId.trim() || !clientSecret.trim()}>
-            Save client
-          </Button>
-        </form>
-      ) : null}
-
-      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Flags they read</h2>
-      <div className="mt-5 max-w-xl space-y-3">
-        {Object.entries(flags).length === 0 ? (
-          <p className="text-[14px] text-[var(--dim)]">None written yet. An approve writes them.</p>
+        ) : oauth?.configured ? (
+          <p className="mt-4 text-[14px]">
+            <a href={oauth.authorize_url || "/api/oauth/google/start"} className="text-accent">
+              Authorize
+            </a>
+          </p>
         ) : (
-          Object.entries(flags).map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-6 border-b border-border py-2 text-[14px]">
-              <span>{k}</span>
-              <span className="text-[var(--dim)]">{v}</span>
-            </div>
-          ))
+          <p className="mt-4 text-[14px] text-[var(--faint)]">Paste OAuth client in Advanced</p>
         )}
-      </div>
+      </section>
+
+      <button
+        type="button"
+        className="mt-8 text-[13px] text-accent"
+        onClick={() => setShowAdvanced((v) => !v)}
+      >
+        {showAdvanced ? "Hide advanced" : "Advanced"}
+      </button>
+
+      {showAdvanced ? (
+        <>
+          {!tenant ? (
+            <p className="mt-4 max-w-xl text-[14px] text-[var(--faint)]">
+              Wire a product above first, or use the form after a tenant exists.
+            </p>
+          ) : (
+            <form
+              className="surface-lg mt-4 max-w-xl space-y-5 p-5 sm:p-6"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void save();
+              }}
+            >
+              <label className="block text-[13px] text-[var(--faint)]">
+                Name
+                <input className={field} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Product
+                <input className={field} value={product} onChange={(e) => setProduct(e.target.value)} autoComplete="off" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                GitHub repo
+                <input
+                  className={field}
+                  value={repo}
+                  onChange={(e) => setRepo(e.target.value)}
+                  placeholder="org/product-y"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Deploy URL
+                <input
+                  className={field}
+                  value={deploy}
+                  onChange={(e) => setDeploy(e.target.value)}
+                  placeholder="https://…"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Feature flags (comma-separated names)
+                <input
+                  className={field}
+                  value={flagNames}
+                  onChange={(e) => setFlagNames(e.target.value)}
+                  placeholder="new_checkout_flow, pay_sdk_4_3"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Code paths for fixes (comma-separated)
+                <input
+                  className={field}
+                  value={codePaths}
+                  onChange={(e) => setCodePaths(e.target.value)}
+                  placeholder="app/checkout.rb, lib/payments.ts"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Test command
+                <input
+                  className={field}
+                  value={testCommand}
+                  onChange={(e) => setTestCommand(e.target.value)}
+                  placeholder="npm test -- --run"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Rotate tenant token
+                <input
+                  className={field}
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder={tenant.has_token ? "Leave blank to keep the current token" : "Set a token"}
+                  autoComplete="new-password"
+                />
+              </label>
+              <p className="text-[13px] text-[var(--faint)]">
+                {tenant.has_token ? "Token is set" : "No tenant token"}
+                {tenant.last_connector ? ` · ${tenant.last_connector}` : ""}
+                {tenant.last_ingest_at ? ` · last ingest ${tenant.last_ingest_at.slice(0, 16).replace("T", " ")}` : ""}
+              </p>
+              {tenant.last_pr_url ? (
+                <p className="text-[14px]">
+                  Last pull request:{" "}
+                  <a href={tenant.last_pr_url} className="text-accent" target="_blank" rel="noreferrer">
+                    {tenant.last_pr_url}
+                  </a>
+                </p>
+              ) : null}
+              {tenant.deploy_url ? (
+                <p className="text-[14px]">
+                  Product:{" "}
+                  <a href={tenant.deploy_url} className="text-accent" target="_blank" rel="noreferrer">
+                    {tenant.deploy_url}
+                  </a>
+                </p>
+              ) : null}
+              <Button type="submit" disabled={busy}>
+                Save
+              </Button>
+            </form>
+          )}
+
+          <section className="surface-lg mt-8 max-w-xl space-y-5 p-5 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Warehouse</p>
+            <form
+              className="space-y-5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void save();
+              }}
+            >
+              <label className="block text-[13px] text-[var(--faint)]">
+                Mode
+                <select className={field} value={warehouseMode} onChange={(e) => setWarehouseMode(e.target.value)}>
+                  <option value="auto">auto (BQ when datasets set)</option>
+                  <option value="file">file (fixtures only)</option>
+                  <option value="bq_raw">bq_raw (loop_raw tables)</option>
+                  <option value="ga4">ga4 (analytics_* export)</option>
+                </select>
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                BQ project
+                <input className={field} value={bqProject} onChange={(e) => setBqProject(e.target.value)} placeholder="mystical-timing-442601-q8" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Raw dataset (loop_raw)
+                <input className={field} value={bqRaw} onChange={(e) => setBqRaw(e.target.value)} placeholder="loop_raw" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Metrics dataset
+                <input className={field} value={bqMetrics} onChange={(e) => setBqMetrics(e.target.value)} placeholder="loop_metrics" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                GA4 property ID
+                <input className={field} value={ga4Property} onChange={(e) => setGa4Property(e.target.value)} placeholder="123456789" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                GA4 BQ dataset (analytics_*)
+                <input className={field} value={ga4Dataset} onChange={(e) => setGa4Dataset(e.target.value)} placeholder="analytics_123456789" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Ads dataset
+                <input className={field} value={adsDataset} onChange={(e) => setAdsDataset(e.target.value)} placeholder="loop_raw or google_ads_transfer" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Ads customer ID
+                <input className={field} value={adsCustomer} onChange={(e) => setAdsCustomer(e.target.value)} placeholder="1234567890" />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Primary metric
+                <input className={field} value={primaryMetric} onChange={(e) => setPrimaryMetric(e.target.value)} />
+              </label>
+              <label className="block text-[13px] text-[var(--faint)]">
+                Funnel events (comma-separated)
+                <input
+                  className={field}
+                  value={funnelEvents}
+                  onChange={(e) => setFunnelEvents(e.target.value)}
+                  placeholder="page_view, view_item, begin_checkout, add_payment_info, purchase"
+                />
+              </label>
+              <Button type="submit" disabled={busy || !tenant}>
+                Save warehouse config
+              </Button>
+            </form>
+          </section>
+
+          <section className="surface-lg mt-8 max-w-xl p-5 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">GA4 Admin</p>
+            {ga4Ready ? (
+              <p className="mt-4 text-[14px] text-[var(--dim)]">Ready · run warehouse setup</p>
+            ) : oauth?.configured ? (
+              <p className="mt-4 text-[14px]">
+                <a href="/api/oauth/ga4/start" className="text-accent">
+                  Authorize
+                </a>
+              </p>
+            ) : (
+              <p className="mt-4 text-[14px] text-[var(--faint)]">Save OAuth client first</p>
+            )}
+          </section>
+
+          <section className="surface-lg mt-8 max-w-xl p-5 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Phone</p>
+            {telephony ? (
+              <p className="mt-4 text-[14px] text-[var(--dim)]">
+                Inbound {telephony.google_inbound ? "yes" : "no"} · Twilio {telephony.twilio ? "yes" : "no"} · Gemini{" "}
+                {telephony.gemini ? "yes" : "no"} · {telephony.mode}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="surface-lg mt-8 max-w-xl p-5 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">ADK</p>
+            {adk ? (
+              <div className="mt-4 space-y-2 text-[14px] text-[var(--dim)]">
+                <p>
+                  SDK {adk.adk_installed ? "yes" : "no"}
+                  {adk.adk_worker_url ? (
+                    <>
+                      {" "}
+                      ·{" "}
+                      <a href={adk.adk_worker_url} className="text-accent" target="_blank" rel="noreferrer">
+                        worker
+                      </a>
+                    </>
+                  ) : null}
+                </p>
+                <p>
+                  Fleet:{" "}
+                  {adk.fleet && typeof adk.fleet.agents === "number"
+                    ? `${adk.fleet.agents} agents · ${Array.isArray(adk.fleet.apps) ? adk.fleet.apps.length : 0} apps`
+                    : "fallback"}
+                </p>
+                <p>
+                  Code {adk.code_backend} · Antigravity {adk.antigravity.installed ? "yes" : "no"}
+                </p>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="surface-lg mt-8 max-w-xl p-5 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">OAuth client</p>
+            {oauth?.redirect_uri ? (
+              <p className="mt-3 text-[13px] text-[var(--faint)]">Redirect: {oauth.redirect_uri}</p>
+            ) : null}
+            {oauth && !oauth.configured ? (
+              <form
+                className="mt-6 space-y-5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void saveGoogle();
+                }}
+              >
+                <label className="block text-[13px] text-[var(--faint)]">
+                  OAuth client ID
+                  <input className={field} value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
+                </label>
+                <label className="block text-[13px] text-[var(--faint)]">
+                  OAuth client secret
+                  <input
+                    className={field}
+                    type="password"
+                    value={clientSecret}
+                    onChange={(e) => setClientSecret(e.target.value)}
+                    placeholder="Never shown again"
+                    autoComplete="new-password"
+                  />
+                </label>
+                <p className="text-[13px] text-[var(--faint)]">
+                  <a href={oauth.console.overview} className="text-accent" target="_blank" rel="noreferrer">
+                    Auth Platform
+                  </a>
+                  {" · "}
+                  <a href={oauth.console.create_client} className="text-accent" target="_blank" rel="noreferrer">
+                    Web client
+                  </a>
+                  {" · "}
+                  <a href={oauth.console.audience} className="text-accent" target="_blank" rel="noreferrer">
+                    Test users
+                  </a>
+                </p>
+                <Button type="submit" disabled={busy || !clientId.trim() || !clientSecret.trim()}>
+                  Save client
+                </Button>
+              </form>
+            ) : null}
+          </section>
+
+          <section className="surface-lg mt-8 max-w-xl p-5 sm:p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Flags</p>
+            <div className="mt-4 divide-y divide-border">
+              {Object.entries(flags).length === 0 ? null : (
+                Object.entries(flags).map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-6 py-2.5 text-[14px]">
+                    <span>{k}</span>
+                    <span className="text-[var(--dim)]">{v}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }

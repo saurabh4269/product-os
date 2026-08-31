@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 import { usePipelineHighlight } from "@/lib/pipeline-highlight";
 import { DiagramDetailPanel } from "@/components/diagrams/diagram-detail-panel";
 
@@ -58,7 +59,7 @@ export function HybridEngineDiagram({ className }: { className?: string }) {
         <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">Optional · loop-adk</p>
         <p className="mt-1 text-[15px] font-semibold">ADK 2 App fleet + Gemini</p>
         <p className="mt-2 text-[13px] leading-5 text-[var(--dim)]">
-          When worker URL and creds exist — Workflow + JoinNode + RequestInput HITL. Same pipeline shape.
+          When the worker is configured: Workflow, JoinNode, and human input. Same pipeline.
         </p>
       </div>
     </div>
@@ -78,11 +79,11 @@ export function EventPathsDiagram({
   const stage = usePipelineHighlight();
   const rows = [
     { id: "cove", label: "Cove checkout hang", path: "POST /api/t/acme/signals", hot: stage === "signal", detail: "Tenant webhook posts a signal; Signal agent opens or joins an investigation room." },
-    { id: "demo", label: "Demo run", path: "POST /api/demo/run", hot: stage === "signal", detail: "One-click fixture signal for eval — same pipeline as production ingest." },
+    { id: "demo", label: "Demo run", path: "POST /api/demo/run", hot: stage === "signal", detail: "Demo signal. Same pipeline as production." },
     { id: "callback", label: "Agent callback → UI", path: "POST /api/agent_callback → WS", hot: stage === "investigate", detail: "Worker posts progress; console WS pushes agent_presence and messages without refresh." },
     { id: "bq", label: "GA4 → BQ → warehouse", path: "pull · warehouse_mode: auto", hot: stage === "investigate", detail: "Scheduled pull reads facts tables; investigators query via warehouse.read." },
     { id: "hitl", label: "HIGH approval", path: "WS approval_required → modal", hot: stage === "approve", detail: "Risk tier HIGH blocks execute until operator approves in modal." },
-    { id: "oauth", label: "Workspace OAuth", path: "Connect → Gmail draft · Calendar", hot: false, detail: "Operator consent for Calendar holds and draft emails — not auto-send." },
+    { id: "oauth", label: "Workspace OAuth", path: "Connect → Gmail · Calendar", hot: false, detail: "Consent for calendar holds. Mail goes only to your connected inbox." },
   ];
 
   return (
@@ -107,9 +108,7 @@ export function EventPathsDiagram({
         <p className="rounded-xl bg-white px-3 py-2 text-[13px] leading-5 text-[var(--dim)]">
           {rows.find((r) => r.id === selected)?.detail}
         </p>
-      ) : (
-        <p className="text-[12px] text-[var(--faint)]">Tap a path to see what fires</p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -120,13 +119,33 @@ export function InvestigationFanoutDiagram({ className }: { className?: string }
   const hot = stage === "investigate" || stage === "evidence";
   const arms = ["Analytics", "Logs", "Deploy", "Database", "Customer", "Code"];
   const [picked, setPicked] = useState<string | null>(null);
+  const [proofs, setProofs] = useState<Array<Record<string, unknown>>>([]);
   const detail = picked ? ARM_DETAILS[picked] : null;
+
+  useEffect(() => {
+    if (!picked) {
+      setProofs([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .proofResources({ arm: picked })
+      .then((r) => {
+        if (!cancelled) setProofs(r.cards || []);
+      })
+      .catch(() => {
+        if (!cancelled) setProofs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [picked]);
 
   return (
     <div className={cn("space-y-3", className)}>
       <div className={cn("rounded-2xl border border-border bg-white p-4", hot && "ring-2 ring-accent/20")}>
         <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">investigation_fanout</p>
-        <p className="mt-1 text-[14px] font-semibold">Workflow + JoinNode — tap an arm</p>
+        <p className="mt-1 text-[14px] font-semibold">Workflow. Tap an arm</p>
         <div className="mt-4 flex flex-col items-center gap-2">
           <div className="rounded-lg bg-[#eef2ee] px-3 py-1.5 text-[12px] font-medium">Investigator dispatch</div>
           <div className="grid w-full max-w-lg grid-cols-3 gap-2 sm:grid-cols-6">
@@ -163,6 +182,7 @@ export function InvestigationFanoutDiagram({ className }: { className?: string }
           subtitle="Investigator arm"
           body={detail.role}
           meta={[{ label: "Tools", value: detail.tools }]}
+          proofs={proofs as never}
           onClear={() => setPicked(null)}
         />
       ) : null}
@@ -198,11 +218,11 @@ export function WorkflowDetailPanel({
         </div>
         <div>
           <dt className="text-[var(--faint)]">investigation_fanout</dt>
-          <dd className="font-medium">{workflows.investigation_fanout || "—"}</dd>
+          <dd className="font-medium">{workflows.investigation_fanout || ""}</dd>
         </div>
         <div>
           <dt className="text-[var(--faint)]">proposal_critique</dt>
-          <dd className="font-medium">{workflows.proposal_critique || "—"}</dd>
+          <dd className="font-medium">{workflows.proposal_critique || ""}</dd>
         </div>
         <div className="sm:col-span-2">
           <dt className="text-[var(--faint)]">adopted_patterns</dt>

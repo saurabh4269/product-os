@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BookMarked,
+  CalendarDays,
   CircleCheck,
   FlaskConical,
-  GitBranch,
   House,
   Layers,
   PanelLeftClose,
@@ -18,7 +18,7 @@ import {
 import { api, type Room } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BeanMark } from "@/components/mascot";
-import { PixelSprite } from "@/components/pixel-office";
+import { AgentBadge } from "@/components/agent-badge";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { HumanInputProvider } from "@/lib/human-input-context";
 import { HumanInputModals } from "@/components/human-input-modals";
@@ -32,10 +32,10 @@ const SYSTEM = [
   { href: "/registry", label: "Agents", icon: Users },
   { href: "/memory", label: "Memory", icon: BookMarked },
   { href: "/approvals", label: "Approvals", icon: CircleCheck, badgeKey: "approvals" as const },
-  { href: "/labs/architecture", label: "Architecture", icon: Layers },
+  { href: "/workflows", label: "Workflows", icon: CalendarDays },
   { href: "/labs", label: "Labs", icon: FlaskConical },
-  { href: "/traces", label: "Traces", icon: GitBranch },
   { href: "/connect", label: "Connect", icon: Plug },
+  { href: "/labs/architecture", label: "Architecture", icon: Layers },
 ] as const;
 
 const KINDS = ["incident", "opportunity", "review", "research", "ops"] as const;
@@ -103,10 +103,8 @@ function RoomList({
                   key={room.id}
                   href={href}
                   onClick={onNavigate}
-                  className={cn(
-                    "mb-0.5 block rounded-lg px-3 py-2 text-[13px] leading-5 transition-colors",
-                    path === href ? "bg-[var(--elev)] font-medium" : "text-[var(--dim)] hover:bg-[var(--elev)] hover:text-foreground"
-                  )}
+                  data-active={path === href ? "true" : undefined}
+                  className="nav-item mb-0.5 block px-3 py-2 pl-3.5 text-[13px] leading-5"
                 >
                   <span className="block truncate">{room.title}</span>
                 </Link>
@@ -143,10 +141,10 @@ function SystemLinks({
               href={item.href}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
+              data-active={active ? "true" : undefined}
               className={cn(
-                "group relative flex items-center rounded-xl transition-colors",
-                collapsed ? "h-11 w-11 justify-center" : "h-10 w-full justify-start gap-3 px-3",
-                active ? "bg-[var(--elev)] text-foreground" : "text-[var(--dim)] hover:bg-[var(--elev)] hover:text-foreground"
+                "nav-item group relative",
+                collapsed ? "h-11 w-11 justify-center" : "h-10 w-full justify-start gap-3 px-3 pl-3.5",
               )}
             >
               <Icon size={18} strokeWidth={1.75} />
@@ -230,6 +228,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, [desktop]);
 
   const inRoom = path.startsWith("/rooms/") || path.startsWith("/agents/");
+  const fillMain = inRoom;
   const onCampus = path === "/";
   const wide = expanded;
 
@@ -249,7 +248,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {wide ? (
               <span className="min-w-0">
                 <p className="truncate text-[15px] font-semibold leading-5 tracking-tight">Product OS</p>
-                <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--dim)]">A campus for the work</p>
               </span>
             ) : (
               <span className="sr-only">Product OS</span>
@@ -288,11 +286,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
         )}
 
         <div className={cn("mt-auto border-t border-border", wide ? "flex items-center gap-2.5 px-3 py-3" : "flex justify-center pb-5 pt-3")}>
-          <PixelSprite name="you" scale={wide ? 3 : 2} />
+          <AgentBadge name="you" size={wide ? 32 : 28} variant="face" />
           {wide ? (
             <div>
               <p className="text-[13px] font-medium leading-4">You</p>
-              <p className="text-[12px] text-[var(--dim)]">Here with the team</p>
             </div>
           ) : (
             <span className="sr-only">You</span>
@@ -302,8 +299,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <main
         className={cn(
-          "min-w-0 flex-1 bg-background",
-          inRoom ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll",
+          "flex min-h-0 min-w-0 flex-1 flex-col bg-background",
+          fillMain ? "overflow-hidden bg-white" : "overflow-y-auto chat-scroll",
           onCampus && "bg-[#eef2ee]"
         )}
       >

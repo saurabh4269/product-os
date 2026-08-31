@@ -6,7 +6,6 @@ import json
 import os
 import urllib.error
 import urllib.request
-from typing import Any
 
 from loop import gcs_state
 from loop.tenant import ConnectorReport

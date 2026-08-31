@@ -33,7 +33,7 @@ export function SignalSourcesDiagram({
         <p className="mt-1 text-[14px] font-semibold">Tenant initiates</p>
         <ul className="mt-3 space-y-2 text-[13px] text-[var(--dim)]">
           <li>
-            <code className="text-[12px]">POST /api/t/&#123;id&#125;/signals</code> — Cove ingest
+            <code className="text-[12px]">POST /api/t/&#123;id&#125;/signals</code> · Cove ingest
           </li>
           <li>
             <code className="text-[12px]">POST /api/t/&#123;id&#125;/voice</code>

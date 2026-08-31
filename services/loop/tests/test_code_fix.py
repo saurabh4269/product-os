@@ -27,11 +27,11 @@ def test_resolve_brief_from_action_artifacts():
     class A:
         artifacts = {"code_brief": {"issue": "x", "likely_files": ["a.ts"]}}
 
-    class I:
+    class Inv:
         room_id = None
 
     class S:
         def list_messages(self, _):
             return []
 
-    assert resolve_brief(A(), I(), S())["issue"] == "x"
+    assert resolve_brief(A(), Inv(), S())["issue"] == "x"

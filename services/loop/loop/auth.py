@@ -16,6 +16,11 @@ def admin_required() -> bool:
     return bool(admin_token())
 
 
+def eval_mode_open() -> bool:
+    """Demo / fixture path — console approvals without admin bearer."""
+    return os.environ.get("LOOP_EVAL", "1") == "1"
+
+
 def bearer_token(authorization: str | None) -> str | None:
     if not authorization:
         return None
@@ -33,6 +38,15 @@ def require_admin(authorization: str | None, *, actor: str = "admin") -> str:
     if not expected or token != expected:
         raise HTTPException(401, "admin bearer token required")
     return actor or "admin"
+
+
+def require_approval(authorization: str | None, *, actor: str = "admin") -> str:
+    """Console HITL — open in eval/demo; admin bearer when token set and eval off."""
+    if not admin_required():
+        return actor or "dev"
+    if eval_mode_open():
+        return actor or "console"
+    return require_admin(authorization, actor=actor)
 
 
 def require_admin_or_internal(authorization: str | None, *, internal_header: str | None = None) -> str:

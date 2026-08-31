@@ -21,16 +21,16 @@ from pydantic import BaseModel, Field
 
 from loop.models import (
     Classification,
+    Direction,
     InvestigationState,
     LoopType,
     PathKind,
     Room,
     RoomKind,
+    Segment,
     Signal,
     SignalFamily,
     SignalStatus,
-    Direction,
-    Segment,
 )
 
 

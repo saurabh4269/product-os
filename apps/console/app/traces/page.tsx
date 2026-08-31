@@ -1,48 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { shortName } from "@/lib/names";
-import { ErrorState, Loading } from "@/components/ui";
-import { PixelSprite } from "@/components/pixel-office";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Loading } from "@/components/ui";
 
-export default function TracesPage() {
-  const [data, setData] = useState<Awaited<ReturnType<typeof api.traces>> | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
+/** Traces merged into live rooms — old links land on home. */
+export default function TracesRedirect() {
+  const router = useRouter();
   useEffect(() => {
-    api
-      .traces()
-      .then(setData)
-      .catch((e) => setErr(e instanceof Error ? e.message : "failed"));
-  }, []);
-
-  if (err) return <ErrorState message={err} />;
-  if (!data) return <Loading label="Opening traces" />;
-  if (data.traces.length === 0) {
-    return (
-      <div className="page-pad">
-        <h1 className="text-[32px] font-semibold tracking-tight">Traces</h1>
-        <p className="mt-8 text-[15px] text-[var(--dim)]">No handoffs yet. They show up as rooms start working.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="page-pad">
-      <h1 className="text-[32px] font-semibold tracking-tight">Traces</h1>
-      <p className="mt-3 text-[15px] text-[var(--dim)]">Who talked to whom.</p>
-      <div className="mt-8 space-y-2">
-        {data.traces.map((t, i) => (
-          <div key={String(t.id ?? i)} className="flex flex-wrap items-center gap-2 py-1">
-            <PixelSprite name={String(t.from_agent ?? "")} scale={2} />
-            <span className="text-[14px]">{shortName(String(t.from_agent ?? ""))}</span>
-            <span className="text-[var(--faint)]">→</span>
-            <PixelSprite name={String(t.to_agent ?? "")} scale={2} />
-            <span className="text-[14px]">{shortName(String(t.to_agent ?? ""))}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+    router.replace("/");
+  }, [router]);
+  return <Loading label="Opening chat" />;
 }

@@ -5,12 +5,12 @@ from __future__ import annotations
 from loop.models import Classification, LoopType, PathKind, RoomKind
 from loop.product_improvement import (
     ProductSignalEvent,
+    build_experiment_design,
     example_conversion_drop_signal,
     example_shipping_signal,
     resolve_loop,
     run_product_loop,
     simulate_experiment_result,
-    build_experiment_design,
 )
 
 
@@ -108,8 +108,9 @@ def test_generic_event_no_hardcoded_shipping(engine):
 
 
 def test_improve_accepts_evidence_without_source_reference(engine, monkeypatch):
-    import loop.api as api_mod
     from fastapi.testclient import TestClient
+
+    import loop.api as api_mod
 
     monkeypatch.setattr(api_mod, "_engine", engine)
     monkeypatch.setattr(api_mod, "get_engine", lambda: engine)

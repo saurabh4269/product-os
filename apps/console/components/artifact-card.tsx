@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { RoomMessage } from "@/lib/api";
+import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
 
 const KIND_TONE: Record<string, string> = {
   evidence: "border-emerald-200/80 text-emerald-800",
@@ -19,6 +20,9 @@ const KIND_TONE: Record<string, string> = {
   customer_brief: "border-violet-200/80 text-violet-900",
   call_evidence: "border-fuchsia-200/80 text-fuchsia-900",
   call: "border-sky-200/80 text-sky-800",
+  call_feedback: "border-fuchsia-200/80 text-fuchsia-900",
+  contact: "border-violet-200/80 text-violet-900",
+  contact_lookup: "border-violet-200/80 text-violet-900",
   code_brief: "border-sky-200/80 text-sky-900",
   voice_context: "border-violet-200/80 text-violet-900",
   evidence_pack: "border-emerald-300/80 text-emerald-900",
@@ -96,6 +100,18 @@ export function ArtifactCard({ msg }: { msg: RoomMessage }) {
   const kind = msg.artifact_type ?? "note";
   const tone = KIND_TONE[kind] || "border-border text-[var(--dim)]";
   const fieldRows = rows((msg.artifact ?? {}) as Record<string, unknown>);
+  const proof = proofFromArtifact(msg.artifact as Record<string, unknown>, msg.artifact_type);
+
+  if (proof) {
+    return (
+      <article className="w-full max-w-[620px]">
+        <ProofEmbed proof={proof} compact className="mt-0" />
+        {msg.text && !String(msg.text).startsWith("Opened PR") ? (
+          <p className="mt-1.5 text-[12px] text-[var(--dim)]">{msg.text}</p>
+        ) : null}
+      </article>
+    );
+  }
 
   return (
     <article className="w-full max-w-[620px]">

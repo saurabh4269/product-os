@@ -14,7 +14,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from loop.tenant import ConnectorReport, Tenant
 
@@ -152,7 +151,6 @@ def _parse_json_block(text: str) -> dict[str, Any]:
 
 
 def gemini_generate_patches(brief: dict[str, Any], files: dict[str, str]) -> tuple[dict[str, str], str]:
-    from loop.config import default_model_id
     from loop.model_armor import screen_chat, screen_model_response
     from loop.vertex_gemini import gemini_configured, generate_content_json, use_vertex
 
@@ -228,9 +226,9 @@ def generate_patches(repo: Path, brief: dict[str, Any], tenant: Tenant | None = 
             if pref == "gemini":
                 raise
 
-    if fixture:
+    if fixture == "safari_3ds":
         patches = _deterministic_safari_patch(brief, existing)
-        return patches, f"fixture fallback ({'; '.join(errors)[:200]})", "fixture"
+        return patches, f"safari fixture fallback ({'; '.join(errors)[:200]})", "fixture"
 
     raise RuntimeError(errors[-1] if errors else "no code backend available")
 
@@ -245,7 +243,12 @@ def run_code_fix(
     pr_title: str = "",
     pr_body: str = "",
 ) -> ConnectorReport:
-    from loop.code_worker import apply_patches, collect_git_diff_files, read_patched_files, run_tests
+    from loop.code_worker import (
+        apply_patches,
+        collect_git_diff_files,
+        read_patched_files,
+        run_tests,
+    )
     from loop.connectors.github import open_pr_multi_file
 
     with tempfile.TemporaryDirectory(prefix="loop-code-") as tmp:
@@ -334,16 +337,48 @@ def _apply_job_result(engine: Any, payload: dict, inv: Any, report: ConnectorRep
         engine.store.put_action(action)
     room_id = getattr(inv, "room_id", None) if inv else None
     if room_id:
-        post(
-            engine,
-            room_id,
-            author="code_agent",
-            author_kind="agent",
-            kind="artifact",
-            text=report.detail,
-            artifact_type="code_fix",
-            artifact=report.model_dump(),
-        )
+        if report.status == "applied" and report.url:
+            from loop.live import HUB
+            from loop.proof import github_pr_proof
+
+            proof = github_pr_proof(str(report.url), tenant=tenant)
+            post(
+                engine,
+                room_id,
+                author="code_agent",
+                author_kind="agent",
+                kind="artifact",
+                text=f"Opened PR: {report.url}",
+                artifact_type="pr",
+                artifact={
+                    "pr_url": report.url,
+                    "url": report.url,
+                    "status": "open",
+                    "detail": report.detail,
+                    "proof": proof,
+                },
+            )
+            room = engine.store.get_room(room_id)
+            HUB.publish_global(
+                {
+                    "type": "payoff",
+                    "kind": "pr_opened",
+                    "room_id": room_id,
+                    "pr_url": report.url,
+                    "title": room.title if room else "",
+                }
+            )
+        else:
+            post(
+                engine,
+                room_id,
+                author="code_agent",
+                author_kind="agent",
+                kind="artifact",
+                text=report.detail,
+                artifact_type="code_fix",
+                artifact=report.model_dump(),
+            )
     if inv:
         engine.timeline(inv.id, "code_agent", "code_fix", report.detail, report.url or "")
 

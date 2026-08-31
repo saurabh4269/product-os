@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, type Action, type Room } from "@/lib/api";
-import { Button, Empty, ErrorState, Loading } from "@/components/ui";
+import { Button, Chip, Empty, ErrorState, Loading, PageHeader } from "@/components/ui";
 
 export default function ApprovalsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.approvals>> | null>(null);
@@ -16,7 +16,7 @@ export default function ApprovalsPage() {
 
   async function pollJob(actionId: string, attempts = 0) {
     if (attempts > 40) {
-      setJobStatus("Still running — check the room for updates.");
+      setJobStatus("Still running. Check the room.");
       return;
     }
     try {
@@ -39,7 +39,7 @@ export default function ApprovalsPage() {
           setNotice("Pull request opened. Product OS did not merge it.");
           setPrUrl(resultUrl);
         } else {
-          setJobStatus("Job finished — check the room for the PR link.");
+          setJobStatus("Done. Check the room for the PR link.");
         }
         return;
       }
@@ -70,7 +70,7 @@ export default function ApprovalsPage() {
 
   function roomHref(a: Action) {
     const room = rooms.find((r) => r.investigation_id === a.investigation_id);
-    return room ? `/rooms/${room.id}` : `/investigations/${a.investigation_id}`;
+    return room ? `/rooms/${room.id}` : "/";
   }
 
   async function decide(a: Action, decision: "approve" | "deny") {
@@ -87,7 +87,7 @@ export default function ApprovalsPage() {
           setPrUrl(null);
           setJobStatus(null);
         } else if (res.execution?.job_id) {
-          setNotice("Approved — opening a pull request in the background.");
+          setNotice("Approved. Opening a pull request.");
           setPrUrl(null);
           void pollJob(a.id);
         } else {
@@ -105,46 +105,44 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="page-pad">
-      <h1 className="text-[26px] font-semibold tracking-tight sm:text-[32px]">Approvals</h1>
-      <p className="mt-3 text-[15px] text-[var(--dim)]">A few changes are waiting for a yes.</p>
+    <div className="page-pad fade-in">
+      <PageHeader title="Approvals" />
       {notice ? (
         <p className="mt-4 max-w-xl text-[14px] leading-6 text-foreground">
           {notice}
-          {jobStatus ? <span className="block mt-1 text-[var(--dim)]">{jobStatus}</span> : null}
+          {jobStatus ? <span className="mt-1 block text-[var(--dim)]">{jobStatus}</span> : null}
           {prUrl ? (
             <>
               {" "}
               <a href={prUrl} className="text-accent" target="_blank" rel="noreferrer">
-                Open on GitHub
+                GitHub
               </a>
             </>
           ) : null}
         </p>
       ) : null}
       {data.pending.length === 0 ? (
-        <Empty title="You’re all caught up." hint="New gates will show up here." />
+        <Empty title="Clear" hint="" className="mt-12" />
       ) : (
-        <div className="mt-8 max-w-xl space-y-6">
+        <div className="mt-8 max-w-xl space-y-4">
           {data.pending.map((a) => (
-            <article key={a.id} className="rounded-[20px] border border-border bg-white p-6">
-              <p className="text-[13px] text-[var(--faint)]">{a.risk_tier}</p>
-              <p className="mt-2 text-[15px] leading-6">{a.consequence}</p>
-              <p className="mt-2 text-[13px] leading-5 text-[var(--dim)]">
-                {a.gate ||
-                  (a.tenant_repo
-                    ? `Will open a pull request on ${a.tenant_repo}. Product OS will not merge it.`
-                    : "Will only flip an OS flag. No git repo is connected.")}
-              </p>
-              <div className="mt-4 flex items-center gap-3">
+            <article key={a.id} className="surface-lg p-6">
+              <Chip tone={a.risk_tier === "HIGH" ? "danger" : "warn"}>{a.risk_tier}</Chip>
+              <p className="mt-3 text-[15px] leading-6">{a.consequence}</p>
+              {a.gate || a.tenant_repo ? (
+                <p className="mt-2 text-[13px] leading-5 text-[var(--faint)]">
+                  {a.gate || (a.tenant_repo ? `PR on ${a.tenant_repo}` : null)}
+                </p>
+              ) : null}
+              <div className="mt-5 flex flex-wrap items-center gap-2">
                 <Button disabled={busy !== null} onClick={() => void decide(a, "approve")}>
-                  {busy === a.id ? "Working…" : "Approve"}
+                  {busy === a.id ? "…" : "Approve"}
                 </Button>
                 <Button variant="ghost" disabled={busy !== null} onClick={() => void decide(a, "deny")}>
                   Not yet
                 </Button>
-                <Link href={roomHref(a)} className="text-[13px] text-accent">
-                  Open room
+                <Link href={roomHref(a)} className="ml-auto text-[13px] text-accent">
+                  Room →
                 </Link>
               </div>
             </article>
@@ -152,17 +150,14 @@ export default function ApprovalsPage() {
         </div>
       )}
       {data.history.length ? (
-        <div className="mt-12 max-w-xl">
-          <p className="text-[13px] text-[var(--faint)]">Already decided</p>
-          <div className="mt-4 space-y-3">
-            {data.history.slice(0, 8).map((h, i) => (
-              <p key={String(h.id ?? i)} className="text-[14px] leading-6 text-[var(--dim)]">
-                <span className="font-medium text-foreground">{String(h.decision ?? "decision")}</span>
-                {h.tier_at_decision ? ` · ${String(h.tier_at_decision)}` : ""}
-                {h.rationale ? ` — ${String(h.rationale)}` : ""}
-              </p>
-            ))}
-          </div>
+        <div className="surface-lg mt-12 max-w-xl divide-y divide-border">
+          {data.history.slice(0, 8).map((h, i) => (
+            <p key={String(h.id ?? i)} className="px-5 py-3 text-[14px] leading-6 text-[var(--dim)]">
+              <span className="font-medium text-foreground">{String(h.decision ?? "decision")}</span>
+              {h.tier_at_decision ? ` · ${String(h.tier_at_decision)}` : ""}
+              {h.rationale ? `. ${String(h.rationale)}` : ""}
+            </p>
+          ))}
         </div>
       ) : null}
     </div>

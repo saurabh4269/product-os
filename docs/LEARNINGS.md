@@ -79,7 +79,7 @@ Northstar does not vendor — it is stdlib-only (`python app.py`).
 
 **Why:** Google Auth Platform clients are not the same as `gcloud iam oauth-clients` (workforce) or Agent Identity (plan-only / disabled here). The ADK Workspace codelab pattern is: create a Web client in Console → one `access_type=offline` consent → store refresh token → refresh in memory.
 
-**Fix:** Connect → paste client → `/api/oauth/google/start`. Redirect URI must be `https://loop-…/api/oauth/google/callback`. External + Testing: add yourself as a test user. Do not enable Agent Identity just for this. Hosted refresh tokens live under `LOOP_DATA_DIR` and die on cold wipe unless you also keep the client in env.
+**Fix:** Connect → paste client → `/api/oauth/google/start`. Redirect URI must be `https://<LOOP_PUBLIC_URL host>/api/oauth/google/callback` (currently `https://productos.heisenbug.in/api/oauth/google/callback` when `LOOP_PUBLIC_URL` is set). External + Testing: add yourself as a test user. Do not enable Agent Identity just for this. Hosted refresh tokens live under `LOOP_DATA_DIR` and die on cold wipe unless you also keep the client in env.
 
 ### Live WebSocket vs static export
 
@@ -98,6 +98,22 @@ Northstar does not vendor — it is stdlib-only (`python app.py`).
 **Symptom:** A health check that `HEAD /city/campus.webp` fails; `GET` is 200.
 
 **Why:** FastAPI SPA routes are GET. Don’t use HEAD for “is the image there.”
+
+### Custom domain on Cloud Run (`productos.heisenbug.in`)
+
+**Symptom:** `gcloud beta run domain-mappings create` fails with “domain is not verified”; or HTTPS returns `TLS connect error: unexpected eof` for 15–60 minutes after mapping succeeds.
+
+**Why:** Cloud Run custom domains need (1) a DNS CNAME to `ghs.googlehosted.com`, (2) the **base** domain verified once in Search Console for the same Google account as the GCP project, (3) time for Google-managed SSL to provision. Mapping before verification fails; TLS errors during cert issuance are normal, not a DNS typo.
+
+**Fix:**
+
+1. Cloudflare: `productos` CNAME → `ghs.googlehosted.com`, **DNS only** (grey cloud). Orange-cloud proxy breaks Google’s cert validation.
+2. Verify the apex once: `gcloud domains verify heisenbug.in` → Search Console → **Domain** property → TXT at Cloudflare (covers all subdomains).
+3. Run `./scripts/setup-productos-domain.sh` (or `gcloud beta run domain-mappings create --service=loop --domain=productos.heisenbug.in --region=us-central1`).
+4. Set `LOOP_PUBLIC_URL=https://productos.heisenbug.in` on the service (`deploy-gcp.sh` already does). OAuth redirect, Twilio webhooks, and tenant onboard URLs all derive from this — update the Google OAuth client authorized redirect URI to `https://productos.heisenbug.in/api/oauth/google/callback` if you change the public URL.
+5. Poll until `status.conditions[?type='Ready'].status` is `True`. The old `*.run.app` URL keeps working in parallel.
+
+**Do not:** use the Site Verification REST API from a default `gcloud` token (403 insufficient scope) — use `gcloud domains verify` or Search Console UI. Wrangler/Cloudflare API is optional; DNS is manual in Cloudflare when no API token is configured.
 
 ---
 
@@ -235,6 +251,10 @@ Desks in compact room cards looked like “gray pedestals” under chopped bodie
 | Host Northstar shop + ads on Cloud Run `loop` (`/shop`, `/company`) | User rejected. Product OS is not the tenant product. Separate repo + deploy. See [`TENANT.md`](TENANT.md). |
 | Shop pin / Shop rail on the campus | Same. Landmarks are Memory (watch) and Approvals (tram) only. |
 | `next.config` rewrite `/shop` → `/shop/index.html` | Only existed so Next could serve a storefront from `public/shop`. Removed. |
+| Separate **Traces** rail entry + full-page trace list | User rejected duplicate UX. Live rooms and the old Traces view were the same job (messenger chat + handoffs). **Traces removed from sidebar**; `room-view.tsx` uses the Traces chrome. `/traces` redirects to `/` for old bookmarks. Backend `GET /api/traces` stays for debugging. |
+| Incident room “war room” chrome (funnel badge, ← Campus, dual Send, All conversations → Traces) | User found it intimidating vs the lighter Traces messenger. Rooms are chat-first: compact header, inline Review chip, phone menu for calls — not a second navigation surface. |
+| Architecture diagram / “Architecture →” on the **home page** | User rejected — homepage already busy. Loop/fleet diagrams live under **Labs → Architecture** only. Do not re-add `Link` to `/labs/architecture` on home, `DemoRunner`, `SevenStepLoop`, or `WorkflowLinksPanel`. `requestFlowView` scrolls to live work or opens the current room, not the diagram. |
+| Raw Memory page (bare `<p>` lists) | User wanted minimal but polished. Memory uses search, kind icons, accent cards, provenance chips — keep that pattern; don’t regress to unstyled dumps. |
 
 Keep the toy-town campus. Keep scroll-to-office. Keep per-bot pages at `/agents/:id`. Do not put a storefront back on this origin.
 
@@ -275,10 +295,15 @@ The Next.js **N** overlay in `next dev` is not product UI. It sits on the rail a
 ## 9. Quick debug checklist
 
 ```bash
-# Hosted healthy?
-curl -s -o /dev/null -w "%{http_code}" https://loop-5uy6fkd7bq-uc.a.run.app/
+# Hosted healthy? (custom domain + run.app both valid)
+curl -s -o /dev/null -w "%{http_code}" https://productos.heisenbug.in/
+curl -s -o /dev/null -w "%{http_code}" https://productos.heisenbug.in/api/office
 curl -s -o /dev/null -w "%{http_code}" https://loop-5uy6fkd7bq-uc.a.run.app/api/office
-curl -s -o /dev/null -w "%{http_code}" https://loop-5uy6fkd7bq-uc.a.run.app/city/campus.webp
+curl -s -o /dev/null -w "%{http_code}" https://productos.heisenbug.in/city/campus.webp
+
+# Custom domain cert ready?
+gcloud beta run domain-mappings describe --domain=productos.heisenbug.in --region=us-central1 \
+  --project=mystical-timing-442601-q8 --format="yaml(status.conditions)"
 
 # Did we bake localhost?
 # View-source the hosted JS or search the tarball:

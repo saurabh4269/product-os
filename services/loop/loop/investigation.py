@@ -29,7 +29,6 @@ from pydantic import BaseModel, Field
 from loop.models import (
     Classification,
     Direction,
-    InvestigationState,
     LoopType,
     PathKind,
     RiskTier,
@@ -230,6 +229,29 @@ INVESTIGATOR_SPECS: list[dict[str, str]] = [
 ]
 
 
+def _normalize_dimensions(dims: dict) -> dict:
+    """Accept flat API payloads (browser, deploy version string) alongside structured probes."""
+    out = dict(dims)
+    seg = dict(out.get("segments") or {})
+    for key in ("browser", "os", "platform", "geo", "payment_method"):
+        val = out.get(key)
+        if val is not None and key not in seg and not isinstance(val, (dict, list)):
+            seg[key] = val
+    if seg:
+        out["segments"] = seg
+    dep = out.get("deploy")
+    if isinstance(dep, str) and dep.strip():
+        out["deploy"] = {"version": dep.strip(), "service": "app"}
+    for key in ("logs", "code", "database"):
+        val = out.get(key)
+        if isinstance(val, str) and val.strip():
+            out[key] = {"note": val.strip()}
+    voice = out.get("voice_subject")
+    if voice is not None and not isinstance(voice, dict):
+        out["voice_subject"] = {"failure": str(voice)}
+    return out
+
+
 def _probe_from_dims(event: AnomalyEvent, agent: str, source_type: str, group: str) -> InvestigatorClaim | None:
     probes = event.dimensions.get("probes") or {}
     raw = probes.get(agent) or probes.get(source_type)
@@ -265,18 +287,21 @@ def _default_logs(event: AnomalyEvent) -> InvestigatorClaim:
     claim = event.dimensions.get("logs_claim") or (
         f"Error/timeout cluster near {event.funnel_position} aligned with {event.metric} movement."
     )
+    raw = event.dimensions.get("logs")
+    detail = dict(raw) if isinstance(raw, dict) else {}
     return InvestigatorClaim(
         agent="logs_agent",
         source_type="logs",
         independence_group="logs",
         claim=str(claim),
-        detail=dict(event.dimensions.get("logs") or {}),
+        detail=detail,
         confidence=0.84,
     )
 
 
 def _default_deploy(event: AnomalyEvent) -> InvestigatorClaim:
-    dep = dict(event.dimensions.get("deploy") or {})
+    raw = event.dimensions.get("deploy")
+    dep = dict(raw) if isinstance(raw, dict) else {}
     claim = event.dimensions.get("deploy_claim") or (
         f"Deploy {dep.get('service', 'app')} {dep.get('version', '?')} "
         f"{dep.get('minutes_ago', '?')} min before anomaly onset."
@@ -294,17 +319,19 @@ def _default_deploy(event: AnomalyEvent) -> InvestigatorClaim:
 
 
 def _default_database(event: AnomalyEvent) -> InvestigatorClaim:
+    raw = event.dimensions.get("database")
+    db = dict(raw) if isinstance(raw, dict) else {}
     claim = event.dimensions.get("database_claim") or (
         "DB error rate flat in window — not primary suspect."
-        if not event.dimensions.get("database")
-        else str((event.dimensions.get("database") or {}).get("claim") or "Database anomalies in window.")
+        if not db
+        else str(db.get("claim") or "Database anomalies in window.")
     )
     return InvestigatorClaim(
         agent="database_agent",
         source_type="database",
         independence_group="database",
         claim=str(claim),
-        detail=dict(event.dimensions.get("database") or {}),
+        detail=db,
         confidence=0.8,
     )
 
@@ -327,7 +354,8 @@ def _default_customer(event: AnomalyEvent) -> InvestigatorClaim:
 
 
 def _default_code(event: AnomalyEvent) -> InvestigatorClaim:
-    code = dict(event.dimensions.get("code") or {})
+    raw = event.dimensions.get("code")
+    code = dict(raw) if isinstance(raw, dict) else {}
     files = code.get("files") or code.get("likely_files") or []
     claim = event.dimensions.get("code_claim") or (
         f"Likely surfaces: {', '.join(files)}." if files else f"Code surfaces for {event.funnel_position} under review."
@@ -352,14 +380,49 @@ _DEFAULTS: dict[str, Callable[[AnomalyEvent], InvestigatorClaim]] = {
 }
 
 
+def _arm_supported(event: AnomalyEvent, agent_id: str) -> bool:
+    """Only invent a specialist claim when the event actually supplies that arm."""
+    dims = event.dimensions if isinstance(event.dimensions, dict) else {}
+    probes = dims.get("probes") if isinstance(dims.get("probes"), dict) else {}
+    short = agent_id.replace("_agent", "")
+    raw_probe = probes.get(agent_id) or probes.get(short)
+    if isinstance(raw_probe, dict) and raw_probe.get("claim"):
+        return True
+    if agent_id == "analytics_agent":
+        return True  # metric + magnitude always on the event
+    if agent_id == "logs_agent":
+        return bool(dims.get("logs") or dims.get("logs_claim"))
+    if agent_id == "deployment_agent":
+        return bool(dims.get("deploy") or dims.get("deploy_claim"))
+    if agent_id == "database_agent":
+        return bool(dims.get("database") or dims.get("database_claim"))
+    if agent_id == "customer_voice_agent":
+        if dims.get("skip_customer") or dims.get("no_customer_contact") is True:
+            return False
+        return bool(
+            dims.get("voice_subject")
+            or dims.get("customer_claim")
+            or dims.get("needs_call")
+            or str(event.family or "").lower() == "customer"
+        )
+    if agent_id == "code_agent":
+        return bool(dims.get("code") or dims.get("code_claim"))
+    return False
+
+
 def run_investigators(event: AnomalyEvent) -> list[InvestigatorClaim]:
-    """Parallel-shaped fan-out: one claim per specialist (deterministic join)."""
+    """Fan-out only arms the event supports — no boilerplate six-pack."""
     out: list[InvestigatorClaim] = []
     for spec in INVESTIGATOR_SPECS:
         claim = _probe_from_dims(event, spec["id"], spec["source_type"], spec["group"])
         if claim is None:
+            if not _arm_supported(event, spec["id"]):
+                continue
             claim = _DEFAULTS[spec["id"]](event)
+            claim.detail = {**(claim.detail or {}), "synthetic": True}
         out.append(claim)
+    if not out:
+        out.append(_default_analytics(event))
     return out
 
 
@@ -724,6 +787,326 @@ def _family(name: str) -> SignalFamily:
     return mapping.get(name, SignalFamily.BUSINESS)
 
 
+def _claim_proof(engine: Any, claim: InvestigatorClaim, tenant: Any | None) -> dict[str, Any] | None:
+    """Attach a live connector receipt to an investigator claim when possible."""
+    try:
+        from loop.proof import deploys_proof, logs_proof, warehouse_proof
+
+        if claim.agent in {"analytics_agent", "database_agent"}:
+            return warehouse_proof(engine, tenant, metric=str((claim.detail or {}).get("metric") or "purchase_conversion"))
+        if claim.agent == "logs_agent":
+            return logs_proof(tenant)
+        if claim.agent == "deployment_agent":
+            return deploys_proof(tenant)
+    except Exception:
+        return None
+    return None
+
+
+def _finish_investigation_after_open(
+    engine: Any,
+    *,
+    room: Room,
+    inv: Any,
+    event: AnomalyEvent,
+    claims: list[InvestigatorClaim],
+    pack: EvidencePack,
+    tenant: Any | None,
+    bound_tenant: str | None,
+    clas: Classification,
+    propose_action: bool,
+    action_type: str,
+    surface: str | None,
+    extra_artifacts: dict[str, Any] | None,
+    live_progress: bool,
+) -> dict[str, Any]:
+    """Fan-out → evidence → hypothesis → risk → propose (after room already exists)."""
+    from loop.world import _add_facts, post
+
+    # Fan-out posts (join later) — real work, paced when live_progress
+    for claim in claims:
+        engine.a2a(inv.id, "investigator_agent", claim.agent, "TB-2", claim.source_type)
+        proof = _claim_proof(engine, claim, tenant)
+        art = claim.model_dump()
+        if proof:
+            art["proof"] = proof
+        post(
+            engine,
+            room.id,
+            author=claim.agent,
+            author_kind="agent",
+            kind="artifact",
+            text=claim.claim,
+            artifact_type="evidence",
+            artifact=art,
+        )
+        if live_progress:
+            from loop.live_progress import publish_agent_progress
+
+            publish_agent_progress(
+                room.id,
+                claim.agent,
+                claim.claim[:120],
+                tenant_id=bound_tenant or "",
+                delay=True,
+            )
+
+    facts = [
+        {
+            "source_type": c.source_type,
+            "source_reference": c.independence_group,
+            "claim": c.claim,
+            "independence_group": c.independence_group,
+            "collected_by": c.agent,
+            "confidence": c.confidence,
+        }
+        for c in claims
+    ]
+    seen: set[str] = set()
+    uniq_facts = []
+    for f in facts:
+        if f["independence_group"] in seen:
+            continue
+        seen.add(f["independence_group"])
+        uniq_facts.append(f)
+    _add_facts(engine, inv, uniq_facts[:6])
+
+    post(
+        engine,
+        room.id,
+        author="evidence_agent",
+        author_kind="agent",
+        kind="artifact",
+        text=pack.correlation_summary,
+        artifact_type="evidence_pack",
+        artifact=pack.model_dump(),
+    )
+    if live_progress:
+        from loop.live_progress import publish_agent_progress
+
+        publish_agent_progress(
+            room.id,
+            "evidence_agent",
+            pack.correlation_summary[:120],
+            tenant_id=bound_tenant or "",
+            stage="evidence",
+            delay=True,
+        )
+
+    hyp_statement = str(
+        (event.dimensions.get("hypothesis") or {}).get("statement") or pack.correlation_summary
+    )
+    hyp = engine.form_hypothesis(inv, statement=hyp_statement, classification=clas)
+    has_voice_subject = bool(event.dimensions.get("voice_subject"))
+    voice_ctx = build_voice_context(event, pack, hyp_statement) if has_voice_subject else None
+    code_brief = build_code_brief(event, pack, hyp_statement, tenant=tenant)
+    surf = surface or str((event.dimensions.get("code") or {}).get("surface") or event.funnel_position)
+    risk = assess_risk(surf, hyp_statement, action_type)
+
+    result: dict[str, Any] = {
+        "scenario": inv.scenario_id,
+        "event": event.model_dump(mode="json"),
+        "room_id": room.id,
+        "investigation_id": inv.id,
+        "evidence": pack.model_dump(),
+        "hypothesis": hyp.model_dump(mode="json") if hyp else None,
+        "voice_context": voice_ctx.model_dump() if voice_ctx else None,
+        "voice_system_prompt": voice_system_prompt(voice_ctx) if voice_ctx else None,
+        "code_brief": code_brief.model_dump(),
+        "risk": risk.model_dump(mode="json"),
+        "pipeline": catalog()["pipeline"],
+        "fan_out": [s["id"] for s in INVESTIGATOR_SPECS],
+        "reused": False,
+        "workflow": None,
+    }
+
+    if not hyp:
+        post(
+            engine,
+            room.id,
+            author="root_cause_agent",
+            author_kind="agent",
+            kind="chat",
+            text="Three-source gate refused — need more independent evidence.",
+        )
+        from loop.workflow import workflow_for
+
+        result["workflow"] = workflow_for(
+            loop_type=room.loop_type,
+            path=room.path,
+            room_kind=room.kind,
+            scenario_id=room.scenario_id,
+            state=inv.state,
+            dimensions=event.dimensions if isinstance(event.dimensions, dict) else {},
+            propose_action=False,
+            signal_family=event.family,
+            signal_source=event.source,
+        )
+        return result
+
+    hyp.confidence = pack.confidence
+    engine.store.put_hypothesis(hyp)
+
+    post(
+        engine,
+        room.id,
+        author="root_cause_agent",
+        author_kind="agent",
+        kind="artifact",
+        text=hyp.statement,
+        artifact_type="hypothesis",
+        artifact={
+            **hyp.model_dump(mode="json"),
+            "evidence_checklist": pack.checklist,
+            "confidence": pack.confidence,
+        },
+    )
+    if live_progress:
+        from loop.live_progress import publish_agent_progress
+
+        publish_agent_progress(
+            room.id,
+            "root_cause_agent",
+            hyp.statement[:120],
+            tenant_id=bound_tenant or "",
+            stage="root_cause",
+            delay=True,
+        )
+    if voice_ctx:
+        post(
+            engine,
+            room.id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=f"Diagnostic context ready for {voice_ctx.user_label} · {voice_ctx.failure or 'friction'}",
+            artifact_type="voice_context",
+            artifact={**voice_ctx.model_dump(), "voice_subject": dict(event.dimensions.get("voice_subject") or {})},
+        )
+    # Mail-first ladder after evidence (never cold-call): cluster → email → call non-responders later.
+    if room.kind.value != "review" if hasattr(room.kind, "value") else str(room.kind) != "review":
+        try:
+            from loop.outreach import start_mail_ladder
+            from loop.tenant import resolve_tenant
+
+            t = resolve_tenant(engine.store, tenant_id=bound_tenant, room=room)
+            result["outreach"] = start_mail_ladder(
+                engine,
+                room=room,
+                inv=inv,
+                event=event,
+                hypothesis=hyp.statement,
+                product=(t.product if t else "") or "",
+            )
+        except Exception as exc:  # pragma: no cover
+            result["outreach_error"] = str(exc)
+    post(
+        engine,
+        room.id,
+        author="code_agent",
+        author_kind="agent",
+        kind="artifact",
+        text=code_brief.issue[:200],
+        artifact_type="code_brief",
+        artifact=code_brief.model_dump(),
+    )
+    post(
+        engine,
+        room.id,
+        author="risk_agent",
+        author_kind="agent",
+        kind="artifact",
+        text=f"{risk.tier.value} · {risk.rationale}",
+        artifact_type="risk_decision",
+        artifact=risk.model_dump(mode="json"),
+    )
+
+    if propose_action:
+        artifacts = {
+            "code_brief": code_brief.model_dump(),
+            "voice_context": voice_ctx.model_dump() if voice_ctx else None,
+            "pr": {
+                "title": f"Fix: {event.kind}",
+                "body": hyp.statement,
+                "files": code_brief.likely_files,
+                "tests": code_brief.regression_test,
+            },
+            **(extra_artifacts or {}),
+        }
+        if not artifacts.get("voice_context"):
+            artifacts.pop("voice_context", None)
+        if action_type == "product_proposal":
+            artifacts.pop("pr", None)
+        action = engine.propose_action(
+            inv,
+            hyp,
+            surface=surf,
+            action_type=action_type,
+            artifacts=artifacts,
+            consequence=risk.rationale,
+            semantic=f"invest-{event.kind}-{risk.tier.value.lower()}",
+        )
+        result["action"] = action.model_dump(mode="json")
+        if live_progress:
+            from loop.live import HUB
+            from loop.live_progress import publish_stage
+
+            publish_stage(
+                room.id,
+                "approve",
+                "risk_agent",
+                f"Waiting on approval · {risk.tier.value}",
+                tenant_id=bound_tenant or "",
+                delay=True,
+            )
+            HUB.publish(
+                room.id,
+                {
+                    "type": "approval_required",
+                    "approval": {
+                        "investigation_id": inv.id,
+                        "action_id": action.id,
+                        "status": "pending",
+                        "risk_level": risk.tier.value,
+                    },
+                },
+            )
+            HUB.publish_global(
+                {
+                    "type": "approval_required",
+                    "approval": {
+                        "room_id": room.id,
+                        "investigation_id": inv.id,
+                        "action_id": action.id,
+                        "risk_tier": risk.tier.value,
+                        "consequence": action.consequence or risk.rationale,
+                        "title": room.title,
+                    },
+                }
+            )
+
+    from loop.workflow import workflow_for
+
+    result["workflow"] = workflow_for(
+        loop_type=room.loop_type,
+        path=room.path,
+        room_kind=room.kind,
+        scenario_id=room.scenario_id,
+        state=inv.state,
+        awaiting=bool(propose_action and result.get("action")),
+        dimensions=event.dimensions if isinstance(event.dimensions, dict) else {},
+        artifact_types=[
+            m.artifact_type for m in engine.store.list_messages(room.id) if m.artifact_type
+        ],
+        action_types=[a.type for a in engine.store.list_actions(inv.id)],
+        action_statuses=[a.status for a in engine.store.list_actions(inv.id)],
+        propose_action=propose_action,
+        signal_family=event.family,
+        signal_source=event.source,
+    )
+    return result
+
+
 def run_investigation(
     engine: Any,
     event: AnomalyEvent,
@@ -739,9 +1122,17 @@ def run_investigation(
     surface: str | None = None,
     extra_artifacts: dict[str, Any] | None = None,
     live_progress: bool = False,
+    async_finish: bool = False,
 ) -> dict[str, Any]:
-    """Detect → fan-out → evidence → hypothesis → voice/code briefs → risk → propose."""
-    from loop.world import _add_facts, post
+    """Detect → fan-out → evidence → hypothesis → voice/code briefs → risk → propose.
+
+    When ``async_finish`` is True (demo path), open the room + post the signal, return
+    immediately, and finish investigators → approval in a background thread so the UI
+    can watch real WS progress instead of a single blocked HTTP response.
+    """
+    from loop.world import post
+
+    event = event.model_copy(update={"dimensions": _normalize_dimensions(event.dimensions)})
 
     lt, pth, rk, clas, direction = resolve_loop(event)
     if loop_type is not None:
@@ -758,15 +1149,32 @@ def run_investigation(
     if bound_tenant == "":
         bound_tenant = None
     tenant = engine.store.get_tenant(bound_tenant) if bound_tenant else None
+    warehouse_receipt: dict[str, Any] | None = None
     if bound_tenant and tenant:
         from loop.connectors.bigquery import enrich_anomaly_dimensions, read_metric_window
+        from loop.connectors.warehouse import enrich_file_dimensions
 
         dims = enrich_anomaly_dimensions(engine.store, tenant, dict(event.dimensions))
+        dims = enrich_file_dimensions(engine, dims, metric=event.metric)
         reading = read_metric_window(engine, tenant, event.metric, baseline=event.baseline)
         if reading:
             dims.setdefault("analytics_claim", reading.get("claim"))
-            dims.setdefault("database", {"value": reading.get("value"), "source": reading.get("source")})
-            dims.setdefault("database_claim", reading.get("claim"))
+            # Prefer real DB readings when present — do not invent a database arm from analytics.
+            if reading.get("source") in {"bigquery", "sql", "database"}:
+                dims.setdefault("database", {"value": reading.get("value"), "source": reading.get("source")})
+                dims.setdefault("database_claim", reading.get("claim"))
+            warehouse_receipt = {
+                "metric": event.metric,
+                "source": reading.get("source") or "warehouse",
+                "value": reading.get("value"),
+                "claim": reading.get("claim"),
+                "baseline": event.baseline,
+            }
+        event = event.model_copy(update={"dimensions": dims})
+    elif not bound_tenant:
+        from loop.connectors.warehouse import enrich_file_dimensions
+
+        dims = enrich_file_dimensions(engine, dict(event.dimensions), metric=event.metric)
         event = event.model_copy(update={"dimensions": dims})
     claims = run_investigators(event)
     pack = aggregate_evidence(event, claims)
@@ -822,17 +1230,15 @@ def run_investigation(
         "orchestrator",
         "signal_agent",
         "investigator_agent",
-        "analytics_agent",
-        "logs_agent",
-        "deployment_agent",
-        "database_agent",
-        "customer_voice_agent",
-        "code_agent",
+        *[c.agent for c in claims],
         "evidence_agent",
         "root_cause_agent",
         "risk_agent",
         "you",
     ]
+    # stable unique order
+    seen_m: set[str] = set()
+    members = [x for x in members if not (x in seen_m or seen_m.add(x))]
     room = Room(
         id=_id("room"),
         kind=rk,
@@ -889,6 +1295,38 @@ def run_investigation(
             "baseline": event.baseline,
         },
     )
+    if warehouse_receipt:
+        src = str(warehouse_receipt.get("source") or "warehouse")
+        claim = str(warehouse_receipt.get("claim") or "").strip()
+        metric = str(warehouse_receipt.get("metric") or event.metric)
+        label = "BigQuery" if "bigquery" in src.lower() or src == "bq" else "Warehouse"
+        receipt_text = claim or f"{label} read {metric}"
+        if not claim.startswith(label):
+            receipt_text = f"{label} read {metric}. {claim}".strip()
+        proof = None
+        try:
+            from loop.proof import warehouse_proof
+            from loop.tenant import resolve_tenant
+
+            t = resolve_tenant(engine.store, tenant_id=bound_tenant, room=room)
+            proof = warehouse_proof(
+                engine,
+                t,
+                metric=metric,
+                baseline=event.baseline if isinstance(event.baseline, (int, float)) else None,
+            )
+        except Exception:
+            proof = None
+        post(
+            engine,
+            room.id,
+            author="analytics_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=receipt_text[:240],
+            artifact_type="warehouse",
+            artifact={**warehouse_receipt, "proof": proof} if proof else warehouse_receipt,
+        )
     post(
         engine,
         room.id,
@@ -898,230 +1336,102 @@ def run_investigation(
         text="Dispatching analytics · logs · deploy · database · customer · code in parallel.",
     )
 
-    # Fan-out posts (join later)
-    for claim in claims:
-        engine.a2a(inv.id, "investigator_agent", claim.agent, "TB-2", claim.source_type)
-        post(
-            engine,
-            room.id,
-            author=claim.agent,
-            author_kind="agent",
-            kind="artifact",
-            text=claim.claim,
-            artifact_type="evidence",
-            artifact=claim.model_dump(),
-        )
-        if live_progress:
-            from loop.live_progress import publish_agent_progress
-
-            publish_agent_progress(
-                room.id,
-                claim.agent,
-                claim.claim[:120],
-                tenant_id=bound_tenant or "",
-                delay=True,
-            )
-
-    facts = [
-        {
-            "source_type": c.source_type,
-            "source_reference": c.independence_group,
-            "claim": c.claim,
-            "independence_group": c.independence_group,
-            "collected_by": c.agent,
-            "confidence": c.confidence,
-        }
-        for c in claims
-    ]
-    # Deduplicate independence groups for the ≥3 gate — keep first 6 unique groups
-    seen: set[str] = set()
-    uniq_facts = []
-    for f in facts:
-        if f["independence_group"] in seen:
-            continue
-        seen.add(f["independence_group"])
-        uniq_facts.append(f)
-    _add_facts(engine, inv, uniq_facts[:6])
-
-    post(
-        engine,
-        room.id,
-        author="evidence_agent",
-        author_kind="agent",
-        kind="artifact",
-        text=pack.correlation_summary,
-        artifact_type="evidence_pack",
-        artifact=pack.model_dump(),
-    )
-    if live_progress:
-        from loop.live_progress import publish_agent_progress
-
-        publish_agent_progress(
-            room.id,
-            "evidence_agent",
-            pack.correlation_summary[:120],
-            tenant_id=bound_tenant or "",
-            stage="evidence",
-            delay=True,
-        )
-
-    hyp = engine.form_hypothesis(inv, statement=hyp_statement, classification=clas)
-    voice_ctx = build_voice_context(event, pack, hyp_statement)
-    code_brief = build_code_brief(event, pack, hyp_statement, tenant=tenant)
-    surf = surface or str((event.dimensions.get("code") or {}).get("surface") or event.funnel_position)
-    risk = assess_risk(surf, hyp_statement, action_type)
-
-    result: dict[str, Any] = {
+    early = {
         "scenario": scenario,
         "event": event.model_dump(mode="json"),
         "room_id": room.id,
         "investigation_id": inv.id,
         "evidence": pack.model_dump(),
-        "hypothesis": hyp.model_dump(mode="json") if hyp else None,
-        "voice_context": voice_ctx.model_dump(),
-        "voice_system_prompt": voice_system_prompt(voice_ctx),
-        "code_brief": code_brief.model_dump(),
-        "risk": risk.model_dump(mode="json"),
+        "hypothesis": {"statement": hyp_statement},
         "pipeline": catalog()["pipeline"],
         "fan_out": [s["id"] for s in INVESTIGATOR_SPECS],
         "reused": False,
+        "async": False,
     }
+    from loop.workflow import workflow_for
 
-    if not hyp:
-        post(
-            engine,
-            room.id,
-            author="root_cause_agent",
-            author_kind="agent",
-            kind="chat",
-            text="Three-source gate refused — need more independent evidence.",
-        )
-        return result
-
-    # Stamp hypothesis confidence from evidence pack
-    hyp.confidence = pack.confidence
-    engine.store.put_hypothesis(hyp)
-
+    early["workflow"] = workflow_for(
+        loop_type=lt,
+        path=pth,
+        room_kind=rk,
+        scenario_id=scenario,
+        state=inv.state,
+        awaiting=False,
+        dimensions=event.dimensions if isinstance(event.dimensions, dict) else {},
+        propose_action=propose_action,
+        signal_family=event.family,
+        signal_source=event.source,
+    )
+    # Persist composed path so later UI rebuilds don't depend on fixture ids.
     post(
         engine,
         room.id,
-        author="root_cause_agent",
+        author="orchestrator",
         author_kind="agent",
-        kind="artifact",
-        text=hyp.statement,
-        artifact_type="hypothesis",
+        kind="system",
+        text="Workflow composed for this case.",
+        artifact_type="workflow",
         artifact={
-            **hyp.model_dump(mode="json"),
-            "evidence_checklist": pack.checklist,
-            "confidence": pack.confidence,
+            "nodes": early["workflow"]["nodes"],
+            "kind": early["workflow"]["kind"],
+            "needs": early["workflow"]["needs"],
+            "tags": early["workflow"]["tags"],
         },
     )
-    if live_progress:
-        from loop.live_progress import publish_agent_progress
 
-        publish_agent_progress(
-            room.id,
-            "root_cause_agent",
-            hyp.statement[:120],
-            tenant_id=bound_tenant or "",
-            stage="root_cause",
-            delay=True,
-        )
-    post(
+    if async_finish and live_progress:
+        import threading
+
+        def _bg() -> None:
+            try:
+                _finish_investigation_after_open(
+                    engine,
+                    room=room,
+                    inv=inv,
+                    event=event,
+                    claims=claims,
+                    pack=pack,
+                    tenant=tenant,
+                    bound_tenant=bound_tenant,
+                    clas=clas,
+                    propose_action=propose_action,
+                    action_type=action_type,
+                    surface=surface,
+                    extra_artifacts=extra_artifacts,
+                    live_progress=True,
+                )
+            except Exception as exc:  # pragma: no cover - surfaced via activity
+                from loop.activity import emit_activity
+
+                emit_activity(
+                    agent_id="orchestrator",
+                    message=f"Investigation stalled: {exc}",
+                    room_id=room.id,
+                    stage="investigate",
+                    tenant_id=bound_tenant or "",
+                )
+
+        threading.Thread(target=_bg, name=f"invest-{room.id}", daemon=True).start()
+        early["async"] = True
+        return early
+
+    finished = _finish_investigation_after_open(
         engine,
-        room.id,
-        author="customer_voice_agent",
-        author_kind="agent",
-        kind="artifact",
-        text=f"Diagnostic context ready for {voice_ctx.user_label} · {voice_ctx.failure or 'friction'}",
-        artifact_type="voice_context",
-        artifact=voice_ctx.model_dump(),
+        room=room,
+        inv=inv,
+        event=event,
+        claims=claims,
+        pack=pack,
+        tenant=tenant,
+        bound_tenant=bound_tenant,
+        clas=clas,
+        propose_action=propose_action,
+        action_type=action_type,
+        surface=surface,
+        extra_artifacts=extra_artifacts,
+        live_progress=live_progress,
     )
-    post(
-        engine,
-        room.id,
-        author="code_agent",
-        author_kind="agent",
-        kind="artifact",
-        text=code_brief.issue[:200],
-        artifact_type="code_brief",
-        artifact=code_brief.model_dump(),
-    )
-    post(
-        engine,
-        room.id,
-        author="risk_agent",
-        author_kind="agent",
-        kind="artifact",
-        text=f"{risk.tier.value} · {risk.rationale}",
-        artifact_type="risk_decision",
-        artifact=risk.model_dump(mode="json"),
-    )
-
-    action = None
-    if propose_action:
-        artifacts = {
-            "code_brief": code_brief.model_dump(),
-            "voice_context": voice_ctx.model_dump(),
-            "pr": {
-                "title": f"Fix: {event.kind}",
-                "body": hyp.statement,
-                "files": code_brief.likely_files,
-                "tests": code_brief.regression_test,
-            },
-            **(extra_artifacts or {}),
-        }
-        if action_type == "product_proposal":
-            artifacts.pop("pr", None)
-        action = engine.propose_action(
-            inv,
-            hyp,
-            surface=surf,
-            action_type=action_type,
-            artifacts=artifacts,
-            consequence=risk.rationale,
-            semantic=f"invest-{event.kind}-{risk.tier.value.lower()}",
-        )
-        result["action"] = action.model_dump(mode="json")
-        if live_progress:
-            from loop.live import HUB
-            from loop.live_progress import publish_stage
-
-            publish_stage(
-                room.id,
-                "approve",
-                "risk_agent",
-                f"Waiting on approval · {risk.tier.value}",
-                tenant_id=bound_tenant or "",
-                delay=True,
-            )
-            HUB.publish(
-                room.id,
-                {
-                    "type": "approval_required",
-                    "approval": {
-                        "investigation_id": inv.id,
-                        "action_id": action.id,
-                        "status": "pending",
-                        "risk_level": risk.tier.value,
-                    },
-                },
-            )
-            HUB.publish_global(
-                {
-                    "type": "approval_required",
-                    "approval": {
-                        "room_id": room.id,
-                        "investigation_id": inv.id,
-                        "action_id": action.id,
-                        "risk_tier": risk.tier.value,
-                        "consequence": action.consequence or risk.rationale,
-                        "title": room.title,
-                    },
-                }
-            )
-
-    return result
+    return finished
 
 
 # --- example recipes (payload only) ------------------------------------------
@@ -1142,6 +1452,7 @@ def example_segmented_conversion_anomaly() -> AnomalyEvent:
             "segments": {"browser": "Safari", "os": "iOS"},
             "deploy": {"service": "pay-sdk", "version": "v2.14", "minutes_ago": 42},
             "logs": {"cluster": "3ds_timeout", "count": 140},
+            "database": {"claim": "DB error rate flat in window — not primary suspect."},
             "voice_subject": {
                 "name": "Alex",
                 "attempt_summary": "checkout attempt",

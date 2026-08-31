@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import type { OfficeDesk, Room, RoomDetail } from "@/lib/api";
 import { api } from "@/lib/api";
 import { pagesFromRoom, type WorkPage } from "@/lib/work-pages";
-import { PixelOffice, PixelSprite } from "@/components/pixel-office";
+import { ChevronRight } from "lucide-react";
+import { PixelOffice } from "@/components/pixel-office";
+import { AgentStack } from "@/components/agent-badge";
 import { cn } from "@/lib/utils";
 
 export function WorkFlipbook({
@@ -14,8 +16,8 @@ export function WorkFlipbook({
   onOpen,
   onInside,
   onPage,
-  openLabel = "Open the room",
-  insideLabel,
+  openLabel = "Open",
+  insideLabel = "Inside",
   className,
 }: {
   pages: WorkPage[];
@@ -69,7 +71,7 @@ export function WorkFlipbook({
         ))}
 
         <article
-          className="relative z-10 overflow-hidden rounded-[22px] border border-border bg-white soft-card"
+          className="surface-lg relative z-10 overflow-hidden soft-card"
           style={{ transformOrigin: "left center" }}
         >
           {i === 0 && cover ? cover : null}
@@ -84,14 +86,15 @@ export function WorkFlipbook({
               <h3 className="mt-1 text-[17px] font-semibold leading-6 tracking-tight">{page.title}</h3>
               <p className="mt-2 line-clamp-4 text-[14px] leading-6 text-[var(--dim)]">{page.body}</p>
               {page.people?.length && i !== 0 ? (
-                <span className="mt-3 flex gap-1">
-                  {page.people.slice(0, 5).map((id) => (
-                    <PixelSprite key={id} name={id} scale={2} />
-                  ))}
+                <span className="mt-3">
+                  <AgentStack names={page.people} size={22} max={4} />
                 </span>
               ) : null}
-              <p className="mt-4 text-[12px] text-[var(--faint)]">
-                {last ? (onOpen ? "Tap to open" : `${i + 1} / ${total}`) : `Tap to go deeper · ${i + 1} / ${total}`}
+              <p className="mt-4 flex items-center justify-between text-[11px] text-[var(--faint)]">
+                <span>
+                  {i + 1}/{total}
+                </span>
+                {!last ? <ChevronRight className="h-4 w-4 text-[var(--faint)]" aria-hidden /> : null}
               </p>
             </button>
           ) : null}
@@ -114,7 +117,7 @@ export function WorkFlipbook({
             onClick={onInside}
             className="min-h-11 rounded-full bg-[var(--elev)] px-4 text-[13px] font-medium text-foreground touch-manipulation"
           >
-            {insideLabel ?? "Walk inside"}
+            {insideLabel}
           </button>
         ) : null}
         {onOpen ? (
@@ -141,7 +144,9 @@ export function RoomCard({
   const router = useRouter();
   const [detail, setDetail] = useState<RoomDetail | null>(null);
   const pages = pagesFromRoom(room, desks, detail);
-  const working = new Set((desks.filter((d) => d.room_id === room.id && d.status !== "idle").map((d) => d.id)).concat(room.members.slice(0, 2)));
+  const working = new Set(
+    desks.filter((d) => d.room_id === room.id && d.status !== "idle").map((d) => d.id)
+  );
 
   return (
     <WorkFlipbook
@@ -156,7 +161,7 @@ export function RoomCard({
             .catch(() => setDetail(null));
         }
       }}
-      openLabel="Open the room"
+      openLabel="Open"
     />
   );
 }

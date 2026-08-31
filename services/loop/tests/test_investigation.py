@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from loop.investigation import (
     AnomalyEvent,
-    FeatureMention,
+    aggregate_evidence,
     assess_risk,
     build_code_brief,
     build_voice_context,
@@ -12,9 +12,8 @@ from loop.investigation import (
     cluster_feature_requests,
     example_feature_mentions,
     example_segmented_conversion_anomaly,
-    aggregate_evidence,
-    run_investigators,
     run_investigation,
+    run_investigators,
     run_product_intelligence,
     voice_system_prompt,
 )
@@ -62,6 +61,30 @@ def test_run_investigation_produces_briefs(engine):
     assert "voice_context" in kinds
     assert "code_brief" in kinds
     assert "hypothesis" in kinds
+
+
+def test_investigate_accepts_flat_dimension_payload(engine):
+    event = AnomalyEvent(
+        kind="segmented_conversion_drop",
+        metric="purchase_conversion",
+        title="Conversion down on Safari mobile after release",
+        family="business",
+        magnitude=-0.19,
+        baseline=0.72,
+        funnel_position="checkout",
+        polarity="negative",
+        dimensions={
+            "browser": "Safari",
+            "os": "iOS 17",
+            "deploy": "v2.14.0",
+            "payment_method": "card",
+        },
+    )
+    out = run_investigation(engine, event, propose_action=True, action_type="code_change", surface="checkout")
+    assert out["room_id"]
+    assert out["evidence"]["checklist"]["segmentation"] is True
+    room = engine.store.get_room(out["room_id"])
+    assert room is not None
 
 
 def test_voice_prompt_is_diagnostic_not_survey():

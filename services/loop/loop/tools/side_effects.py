@@ -94,7 +94,7 @@ def make_side_effect_tools(engine: LoopEngine) -> list:
         return {**result, "reused": reused}
 
     def send_gmail(*_a: Any, **_k: Any) -> dict[str, Any]:
-        """Gmail MCP has no send tool (R-4). Preserve that property."""
+        """Agents cannot send mail. Coordination may send_to_self only."""
         return {"error": "GMAIL_CANNOT_SEND"}
 
     toggle_feature_flag.__name__ = "toggle_feature_flag"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { ErrorState, Loading } from "@/components/ui";
+import { Chip, ErrorState, Loading, PageHeader } from "@/components/ui";
 
 export default function GovernancePage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof api.governance>> | null>(null);
@@ -16,16 +16,20 @@ export default function GovernancePage() {
   }, []);
 
   if (err) return <ErrorState message={err} />;
-  if (!data) return <Loading />;
+  if (!data) return <Loading label="Governance" />;
 
   return (
-    <div className="page-pad">
-      <h1 className="text-[32px] font-semibold tracking-tight">Governance</h1>
-      <p className="mt-3 text-[15px] text-[var(--dim)]">Safety stays closed if something fails. failOpen = {String(data.failOpen)}.</p>
-      <div className="mt-8 max-w-xl space-y-3">
+    <div className="page-pad fade-in">
+      <PageHeader
+        title="Governance"
+        action={
+          <Chip tone={data.failOpen ? "danger" : "ok"}>{data.failOpen ? "failOpen" : "fail closed"}</Chip>
+        }
+      />
+      <div className="surface-lg mt-8 max-w-xl divide-y divide-border">
         {data.identities.map((id) => (
-          <div key={id.id} className="flex justify-between gap-6 border-b border-border py-3">
-            <p className="text-[14px]">{id.id}</p>
+          <div key={id.id} className="flex justify-between gap-6 px-5 py-3.5">
+            <p className="text-[14px] font-medium">{id.id}</p>
             <p className="text-right text-[13px] text-[var(--dim)]">{id.envelope}</p>
           </div>
         ))}

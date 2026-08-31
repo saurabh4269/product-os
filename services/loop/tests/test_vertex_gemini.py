@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from loop.vertex_gemini import gemini_configured, use_vertex
 
 

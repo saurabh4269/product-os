@@ -5,9 +5,11 @@ from __future__ import annotations
 from .calendar import (
     check_availability,
     create_event,
-    hold as calendar_hold,
     list_events,
     suggest_times,
+)
+from .calendar import (
+    hold as calendar_hold,
 )
 from .github import create_issue, open_pr
 from .mail import draft as mail_draft

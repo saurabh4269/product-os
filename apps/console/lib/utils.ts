@@ -6,16 +6,26 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function pct(n: number | undefined | null) {
-  if (n === undefined || n === null || Number.isNaN(n)) return "—";
+  if (n === undefined || n === null || Number.isNaN(n)) return "";
   return `${(n * 100).toFixed(1)}%`;
 }
 
 export function when(iso?: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "";
   return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+/** Messenger-style clock for group chat. */
+export function clock(iso?: string | null) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
 }

@@ -21,7 +21,6 @@ from urllib.parse import urlencode
 import httpx
 
 from loop.classify import classify_call_outcome
-from loop.config import default_model_id, generate_content_config_for
 from loop.tenant import ConnectorReport
 
 # In-memory active call sessions (Cloud Run instance-local; fine for demo + min-instances 1).
@@ -145,18 +144,22 @@ def place_call(
     token = os.environ["TWILIO_AUTH_TOKEN"]
     frm = os.environ["TWILIO_FROM_NUMBER"]
     voice_url = f"{base}/api/twilio/voice?{urlencode({'room': room_id, 'reason': reason[:180], 'product': product})}"
+    status_url = f"{base}/api/twilio/status"
 
     try:
         with httpx.Client(timeout=30.0) as client:
-            # Trial accounts reject StatusCallbackEvent lists; keep create-call params minimal.
+            # Trial accounts may reject StatusCallbackEvent lists; StatusCallback alone is ok.
+            data = {
+                "To": e164,
+                "From": frm,
+                "Url": voice_url,
+                "StatusCallback": status_url,
+                "StatusCallbackMethod": "POST",
+            }
             res = client.post(
                 f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Calls.json",
                 auth=(sid, token),
-                data={
-                    "To": e164,
-                    "From": frm,
-                    "Url": voice_url,
-                },
+                data=data,
             )
             if res.status_code >= 400:
                 return ConnectorReport(

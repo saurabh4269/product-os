@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, type Handoff, type OfficeDesk, type Room, type RoomDetail } from "@/lib/api";
 import { BUILDINGS, LANDMARKS, busiestRoom, cluster, districtPods, slotFor } from "@/lib/campus";
 import { pagesFromDistrict, pagesFromRoom } from "@/lib/work-pages";
+import { AgentBadge } from "@/components/agent-badge";
 import { PixelSprite } from "@/components/pixel-office";
 import { WorkFlipbook } from "@/components/work-flipbook";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ function useImageBox(frame: HTMLElement | null, img: HTMLImageElement | null) {
     };
 
     measure();
+    if (img.complete && img.naturalWidth > 0) measure();
     const ro = new ResizeObserver(measure);
     ro.observe(frame);
     img.addEventListener("load", measure);
@@ -49,6 +51,35 @@ function useImageBox(frame: HTMLElement | null, img: HTMLImageElement | null) {
   return box;
 }
 
+/** Cached campus art often loads before React attaches onLoad — check img.complete. */
+function useCampusImage(img: HTMLImageElement | null) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!img) {
+      setReady(false);
+      return;
+    }
+    if (img.complete && img.naturalWidth > 0) {
+      setReady(true);
+      return;
+    }
+    setReady(false);
+    const onLoad = () => setReady(true);
+    const onError = () => setReady(true);
+    img.addEventListener("load", onLoad);
+    img.addEventListener("error", onError);
+    return () => {
+      img.removeEventListener("load", onLoad);
+      img.removeEventListener("error", onError);
+    };
+  }, [img]);
+
+  const onLoad = useCallback(() => setReady(true), []);
+
+  return { ready, onLoad };
+}
+
 export function CityMap({
   rooms: roomsIn,
   desks: desksIn,
@@ -57,6 +88,11 @@ export function CityMap({
   onPick,
   onWalkInside,
   hero = false,
+  compactHero = false,
+  showTapHint = false,
+  campusLine,
+  campusHot = false,
+  liveMotion = false,
 }: {
   rooms: Room[];
   desks: OfficeDesk[];
@@ -66,6 +102,15 @@ export function CityMap({
   onWalkInside: (district: string) => void;
   /** Full-bleed homepage hero — minimal copy, agents on buildings. */
   hero?: boolean;
+  /** Shorter hero when manager panel is primary. */
+  compactHero?: boolean;
+  /** First visit — hint that buildings are tappable */
+  showTapHint?: boolean;
+  /** Contextual campus subtitle (return visits, approvals, quiet). */
+  campusLine?: string;
+  campusHot?: boolean;
+  /** Demo-only — moving dots on handoff paths. */
+  liveMotion?: boolean;
 }) {
   const router = useRouter();
   const [rooms, setRooms] = useState(roomsIn);
@@ -74,10 +119,10 @@ export function CityMap({
   const [district, setDistrict] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [fly, setFly] = useState<string | null>(null);
-  const [imgReady, setImgReady] = useState(false);
   const [peek, setPeek] = useState<RoomDetail | null>(null);
   const [frameEl, setFrameEl] = useState<HTMLDivElement | null>(null);
   const [imgEl, setImgEl] = useState<HTMLImageElement | null>(null);
+  const { ready: imgReady, onLoad: onCampusLoad } = useCampusImage(imgEl);
   const box = useImageBox(frameEl, imgEl);
 
   useEffect(() => {
@@ -144,20 +189,21 @@ export function CityMap({
       : [];
 
   return (
-    <section className={cn("relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]", hero && "min-h-[min(78vh,680px)] pb-28 sm:pb-32")}>
+    <section className={cn("relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]", hero && (compactHero ? "min-h-[min(52vh,480px)] pb-24 sm:pb-28" : "min-h-[min(78vh,680px)] pb-28 sm:pb-32"))}>
       {!hero ? (
         <header className="relative z-20 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
-          <h1 className="mt-1 font-display text-[1.65rem] leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.6rem]">
-            The work has a place.
-          </h1>
         </header>
       ) : (
         <div className="pointer-events-none absolute left-5 top-4 z-20 sm:left-8 sm:top-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#86868b]">Campus</p>
-          {workingCount > 0 ? (
+          {campusLine ? (
+            <p className={cn("mt-1 text-[13px]", campusHot ? "font-medium text-[#0071e3]" : "text-[#6e6e73]")}>
+              {campusLine}
+            </p>
+          ) : workingCount > 0 ? (
             <p className="mt-1 text-[13px] font-medium text-[#1d1d1f]">
-              {workingCount} agent{workingCount === 1 ? "" : "s"} in the buildings
+              {workingCount} active
             </p>
           ) : null}
         </div>
@@ -180,19 +226,26 @@ export function CityMap({
               height={900}
               decoding="async"
               fetchPriority="high"
-              onLoad={() => setImgReady(true)}
+              loading="eager"
+              onLoad={onCampusLoad}
               onClick={() => {
                 onPick(null);
                 setDistrict(null);
               }}
-              className={`absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300 ${
+              className={cn(
+                "absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-300",
                 imgReady ? "opacity-100" : "opacity-0"
-              }`}
+              )}
             />
           </picture>
-          {!imgReady && (
-            <img src={LQIP} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-105 object-contain blur-md" />
-          )}
+          {!imgReady ? (
+            <img
+              src={LQIP}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-105 object-contain blur-md"
+            />
+          ) : null}
 
           {box.ready && (
             <div
@@ -241,10 +294,12 @@ export function CityMap({
                         strokeWidth="0.35"
                         strokeDasharray="1.2 0.8"
                       />
-                      <circle r="0.65" fill="#1d1d1f" opacity="0.55">
-                        <animateMotion dur="5.2s" repeatCount="indefinite">
-                          <mpath href={`#road-${i}`} />
-                        </animateMotion>
+                      <circle r="0.65" fill="#1d1d1f" opacity={liveMotion ? 0.55 : 0}>
+                        {liveMotion ? (
+                          <animateMotion dur="5.2s" repeatCount="indefinite">
+                            <mpath href={`#road-${i}`} />
+                          </animateMotion>
+                        ) : null}
                       </circle>
                     </g>
                   );
@@ -279,27 +334,19 @@ export function CityMap({
 
               {pods.map((pod) => {
                 const hot = hover === pod.id || district === pod.id;
-                const shown = pod.working.slice(0, 4);
-                if (!shown.length) return null;
+                const folk = pod.working.slice(0, 3);
+                if (!folk.length) return null;
                 return (
                   <div
                     key={`pod-${pod.id}`}
                     className={cn(
                       "pointer-events-none absolute z-[8] flex -translate-x-1/2 -translate-y-1/2 items-end gap-0.5 transition-opacity duration-300",
-                      hot ? "opacity-100" : "opacity-85"
+                      hot ? "opacity-100" : "opacity-90"
                     )}
                     style={{ left: `${pod.x}%`, top: `${pod.y}%` }}
                   >
-                    {shown.map((p) => (
-                      <span
-                        key={p.id}
-                        className={cn(
-                          "rounded-md bg-white/80 p-0.5 shadow-sm",
-                          p.status !== "idle" && "ring-1 ring-accent/35"
-                        )}
-                      >
-                        <PixelSprite name={p.id} scale={2} working={p.status !== "idle"} />
-                      </span>
+                    {folk.map((p) => (
+                      <PixelSprite key={p.id} name={p.id} scale={2} working={p.status !== "idle"} />
                     ))}
                   </div>
                 );
@@ -338,11 +385,13 @@ export function CityMap({
                       ) : null}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src="/city/pin.webp" alt="" width={28} height={36} className="h-8 w-auto drop-shadow-md sm:h-9" />
-                      <span className="absolute -top-1 flex -translate-y-full gap-0.5">
-                        {g.people.slice(0, 3).map((p) => (
-                          <PixelSprite key={p.id} name={p.id} scale={2} working={p.status !== "idle"} />
-                        ))}
-                      </span>
+                      {g.people.length ? (
+                        <span className="absolute -bottom-1 flex items-end gap-0.5">
+                          {g.people.slice(0, 3).map((p) => (
+                            <PixelSprite key={p.id} name={p.id} scale={2} working={p.status !== "idle"} />
+                          ))}
+                        </span>
+                      ) : null}
                     </button>
                   </div>
                 );
@@ -366,7 +415,7 @@ export function CityMap({
                 <div className="flex flex-wrap gap-2 px-5 pt-5">
                   {inside.slice(0, 6).map((d) => (
                     <span key={d.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-2 py-1 text-[11px]">
-                      <PixelSprite name={d.id} scale={2} working={d.status !== "idle"} />
+                      <AgentBadge name={d.id} working={d.status !== "idle"} size={18} variant="initial" />
                       {d.display_name.split(" ")[0]}
                     </span>
                   ))}
@@ -384,8 +433,8 @@ export function CityMap({
                 ? () => onWalkInside(district || desks.find((d) => d.room_id === selected?.id)?.district || "Office")
                 : undefined
             }
-            openLabel="Open the room"
-            insideLabel="Walk inside"
+            openLabel="Open"
+            insideLabel="Inside"
           />
         </aside>
       ) : null}

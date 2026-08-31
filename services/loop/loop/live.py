@@ -13,59 +13,13 @@ from typing import Any
 from fastapi import WebSocket
 
 from .models import InvestigationState, LoopType
+from .workflow import (
+    NODE_LABEL,
+    workflow_for,
+)
 
-# Visible pipeline chips (Type A BUG vs Type B FEATURE).
-PIPELINE_BUG = [
-    "signal",
-    "investigate",
-    "evidence",
-    "root_cause",
-    "code",
-    "risk",
-    "approve",
-    "verify",
-    "learn",
-]
-PIPELINE_FEATURE = [
-    "signal",
-    "investigate",
-    "evidence",
-    "product",
-    "experiment",
-    "risk",
-    "approve",
-    "verify",
-    "learn",
-]
-
-PIPELINE_LABEL = {
-    "signal": "Signal",
-    "investigate": "Investigate",
-    "evidence": "Evidence",
-    "root_cause": "Root cause",
-    "code": "Code",
-    "product": "Product",
-    "experiment": "Experiment",
-    "risk": "Risk",
-    "approve": "Approve",
-    "verify": "Verify",
-    "learn": "Learn",
-}
-
-_STATE_STAGE = {
-    InvestigationState.OPEN: "signal",
-    InvestigationState.GATHERING: "investigate",
-    InvestigationState.HYPOTHESIS: "evidence",
-    InvestigationState.ACTION_PROPOSED: "risk",
-    InvestigationState.AWAITING_APPROVAL: "approve",
-    InvestigationState.APPROVED: "approve",
-    InvestigationState.ACTING: "approve",
-    InvestigationState.VERIFYING: "verify",
-    InvestigationState.RESOLVED: "learn",
-    InvestigationState.PARTIALLY_RESOLVED: "learn",
-    InvestigationState.NOT_RESOLVED: "learn",
-    InvestigationState.INCONCLUSIVE: "learn",
-}
+# Re-exported for callers that imported these from live.
+PIPELINE_LABEL = NODE_LABEL
 
 
 class Hub:
@@ -165,34 +119,45 @@ class Hub:
 HUB = Hub()
 
 
-def funnel_for(loop_type: LoopType | str | None, state: InvestigationState | str | None, awaiting: bool = False) -> dict[str, Any]:
-    if isinstance(loop_type, LoopType):
-        raw = loop_type.value
-    else:
-        raw = str(loop_type or "")
-    is_feature = raw.lower() in {"type_b", "b", "feature"}
-    steps = list(PIPELINE_FEATURE if is_feature else PIPELINE_BUG)
-    stage = "signal"
-    if state is not None:
-        if isinstance(state, str):
-            try:
-                state = InvestigationState(state)
-            except ValueError:
-                state = None
-        if isinstance(state, InvestigationState):
-            stage = _STATE_STAGE.get(state, "signal")
-            if state == InvestigationState.HYPOTHESIS:
-                stage = "product" if is_feature else "root_cause"
-            if state == InvestigationState.ACTION_PROPOSED and not awaiting:
-                stage = "risk"
-    if awaiting:
-        stage = "approve"
-    current = stage if stage in steps else steps[0]
-    idx = steps.index(current)
+def funnel_for(
+    loop_type: LoopType | str | None,
+    state: InvestigationState | str | None,
+    awaiting: bool = False,
+    *,
+    path: Any = None,
+    room_kind: Any = None,
+    scenario_id: str | None = None,
+    dimensions: dict[str, Any] | None = None,
+    artifact_types: list[str] | None = None,
+    action_types: list[str] | None = None,
+    action_statuses: list[str] | None = None,
+    propose_action: bool | None = None,
+    signal_family: str | None = None,
+    signal_source: str | None = None,
+) -> dict[str, Any]:
+    """Per-room funnel chips. Steps are composed from case needs, not a fixed list."""
+    wf = workflow_for(
+        loop_type=loop_type,
+        path=path,
+        room_kind=room_kind,
+        scenario_id=scenario_id,
+        state=state,
+        awaiting=awaiting,
+        dimensions=dimensions,
+        artifact_types=artifact_types,
+        action_types=action_types,
+        action_statuses=action_statuses,
+        propose_action=propose_action,
+        signal_family=signal_family,
+        signal_source=signal_source,
+    )
     return {
-        "steps": [{"id": s, "label": PIPELINE_LABEL[s], "on": i <= idx} for i, s in enumerate(steps)],
-        "current": current,
-        "kind": "feature" if is_feature else "bug",
+        "steps": [{"id": s["id"], "label": s["label"], "on": s["on"]} for s in wf["steps"]],
+        "current": wf["current"],
+        "kind": wf["kind"],
+        "nodes": wf["nodes"],
+        "needs": wf["needs"],
+        "tags": wf["tags"],
     }
 
 

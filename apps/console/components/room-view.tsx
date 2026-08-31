@@ -1,19 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { Phone } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { HandoffPacket } from "@/components/handoff-packet";
 import { api, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
-import { shortName } from "@/lib/names";
 import { queryId, segmentId } from "@/lib/route-id";
-import { when, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
-import { WorkFlipbook } from "@/components/work-flipbook";
-import { pagesFromRoom } from "@/lib/work-pages";
-import { FunnelChips } from "@/components/funnel-chips";
-import { ArtifactCard } from "@/components/artifact-card";
-import { ChatBubble, RoomAgentRail } from "@/components/room-chat";
+import { AgentBadge } from "@/components/agent-badge";
+import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
+import { ThreadRoomHeader, WorkChatThread, type ChatThreadEvent } from "@/components/work-chat-thread";
 
 function useRoomId(fallback?: string) {
   const path = usePathname() || "";
@@ -22,6 +18,38 @@ function useRoomId(fallback?: string) {
     setQ(queryId(window.location.search));
   }, [path]);
   return q || segmentId(path, "rooms") || fallback || "";
+}
+
+function eventsFromRoom(data: RoomDetail): ChatThreadEvent[] {
+  const rows: ChatThreadEvent[] = [];
+  for (const msg of data.messages) {
+    if (msg.kind === "system" || msg.author === "system") {
+      rows.push({ kind: "system", id: msg.id, at: msg.created_at, text: msg.text });
+      continue;
+    }
+    rows.push({
+      kind: "chat",
+      id: msg.id,
+      at: msg.created_at,
+      author: msg.author,
+      author_kind: msg.author_kind,
+      text: msg.text,
+      artifact_type: msg.artifact_type,
+      artifact: msg.artifact || {},
+      msg_kind: msg.kind,
+    });
+  }
+  for (const call of data.bundle?.agent_calls ?? []) {
+    rows.push({
+      kind: "handoff",
+      id: String(call.id ?? `${call.from_agent}-${call.to_agent}-${call.started_at}`),
+      at: String(call.started_at ?? data.room.created_at),
+      from_agent: String(call.from_agent ?? ""),
+      to_agent: String(call.to_agent ?? ""),
+      summary: String(call.summary ?? ""),
+    });
+  }
+  return rows.sort((a, b) => a.at.localeCompare(b.at));
 }
 
 function Gate({
@@ -33,37 +61,50 @@ function Gate({
   busy: boolean;
   onDecide: (d: "approve" | "deny") => void;
 }) {
-  const execution = (action.artifacts?.execution ?? {}) as { pr_url?: string; flag?: string; value?: string };
+  const execution = (action.artifacts?.execution ?? {}) as {
+    pr_url?: string;
+    flag?: string;
+    value?: string;
+    proof?: Record<string, unknown>;
+  };
   if (action.status === "executed") {
+    const proof =
+      proofFromArtifact(
+        {
+          ...(execution.proof || {}),
+          pr_url: execution.pr_url,
+          url: execution.pr_url,
+          proof: execution.proof,
+        },
+        "pr"
+      ) ||
+      (execution.pr_url
+        ? proofFromArtifact({ pr_url: execution.pr_url, url: execution.pr_url, state: "open" }, "pr")
+        : null);
     return (
-      <div className="my-5 max-w-[620px] rounded-2xl border border-border bg-[var(--elev)] p-5">
-        <p className="text-[13px] text-[var(--dim)]">Done</p>
-        <p className="mt-2 text-[16px] font-semibold leading-6 tracking-tight">This change already ran</p>
-        {execution.flag ? (
-          <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">
-            {execution.flag} is {String(execution.value ?? "updated")}.
-          </p>
-        ) : null}
-        {execution.pr_url ? (
-          <p className="mt-2 text-[14px]">
-            <a href={execution.pr_url} className="text-accent" target="_blank" rel="noreferrer">
-              Open the pull request
-            </a>
-          </p>
-        ) : null}
+      <div className="mx-auto my-2 max-w-md fade-in">
+        {proof ? (
+          <ProofEmbed proof={proof} compact className="mt-0" />
+        ) : execution.pr_url ? (
+          <a href={execution.pr_url} className="inline-block text-[13px] text-accent" target="_blank" rel="noreferrer">
+            Open PR →
+          </a>
+        ) : (
+          <p className="text-[13px] text-[var(--dim)]">Done.</p>
+        )}
       </div>
     );
   }
   if (!["proposed", "awaiting_approval"].includes(action.status)) return null;
   return (
-    <div className="my-5 max-w-[620px] rounded-2xl border border-border bg-[var(--elev)] p-5">
-      <p className="text-[13px] text-[var(--dim)]">Needs a look · {action.risk_tier}</p>
-      <p className="mt-2 text-[16px] font-semibold leading-6 tracking-tight">This change is waiting on you</p>
-      <p className="mt-2 text-[14px] leading-6 text-[var(--dim)]">{action.consequence}</p>
-      {action.gate ? <p className="mt-2 text-[13px] leading-5 text-[var(--dim)]">{action.gate}</p> : null}
-      <div className="mt-4 flex flex-wrap gap-2">
+    <div className="mx-auto my-2 max-w-md rounded-2xl border border-border bg-white px-4 py-3 shadow-sm">
+      <p className="text-[14px] font-medium">Needs your OK</p>
+      {action.consequence ? (
+        <p className="mt-1 text-[13px] leading-5 text-[var(--dim)]">{action.consequence}</p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
         <Button onClick={() => onDecide("approve")} disabled={busy}>
-          {busy ? "Working…" : "Approve"}
+          {busy ? "…" : "Approve"}
         </Button>
         <Button variant="ghost" onClick={() => onDecide("deny")} disabled={busy}>
           Not yet
@@ -73,6 +114,7 @@ function Gate({
   );
 }
 
+/** Live room — messenger chat (same chrome as the old Traces view). */
 export function RoomView({ initialId }: { initialId?: string }) {
   const id = useRoomId(initialId);
   const [data, setData] = useState<RoomDetail | null>(null);
@@ -80,14 +122,18 @@ export function RoomView({ initialId }: { initialId?: string }) {
   const [text, setText] = useState("");
   const [callPhone, setCallPhone] = useState("");
   const [callNote, setCallNote] = useState<string | null>(null);
+  const [contactOnFile, setContactOnFile] = useState<{
+    phone?: string | null;
+    email?: string | null;
+    found: boolean;
+    detail?: string;
+    feedback?: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"work" | "transcript">("transcript");
   const [livePresence, setLivePresence] = useState<Record<string, string>>({});
-  const [freshHandoff, setFreshHandoff] = useState<string | null>(null);
-  const [seenMsgIds, setSeenMsgIds] = useState<Set<string>>(new Set());
-  const [filterAgent, setFilterAgent] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const gateRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   async function load(target: string) {
     try {
@@ -97,6 +143,15 @@ export function RoomView({ initialId }: { initialId?: string }) {
       for (const row of d.presence ?? []) p[row.agentId] = row.status;
       setLivePresence(p);
       setErr(null);
+      try {
+        const contact = await api.roomContact(target);
+        setContactOnFile(contact);
+        if (contact.found && contact.phone) {
+          setCallPhone((prev) => prev || contact.phone || "");
+        }
+      } catch {
+        setContactOnFile(null);
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed");
     }
@@ -106,9 +161,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
     if (!id) return;
     setData(null);
     setErr(null);
-    setFilterAgent(null);
     setToolsOpen(false);
-    setTab("transcript");
     void load(id);
   }, [id]);
 
@@ -124,8 +177,6 @@ export function RoomView({ initialId }: { initialId?: string }) {
             setLivePresence((prev) => ({ ...prev, [e.agentId]: e.status || "thinking" }));
           }
           if (e.type === "message" && e.message) {
-            const msg = e.message as RoomMessage;
-            setSeenMsgIds((prev) => new Set(prev).add(msg.id));
             setData((r) =>
               r
                 ? {
@@ -136,25 +187,33 @@ export function RoomView({ initialId }: { initialId?: string }) {
             );
           }
           if (e.type === "artifact" && e.artifact) {
-            const art = e.artifact as { text?: string; kind?: string; payload?: Record<string, unknown>; id?: string };
+            const art = e.artifact as {
+              text?: string;
+              kind?: string;
+              payload?: Record<string, unknown>;
+              id?: string;
+              author?: string;
+              author_kind?: string;
+              created_at?: string;
+            };
             setData((r) => {
               if (!r) return r;
               const msg: RoomMessage = {
                 id: String(art.id ?? `live-${Date.now()}`),
                 room_id: id,
-                author: "orchestrator",
-                author_kind: "agent",
+                author: String(art.author || "code_agent"),
+                author_kind: (art.author_kind as RoomMessage["author_kind"]) || "agent",
                 kind: "artifact",
                 text: String(art.text ?? art.kind ?? "artifact"),
                 artifact_type: String(art.kind ?? "note"),
                 artifact: (art.payload as Record<string, unknown>) ?? {},
-                created_at: new Date().toISOString(),
+                created_at: art.created_at || new Date().toISOString(),
               };
+              if (r.messages.some((m) => m.id === msg.id)) return r;
               return { ...r, messages: [...r.messages, msg] };
             });
           }
           if (e.type === "approval_required" || e.type === "approval_resolved") {
-            setTab("work");
             void load(id);
             window.requestAnimationFrame(() => {
               gateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -167,13 +226,10 @@ export function RoomView({ initialId }: { initialId?: string }) {
             const to = String(e.to ?? env.to_agent ?? "");
             const summary = String(e.summary ?? payload.summary ?? "handed off");
             if (from || to) {
-              const callId = `live-a2a-${Date.now()}`;
-              setFreshHandoff(callId);
-              window.setTimeout(() => setFreshHandoff(null), 800);
               setData((r) => {
                 if (!r?.bundle) return r;
                 const call = {
-                  id: callId,
+                  id: `live-a2a-${Date.now()}`,
                   from_agent: from,
                   to_agent: to,
                   summary,
@@ -187,18 +243,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
                   },
                 };
               });
-              if (to) {
-                setLivePresence((prev) => ({ ...prev, [to]: "thinking" }));
-              }
-            }
-          }
-          if (e.type === "trace") {
-            const step = (e.step ?? {}) as { agentId?: string; denial?: boolean };
-            if (step.agentId) {
-              setLivePresence((prev) => ({
-                ...prev,
-                [String(step.agentId)]: step.denial ? "idle" : "tool",
-              }));
+              if (to) setLivePresence((prev) => ({ ...prev, [to]: "thinking" }));
             }
           }
           if (e.type === "funnel_stage" && e.stage) {
@@ -219,7 +264,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
             setLivePresence((prev) => ({ ...prev, [String(e.agentId)]: String(e.status || "speaking") }));
           }
         } catch {
-          /* ignore bad frames */
+          /* ignore */
         }
       };
     } catch {
@@ -228,76 +273,19 @@ export function RoomView({ initialId }: { initialId?: string }) {
     return () => ws?.close();
   }, [id]);
 
-  const working = useMemo(() => {
-    const set = new Set<string>();
-    if (!data) return set;
-    for (const [agent, st] of Object.entries(livePresence)) {
-      if (st && st !== "idle") set.add(agent);
-    }
-    return set;
-  }, [data, livePresence]);
+  const events = useMemo(() => (data ? eventsFromRoom(data) : []), [data]);
 
-  const activity = useMemo(() => {
-    const map: Record<string, string> = {};
-    if (!data) return map;
-    for (const call of data.bundle?.agent_calls ?? []) {
-      const to = String(call.to_agent ?? "");
-      if (to) map[to] = String(call.summary ?? "working");
-    }
-    for (const [agent, st] of Object.entries(livePresence)) {
-      if (st && st !== "idle") map[agent] = st;
-    }
-    for (const m of data.messages) {
-      if (m.author && m.author !== "system") {
-        const snippet = m.text.length > 48 ? `${m.text.slice(0, 48)}…` : m.text;
-        map[m.author] = snippet;
-      }
-    }
-    return map;
-  }, [data, livePresence]);
-
-  const thread = useMemo(() => {
-    if (!data)
-      return [] as Array<{
-        key: string;
-        at: string;
-        kind: "msg" | "handoff";
-        msg?: RoomMessage;
-        handoff?: Record<string, unknown>;
-      }>;
-    const rows: Array<{
-      key: string;
-      at: string;
-      kind: "msg" | "handoff";
-      msg?: RoomMessage;
-      handoff?: Record<string, unknown>;
-    }> = [];
-    for (const msg of data.messages) {
-      rows.push({ key: msg.id, at: msg.created_at, kind: "msg", msg });
-    }
-    for (const call of data.bundle?.agent_calls ?? []) {
-      rows.push({
-        key: String(call.id ?? `${call.from_agent}-${call.to_agent}-${call.started_at}`),
-        at: String(call.started_at ?? data.room.created_at),
-        kind: "handoff",
-        handoff: call,
-      });
-    }
-    return rows.sort((a, b) => a.at.localeCompare(b.at));
-  }, [data]);
-
-  const artifacts = useMemo(
-    () => (data?.messages ?? []).filter((m) => m.kind === "artifact"),
-    [data],
-  );
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [events.length]);
 
   if (err) return <ErrorState message={err} />;
-  if (!id || !data) return <Loading label="Opening the room" />;
+  if (!id || !data) return <Loading label="Opening chat" />;
 
   const pending = data.bundle?.actions ?? [];
   const needsApproval = pending.some((a) => ["proposed", "awaiting_approval"].includes(a.status));
-  const recalled = data.bundle?.investigation.recalled_lessons ?? [];
-  const latestMsgId = data.messages.length ? data.messages[data.messages.length - 1]?.id : "";
+  const members = (data.room.members || []).filter((m) => m !== "system" && m !== "you");
+  const live = Object.entries(livePresence).some(([, st]) => st && st !== "idle");
 
   async function send() {
     if (!text.trim()) return;
@@ -333,20 +321,28 @@ export function RoomView({ initialId }: { initialId?: string }) {
   }
 
   async function callCustomer() {
-    if (!callPhone.trim()) {
-      setCallNote("Add a phone number first.");
-      return;
-    }
     setBusy(true);
     setCallNote(null);
     try {
       const out = await api.placeCall({
-        to_number: callPhone.trim(),
+        to_number: callPhone.trim() || undefined,
         reason: data?.room.topic || data?.room.title || "customer follow-up",
         room_id: id,
         product: data?.tenant?.product || "Product",
+        force: true,
       });
-      setCallNote(out.report.detail);
+      if (out.to_number) setCallPhone(out.to_number);
+      if (out.resolved?.found) {
+        setContactOnFile({
+          found: true,
+          phone: out.resolved.phone,
+          detail: out.resolved.detail,
+          feedback: out.resolved.feedback,
+        });
+        setCallNote(out.resolved.detail || out.report.detail);
+      } else {
+        setCallNote(out.report.detail);
+      }
       await load(id);
     } catch (e) {
       setCallNote(e instanceof Error ? e.message : "Call failed");
@@ -355,263 +351,106 @@ export function RoomView({ initialId }: { initialId?: string }) {
     }
   }
 
-  let lastAuthor = "";
-
-  const members = data.room.members.filter((m) => m !== "system");
-  const filteredThread = filterAgent
-    ? thread.filter((row) => {
-        if (row.kind === "handoff" && row.handoff) {
-          const from = String(row.handoff.from_agent ?? "");
-          const to = String(row.handoff.to_agent ?? "");
-          return from === filterAgent || to === filterAgent;
-        }
-        return row.msg?.author === filterAgent;
-      })
-    : thread;
-
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[var(--bg)]">
-      <div className="flex items-start justify-between gap-3 border-b border-border bg-white px-4 py-3 sm:px-6">
-        <div className="min-w-0">
-          <Link href="/" className="text-[12px] text-[var(--faint)] hover:text-foreground">
-            ← Campus
-          </Link>
-          <h1 className="mt-1 truncate text-[18px] font-semibold tracking-tight sm:text-[20px]">{data.room.title}</h1>
-          {data.funnel ? (
-            <div className="mt-2 max-w-full overflow-x-auto">
-              <FunnelChips steps={data.funnel.steps} current={data.funnel.current} presence={livePresence} />
-            </div>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setToolsOpen((o) => !o)}
-            className="rounded-full border border-border px-3 py-1.5 text-[12px] font-medium text-[var(--dim)] hover:bg-[var(--elev)]"
-          >
-            Tools
-          </button>
-          {needsApproval ? (
+    <div className="flex min-h-0 flex-1 flex-col bg-[#f0f0f2] fade-in">
+      <div className="shrink-0 border-b border-black/5 bg-white px-4 py-3 sm:px-6">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <ThreadRoomHeader title={data.room.title} members={members} />
+            {members.length > 0 ? (
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex -space-x-1.5">
+                  {members.slice(0, 7).map((mid) => (
+                    <AgentBadge key={mid} name={mid} size={24} variant="face" className="ring-2 ring-white" />
+                  ))}
+                </div>
+                {live ? <span className="text-[11px] font-medium text-accent">live</span> : null}
+              </div>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {needsApproval ? (
+              <button
+                type="button"
+                onClick={() => gateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                className="rounded-full bg-[var(--elev)] px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent/10"
+              >
+                Review
+              </button>
+            ) : null}
             <button
               type="button"
-              onClick={() => {
-                setTab("work");
-                gateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-              }}
-              className="rounded-full bg-accent px-3 py-1.5 text-[12px] font-medium text-white"
+              aria-label={toolsOpen ? "Close call options" : "Call customer"}
+              aria-expanded={toolsOpen}
+              onClick={() => setToolsOpen((o) => !o)}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full text-[var(--faint)] transition-colors hover:bg-[var(--elev)] hover:text-foreground",
+                toolsOpen && "bg-[var(--elev)] text-foreground",
+              )}
             >
-              Approve
+              <Phone className="h-4 w-4" strokeWidth={1.75} />
             </button>
-          ) : null}
-        </div>
-      </div>
-
-      {toolsOpen ? (
-        <div className="border-b border-border bg-white px-4 py-3 sm:px-6">
-          <div className="flex max-w-md flex-wrap items-end gap-2">
-            <label className="min-w-[10rem] flex-1 text-[11px] text-[var(--faint)]">
-              Call customer
-              <input
-                className="mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] outline-none focus:border-accent"
-                value={callPhone}
-                onChange={(e) => setCallPhone(e.target.value)}
-                placeholder="+1…"
-                inputMode="tel"
-              />
-            </label>
-            <Button type="button" onClick={() => void callCustomer()} disabled={busy}>
-              {busy ? "…" : "Call"}
-            </Button>
           </div>
-          {callNote ? <p className="mt-2 text-[12px] text-[var(--dim)]">{callNote}</p> : null}
         </div>
-      ) : null}
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <RoomAgentRail
-          members={data.room.members}
-          working={working}
-          presence={livePresence}
-          activity={activity}
-          picked={filterAgent}
-          onPick={setFilterAgent}
-        />
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white lg:bg-[var(--bg)]">
-          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2 sm:px-5">
-            <div className="flex rounded-full border border-border bg-[var(--elev)] p-0.5 text-[12px]">
-              <button
-                type="button"
-                className={cn(
-                  "rounded-full px-3 py-1 font-medium",
-                  tab === "transcript" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]"
-                )}
-                onClick={() => setTab("transcript")}
-              >
-                Chat
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "rounded-full px-3 py-1 font-medium",
-                  tab === "work" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]"
-                )}
-                onClick={() => setTab("work")}
-              >
-                Work
-              </button>
+        {toolsOpen ? (
+          <div className="mt-3 max-w-lg space-y-2 rounded-2xl bg-[var(--elev)] px-3 py-3">
+            <p className="text-[12px] text-[var(--dim)]">
+              {contactOnFile?.found
+                ? `Contact on file${contactOnFile.email ? ` · ${contactOnFile.email}` : ""}${
+                    contactOnFile.phone ? ` · ${contactOnFile.phone}` : ""
+                  }. Mail first; call only non-responders.`
+                : "No contact yet — capture email at registration or phone on feedback."}
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="min-w-[10rem] flex-1 text-[11px] text-[var(--faint)]">
+                Phone
+                <input
+                  className="mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] outline-none focus:border-accent"
+                  value={callPhone}
+                  onChange={(e) => setCallPhone(e.target.value)}
+                  placeholder={contactOnFile?.phone || "+1…"}
+                  inputMode="tel"
+                />
+              </label>
+              <Button type="button" onClick={() => void callCustomer()} disabled={busy}>
+                {busy ? "…" : "Call"}
+              </Button>
             </div>
-            {filterAgent ? (
-              <button
-                type="button"
-                className="max-w-[45%] truncate text-[11px] text-accent hover:underline"
-                onClick={() => setFilterAgent(null)}
-              >
-                Clear · {shortName(filterAgent)}
-              </button>
-            ) : (
-              <span className="text-[11px] text-[var(--faint)]">{members.length} agents</span>
-            )}
+            {callNote ? <p className="text-[12px] text-[var(--dim)]">{callNote}</p> : null}
           </div>
-
-          <div className="chat-scroll flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
-            {tab === "work" ? (
-              <div ref={gateRef} className="grid gap-3 sm:grid-cols-2">
-                {artifacts.map((m) => (
-                  <ArtifactCard key={m.id} msg={m} />
-                ))}
-                {artifacts.length === 0 && !pending.length ? (
-                  <p className="text-[13px] text-[var(--faint)]">Evidence lands here as agents work.</p>
-                ) : null}
-                {pending.map((action) => (
-                  <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
-                ))}
-                {data.bundle ? (
-                  <div className="sm:col-span-2">
-                    <WorkFlipbook
-                      pages={pagesFromRoom(data.room, [], data).filter((p) => !p.id.endsWith("-open"))}
-                    />
-                  </div>
-                ) : null}
-                {recalled.length ? (
-                  <div className="rounded-2xl bg-[var(--elev)] px-4 py-3 sm:col-span-2">
-                    <p className="text-[11px] text-[var(--faint)]">Memory</p>
-                    <p className="mt-1 text-[13px] leading-5">{recalled[0]}</p>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                {filteredThread.length === 0 ? (
-                  <p className="py-8 text-center text-[13px] text-[var(--faint)]">
-                    {filterAgent ? `No messages from ${shortName(filterAgent)} yet.` : "Waiting for the fleet…"}
-                  </p>
-                ) : null}
-                {filteredThread.map((row) => {
-                  if (row.kind === "handoff" && row.handoff) {
-                    lastAuthor = "";
-                    const hk = row.key;
-                    return (
-                      <HandoffPacket
-                        key={hk}
-                        from={String(row.handoff.from_agent ?? "")}
-                        to={String(row.handoff.to_agent ?? "")}
-                        summary={String(row.handoff.summary ?? "")}
-                        at={when(row.at)}
-                        fresh={freshHandoff === hk}
-                      />
-                    );
-                  }
-                  const msg = row.msg;
-                  if (!msg) return null;
-                  const isYou = msg.author === "you" || msg.author_kind === "human";
-                  const repeat = msg.author === lastAuthor;
-                  lastAuthor = msg.author;
-                  const href = msg.author_kind === "agent" ? `/agents/${msg.author}` : null;
-                  if (msg.kind === "artifact") {
-                    lastAuthor = "";
-                    return (
-                      <div key={msg.id} className="max-w-md">
-                        <ArtifactCard msg={msg} />
-                      </div>
-                    );
-                  }
-                  if (repeat) {
-                    return (
-                      <div key={msg.id} className={cn("flex", isYou ? "justify-end pr-0" : "justify-start pl-9")}>
-                        <ChatBubble
-                          author={msg.author}
-                          text={msg.text}
-                          isYou={isYou}
-                          compact
-                          live={
-                            msg.id === latestMsgId &&
-                            msg.author_kind === "agent" &&
-                            (seenMsgIds.has(msg.id) || Boolean(livePresence[msg.author]))
-                          }
-                          href={href}
-                        />
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={msg.id}>
-                      <div className={cn("mb-1 flex items-center gap-2", isYou && "justify-end")}>
-                        {!isYou && href ? (
-                          <Link href={href} className="text-[12px] font-medium hover:text-accent">
-                            {shortName(msg.author)}
-                          </Link>
-                        ) : !isYou ? (
-                          <span className="text-[12px] font-medium">{shortName(msg.author)}</span>
-                        ) : (
-                          <span className="text-[12px] font-medium text-[var(--faint)]">You</span>
-                        )}
-                        {livePresence[msg.author] && livePresence[msg.author] !== "idle" ? (
-                          <span className="text-[10px] text-accent">{livePresence[msg.author]}</span>
-                        ) : null}
-                      </div>
-                      <div className={cn("flex", isYou ? "justify-end" : "justify-start")}>
-                        <ChatBubble
-                          author={msg.author}
-                          text={msg.text}
-                          isYou={isYou}
-                          live={
-                            msg.id === latestMsgId &&
-                            msg.author_kind === "agent" &&
-                            (seenMsgIds.has(msg.id) || Boolean(livePresence[msg.author]))
-                          }
-                          href={href}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-                {pending.map((action) => (
-                  <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
-                ))}
-              </>
-            )}
-          </div>
-
-          <form
-            className="flex items-center gap-2 border-t border-border bg-white px-4 py-3 sm:px-5"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send();
-            }}
-          >
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Message the room"
-              className="h-11 min-w-0 flex-1 rounded-full bg-[var(--elev)] px-4 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/25"
-            />
-            <Button type="submit" disabled={busy || !text.trim()}>
-              Send
-            </Button>
-          </form>
-        </div>
+        ) : null}
       </div>
+
+      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+        <WorkChatThread
+          events={events}
+          variant="group"
+          empty="Nothing yet — agents will talk through this here."
+        />
+        <div ref={gateRef}>
+          {pending.map((action) => (
+            <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
+          ))}
+        </div>
+        <div ref={bottomRef} />
+      </div>
+
+      <form
+        className="shrink-0 border-t border-black/5 bg-white px-4 py-2.5 sm:px-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+      >
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Message"
+          disabled={busy}
+          className="max-w-3xl rounded-full bg-[#ebebed] px-3.5 py-2.5 text-[13px] text-foreground outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+        />
+      </form>
     </div>
   );
 }

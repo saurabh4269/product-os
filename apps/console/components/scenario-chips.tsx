@@ -42,10 +42,10 @@ export function ScenarioChips() {
     setBusy(slug);
     setErr(null);
     setRoomId(null);
-    setLog([`Running ${slug}…`, "Agents investigating — staged updates on home pipeline"]);
+    setLog([`Running ${slug}…`, "Agents investigating"]);
     try {
       const res = await api.scenarioRun(slug);
-      setLog((l) => [...l, "Fleet run complete", "Open room or watch pipeline on home"]);
+      setLog((l) => [...l, "Done"]);
       if (res.room_id) setRoomId(res.room_id);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed");
@@ -74,7 +74,7 @@ export function ScenarioChips() {
         </div>
       ) : null}
     <div className="mt-6">
-      <p className="text-[12px] text-[var(--faint)]">Eval fixtures — run the fleet live</p>
+      <p className="text-[12px] text-[var(--faint)]">Eval fixtures</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {items.map((s) => (
           <button

@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from loop import api as api_mod
 from loop.auth import admin_required, require_admin
 from loop.models import InvestigationState, OutcomeVerdict, RiskTier
-from loop.tenant import Tenant, ConnectorReport, flag_key, hash_token, resolve_tenant, tenant_id_from_scenario
+from loop.tenant import (
+    ConnectorReport,
+    Tenant,
+    flag_key,
+    hash_token,
+    resolve_tenant,
+    tenant_id_from_scenario,
+)
 
 
 def test_tenant_id_from_scenario():
@@ -60,8 +66,9 @@ def test_execute_uses_bound_tenant_not_first_connected(engine, monkeypatch):
 
 
 def test_verify_generic_is_inconclusive(engine):
-    from loop.models import Investigation, Signal, SignalFamily, Direction, SignalStatus
     from datetime import datetime
+
+    from loop.models import Direction, Signal, SignalFamily, SignalStatus
 
     sig = Signal(
         id="sig_g",
@@ -88,6 +95,63 @@ def test_verify_generic_is_inconclusive(engine):
     assert engine.store.get_investigation(inv.id).state == InvestigationState.INCONCLUSIVE
 
 
+def test_verify_generic_with_metric_reading(engine, monkeypatch):
+    """control_comparison is numeric-only — metric source string must not be stuffed there."""
+    from datetime import datetime
+
+    from loop.models import (
+        Direction,
+        Investigation,
+        InvestigationState,
+        Signal,
+        SignalFamily,
+        SignalStatus,
+    )
+    from loop.tenant import Tenant
+
+    engine.store.put_tenant(Tenant(id="acme", name="Acme", product="Cove", repo="saurabh4269/cove"))
+    sig = Signal(
+        id="sig_cc",
+        family=SignalFamily.BUSINESS,
+        direction=Direction.NEGATIVE,
+        funnel_position="checkout",
+        metric="checkout_conversion",
+        magnitude=-0.14,
+        baseline=0.72,
+        affected_segments=[],
+        detection_window={"start": "2026-08-26", "end": "2026-08-28"},
+        confidence=0.6,
+        source="tenant.acme",
+        status=SignalStatus.OPEN,
+        detected_at=datetime.utcnow(),
+    )
+    engine.store.put_signal(sig)
+    inv = Investigation(
+        id="inv_cc",
+        originating_signal_ids=[sig.id],
+        state=InvestigationState.VERIFYING,
+        opened_at=datetime.utcnow(),
+        invocation_id="job_x",
+        scenario_id="t:acme:checkout_conversion",
+        tenant_id="acme",
+    )
+    engine.store.put_investigation(inv)
+
+    def fake_read(_engine, tenant, metric, *, baseline=None):
+        return {
+            "value": 0.2791,
+            "baseline": baseline,
+            "source": "file_warehouse",
+            "claim": f"{metric} at 27.91% for Chrome (file warehouse)",
+        }
+
+    monkeypatch.setattr("loop.connectors.warehouse.read_metric_window", fake_read)
+    out = engine._verify_generic(inv)
+    assert out.control_comparison is None
+    assert out.post_value == pytest.approx(0.2791)
+    assert out.pre_value == pytest.approx(0.72)
+
+
 def test_ingest_runs_investigation_pipeline(engine, monkeypatch):
     engine.store.put_tenant(
         Tenant(id="acme", name="Northstar", product="Y", token_hash=hash_token("tok"), repo="acme/y")
@@ -112,9 +176,10 @@ def test_ingest_runs_investigation_pipeline(engine, monkeypatch):
 def test_approval_requires_admin_when_token_set(engine, monkeypatch):
     monkeypatch.setenv("LOOP_ADMIN_TOKEN", "secret")
     engine.seed_world()
+    high = next(a for a in engine.store.pending_approvals() if a.risk_tier == RiskTier.HIGH)
+    monkeypatch.setenv("LOOP_EVAL", "0")
     monkeypatch.setattr(api_mod, "_engine", engine)
     monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
-    high = next(a for a in engine.store.pending_approvals() if a.risk_tier == RiskTier.HIGH)
     with TestClient(api_mod.app) as client:
         denied = client.post(
             f"/api/approvals/{high.id}",
@@ -125,6 +190,21 @@ def test_approval_requires_admin_when_token_set(engine, monkeypatch):
             f"/api/approvals/{high.id}",
             headers={"Authorization": "Bearer secret"},
             json={"decision": "approve", "approver": "oncall@acme", "rationale": "ok"},
+        )
+        assert ok.status_code == 200
+
+
+def test_approval_open_in_eval_mode_with_admin_token(engine, monkeypatch):
+    monkeypatch.setenv("LOOP_ADMIN_TOKEN", "secret")
+    monkeypatch.setenv("LOOP_EVAL", "1")
+    engine.seed_world()
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    high = next(a for a in engine.store.pending_approvals() if a.risk_tier == RiskTier.HIGH)
+    with TestClient(api_mod.app) as client:
+        ok = client.post(
+            f"/api/approvals/{high.id}",
+            json={"decision": "approve", "approver": "you@product-os", "rationale": "demo"},
         )
         assert ok.status_code == 200
 

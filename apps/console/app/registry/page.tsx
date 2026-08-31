@@ -1,46 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { api, type RegistryAgent } from "@/lib/api";
-import { ErrorState, Loading } from "@/components/ui";
-import { PixelSprite } from "@/components/pixel-office";
+import { useEffect, useMemo, useState } from "react";
+import { api, type OfficeDesk, type RegistryAgent } from "@/lib/api";
+import { AgentBadge, type AgentStatus } from "@/components/agent-badge";
+import { agentHref } from "@/lib/names";
+import { Chip, ErrorState, Loading, PageHeader, RowLink } from "@/components/ui";
+
+function deskStatus(desk?: OfficeDesk): AgentStatus | undefined {
+  if (!desk) return undefined;
+  if (desk.status === "handing_off") return "handing_off";
+  if (desk.status !== "idle") return "working";
+  return "idle";
+}
 
 export default function RegistryPage() {
   const [agents, setAgents] = useState<RegistryAgent[] | null>(null);
+  const [desks, setDesks] = useState<OfficeDesk[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .registry()
-      .then((r) => setAgents(r.agents))
-      .catch((e) => setErr(e.message));
+    Promise.all([api.registry(), api.office()])
+      .then(([r, o]) => {
+        setAgents(r.agents);
+        setDesks(o.desks);
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : "failed"));
   }, []);
 
+  const deskById = useMemo(() => Object.fromEntries(desks.map((d) => [d.id, d])), [desks]);
+
   if (err) return <ErrorState message={err} />;
-  if (!agents) return <Loading label="Opening agents" />;
+  if (!agents) return <Loading label="Agents" />;
+
+  const tone = (level: string) =>
+    level === "HIGH" ? "danger" : level === "MEDIUM" ? "warn" : level === "LOW" ? "ok" : "muted";
 
   return (
-    <div className="page-pad">
-      <h1 className="text-[26px] font-semibold tracking-tight sm:text-[32px]">Agents</h1>
-      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
-        Each person has a role and a few permissions. Open anyone to see what they’re doing.
-      </p>
-      <div className="mt-10 divide-y divide-border overflow-hidden rounded-[20px] border border-border bg-white">
+    <div className="page-pad fade-in">
+      <PageHeader title="Agents" />
+      <div className="surface-lg mt-8 divide-y divide-border overflow-hidden">
         {agents.map((a) => (
-          <Link
+          <RowLink
             key={a.id}
-            href={`/agents/${a.id}`}
-            className="grid grid-cols-[48px_1fr] gap-3 px-5 py-4 hover:bg-[var(--elev)] md:grid-cols-[48px_200px_1fr_80px]"
-          >
-            <PixelSprite name={a.id} scale={2} />
-            <div>
-              <p className="text-[15px] font-medium">{a.display_name}</p>
-              <p className="text-[12px] text-[var(--faint)]">{a.identity}</p>
-            </div>
-            <p className="hidden text-[13px] leading-5 text-[var(--dim)] md:block">{a.role}</p>
-            <p className="text-[12px] text-[var(--faint)]">{a.risk_level}</p>
-          </Link>
+            href={agentHref(a.id)}
+            leading={<AgentBadge name={a.id} status={deskStatus(deskById[a.id])} size={36} variant="face" />}
+            title={a.display_name}
+            subtitle={deskById[a.id]?.doing || a.role}
+            trailing={<Chip tone={tone(a.risk_level)}>{a.risk_level}</Chip>}
+          />
         ))}
       </div>
     </div>

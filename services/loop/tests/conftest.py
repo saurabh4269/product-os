@@ -27,6 +27,9 @@ def warehouse_dir(tmp_path_factory) -> Path:
 def _no_background_job_dispatch(monkeypatch):
     """Enqueue must not spawn Cloud Tasks or daemon threads during unit tests."""
     monkeypatch.setattr("loop.jobs.dispatch", lambda _job, _store: None)
+    monkeypatch.setenv("LOOP_DEMO_ASYNC", "0")
+    monkeypatch.setenv("LOOP_DEMO_STAGE_MS", "0")
+    monkeypatch.setenv("LOOP_DEMO_STAGED", "0")
 
 
 @pytest.fixture()

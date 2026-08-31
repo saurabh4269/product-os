@@ -49,7 +49,7 @@ export function EvidenceGraph({
         })}
         <circle cx={cx} cy={cy} r="28" fill="#eef2ee" stroke="#0071e3" strokeWidth="2" />
         <text x={cx} y={cy + 4} textAnchor="middle" fill="#1d1d1f" fontSize="11" fontWeight="600">
-          {hyp ? `${Math.round(hyp.confidence * 100)}%` : "—"}
+          {hyp ? `${Math.round(hyp.confidence * 100)}%` : ""}
         </text>
         <text x={cx} y={24} textAnchor="middle" fill="#86868b" fontSize="10">
           hypothesis
@@ -113,13 +113,6 @@ export function EvidenceGraph({
           );
         })}
       </svg>
-      {picked ? (
-        <p className={cn("mt-2 text-[12px] text-[var(--dim)]")}>
-          Tap a source to see how it links to the hypothesis. Green lines = supporting evidence.
-        </p>
-      ) : (
-        <p className="mt-2 text-[12px] text-[var(--faint)]">Hover sources to highlight links</p>
-      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   withHighlight,
 } from "@/lib/diagram-definitions";
 import { STAGE_NODE_IDS, usePipelineHighlight } from "@/lib/pipeline-highlight";
+import { ArchifyEmbed } from "@/components/archify-embed";
 import { ArchitectureTabs, type ArchTab } from "@/components/diagrams/architecture-tabs";
 import { MermaidDiagram } from "@/components/diagrams/mermaid-diagram";
 import { FleetSwimlanes, SignalSourcesDiagram } from "@/components/diagrams/signal-sources-diagram";
@@ -30,20 +31,20 @@ import { DiagramDetailPanel } from "@/components/diagrams/diagram-detail-panel";
 import { SevenStepLoop } from "@/components/seven-step-loop";
 
 const LANE_DETAILS: Record<string, { body: string; adk: string }> = {
-  Detect: { body: "Signal agent ingests tenant webhooks and warehouse anomalies — never investigates alone.", adk: "Single-agent detect · opens room" },
-  Investigate: { body: "Parallel investigators fan out; each posts artifacts to the room.", adk: "Workflow + JoinNode" },
-  Decide: { body: "Evidence merges ≥3 independence groups; root cause agent synthesizes.", adk: "MergeNode · confidence gate" },
-  Act: { body: "BUG path → code + test. FEATURE path → product + experiment.", adk: "Type A / B fork" },
-  Govern: { body: "HIGH risk stops at operator modal; OAuth for side effects.", adk: "RequestInput · HITL" },
-  Verify: { body: "Learning agent watches metric window and writes lesson.", adk: "Metric window → memory" },
+  Detect: { body: "Signal agent reads webhooks and warehouse anomalies. It does not investigate alone.", adk: "Detect opens a room" },
+  Investigate: { body: "Investigators work in parallel and post findings to the room.", adk: "Workflow + JoinNode" },
+  Decide: { body: "Evidence from at least 3 independent sources. Root cause agent writes the call.", adk: "Merge · confidence" },
+  Act: { body: "Bug path: code and test. Feature path: product and experiment.", adk: "Type A / B" },
+  Govern: { body: "High risk waits for your approval. OAuth for side effects.", adk: "HITL" },
+  Verify: { body: "Learning agent watches the metric and writes a lesson.", adk: "Metric → memory" },
 };
 
 const TB_DETAILS: Record<string, string> = {
-  "TB-0": "Hard DENY for exfil — enforced by Gateway identity, not prompt.",
+  "TB-0": "Exfil is denied by Gateway identity, not by a prompt.",
   "TB-1": "Orchestration merge, evidence groups, approval gate.",
-  "TB-2": "Warehouse + logs read-only investigators.",
-  "TB-3": "Customer voice with SDP redaction.",
-  "TB-4": "Code clone, test, PR — no auto-merge.",
+  "TB-2": "Warehouse and logs. Read only.",
+  "TB-3": "Customer voice with redaction.",
+  "TB-4": "Code clone, test, PR. No auto-merge.",
   "TB-5": "Product specs, calendar drafts, coordination.",
   "TB-6": "Pct rollout experiments with guardrails.",
   "TB-7": "Post-ship verification and lessons.",
@@ -64,6 +65,8 @@ export default function ArchitectureContent() {
   const [trustTb, setTrustTb] = useState<string | null>(null);
   const [signalSide, setSignalSide] = useState<"push" | "pull" | null>(null);
   const [eventPath, setEventPath] = useState<string | null>(null);
+  const [signalProofs, setSignalProofs] = useState<Array<Record<string, unknown>>>([]);
+  const [fleetProofs, setFleetProofs] = useState<Array<Record<string, unknown>>>([]);
 
   useEffect(() => {
     setTab(parseTab(searchParams.get("tab")));
@@ -80,6 +83,53 @@ export default function ArchitectureContent() {
         setWorkflows(null);
       });
   }, []);
+
+  useEffect(() => {
+    if (!signalSide) {
+      setSignalProofs([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .proofResources({ signal: signalSide })
+      .then((r) => {
+        if (!cancelled) setSignalProofs(r.cards || []);
+      })
+      .catch(() => {
+        if (!cancelled) setSignalProofs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [signalSide]);
+
+  useEffect(() => {
+    const laneAgent: Record<string, string> = {
+      Detect: "signal_agent",
+      Investigate: "investigator_agent",
+      Decide: "root_cause_agent",
+      Act: "code_agent",
+      Govern: "security_policy_agent",
+      Verify: "learning_agent",
+    };
+    const agent = fleetLane ? laneAgent[fleetLane] : "";
+    if (!agent) {
+      setFleetProofs([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .proofResources({ agent })
+      .then((r) => {
+        if (!cancelled) setFleetProofs(r.cards || []);
+      })
+      .catch(() => {
+        if (!cancelled) setFleetProofs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fleetLane]);
 
   const flowSrc = useMemo(
     () => withHighlight(PRODUCT_FLOW, stage, stage ? STAGE_NODE_IDS[stage] || [] : []),
@@ -108,16 +158,12 @@ export default function ArchitectureContent() {
       </Link>
       <header className="mt-6 max-w-2xl">
         <p className="text-[13px] text-[var(--faint)]">Architecture</p>
-        <h1 className="mt-1 text-[28px] font-semibold tracking-tight sm:text-[32px]">Three layers + five planes</h1>
-        <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
-          Tier A user flow · Tier B tenant wire · Tier C fleet &amp; governance. Highlights sync with the live pipeline
-          when a demo is running.
-        </p>
+        <h1 className="mt-1 text-[28px] font-semibold tracking-tight sm:text-[32px]">How it fits together</h1>
         {stage ? (
           <p className="mt-3 rounded-xl border border-accent/25 bg-[color-mix(in_srgb,var(--accent)_6%,white)] px-3 py-2 text-[13px] text-accent">
-            Live: <strong>{stage.replace(/_/g, " ")}</strong> —{" "}
+            {stage.replace(/_/g, " ")} ·{" "}
             <Link href="/" className="underline">
-              pipeline board
+              pipeline
             </Link>
           </p>
         ) : null}
@@ -127,26 +173,20 @@ export default function ArchitectureContent() {
 
       {tab === "overview" ? (
         <div className="mt-8 space-y-10">
+          <ArchifyEmbed hero defaultDiagram="system" />
           <section>
-            <h2 className="text-[20px] font-semibold tracking-tight">Tier B · Tenant wire</h2>
-            <p className="mt-2 max-w-xl text-[14px] text-[var(--dim)]">
-              Product Y on their origin — signals and flags through Connect — outcomes to GitHub, flags, Calendar.
-            </p>
+            <h2 className="text-[20px] font-semibold tracking-tight">Tenant wire</h2>
             <div className="mt-4 overflow-x-auto rounded-2xl border border-border bg-white p-4">
               <TenantWireDiagram />
             </div>
             <p className="mt-3 text-[13px] text-[var(--faint)]">
               <Link href="/connect" className="text-accent hover:underline">
-                Connect desk
-              </Link>{" "}
-              · configure repo, deploy URL, warehouse
+                Connect
+              </Link>
             </p>
           </section>
           <section>
             <h2 className="text-[20px] font-semibold tracking-tight">System hub</h2>
-            <p className="mt-2 max-w-xl text-[14px] text-[var(--dim)]">
-              Console ↔ LoopEngine ↔ optional ADK worker. WebSocket pushes agent_callback events back to the UI.
-            </p>
             <div className="mt-4">
               <SystemHubDiagram />
             </div>
@@ -164,9 +204,10 @@ export default function ArchitectureContent() {
                 subtitle={signalSide === "push" ? "Tenant initiates" : "OS reads facts"}
                 body={
                   signalSide === "push"
-                    ? "Real-time webhooks from Product Y — checkout hangs, voice, feedback."
-                    : "Scheduled warehouse pull — GA4 → BQ → investigators query metrics."
+                    ? "Webhooks from Product Y: checkout hangs, voice, feedback."
+                    : "Warehouse pull: GA4 to BigQuery. Investigators query metrics."
                 }
+                proofs={signalProofs as never}
                 onClear={() => setSignalSide(null)}
               />
             ) : null}
@@ -223,6 +264,7 @@ export default function ArchitectureContent() {
                 subtitle="Functional lane"
                 body={LANE_DETAILS[fleetLane].body}
                 meta={[{ label: "ADK 2", value: LANE_DETAILS[fleetLane].adk }]}
+                proofs={fleetProofs as never}
                 onClear={() => setFleetLane(null)}
               />
             ) : null}
@@ -231,8 +273,7 @@ export default function ArchitectureContent() {
             </div>
           </section>
           <section>
-            <h2 className="text-[20px] font-semibold tracking-tight">Trust boundaries × agents</h2>
-            <p className="mt-2 text-[14px] text-[var(--dim)]">Seven TBs from PRD §7.2 — generated from registry.</p>
+            <h2 className="text-[20px] font-semibold tracking-tight">Trust boundaries</h2>
             <div className="mt-4 rounded-2xl border border-border bg-white p-4">
               <TrustBoundariesDiagram agents={agents} selected={trustTb} onSelect={setTrustTb} />
             </div>

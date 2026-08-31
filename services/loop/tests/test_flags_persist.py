@@ -14,7 +14,7 @@ def test_flags_persist_and_hydrate(tmp_path, monkeypatch):
     wh.mkdir()
     (wh / "meta.json").write_text('{"days":1,"events":1}')
     store_a = Store(tmp_path / "a.db")
-    engine_a = LoopEngine(store_a, Warehouse(wh))
+    LoopEngine(store_a, Warehouse(wh))
 
     blob: dict = {}
 

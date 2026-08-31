@@ -247,6 +247,8 @@ def post(
                 "kind": artifact_type or kind,
                 "payload": artifact or {"text": text},
                 "text": text,
+                "author": author,
+                "author_kind": author_kind,
                 "created_at": msg.created_at.isoformat() if hasattr(msg.created_at, "isoformat") else str(msg.created_at),
             }
             if event_type == "artifact"
@@ -255,6 +257,18 @@ def post(
     )
     if author_kind == "agent":
         HUB.set_presence(room_id, author, "speaking", {"label": author, "hue": abs(hash(author)) % 360})
+    try:
+        from .live_work import emit_work_from_message
+        from .tenant import resolve_tenant
+
+        tenant = resolve_tenant(engine.store, room=room) if room else None
+        emit_work_from_message(
+            msg,
+            room_title=room.title if room else "",
+            tenant_product=tenant.product if tenant else None,
+        )
+    except Exception:
+        pass
     return msg
 
 
@@ -345,6 +359,7 @@ def ingest_tenant_signal(
     baseline: float,
     note: str = "",
     source: str = "tenant.ingest",
+    async_finish: bool = False,
 ) -> dict[str, Any]:
     """Posted tenant events open or join a room; new signals run the investigation pipeline."""
     from .tenant import Tenant
@@ -433,6 +448,7 @@ def ingest_tenant_signal(
         path=path,
         room_kind=kind,
         live_progress=True,
+        async_finish=async_finish,
     )
     inv = engine.store.get_investigation(out["investigation_id"])
     assert inv and inv.originating_signal_ids
@@ -456,7 +472,13 @@ def ingest_tenant_signal(
         pass
     tenant.last_ingest_at = _now().isoformat()
     engine.store.put_tenant(tenant)
-    return {"signal": sig, "room_id": out["room_id"], "joined": False, "investigation_id": inv.id}
+    return {
+        "signal": sig,
+        "room_id": out["room_id"],
+        "joined": False,
+        "investigation_id": inv.id,
+        "async": bool(out.get("async")),
+    }
 
 
 def ingest_tenant_voice(
@@ -466,14 +488,25 @@ def ingest_tenant_voice(
     text: str,
     tokenized_user: str = "tok_anon",
     phone: str = "",
+    email: str = "",
 ) -> dict[str, Any]:
     """Customer voice from Product Y lands in a room — join if one is already open."""
     from .classify import classify_voice
+    from .customer_contact import upsert_registration
     from .tenant import Tenant
 
     assert isinstance(tenant, Tenant)
     clipped = text[:4000]
     classified = classify_voice(clipped)
+    identity = None
+    if email or phone:
+        identity = upsert_registration(
+            engine.store,
+            tokenized_user=tokenized_user or "tok_anon",
+            tenant_id=tenant.id,
+            email=email,
+            phone=phone,
+        )
     rec = {
         "id": _id("voice"),
         "kind": "customer",
@@ -482,6 +515,7 @@ def ingest_tenant_voice(
         "text": clipped,
         "channel": "tenant.ingest",
         "phone": phone or None,
+        "email": (email or "").strip().lower() or None,
         "classification": {
             "kind": classified["kind"],
             "label": classified["label"],
@@ -498,6 +532,39 @@ def ingest_tenant_voice(
     tenant.last_ingest_at = _now().isoformat()
     engine.store.put_tenant(tenant)
     label = classified["label"]
+
+    def _announce_contact(room_id: str) -> None:
+        from .telephony import normalize_e164
+
+        bits = []
+        shown_phone = None
+        if email:
+            bits.append(f"email {email.strip().lower()}")
+        if phone:
+            shown_phone = normalize_e164(phone) or phone
+            bits.append(f"callback {shown_phone}")
+        if not bits:
+            return
+        post(
+            engine,
+            room_id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="chat",
+            text=(
+                f"Saved {' · '.join(bits)} from Cove. "
+                "We'll email for feedback first if others share this pattern — calls only for non-responders."
+            ),
+            artifact_type="contact",
+            artifact={
+                "phone": shown_phone,
+                "raw": phone or None,
+                "email": (email or "").strip().lower() or None,
+                "tokenized_user": tokenized_user,
+                "source": "cove.feedback",
+                "tenant": tenant.id,
+            },
+        )
     if existing:
         # Re-tag open room when classification is stronger than research default
         if existing.loop_type == LoopType.TYPE_B and classified["loop_type"] == LoopType.TYPE_A:
@@ -526,6 +593,7 @@ def ingest_tenant_voice(
             artifact_type="classification",
             artifact=rec["classification"],
         )
+        _announce_contact(existing.id)
         if standing and standing.id != existing.id:
             post(
                 engine,
@@ -537,7 +605,13 @@ def ingest_tenant_voice(
                 artifact_type="voice",
                 artifact={"room_id": existing.id, "tenant": tenant.id},
             )
-        return {"voice": rec, "room_id": existing.id, "joined": True, "classification": rec["classification"]}
+        return {
+            "voice": rec,
+            "room_id": existing.id,
+            "joined": True,
+            "classification": rec["classification"],
+            "identity": identity,
+        }
     room = Room(
         id=_id("room"),
         kind=classified["room_kind"],
@@ -571,6 +645,7 @@ def ingest_tenant_voice(
         artifact_type="classification",
         artifact=rec["classification"],
     )
+    _announce_contact(room.id)
     if standing:
         post(
             engine,
@@ -582,7 +657,13 @@ def ingest_tenant_voice(
             artifact_type="voice",
             artifact={"room_id": room.id, "tenant": tenant.id},
         )
-    return {"voice": rec, "room_id": room.id, "joined": False, "classification": rec["classification"]}
+    return {
+        "voice": rec,
+        "room_id": room.id,
+        "joined": False,
+        "classification": rec["classification"],
+        "identity": identity,
+    }
 
 
 def _add_facts(engine: LoopEngine, inv: Investigation, facts: list[dict[str, Any]]) -> None:

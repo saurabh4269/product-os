@@ -42,7 +42,7 @@ def publish_agent_progress(
                 {
                     "type": "agent_callback",
                     "agentId": agent_id,
-                    "status": "idle",
+                    "status": "working",
                     "message": message,
                     "stage": st,
                     "artifact": artifact,
@@ -51,7 +51,9 @@ def publish_agent_progress(
     except Exception:
         pass
     if delay or os.environ.get("LOOP_DEMO_STAGED") == "1":
-        time.sleep(float(os.environ.get("LOOP_DEMO_STAGE_MS", "120")) / 1000.0)
+        # Default ~0.9s so operators can watch the board; override with LOOP_DEMO_STAGE_MS
+        ms = float(os.environ.get("LOOP_DEMO_STAGE_MS") or "900")
+        time.sleep(max(0.0, ms) / 1000.0)
 
 
 def publish_stage(room_id: str, stage: str, agent_id: str, message: str, *, tenant_id: str = "", delay: bool = False) -> None:

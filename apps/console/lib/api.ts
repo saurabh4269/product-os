@@ -1,3 +1,5 @@
+import { canonicalAgentId } from "./names";
+
 const BASE =
   process.env.NEXT_PUBLIC_API_URL ??
   (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8080");
@@ -10,8 +12,12 @@ function adminHeaders(): Record<string, string> {
   return headers;
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { cache: "no-store", credentials: "same-origin" });
+async function get<T>(path: string, opts?: { admin?: boolean }): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: opts?.admin ? adminHeaders() : undefined,
+  });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
   return res.json();
 }
@@ -21,8 +27,21 @@ async function post<T>(path: string, body?: unknown, opts?: { admin?: boolean })
     method: "POST",
     headers: opts?.admin ? adminHeaders() : { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : "{}",
+    credentials: "same-origin",
   });
-  if (!res.ok) throw new Error(`${path} ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401 && path.includes("/api/approvals/")) {
+      throw new Error("Approval blocked — hosted eval should allow console approve (check LOOP_EVAL on API)");
+    }
+    let detail = `${path} ${res.status}`;
+    try {
+      const j = await res.json();
+      if (typeof j?.detail === "string") detail = j.detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
   return res.json();
 }
 
@@ -233,6 +252,7 @@ export type AgentDetail = {
   rooms: Array<{ id: string; title: string; kind: string; topic: string }>;
   messages: Array<RoomMessage & { room_title?: string }>;
   handoffs: Handoff[];
+  resources?: Array<Record<string, unknown>>;
 };
 
 export const api = {
@@ -261,7 +281,19 @@ export const api = {
       lessons: Array<Record<string, unknown>>;
     }>("/api/memory"),
   traces: () =>
-    get<{ traces: Array<Record<string, unknown>>; verdicts: Array<Record<string, unknown>> }>("/api/traces"),
+    get<{
+      traces: Array<Record<string, unknown>>;
+      threads?: Array<{
+        investigation_id: string;
+        room_id?: string | null;
+        title: string;
+        kind?: string | null;
+        members?: string[];
+        events: Array<Record<string, unknown>>;
+        latest_at?: string;
+      }>;
+      verdicts: Array<Record<string, unknown>>;
+    }>("/api/traces"),
   scenarios: () => get<{ scenarios: Array<Record<string, unknown>> }>("/api/scenarios"),
   investigations: () =>
     get<{
@@ -326,7 +358,7 @@ export const api = {
         decision === "approve"
           ? "Evidence pack and risk gate reviewed in-room."
           : "Need more evidence before this change ships.",
-    }, { admin: true }),
+    }),
   approvalStatus: (actionId: string) =>
     get<{
       action_id: string;
@@ -344,6 +376,52 @@ export const api = {
     }>("/api/governance"),
   tenants: () => get<{ tenants: Tenant[]; gate?: { mode: string; tenant_repo: string; label: string } }>("/api/tenants"),
   tenant: (id: string) => get<{ tenant: Tenant; flags: Record<string, string> }>(`/api/tenants/${id}`),
+  onboardServices: (opts?: { project?: string; region?: string }) => {
+    const q = new URLSearchParams();
+    if (opts?.project) q.set("project", opts.project);
+    if (opts?.region) q.set("region", opts.region);
+    const qs = q.toString();
+    return get<{
+      status: string;
+      detail?: string;
+      project: string;
+      region: string;
+      services: Array<{ id: string; name: string; url: string; repo_hint?: string }>;
+    }>(`/api/onboard/services${qs ? `?${qs}` : ""}`, { admin: true });
+  },
+  onboardTenant: (body: {
+    cloud_run_service?: string;
+    repo: string;
+    region?: string;
+    project?: string;
+    tenant_id?: string;
+    name?: string;
+    product?: string;
+    deploy_url?: string;
+    wire?: boolean;
+  }) =>
+    post<{
+      status: string;
+      tenant_id: string;
+      tenant: Tenant;
+      token?: string;
+      token_once?: boolean;
+      os_url?: string | null;
+      wire?: { status: string; detail?: string; url?: string; hint?: string; manual?: string };
+      cloud_run?: Record<string, unknown>;
+      next?: string[];
+    }>("/api/tenants/onboard", body, { admin: true }),
+  verifyTenant: (id: string) =>
+    post<{
+      status: string;
+      tenant_id: string;
+      checks: Array<{ id: string; ok: boolean; label: string; detail?: string; room_id?: string }>;
+      ok: number;
+      total: number;
+      room_id?: string | null;
+      ready?: boolean;
+      ready_for_demo?: boolean;
+    }>(`/api/tenants/${id}/verify`, {}, { admin: true }),
   upsertTenant: (body: {
     id: string;
     name: string;
@@ -467,11 +545,38 @@ export const api = {
       slots?: Array<{ start: string; end: string; duration_minutes?: number }>;
       detail?: string;
     }>("/api/calendar/suggest", body ?? { limit: 5 }),
-  placeCall: (body: { to_number: string; reason?: string; room_id?: string; product?: string }) =>
-    post<{ report: { status: string; connector: string; detail: string; url?: string | null } }>(
-      "/api/calls",
-      body,
-    ),
+  placeCall: (body: {
+    to_number?: string;
+    reason?: string;
+    room_id?: string;
+    product?: string;
+    tokenized_user?: string;
+    force?: boolean;
+    purpose?: string;
+  }) =>
+    post<{
+      report: { status: string; connector: string; detail: string; url?: string | null };
+      resolved?: {
+        phone?: string | null;
+        email?: string | null;
+        found: boolean;
+        detail?: string;
+        feedback?: string;
+      } | null;
+      to_number?: string | null;
+      gate?: { allowed?: boolean; reason?: string; detail?: string };
+      purpose?: string;
+    }>("/api/calls", body),
+  roomContact: (roomId: string) =>
+    get<{
+      phone?: string | null;
+      email?: string | null;
+      found: boolean;
+      detail?: string;
+      feedback?: string;
+      source?: string;
+      tokenized_user?: string | null;
+    }>(`/api/rooms/${roomId}/contact`),
   opportunities: () => get<{ opportunities: Array<Record<string, unknown>> }>("/api/opportunities"),
   office: () => get<OfficeSnapshot>("/api/office"),
   agents: () =>
@@ -487,7 +592,7 @@ export const api = {
         risk_level?: string;
       }>;
     }>("/api/agents"),
-  agent: (id: string) => get<AgentDetail>(`/api/agents/${id}`),
+  agent: (id: string) => get<AgentDetail>(`/api/agents/${canonicalAgentId(id)}`),
   scenarioRun: (slug: string) =>
     post<{
       scenario: string;
@@ -511,6 +616,21 @@ export const api = {
       note?: string;
       enterprise?: Record<string, string>;
     }>("/api/workflows"),
+  workflowLinks: () =>
+    get<{
+      oauth: { connected: boolean; email: string; authorize_path: string };
+      calendar: { oauth: boolean; mode: string; detail: string; tools: string[] };
+      links: Array<{
+        kind: string;
+        label: string;
+        url: string;
+        room_id?: string | null;
+        detail?: string;
+        simulated?: boolean;
+      }>;
+      shortcuts: Array<{ kind: string; label: string; url: string }>;
+      workflows_href: string;
+    }>("/api/workflows/links"),
   metrics: () =>
     get<{
       idea_to_impact_hours_mean: number | null;
@@ -523,11 +643,19 @@ export const api = {
   pipeline: () =>
     get<{
       columns: string[];
+      column_labels?: Record<string, string>;
       cards: Array<{
         room_id: string;
         title: string;
         stage: string;
         kind: string;
+        workflow?: {
+          nodes?: string[];
+          steps?: Array<{ id: string; label: string; short?: string; detail?: string; on?: boolean }>;
+          current?: string;
+          needs?: Record<string, boolean>;
+          tags?: string[];
+        };
         tenant_id?: string | null;
         tenant_product?: string | null;
         scenario_id?: string | null;
@@ -537,12 +665,123 @@ export const api = {
         pr_url?: string | null;
         evidence_snippet?: string | null;
         calendar_snippet?: string | null;
+        calendar_url?: string | null;
+        meet_url?: string | null;
+        gmail_url?: string | null;
         voice_snippet?: string | null;
+        contact_phone?: string | null;
+        call_feedback?: string | null;
+        warehouse_snippet?: string | null;
+        code_snippet?: string | null;
+        activity_line?: string | null;
+        activity_author?: string | null;
         verified?: boolean;
         denied?: boolean;
         active_agents?: string[];
       }>;
+      focus?: {
+        steps: Array<{
+          n: number;
+          id: string;
+          short: string;
+          label: string;
+          detail: string;
+          stage: string;
+          on?: boolean;
+        }>;
+        current?: string | null;
+        kind?: string | null;
+        needs?: Record<string, boolean>;
+        tags?: string[];
+        room_id?: string | null;
+      };
     }>("/api/pipeline"),
+  workflowFocus: () =>
+    get<{
+      mode?: "watching" | "active";
+      watch_line?: string | null;
+      signal_agent?: { status?: string; detail?: string };
+      steps: Array<{
+        n: number;
+        id: string;
+        short: string;
+        label: string;
+        detail: string;
+        stage: string;
+        on?: boolean;
+        status?: string;
+        agent?: string;
+      }>;
+      handoffs?: Array<{ from: string; to: string; why: string; from_node?: string; to_node?: string }>;
+      current?: string | null;
+      kind?: string | null;
+      needs?: Record<string, boolean>;
+      tags?: string[];
+      room_id?: string | null;
+    }>("/api/workflows/focus"),
+  orchestrationHome: () =>
+    get<{
+      mode?: "watching" | "active";
+      watch_line?: string | null;
+      signal_agent?: { status?: string; detail?: string };
+      steps?: Array<Record<string, unknown>>;
+      handoffs?: Array<Record<string, unknown>>;
+      room_id?: string | null;
+    }>("/api/orchestration/home"),
+  liveWork: () =>
+    get<{
+      columns: Array<{ id: string; label: string; count: number }>;
+      cards: Array<{
+        id: string;
+        column: string;
+        badge: string;
+        text: string;
+        agent: string;
+        room_id: string;
+        room_title?: string;
+        tenant_product?: string | null;
+        artifact_type?: string | null;
+        phone?: string | null;
+        metric?: string | null;
+        source?: string | null;
+        created_at?: string;
+        pr_url?: string | null;
+        gmail_url?: string | null;
+        calendar_url?: string | null;
+        meet_url?: string | null;
+        bq_url?: string | null;
+        action_id?: string;
+        proof?: Record<string, unknown> | null;
+      }>;
+      stats: Record<string, number>;
+    }>("/api/live-work"),
+  proof: () =>
+    get<{
+      warehouse?: Record<string, unknown> | null;
+      github?: Record<string, unknown> | null;
+      ga4?: Record<string, unknown> | null;
+      logs?: Record<string, unknown> | null;
+      deploys?: Record<string, unknown> | null;
+      ads?: Record<string, unknown> | null;
+      contacts?: Record<string, unknown> | null;
+      flags?: Record<string, unknown> | null;
+      memory?: Record<string, unknown> | null;
+      workspace?: Record<string, unknown> | null;
+      gateway?: Record<string, unknown> | null;
+      cards?: Array<Record<string, unknown>>;
+      tenant_id?: string | null;
+      tenant_product?: string | null;
+    }>("/api/proof"),
+  proofResources: (opts?: { agent?: string; signal?: string; arm?: string }) => {
+    const q = new URLSearchParams();
+    if (opts?.agent) q.set("agent", opts.agent);
+    if (opts?.signal) q.set("signal", opts.signal);
+    if (opts?.arm) q.set("arm", opts.arm);
+    const qs = q.toString();
+    return get<{ scope: string; id: string; cards: Array<Record<string, unknown>> }>(
+      `/api/proof/resources${qs ? `?${qs}` : ""}`
+    );
+  },
   activity: () =>
     get<{
       events: Array<{
@@ -561,6 +800,7 @@ export const api = {
       room_id?: string;
       investigation_id?: string;
       joined?: boolean;
+      async?: boolean;
     }>("/api/demo/run"),
   config: () =>
     get<{ eval_mode: boolean; hosted: boolean; fixture_scenarios?: string[] }>("/api/config"),

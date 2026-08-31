@@ -173,7 +173,8 @@ def extract_structured_evidence(transcript: list[dict[str, str]]) -> dict[str, A
 
 
 def simulate_research_dialogue(brief: dict[str, Any]) -> list[dict[str, str]]:
-    from loop.customer_research import CustomerContextBrief, simulate_research_dialogue as _sim
+    from loop.customer_research import CustomerContextBrief
+    from loop.customer_research import simulate_research_dialogue as _sim
 
     return _sim(CustomerContextBrief.model_validate(brief) if "user_id" in brief else brief)
 

@@ -10,7 +10,7 @@ Not a hardcoded PR-review demo. Recipes supply a CoordinationRequest; the pipeli
        ↓
   calendar availability → suggest → create (OAuth or simulated)
        ↓
-  notify (Gmail draft only — send denied · chat/room)
+  notify (Gmail to your inbox only · chat/room)
        ↓
   leave awaiting human (never auto-merge)
 
@@ -186,11 +186,12 @@ def resolve_owners(req: CoordinationRequest) -> list[Owner]:
 
 
 def _notify_gmail_draft(req: CoordinationRequest, owners: list[Owner], slot: dict | None, plan: CoordinationPlan) -> dict[str, Any]:
-    from loop.connectors.mail import draft, send
+    from loop.connectors.mail import connected_email, draft, send, send_to_self
 
-    # Prove send is denied on this path
-    denied = send().model_dump()
-    to = ", ".join(o.email for o in owners) or "reviewers@example.com"
+    # Prove third-party send stays denied
+    denied = send("someone-else@example.com", "probe", "should fail").model_dump()
+    me = connected_email()
+    owners_line = ", ".join(o.email for o in owners) or "reviewers"
     n = dict(req.dimensions.get("notify") or {})
     subject = str(n.get("subject") or f"[LOOP] {req.title}")
     body_lines = [
@@ -205,15 +206,28 @@ def _notify_gmail_draft(req: CoordinationRequest, owners: list[Owner], slot: dic
     if slot:
         body_lines.append(f"Proposed slot: {slot.get('start')} → {slot.get('end')} UTC")
     if plan.with_meet:
-        body_lines.append("Meet link will appear on the calendar event when OAuth create succeeds.")
-    body_lines.append("\nGmail send is denied by Gateway — this is a draft only.")
-    report = draft(to, subject, "\n".join(str(x) for x in body_lines if x))
-    return {
-        "channel": "gmail_draft",
+        body_lines.append("Meet link appears on the calendar event when create succeeds.")
+    body_lines.append(f"\nIntended reviewers: {owners_line}")
+    body_lines.append("This copy was sent only to your connected Gmail inbox.")
+    text = "\n".join(str(x) for x in body_lines if x)
+
+    report = send_to_self(subject, text)
+    channel = "gmail"
+    if report.status != "applied":
+        report = draft(me or owners_line, subject, text)
+        channel = "gmail_draft"
+
+    out: dict[str, Any] = {
+        "channel": channel,
         "report": report.model_dump(),
-        "send_denied": denied,
-        "to": to,
+        "send_denied_third_party": denied,
+        "to": me or owners_line,
+        "subject": subject,
     }
+    if getattr(report, "url", None):
+        out["gmail_url"] = report.url
+    return out
+
 
 
 def _notify_chat(req: CoordinationRequest, owners: list[Owner], detail: str) -> dict[str, Any]:
@@ -298,6 +312,19 @@ def run_coordination(
             calendar_meta["create"] = report.model_dump()
             if report.url:
                 slot = {**slot, "event_url": report.url}
+            from loop.receipts import calendar_proof, post_receipt
+
+            post_receipt(
+                engine,
+                req.room_id,
+                kind="workspace",
+                title=req.title or "Calendar hold",
+                agent="coordination_agent",
+                status="done" if report.status == "applied" else ("failed" if report.status == "failed" else "done"),
+                detail=str(report.detail or ""),
+                open_url=str(report.url) if report.url else None,
+                proof=calendar_proof(slot, report=report.model_dump()),
+            )
         elif plan.notify_only is False:
             calendar_meta["create"] = {
                 "status": "skipped",
@@ -332,12 +359,66 @@ def run_coordination(
             notifications.append(_notify_gmail_draft(req, owners, slot, plan))
         elif channel == "chat":
             notifications.append(_notify_chat(req, owners, detail))
-        elif channel == "room":
-            notifications.append(_notify_room(engine, req, {**artifact, "notifications_preview": True}, detail))
 
-    # Always ensure a room artifact if room_id set and room channel was not requested
-    if req.room_id and "room" not in req.notify_channels and engine:
+    for n in notifications:
+        if n.get("channel") in {"gmail_draft", "gmail"}:
+            url = n.get("gmail_url") or (n.get("report") or {}).get("url")
+            if url:
+                artifact["gmail_url"] = url
+
+    if req.room_id and engine:
         notifications.append(_notify_room(engine, req, artifact, detail))
+        # Dedicated mail receipt so the live board can pile a Verify / Mail card
+        for n in notifications:
+            if n.get("channel") not in {"gmail", "gmail_draft"}:
+                continue
+            rep = n.get("report") or {}
+            to = n.get("to") or ""
+            subj = n.get("subject") or req.title
+            status = rep.get("status") or "skipped"
+            if status == "applied" and n.get("channel") == "gmail":
+                mail_text = f"Mail sent to {to}: {subj}"
+                mail_type = "mail"
+                badge_channel = "gmail"
+            elif status == "applied":
+                mail_text = f"Gmail draft ready: {subj}"
+                mail_type = "mail"
+                badge_channel = "gmail_draft"
+            else:
+                mail_text = f"Mail skipped ({rep.get('detail') or status}): {subj}"
+                mail_type = "mail"
+                badge_channel = n.get("channel")
+            from loop.world import post as room_post
+
+            room_post(
+                engine,
+                req.room_id,
+                author="coordination_agent",
+                author_kind="agent",
+                kind="artifact",
+                text=mail_text[:200],
+                artifact_type=mail_type,
+                artifact={
+                    "channel": badge_channel,
+                    "to": to,
+                    "subject": subj,
+                    "report": rep,
+                    "gmail_url": n.get("gmail_url") or rep.get("url"),
+                    "pr_url": req.pr_url,
+                    "proof": {
+                        "kind": "gmail",
+                        "status": status,
+                        "title": subj,
+                        "subtitle": to,
+                        "detail": rep.get("detail") or badge_channel,
+                        "url": n.get("gmail_url") or rep.get("url"),
+                        "console_url": n.get("gmail_url") or rep.get("url"),
+                        "to": to,
+                        "channel": badge_channel,
+                    },
+                },
+            )
+            break
 
     result = CoordinationResult(
         request_id=request_id,

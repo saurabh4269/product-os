@@ -2,9 +2,7 @@
 
 import type { Handoff, OfficeDesk, Room } from "@/lib/api";
 import { DISTRICTS } from "@/lib/campus";
-import { furnitureFor } from "@/lib/furniture";
-import { PixelItem } from "@/components/pixel-furniture";
-import { PixelSprite } from "@/components/pixel-office";
+import { AgentBadge } from "@/components/agent-badge";
 import { shortName } from "@/lib/names";
 import { cn } from "@/lib/utils";
 
@@ -50,9 +48,6 @@ function Tile({
 }) {
   const pos = iso(col, row);
   const busy = desk.status !== "idle";
-  const set = furnitureFor(desk.id, desk.district, busy);
-  const extras = set.items.filter((i) => i.kind !== "desk" && i.kind !== "chair");
-  const deskItem = set.items.find((i) => i.kind === "desk");
 
   return (
     <button
@@ -74,15 +69,14 @@ function Tile({
           filter: active ? "brightness(1.04)" : undefined,
         }}
       />
-      <span className="absolute left-1/2 top-1 flex -translate-x-1/2 flex-col items-center">
-        <PixelSprite name={desk.id} scale={2} working={busy} />
-        {deskItem ? <PixelItem item={deskItem} scale={2} className="-mt-1" /> : null}
-        <span className="-mt-1 flex items-end">
-          {extras.slice(0, 2).map((item) => (
-            <PixelItem key={item.kind} item={item} scale={1} />
-          ))}
-        </span>
-        <span className="mt-0.5 max-w-[72px] truncate text-[11px] font-medium leading-3 text-[#1d1d1f]">
+      <span className="absolute left-1/2 top-2 flex -translate-x-1/2 flex-col items-center gap-1">
+        <AgentBadge
+          name={desk.id}
+          status={busy ? (desk.status === "handing_off" ? "handing_off" : "working") : "idle"}
+          size={28}
+          variant="face"
+        />
+        <span className="max-w-[72px] truncate text-[11px] font-medium leading-3 text-[#1d1d1f]">
           {shortName(desk.id)}
         </span>
       </span>
@@ -116,14 +110,9 @@ export function IsoOffice({
     <section className="rounded-[24px] border border-border bg-white">
       <div className="flex flex-col gap-1 px-5 pt-6 sm:flex-row sm:items-end sm:justify-between sm:px-6">
         <div>
-          <p className="text-[13px] text-[var(--faint)]">Inside the buildings</p>
-          <h2 className="mt-1 text-[22px] font-semibold tracking-tight">
-            {focus ? focus : "A true floor"}
-          </h2>
+          <p className="text-[13px] text-[var(--faint)]">Inside</p>
+          <h2 className="mt-1 text-[22px] font-semibold tracking-tight">{focus ? focus : "Office"}</h2>
         </div>
-        <p className="text-[13px] text-[var(--dim)]">
-          {focus ? "Tap a desk to read the work." : "Each tile is a person. Tap one to go deeper."}
-        </p>
       </div>
 
       <div className="flex gap-2 overflow-x-auto px-5 pt-4 sm:px-6">

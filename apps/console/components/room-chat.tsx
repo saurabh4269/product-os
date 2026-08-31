@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { StreamBody } from "@/components/stream-body";
 import { AgentBadge } from "@/components/agent-badge";
-import { PixelSprite } from "@/components/pixel-office";
-import { hashHue, shortName } from "@/lib/names";
+import { agentHref, hashHue, shortName } from "@/lib/names";
 import { cn } from "@/lib/utils";
 
 const STATUS_DOT: Record<string, string> = {
@@ -51,7 +50,7 @@ export function RoomAgentRail({
           const inner = (
             <>
               <span className="relative shrink-0">
-                <PixelSprite name={id} scale={2} working={st !== "idle"} />
+                <AgentBadge name={id} size={28} variant="face" />
                 <span className={cn("absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full ring-2 ring-white", dot)} />
               </span>
               <span className="min-w-0 flex-1 lg:block">
@@ -76,7 +75,7 @@ export function RoomAgentRail({
             );
           }
           return (
-            <Link key={id} href={`/agents/${id}`} className={cls}>
+            <Link key={id} href={agentHref(id)} className={cls}>
               {inner}
             </Link>
           );
@@ -95,6 +94,8 @@ export function ChatBubble({
   artifact,
   href,
   compact,
+  showName,
+  tone = "room",
 }: {
   author: string;
   text: string;
@@ -105,23 +106,57 @@ export function ChatBubble({
   href?: string | null;
   /** Follow-up in a run — no avatar */
   compact?: boolean;
+  /** Colored display name above the body (group-chat style) */
+  showName?: boolean;
+  /** messenger = soft group chat like colleagues texting */
+  tone?: "room" | "messenger";
 }) {
   const hue = hashHue(author);
+  const name = shortName(author);
+  const messenger = tone === "messenger";
   const bubble = (
     <div
       className={cn(
-        "max-w-[min(100%,36rem)] break-words rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 shadow-sm",
-        isYou ? "rounded-br-md bg-accent text-white" : "rounded-bl-md border border-border bg-white text-foreground"
+        "max-w-[min(100%,36rem)] break-words text-[14px] leading-5",
+        messenger
+          ? "max-w-[min(100%,42rem)] rounded-2xl rounded-bl-md bg-[#ebebed] px-3 py-2"
+          : cn(
+              "rounded-2xl px-3.5 py-2.5 leading-6 shadow-sm",
+              isYou ? "rounded-br-md bg-accent text-white" : "rounded-bl-md border border-border bg-white text-foreground"
+            )
       )}
-      style={!isYou ? { borderLeftColor: `hsl(${hue} 35% 55%)`, borderLeftWidth: 3 } : undefined}
+      style={
+        !isYou && !messenger
+          ? { borderLeftColor: `hsl(${hue} 45% 48%)`, borderLeftWidth: 3 }
+          : undefined
+      }
     >
+      {!isYou && showName && !compact ? (
+        <p
+          className={cn("font-semibold", messenger ? "mb-0.5 text-[13px]" : "mb-0.5 text-[12px]")}
+          style={{ color: `hsl(${hue} 58% 36%)` }}
+        >
+          {name}
+        </p>
+      ) : null}
       {artifact ? (
         <p className="text-[13px] font-medium opacity-90">{text}</p>
       ) : (
-        <StreamBody text={text} live={live} className={isYou ? "text-white" : undefined} />
+        <StreamBody
+          text={text}
+          live={live}
+          className={cn(isYou && !messenger ? "text-white" : undefined, messenger && "text-[15px] leading-5")}
+        />
       )}
       {time ? (
-        <p className={cn("mt-1 text-[10px]", isYou ? "text-white/70" : "text-[var(--faint)]")}>{time}</p>
+        <p
+          className={cn(
+            "mt-1 text-right text-[10px]",
+            isYou && !messenger ? "text-white/70" : "text-[var(--faint)]"
+          )}
+        >
+          {time}
+        </p>
       ) : null}
     </div>
   );
@@ -131,12 +166,19 @@ export function ChatBubble({
       {!isYou && !compact ? (
         href ? (
           <Link href={href} className="shrink-0 self-end hover:opacity-80">
-            <AgentBadge name={author} working={Boolean(live)} size={28} />
+            <AgentBadge name={author} size={messenger ? 30 : 28} variant="face" />
           </Link>
         ) : (
-          <AgentBadge name={author} working={Boolean(live)} size={28} className="shrink-0 self-end" />
+          <AgentBadge
+            name={author}
+            size={messenger ? 30 : 28}
+            variant="face"
+            className="shrink-0 self-end"
+          />
         )
-      ) : null}
+      ) : (
+        !isYou && compact ? <span className="w-[30px] shrink-0" /> : null
+      )}
       {bubble}
     </div>
   );

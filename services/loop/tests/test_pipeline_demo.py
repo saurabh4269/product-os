@@ -46,6 +46,43 @@ def test_demo_run_opens_room(engine, monkeypatch):
         assert body["room_id"]
 
 
+def test_async_finish_returns_room_before_approval(engine, monkeypatch):
+    """Demo path opens the room immediately; investigators finish in the background."""
+    import time
+
+    from loop.tenant import Tenant, hash_token
+    from loop.world import ingest_tenant_signal
+
+    monkeypatch.setenv("LOOP_DEMO_STAGED", "1")
+    monkeypatch.setenv("LOOP_DEMO_STAGE_MS", "30")
+    engine.store.put_tenant(
+        Tenant(id="acme", name="Cove", product="Cove", repo="a/b", token_hash=hash_token("x"), connected=True, warehouse_mode="file")
+    )
+    t0 = time.time()
+    out = ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("acme"),
+        metric="checkout_conversion",
+        magnitude=-0.12,
+        baseline=0.7,
+        async_finish=True,
+    )
+    assert out["async"] is True
+    assert out["room_id"]
+    assert time.time() - t0 < 2.5
+    # Background should propose an action
+    deadline = time.time() + 8
+    while time.time() < deadline:
+        inv = engine.store.get_investigation(out["investigation_id"])
+        acts = engine.store.list_actions(inv.id) if inv else []
+        if acts:
+            break
+        time.sleep(0.05)
+    else:
+        raise AssertionError("background investigation never proposed an action")
+    assert engine.store.list_messages(out["room_id"])
+
+
 def test_post_signal_uses_investigation_pipeline(engine, monkeypatch):
     monkeypatch.setattr(api_mod, "_engine", engine)
     monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
@@ -85,7 +122,33 @@ def test_pipeline_card_enrichment(engine, monkeypatch):
             kind="artifact",
             text="Safari users abandon at 3DS challenge screen",
             artifact_type="voice",
-            artifact={"severity": "high"},
+            artifact={"severity": "high", "phone": "4155550199"},
+            created_at=datetime.now(UTC),
+        )
+    )
+    engine.store.put_message(
+        RoomMessage(
+            id="msg-contact",
+            room_id=room.id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="chat",
+            text="Looked up the customer contact in memory. Callback number is +14155550199.",
+            artifact_type="contact_lookup",
+            artifact={"phone": "+14155550199", "found": True},
+            created_at=datetime.now(UTC),
+        )
+    )
+    engine.store.put_message(
+        RoomMessage(
+            id="msg-feedback",
+            room_id=room.id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="chat",
+            text="Customer said: The 3DS screen froze after I entered my card.",
+            artifact_type="call_feedback",
+            artifact={"status": "completed"},
             created_at=datetime.now(UTC),
         )
     )
@@ -107,6 +170,9 @@ def test_pipeline_card_enrichment(engine, monkeypatch):
         card = next(c for c in cards if c["room_id"] == room.id)
         assert "Safari" in (card.get("voice_snippet") or "")
         assert card.get("calendar_snippet", "").startswith("Hold")
+        assert card.get("contact_phone") in {"4155550199", "+14155550199"}
+        assert "3DS" in (card.get("call_feedback") or "")
+        assert card.get("activity_line")
 
 
 def test_room_by_scenario(engine, monkeypatch):

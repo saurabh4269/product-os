@@ -6,6 +6,15 @@ import { setPipelineHighlight } from "@/lib/pipeline-highlight";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
 
+type FlowStep = {
+  n: number;
+  short: string;
+  label: string;
+  detail: string;
+  stage: string;
+  altStages?: string[];
+};
+
 export function PipelineFlowOverlay({
   open,
   onClose,
@@ -15,6 +24,7 @@ export function PipelineFlowOverlay({
   evidenceSnippet,
   voiceSnippet,
   calendarSnippet,
+  steps,
 }: {
   open: boolean;
   onClose: () => void;
@@ -24,11 +34,24 @@ export function PipelineFlowOverlay({
   evidenceSnippet?: string | null;
   voiceSnippet?: string | null;
   calendarSnippet?: string | null;
+  steps?: FlowStep[] | null;
 }) {
   const demo = useDemoGuide();
   if (!open) return null;
 
-  const idx = LOOPS_STEPS.findIndex((s) => s.stage === stage || s.altStages?.includes(stage));
+  const flow: FlowStep[] =
+    steps && steps.length
+      ? steps
+      : LOOPS_STEPS.map((s) => ({
+          n: s.n,
+          short: s.short,
+          label: s.label,
+          detail: s.detail,
+          stage: s.stage,
+          altStages: s.altStages,
+        }));
+
+  const idx = flow.findIndex((s) => s.stage === stage || s.altStages?.includes(stage));
 
   function goStep(stepStage: string) {
     setPipelineHighlight(stepStage);
@@ -43,7 +66,7 @@ export function PipelineFlowOverlay({
         role="dialog"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-[13px] text-[var(--faint)]">Investigation flow</p>
+        <p className="text-[13px] text-[var(--faint)]">This case</p>
         <h2 className="mt-1 text-[18px] font-semibold tracking-tight">{title}</h2>
         {evidenceSnippet ? (
           <p className="mt-2 text-[12px] leading-5 text-[var(--dim)] line-clamp-3">{evidenceSnippet}</p>
@@ -53,11 +76,11 @@ export function PipelineFlowOverlay({
         ) : null}
         {calendarSnippet ? <p className="mt-1 text-[12px] font-medium text-accent">{calendarSnippet}</p> : null}
         <ol className="mt-4 space-y-2">
-          {LOOPS_STEPS.map((step, i) => {
+          {flow.map((step, i) => {
             const current = step.stage === stage || step.altStages?.includes(stage);
             const done = idx > i;
             return (
-              <li key={step.n}>
+              <li key={`${step.stage}-${step.n}`}>
                 <button
                   type="button"
                   onClick={() => goStep(step.stage)}

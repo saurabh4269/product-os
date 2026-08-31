@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { setPipelineHighlight } from "@/lib/pipeline-highlight";
 import { useDemoWsBridge } from "@/lib/use-global-ws";
 
@@ -13,13 +14,13 @@ export type LoopStep = {
   altStages?: string[];
 };
 
-/** Tier A — seven-step product loop (demo narrator + homepage). */
+/** Fallback spine only — live UI prefers GET /api/workflows/focus. */
 export const LOOPS_STEPS: LoopStep[] = [
   {
     n: 1,
     short: "Signal",
     label: "Signal detected",
-    detail: "Cove checkout drop or BQ anomaly",
+    detail: "Warehouse or product signal",
     stage: "signal",
   },
   {
@@ -56,7 +57,7 @@ export const LOOPS_STEPS: LoopStep[] = [
     n: 6,
     short: "Ship",
     label: "PR on Product Y",
-    detail: "GitHub opened — OS never merges",
+    detail: "GitHub opened. OS never merges",
     stage: "code",
     altStages: ["verify"],
   },
@@ -95,21 +96,50 @@ type DemoGuideContextValue = {
   chapterIndex: number;
   flowRequest: number;
   requestFlowView: () => void;
+  registerRunDemo: (fn: (() => void) | null) => void;
+  triggerDemo: () => void;
 };
 
 const DemoGuideContext = createContext<DemoGuideContextValue | null>(null);
 
 export function DemoGuideProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [active, setActive] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [highlightStage, setHighlightStage] = useState<string | null>(null);
   const [fleetWorking, setFleetWorking] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
   const [flowRequest, setFlowRequest] = useState(0);
+  const runDemoRef = useRef<(() => void) | null>(null);
+
+  const registerRunDemo = useCallback((fn: (() => void) | null) => {
+    runDemoRef.current = fn;
+  }, []);
+
+  const triggerDemo = useCallback(() => {
+    if (runDemoRef.current) {
+      runDemoRef.current();
+      return;
+    }
+    // DemoRunner registers in useEffect — retry briefly if user taps welcome CTA on first paint.
+    let tries = 0;
+    const tick = () => {
+      if (runDemoRef.current) {
+        runDemoRef.current();
+        return;
+      }
+      if (++tries < 12) window.setTimeout(tick, 50);
+    };
+    window.setTimeout(tick, 0);
+  }, []);
 
   const requestFlowView = useCallback(() => {
-    setFlowRequest((n) => n + 1);
-  }, []);
+    if (roomId) {
+      router.push(`/rooms/${roomId}`);
+      return;
+    }
+    document.getElementById("live-work")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [router, roomId]);
 
   const startDemo = useCallback((rid?: string | null) => {
     setActive(true);
@@ -150,8 +180,10 @@ export function DemoGuideProvider({ children }: { children: ReactNode }) {
       chapterIndex,
       flowRequest,
       requestFlowView,
+      registerRunDemo,
+      triggerDemo,
     }),
-    [active, roomId, highlightStage, fleetWorking, pendingApproval, startDemo, endDemo, chapterIndex, flowRequest, requestFlowView]
+    [active, roomId, highlightStage, fleetWorking, pendingApproval, startDemo, endDemo, chapterIndex, flowRequest, requestFlowView, registerRunDemo, triggerDemo]
   );
 
   useDemoWsBridge(value);

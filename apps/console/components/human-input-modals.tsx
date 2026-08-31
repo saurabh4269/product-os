@@ -31,10 +31,10 @@ export function OAuthModal() {
   return (
     <div className="fixed inset-0 z-[65] flex items-end justify-center bg-black/20 p-4 sm:items-center">
       <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl" role="dialog">
-        <p className="text-[13px] text-[var(--faint)]">Human input · Workspace OAuth</p>
-        <h2 className="mt-1 text-[20px] font-semibold tracking-tight">Connect Google Calendar &amp; Gmail draft</h2>
+        <p className="text-[13px] text-[var(--faint)]">Google</p>
+        <h2 className="mt-1 text-[20px] font-semibold tracking-tight">Connect Calendar and Gmail</h2>
         <p className="mt-3 text-[14px] leading-6 text-[var(--dim)]">
-          {pending.reason || "Coordination needs a one-time Google consent. Send stays off — drafts and calendar holds only."}
+          {pending.reason || "One-time Google consent. Calendar holds, and mail only to your inbox."}
         </p>
         {pending.redirect_uri ? (
           <div className="mt-4 rounded-xl border border-border bg-[#eef2ee] px-3 py-2">
@@ -102,15 +102,25 @@ export function CalendarSlotModal() {
   }
 
   if (done) {
+    const isUrl = done.startsWith("http");
     return (
       <div className="fixed inset-0 z-[65] flex items-end justify-center bg-black/20 p-4 sm:items-center">
         <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
           <p className="text-[13px] text-[var(--faint)]">Calendar</p>
           <h2 className="mt-1 text-[20px] font-semibold tracking-tight">Hold placed</h2>
-          <p className="mt-3 text-[14px] text-[var(--dim)]">{done}</p>
-          <Button className="mt-4" onClick={() => hitl?.dismissCalendar()}>
-            Done
-          </Button>
+          <p className="mt-3 text-[14px] text-[var(--dim)]">
+            {isUrl ? "Open in Google Calendar or Meet." : done}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {isUrl ? (
+              <a href={done} target="_blank" rel="noreferrer">
+                <Button type="button">Open Calendar / Meet</Button>
+              </a>
+            ) : null}
+            <Button variant={isUrl ? "ghost" : undefined} onClick={() => hitl?.dismissCalendar()}>
+              Done
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -119,9 +129,9 @@ export function CalendarSlotModal() {
   return (
     <div className="fixed inset-0 z-[65] flex items-end justify-center bg-black/20 p-4 sm:items-center">
       <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl" role="dialog">
-        <p className="text-[13px] text-[var(--faint)]">Coordination · pick a slot</p>
+        <p className="text-[13px] text-[var(--faint)]">Pick a time</p>
         <h2 className="mt-1 text-[20px] font-semibold tracking-tight">{pending.title}</h2>
-        <p className="mt-2 text-[14px] text-[var(--dim)]">Suggested times from Calendar — confirm to create hold + Meet when OAuth is connected.</p>
+        <p className="mt-2 text-[14px] text-[var(--dim)]">Confirm to create a calendar hold when Google is connected.</p>
         <ul className="mt-4 max-h-48 space-y-2 overflow-y-auto">
           {pending.slots.map((s) => (
             <li key={s.start}>

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from loop.connectors import calendar as cal
+from loop.connectors.mail import send
 from loop.coordination import (
     CoordinationRequest,
     build_plan,
@@ -11,7 +12,6 @@ from loop.coordination import (
     resolve_owners,
     run_coordination,
 )
-from loop.connectors.mail import send
 
 
 def test_calendar_suggest_without_oauth():
@@ -34,8 +34,13 @@ def test_low_risk_notify_only_no_merge(engine):
     assert plan["auto_merge"] is False
     assert out["pipeline"] == ["identify_owners", "notify", "wait"]
     assert out["coordination"]["slot"] is None
-    gmail = next(n for n in out["coordination"]["notifications"] if n["channel"] == "gmail_draft")
-    assert gmail["send_denied"]["status"] == "denied"
+    gmail = next(
+        n
+        for n in out["coordination"]["notifications"]
+        if n["channel"] in {"gmail_draft", "gmail"}
+    )
+    assert gmail["send_denied_third_party"]["status"] == "denied"
+    assert gmail["send_denied_third_party"]["detail"] == "GMAIL_SEND_SELF_ONLY"
 
 
 def test_high_risk_schedules_and_never_merges(engine):
@@ -68,8 +73,9 @@ def test_surface_codeowners_resolution():
     assert build_plan(req).duration_minutes == 20
 
 
-def test_gmail_send_still_denied():
-    assert send().status == "denied"
+def test_gmail_send_third_party_denied():
+    assert send("other@example.com", "hi", "body").status == "denied"
+    assert send("other@example.com", "hi", "body").detail == "GMAIL_SEND_SELF_ONLY"
 
 
 def test_android_fixture_uses_coordination_infra(engine):

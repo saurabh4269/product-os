@@ -6,6 +6,7 @@ from .engine import LoopEngine
 from .registry import ENTRIES, by_id
 
 _ALIASES = {
+    "orchestrator_agent": "orchestrator",
     "analytics": "analytics_agent",
     "logs": "logs_agent",
     "deployment": "deployment_agent",
@@ -137,6 +138,8 @@ def office_snapshot(eng: LoopEngine) -> dict:
 
 
 def agent_snapshot(eng: LoopEngine, agent_id: str) -> dict | None:
+    from .narrate import humanize_handoff
+
     agent_id = canonical_agent(agent_id)
     entry = by_id().get(agent_id)
     if not entry:
@@ -160,15 +163,30 @@ def agent_snapshot(eng: LoopEngine, agent_id: str) -> dict | None:
                 continue
             messages.append({**msg.model_dump(mode="json"), "room_title": room.title})
     messages.sort(key=lambda m: m["created_at"])
-    handoffs = [
-        h
-        for h in office["handoffs"]
-        if h["from_agent"] == agent_id or h["to_agent"] == agent_id
-    ]
+    handoffs = []
+    for h in office["handoffs"]:
+        if h["from_agent"] != agent_id and h["to_agent"] != agent_id:
+            continue
+        handoffs.append(
+            {
+                **h,
+                "summary": humanize_handoff(h["from_agent"], h["to_agent"], h.get("summary") or ""),
+            }
+        )
     return {
         "agent": entry.model_dump(mode="json"),
         "desk": desk,
         "rooms": rooms,
         "messages": messages[-40:],
         "handoffs": handoffs[-30:],
+        "resources": _agent_resources(eng, agent_id),
     }
+
+
+def _agent_resources(eng: LoopEngine, agent_id: str) -> list:
+    try:
+        from .proof import agent_resources
+
+        return agent_resources(eng, agent_id)
+    except Exception:
+        return []

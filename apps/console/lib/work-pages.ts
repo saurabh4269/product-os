@@ -96,7 +96,7 @@ export function pagesFromRoom(room: Room, desks: OfficeDesk[] = [], detail?: Roo
   pages.push({
     id: `${room.id}-open`,
     kicker: "Go deeper",
-    title: "Open the room",
+    title: "Open",
     body: "The full thread, handoffs, and anything waiting on you.",
     people: room.members.filter((m) => m !== "system").slice(0, 6),
   });

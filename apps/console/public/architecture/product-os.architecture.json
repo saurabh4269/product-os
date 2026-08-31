@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Product OS",
+    "subtitle": "Tenant signals → investigate → gate → outcomes",
+    "locale": "en",
+    "visual_preset": "signal-flow",
+    "animation": "trace",
+    "output": "product-os.architecture.html",
+    "quality_profile": "standard",
+    "views": [
+      {
+        "id": "tenant-wire",
+        "label": "Tenant wire",
+        "focus": ["cove", "ingest", "bq", "engine"],
+        "note": "Product Y pushes signals; BigQuery supplies warehouse facts on investigate."
+      },
+      {
+        "id": "control-plane",
+        "label": "Control plane",
+        "focus": ["console", "engine", "agents", "gateway"],
+        "note": "Console observes; LoopEngine fans out agents under Gateway envelopes."
+      },
+      {
+        "id": "outcomes",
+        "label": "Outcomes",
+        "focus": ["operator", "engine", "github", "workspace"],
+        "note": "You approve; GitHub gets a PR; Workspace gets calendar and Gmail drafts."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "You",
+      "sublabel": "approve · observe",
+      "pos": [40, 280],
+      "size": [120, 56]
+    },
+    {
+      "id": "console",
+      "type": "frontend",
+      "label": "Console",
+      "sublabel": "campus · rooms · pipeline",
+      "pos": [200, 280],
+      "size": [150, 56]
+    },
+    {
+      "id": "ws",
+      "type": "messagebus",
+      "label": "WebSocket",
+      "sublabel": "live feed",
+      "pos": [200, 140],
+      "size": [120, 48]
+    },
+    {
+      "id": "cove",
+      "type": "external",
+      "label": "Product Y",
+      "sublabel": "Cove · tenant origin",
+      "pos": [40, 440],
+      "size": [130, 56]
+    },
+    {
+      "id": "ingest",
+      "type": "backend",
+      "label": "Ingest API",
+      "sublabel": "signals · voice · flags",
+      "pos": [380, 360],
+      "size": [140, 56]
+    },
+    {
+      "id": "bq",
+      "type": "database",
+      "label": "BigQuery",
+      "sublabel": "GA4 · Ads · loop_raw",
+      "pos": [380, 480],
+      "size": [140, 56]
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "LoopEngine",
+      "sublabel": "investigate · evidence · gate",
+      "pos": [560, 360],
+      "size": [150, 56],
+      "tag": "control plane"
+    },
+    {
+      "id": "agents",
+      "type": "cloud",
+      "label": "Agent fleet",
+      "sublabel": "23 specialists · fan-out",
+      "pos": [560, 200],
+      "size": [150, 56]
+    },
+    {
+      "id": "gateway",
+      "type": "security",
+      "label": "Gateway",
+      "sublabel": "exfil DENY",
+      "pos": [760, 200],
+      "size": [130, 48]
+    },
+    {
+      "id": "github",
+      "type": "external",
+      "label": "GitHub",
+      "sublabel": "PR · no merge",
+      "pos": [760, 360],
+      "size": [130, 56]
+    },
+    {
+      "id": "workspace",
+      "type": "external",
+      "label": "Workspace",
+      "sublabel": "Calendar · Gmail draft",
+      "pos": [760, 480],
+      "size": [140, 56]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Cloud Run · loop",
+      "wraps": ["ingest", "engine", "agents", "gateway"]
+    },
+    {
+      "kind": "region",
+      "label": "Tenant origin",
+      "wraps": ["cove"]
+    }
+  ],
+  "connections": [
+    { "from": "operator", "to": "console", "variant": "emphasis" },
+    { "from": "console", "to": "ws", "variant": "dashed", "fromSide": "top", "toSide": "bottom" },
+    { "from": "console", "to": "engine", "label": "REST", "variant": "emphasis" },
+    { "from": "cove", "to": "ingest", "label": "push signals", "variant": "emphasis" },
+    { "from": "bq", "to": "engine", "label": "pull facts", "variant": "emphasis", "fromSide": "top", "toSide": "bottom" },
+    { "from": "ingest", "to": "engine", "variant": "emphasis" },
+    { "from": "engine", "to": "agents", "label": "fan-out", "variant": "emphasis", "fromSide": "top", "toSide": "bottom" },
+    { "from": "agents", "to": "gateway", "variant": "security" },
+    { "from": "engine", "to": "github", "label": "approve", "variant": "emphasis", "labelDy": 14 },
+    { "from": "engine", "to": "workspace", "label": "coordinate", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Signal plane",
+      "items": [
+        "Cove posts checkout hangs and voice to Ingest",
+        "GA4 / Ads exports land in BigQuery",
+        "Signal agent opens or joins a room"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Investigation",
+      "items": [
+        "Parallel investigators query warehouse + logs",
+        "Evidence joins ≥3 independence groups",
+        "Root cause → BUG or FEATURE path"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Governance",
+      "items": [
+        "HIGH gates stop at your approve modal",
+        "Gateway DENY blocks customer exfil",
+        "PR opens on tenant repo — never merged here"
+      ]
+    }
+  ]
+}

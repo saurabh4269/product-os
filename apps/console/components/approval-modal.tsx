@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { DoorOpen } from "lucide-react";
 import { api } from "@/lib/api";
 import { useDemoGuide } from "@/lib/demo-guide-context";
 import { useHumanInput } from "@/lib/human-input-context";
@@ -17,7 +19,7 @@ async function promptHumanInput(
     const oauth = await api.oauth();
     if (!oauth.connected) {
       hitl.setPendingOAuth({
-        reason: "Calendar holds and Gmail drafts need Workspace OAuth once. Send stays off.",
+        reason: "Calendar holds and mail to your connected inbox need Workspace OAuth once.",
         authorize_url: oauth.authorize_url || "/api/oauth/google/start",
         redirect_uri: oauth.redirect_uri,
         room_id: pending.room_id,
@@ -58,12 +60,12 @@ export function ApprovalModal() {
       if (decision === "approve") {
         demo?.setHighlightStage("verify");
         setPipelineHighlight("verify");
-        toast?.push("Approved — fleet continuing", { hot: true });
+        toast?.push("Approved", { hot: true });
         const prUrl = out.pr_url || out.execution?.pr_url;
         if (prUrl) toast?.push("Pull request opened", { href: prUrl, hot: true });
         await promptHumanInput(hitl, pending);
       } else {
-        toast?.push("Change held — more evidence needed");
+        toast?.push("Held");
         demo?.setFleetWorking(false);
       }
     } catch (e) {
@@ -76,28 +78,31 @@ export function ApprovalModal() {
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/20 p-4 sm:items-center">
       <div
-        className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl"
+        className="surface-lg w-full max-w-md p-6 shadow-xl fade-in"
         role="dialog"
         aria-labelledby="approval-title"
       >
-        <p className="text-[13px] text-[var(--faint)]">Needs your look · {pending.risk_tier || "HIGH"}</p>
-        <h2 id="approval-title" className="mt-1 text-[20px] font-semibold tracking-tight">
-          {pending.title || "Change waiting on you"}
+        <h2 id="approval-title" className="text-[20px] font-semibold tracking-tight">
+          {pending.title || "Approve?"}
         </h2>
-        <p className="mt-3 text-[14px] leading-6 text-[var(--dim)]">
-          {pending.consequence || "Review evidence in the room before approving."}
-        </p>
-        <div className="mt-5 flex flex-wrap gap-2">
+        {pending.consequence ? (
+          <p className="mt-2 line-clamp-2 text-[13px] text-[var(--faint)]">{pending.consequence}</p>
+        ) : null}
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <Button onClick={() => void decide("approve")} disabled={busy}>
-            {busy ? "Working…" : "Approve"}
+            {busy ? "…" : "Approve"}
           </Button>
           <Button variant="ghost" onClick={() => void decide("deny")} disabled={busy}>
             Not yet
           </Button>
           {pending.room_id ? (
-            <a href={`/rooms/${pending.room_id}`} className="self-center text-[13px] text-accent hover:underline">
-              Open room
-            </a>
+            <Link
+              href={`/rooms/${pending.room_id}`}
+              className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full text-accent hover:bg-[var(--elev)]"
+              aria-label="Open room"
+            >
+              <DoorOpen size={18} strokeWidth={1.75} />
+            </Link>
           ) : null}
         </div>
         {err ? <p className="mt-3 text-[13px] text-red-600">{err}</p> : null}

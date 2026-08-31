@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { ProofGrid, type ProofPayload } from "@/components/proof-embed";
 
 /** Detail panel shown when a diagram node / lane is selected. */
 export function DiagramDetailPanel({
@@ -8,6 +9,7 @@ export function DiagramDetailPanel({
   subtitle,
   body,
   meta,
+  proofs,
   onClear,
   className,
 }: {
@@ -15,6 +17,7 @@ export function DiagramDetailPanel({
   subtitle?: string;
   body?: string;
   meta?: Array<{ label: string; value: string }>;
+  proofs?: ProofPayload[] | null;
   onClear?: () => void;
   className?: string;
 }) {
@@ -46,6 +49,14 @@ export function DiagramDetailPanel({
             </div>
           ))}
         </dl>
+      ) : null}
+      {proofs && proofs.length > 0 ? (
+        <div className="mt-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--faint)]">
+            Live embeddings
+          </p>
+          <ProofGrid cards={proofs} className="sm:grid-cols-1 md:grid-cols-2" compact />
+        </div>
       ) : null}
     </div>
   );

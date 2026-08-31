@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { FurnitureSet } from "@/components/pixel-furniture";
+import { AgentBadge, AgentStack } from "@/components/agent-badge";
 import { hashHue, shortName } from "@/lib/names";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,8 @@ export function paletteFor(name: string): Palette {
   };
 }
 
-const FRAME_A = [
+/** Standing pose — campus people stay still (no walk cycle). */
+const FRAME = [
   "................",
   ".....kkkk.......",
   "....khhhhk......",
@@ -63,26 +64,7 @@ const FRAME_A = [
   "................",
 ];
 
-const FRAME_B = [
-  "................",
-  ".....kkkk.......",
-  "....khhhhk......",
-  "....khsshk......",
-  "....kssssk......",
-  "....kskskk......",
-  ".....kssk.......",
-  "....kttttk......",
-  "...kttttttk.....",
-  "...ksttts k.....",
-  "....kttttk......",
-  "....knnnnk......",
-  "...kkn..knk.....",
-  "...kbk..kbk.....",
-  "...kkk..kkk.....",
-  "................",
-];
-
-function colorOf(ch: string, p: Palette, extra?: Record<string, string>) {
+function colorOf(ch: string, p: Palette) {
   if (ch === "." || ch === " ") return null;
   if (ch === "k") return p.k;
   if (ch === "s") return p.s;
@@ -90,21 +72,14 @@ function colorOf(ch: string, p: Palette, extra?: Record<string, string>) {
   if (ch === "t") return p.t;
   if (ch === "n") return p.n;
   if (ch === "b") return p.b;
-  if (extra && extra[ch]) return extra[ch];
   return p.k;
 }
 
-function paint(
-  ctx: CanvasRenderingContext2D,
-  grid: string[],
-  scale: number,
-  p: Palette,
-  extra?: Record<string, string>
-) {
+function paint(ctx: CanvasRenderingContext2D, grid: string[], scale: number, p: Palette) {
   ctx.clearRect(0, 0, grid[0].length * scale, grid.length * scale);
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[y].length; x++) {
-      const c = colorOf(grid[y][x], p, extra);
+      const c = colorOf(grid[y][x], p);
       if (!c) continue;
       ctx.fillStyle = c;
       ctx.fillRect(x * scale, y * scale, scale, scale);
@@ -112,24 +87,22 @@ function paint(
   }
 }
 
+/** Little standing people for the campus map — static, no body animation. */
 export function PixelSprite({
   name,
-  scale = 3,
+  scale = 2,
   working = false,
-  animate,
   className,
 }: {
   name: string;
   scale?: number;
   working?: boolean;
-  /** Override leg animation; default is only when `working`. */
   animate?: boolean;
   className?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const pal = useMemo(() => paletteFor(name), [name]);
   const size = 16 * scale;
-  const shouldAnimate = animate ?? working;
 
   useLayoutEffect(() => {
     const canvas = ref.current;
@@ -137,33 +110,24 @@ export function PixelSprite({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
-    let frame = 0;
-    const tick = () => {
-      paint(ctx, frame % 2 === 0 ? FRAME_A : FRAME_B, scale, pal);
-      frame += 1;
-    };
-    paint(ctx, FRAME_A, scale, pal);
-    if (!shouldAnimate) return;
-    tick();
-    const id = window.setInterval(tick, working ? 220 : 480);
-    return () => window.clearInterval(id);
-  }, [pal, scale, working, shouldAnimate]);
+    paint(ctx, FRAME, scale, pal);
+  }, [pal, scale]);
 
   return (
     <canvas
       ref={ref}
       width={size}
       height={size}
-      className={cn("pixelated block", working && "agent-bob is-working", className)}
+      className={cn("pixelated block drop-shadow-sm", working ? "opacity-100" : "opacity-80", className)}
       style={{ width: size, height: size }}
       aria-hidden
     />
   );
 }
 
+/** Soft avatar icons (rooms, rails, lists) — not the campus pixel people. */
 export function Pixel({ name, size = 16 }: { name: string; size?: number }) {
-  const scale = Math.max(1, Math.round(size / 16));
-  return <PixelSprite name={name} scale={scale} />;
+  return <AgentBadge name={name} size={size} />;
 }
 
 export function PixelOffice({
@@ -172,8 +136,6 @@ export function PixelOffice({
   compact = false,
   activity,
   link = true,
-  district,
-  furniture,
 }: {
   members: string[];
   working: Set<string>;
@@ -183,41 +145,47 @@ export function PixelOffice({
   district?: string;
   furniture?: boolean;
 }) {
-  const showFurniture = furniture ?? !compact;
-  const shown = members.filter((m) => m !== "system").slice(0, compact ? 4 : 6);
+  const shown = members.filter((m) => m !== "system").slice(0, compact ? 5 : 6);
   const workingList = shown.filter((m) => working.has(m));
   const idleList = shown.filter((m) => !working.has(m));
   const ordered = [...workingList, ...idleList];
+  const avatarSize = compact ? 32 : 36;
+
+  if (compact) {
+    return (
+      <div className="flex justify-center px-4 pb-4 pt-6">
+        <AgentStack names={ordered} working={working} size={avatarSize} max={5} />
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("bg-[var(--floor)]", compact ? "px-4 pb-4 pt-6" : "px-4 pb-5 pt-6")}>
-      <div className="-mx-1 flex justify-center gap-4 overflow-x-auto overflow-y-visible px-1 py-2">
-        {ordered.map((name, i) => {
+    <div className="px-4 pb-5 pt-6">
+      <div className="-mx-1 flex justify-center gap-3 overflow-x-auto px-1 py-2">
+        {ordered.map((name) => {
           const isWork = working.has(name);
-          const note = compact ? undefined : isWork ? activity?.[name] : undefined;
+          const note = isWork ? activity?.[name] : undefined;
           const inner = (
-            <>
+            <div className="flex w-[72px] shrink-0 flex-col items-center gap-1.5">
               {note ? (
-                <span className="mb-1.5 max-w-[92px] truncate rounded-full bg-white px-2 py-0.5 font-sans text-[10px] leading-4 text-[var(--dim)]">
+                <span className="max-w-full truncate rounded-full bg-white px-2 py-0.5 text-[10px] leading-4 text-[var(--dim)]">
                   {note}
                 </span>
-              ) : null}
-              <PixelSprite name={name} scale={3} working={isWork} />
-              {showFurniture ? <FurnitureSet name={name} district={district} working={isWork} scale={2} /> : null}
-              <span className="mt-1.5 max-w-[84px] truncate text-center text-[12px] leading-4 text-[var(--dim)]">
+              ) : (
+                <span className="h-5" aria-hidden />
+              )}
+              <AgentBadge name={name} working={isWork} size={avatarSize} variant="face" />
+              <span className="max-w-full truncate text-center text-[12px] leading-4 text-[var(--dim)]">
                 {shortName(name)}
               </span>
-            </>
+            </div>
           );
           return (
-            <div
-              key={name}
-              className="flex shrink-0 flex-col items-center"
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              {!link || name === "you" || name === "system" ? (
+            <div key={name}>
+              {!link || name === "you" ? (
                 inner
               ) : (
-                <Link href={`/agents/${name}`} className="flex flex-col items-center hover:opacity-80">
+                <Link href={`/agents/${name}`} className="hover:opacity-85">
                   {inner}
                 </Link>
               )}
@@ -242,12 +210,11 @@ export function HiveChamber({
   members: string[];
   loop?: string | null;
 }) {
-  const working = new Set(members.slice(0, 3));
   const label =
     kind === "incident" ? "Incident" : kind === "opportunity" ? "Idea" : kind === "review" ? "Review" : kind;
   return (
     <div className="chamber soft-card flex h-full flex-col overflow-hidden rounded-[22px] border border-border bg-white">
-      <PixelOffice members={members} working={working} compact link={false} />
+      <PixelOffice members={members} working={new Set()} compact link={false} />
       <div className="flex flex-1 flex-col px-5 py-5">
         <p className="text-[13px] text-[var(--faint)]">
           {label}

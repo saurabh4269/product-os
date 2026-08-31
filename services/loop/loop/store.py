@@ -11,7 +11,6 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from .tenant import Tenant
 from .models import (
     AgentCall,
     Approval,
@@ -27,6 +26,7 @@ from .models import (
     Signal,
     TimelineEvent,
 )
+from .tenant import Tenant
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -58,6 +58,15 @@ CREATE TABLE IF NOT EXISTS contacts (
   tokenized_user TEXT PRIMARY KEY,
   count INTEGER NOT NULL,
   last_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS customer_identities (
+  tokenized_user TEXT PRIMARY KEY,
+  json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS customer_outreach (
+  id TEXT PRIMARY KEY,
+  investigation_id TEXT,
+  json TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS memory (
   id TEXT PRIMARY KEY,
@@ -307,6 +316,86 @@ class Store:
             self._conn.commit()
             return True
 
+    def put_customer_identity(self, identity: dict[str, Any]) -> dict[str, Any]:
+        """Upsert Product Y registration identity (email + phone + consent)."""
+        tok = str(identity.get("tokenized_user") or "").strip()
+        if not tok:
+            raise ValueError("tokenized_user required")
+        existing = self.get_customer_identity(tok) or {}
+        merged = {**existing, **{k: v for k, v in identity.items() if v is not None and v != ""}}
+        merged["tokenized_user"] = tok
+        merged["updated_at"] = _now()
+        if "created_at" not in merged:
+            merged["created_at"] = merged["updated_at"]
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO customer_identities (tokenized_user, json) VALUES (?,?) "
+                "ON CONFLICT(tokenized_user) DO UPDATE SET json=excluded.json",
+                (tok, json.dumps(merged)),
+            )
+            self._conn.commit()
+        self._maybe_snapshot()
+        return merged
+
+    def get_customer_identity(self, tokenized_user: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT json FROM customer_identities WHERE tokenized_user=?",
+                (tokenized_user,),
+            ).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def list_customer_identities(self, *, tenant_id: str | None = None) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._conn.execute("SELECT json FROM customer_identities").fetchall()
+        out = [json.loads(r[0]) for r in rows]
+        if tenant_id:
+            out = [x for x in out if x.get("tenant_id") in (None, tenant_id)]
+        return out
+
+    def put_outreach(self, row: dict[str, Any]) -> dict[str, Any]:
+        oid = str(row.get("id") or "")
+        if not oid:
+            raise ValueError("outreach id required")
+        inv = str(row.get("investigation_id") or "")
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO customer_outreach (id, investigation_id, json) VALUES (?,?,?) "
+                "ON CONFLICT(id) DO UPDATE SET investigation_id=excluded.investigation_id, json=excluded.json",
+                (oid, inv, json.dumps(row)),
+            )
+            self._conn.commit()
+        self._maybe_snapshot()
+        return row
+
+    def get_outreach(self, id_: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute("SELECT json FROM customer_outreach WHERE id=?", (id_,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def list_outreach(
+        self,
+        *,
+        investigation_id: str | None = None,
+        room_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        with self._lock:
+            if investigation_id:
+                rows = self._conn.execute(
+                    "SELECT json FROM customer_outreach WHERE investigation_id=?",
+                    (investigation_id,),
+                ).fetchall()
+            else:
+                rows = self._conn.execute("SELECT json FROM customer_outreach").fetchall()
+        out = [json.loads(r[0]) for r in rows]
+        if room_id:
+            out = [x for x in out if x.get("room_id") == room_id]
+        if status:
+            out = [x for x in out if x.get("status") == status]
+        out.sort(key=lambda x: str(x.get("created_at") or ""))
+        return out
+
     def put_memory(self, id_: str, kind: str, payload: dict, *, tenant_id: str | None = None) -> None:
         body = dict(payload)
         if tenant_id:
@@ -382,7 +471,6 @@ class Store:
         from .jobs import Job
 
         now = _now()
-        placeholders = ",".join("?" * len(kinds))
         with self._lock:
             rows = self._conn.execute("SELECT id, json FROM jobs").fetchall()
         candidates: list[Job] = []

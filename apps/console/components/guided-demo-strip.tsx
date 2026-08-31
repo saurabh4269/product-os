@@ -1,35 +1,68 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import { LOOPS_STEPS, useDemoGuide } from "@/lib/demo-guide-context";
 import { setPipelineHighlight } from "@/lib/pipeline-highlight";
+import { useGlobalWs } from "@/lib/use-global-ws";
 import { cn } from "@/lib/utils";
 
-export function GuidedDemoStrip() {
+type Step = {
+  n: number;
+  short: string;
+  stage: string;
+  altStages?: string[];
+};
+
+export function GuidedDemoStrip({ className }: { className?: string }) {
   const demo = useDemoGuide();
+  const router = useRouter();
+  const { tick } = useGlobalWs();
+  const [steps, setSteps] = useState<Step[]>(LOOPS_STEPS);
+
+  useEffect(() => {
+    api
+      .workflowFocus()
+      .then((r) => {
+        if (r.steps?.length) {
+          setSteps(
+            r.steps.map((s) => ({
+              n: s.n,
+              short: s.short,
+              stage: s.stage,
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        /* keep fallback */
+      });
+  }, [tick, demo?.roomId, demo?.active]);
+
   if (!demo?.active) return null;
 
   return (
-    <div className="mt-4 rounded-2xl border border-accent/25 bg-[color-mix(in_srgb,var(--accent)_6%,white)] px-4 py-3">
+    <div className={cn("rounded-2xl border border-accent/25 bg-[color-mix(in_srgb,var(--accent)_6%,white)] px-4 py-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] font-medium uppercase tracking-wide text-accent">Guided demo · live</p>
         {demo.roomId ? (
           <button
             type="button"
-            onClick={() => demo.requestFlowView()}
+            onClick={() => router.push(`/rooms/${demo.roomId}`)}
             className="text-[11px] font-medium text-accent hover:underline"
           >
-            Open flow overlay
+            Open chat →
           </button>
         ) : null}
       </div>
       <ol className="mt-2 flex flex-wrap gap-x-2 gap-y-2">
-        {LOOPS_STEPS.map((ch) => {
-          const idx = LOOPS_STEPS.findIndex((s) => s.n === ch.n);
+        {steps.map((ch, idx) => {
           const done = demo.chapterIndex > idx;
           const current =
             demo.highlightStage === ch.stage || ch.altStages?.includes(demo.highlightStage || "") || false;
           return (
-            <li key={ch.n}>
+            <li key={`${ch.stage}-${ch.n}`}>
               <button
                 type="button"
                 onClick={() => {

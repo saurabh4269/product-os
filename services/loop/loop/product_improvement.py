@@ -375,39 +375,7 @@ def run_product_loop(
         )
 
     claims = evidence_from_event(event)
-    if len(claims) < 3:
-        # Pad with generic independent sources so the ≥3 gate can fire when recipes are thin.
-        pads = [
-            EvidenceClaim(
-                source_type="analytics",
-                source_reference=f"{event.metric}@warehouse",
-                claim=f"{event.metric} observed at {event.magnitude} (baseline {event.baseline}).",
-                independence_group="analytics_warehouse",
-                collected_by="analytics_agent",
-            ),
-            EvidenceClaim(
-                source_type="logs",
-                source_reference=f"logs:{event.funnel_position}",
-                claim=f"Session/log cluster on {event.funnel_position} aligns with the signal.",
-                independence_group="logs",
-                collected_by="logs_agent",
-            ),
-            EvidenceClaim(
-                source_type="customer_voice",
-                source_reference=f"voice:{event.kind}",
-                claim=event.dimensions.get("voice_claim")
-                or "Customer feedback cluster supports the product hypothesis direction.",
-                independence_group="customer_voice",
-                collected_by="feedback_agent",
-            ),
-        ]
-        have_groups = {c.independence_group for c in claims}
-        for p in pads:
-            if p.independence_group not in have_groups:
-                claims.append(p)
-                have_groups.add(p.independence_group)
-            if len(have_groups) >= 3:
-                break
+    # No padding — three-source gate must see real independent groups from the recipe/tools.
 
     _add_facts(engine, inv, [c.model_dump() for c in claims])
 

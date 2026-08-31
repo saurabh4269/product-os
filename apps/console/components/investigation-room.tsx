@@ -120,7 +120,7 @@ export function InvestigationRoom({ initialId }: { initialId?: string }) {
               {hyp?.statement ?? "Agents are still gathering"}
             </h1>
             <p className="mt-2 text-sm text-slate-400">
-              Incident room — judge the graph and the chat, not a model’s confidence.
+              Graph and chat for this incident.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export function InvestigationRoom({ initialId }: { initialId?: string }) {
             <p className="font-mono text-[11px] uppercase text-slate-500">Verification</p>
             <p className="mt-2 text-lg">{String(outcome.verdict)}</p>
             <p className="mt-1 font-mono text-sm text-slate-400">
-              Safari conversion {pct(Number(outcome.pre_value))} → {pct(Number(outcome.post_value))}
+              {String(outcome.metric || "Metric")} {pct(Number(outcome.pre_value))} → {pct(Number(outcome.post_value))}
             </p>
             {bundle.lessons[0] ? (
               <p className="mt-3 text-sm text-slate-300">{String(bundle.lessons[0].statement)}</p>
@@ -216,7 +216,7 @@ export function InvestigationRoom({ initialId }: { initialId?: string }) {
             <p className="font-mono text-[11px] uppercase text-slate-500">Policy denials</p>
             {bundle.verdicts.map((v) => (
               <p key={String(v.id)} className="mt-2 text-xs text-red-300">
-                {String(v.tool)} · {String(v.verdict)} — {String(v.rationale)}
+                {String(v.tool)} · {String(v.verdict)}. {String(v.rationale)}
               </p>
             ))}
           </Card>

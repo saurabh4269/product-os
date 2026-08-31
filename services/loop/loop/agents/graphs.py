@@ -372,8 +372,8 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         ctx.say(agent_id, "Dispatching specialists in parallel.")
         return
     if agent_id == "analytics_agent":
-        from loop.unified_runner import signal_to_event
         from loop.investigation import run_investigators
+        from loop.unified_runner import signal_to_event
 
         event = signal_to_event(ctx.signal)
         claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
@@ -394,15 +394,22 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         ctx.state.setdefault("groups", set()).add("ga4")
         return
     if agent_id == "logs_agent":
-        from loop.unified_runner import signal_to_event
         from loop.investigation import run_investigators
+        from loop.unified_runner import signal_to_event
 
         event = signal_to_event(ctx.signal)
         claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
+        if claim is None:
+            ctx.say(agent_id, f"No {agent_id.replace('_agent', '')} dimensions on this signal — skipping.")
+            ctx.set_output(f"evidence_{agent_id}", {"status": "skipped", "reason": "arm_unsupported"})
+            return
+        count = dims.get("error_count") or (claim.detail or {}).get("count")
+        if count is None and delta is not None:
+            count = abs(int(float(delta or 0) * 800)) or None
         cluster = {
             "cluster": f"{dims.get('error') or metric}-cluster",
-            "claim": claim.claim if claim else f"errors clustered on {metric}",
-            "count": 140 + abs(int(float(delta or 0) * 800)),
+            "claim": claim.claim,
+            "count": count,
             "status": "done",
         }
         ctx.tool(
@@ -415,16 +422,21 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         ctx.state.setdefault("groups", set()).add("logs")
         return
     if agent_id == "deployment_agent":
-        from loop.unified_runner import signal_to_event
         from loop.investigation import run_investigators
+        from loop.unified_runner import signal_to_event
 
         event = signal_to_event(ctx.signal)
         claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
+        if claim is None:
+            ctx.say(agent_id, "No deploy dimensions on this signal — skipping.")
+            ctx.set_output(f"evidence_{agent_id}", {"status": "skipped", "reason": "arm_unsupported"})
+            return
+        detail = claim.detail if isinstance(claim.detail, dict) else {}
         deploy = {
-            "service": dims.get("sdk") or dims.get("service") or "app-web",
-            "version": dims.get("version") or "4.2.0",
-            "claim": claim.claim if claim else "deploy timeline correlated",
-            "minutes_ago": dims.get("deploy_minutes_ago") or dims.get("minutes_ago") or 42,
+            "service": dims.get("sdk") or dims.get("service") or detail.get("service") or "app",
+            "version": dims.get("version") or dims.get("deploy_version") or detail.get("version") or "unknown",
+            "claim": claim.claim,
+            "minutes_ago": dims.get("deploy_minutes_ago") or dims.get("minutes_ago") or detail.get("minutes_ago"),
             "status": "done",
         }
         ctx.tool(
@@ -437,8 +449,8 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         ctx.state.setdefault("groups", set()).add("deploys")
         return
     if agent_id == "database_agent":
-        from loop.unified_runner import signal_to_event
         from loop.investigation import run_investigators
+        from loop.unified_runner import signal_to_event
 
         event = signal_to_event(ctx.signal)
         claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
@@ -459,8 +471,8 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         ctx.state.setdefault("groups", set()).add("warehouse")
         return
     if agent_id == "customer_voice_agent":
-        from loop.unified_runner import signal_to_event
         from loop.investigation import run_investigators
+        from loop.unified_runner import signal_to_event
 
         event = signal_to_event(ctx.signal)
         claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
@@ -529,8 +541,8 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         _critique_loop(ctx, metric, dims, max_iterations=2)
         return
     if agent_id == "code_agent":
-        from loop.unified_runner import signal_to_event
         from loop.investigation import run_investigators
+        from loop.unified_runner import signal_to_event
 
         event = signal_to_event(ctx.signal)
         claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)

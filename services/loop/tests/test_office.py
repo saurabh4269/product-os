@@ -29,3 +29,10 @@ def test_agent_page_has_that_bots_chat_and_handoffs(engine: LoopEngine):
 def test_unknown_agent_is_missing(engine: LoopEngine):
     engine.seed_world()
     assert agent_snapshot(engine, "not_a_real_bot") is None
+
+
+def test_orchestrator_agent_alias(engine: LoopEngine):
+    engine.seed_world()
+    snap = agent_snapshot(engine, "orchestrator_agent")
+    assert snap
+    assert snap["agent"]["id"] == "orchestrator"

@@ -148,6 +148,12 @@ function handleMessage(ev: MessageEvent) {
       }
       setSnapshot({ tick: snapshot.tick + 1 });
     }
+    if (e.type === "work_card" || e.type === "artifact" || e.type === "message") {
+      setSnapshot({ tick: snapshot.tick + 1 });
+    }
+    if (e.type === "orchestration" || e.type === "signal_detected") {
+      setSnapshot({ tick: snapshot.tick + 1 });
+    }
   } catch {
     /* ignore */
   }

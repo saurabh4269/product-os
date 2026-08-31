@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 from loop.connectors.bigquery import (
     enrich_anomaly_dimensions,
     has_bq,

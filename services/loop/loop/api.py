@@ -58,6 +58,11 @@ async def lifespan(_app: FastAPI):
 
     seed_placeholder(eng.store)
 
+    if os.environ.get("LOOP_SIGNAL_WATCH", "1") == "1":
+        from .signal_watch import start_signal_watch
+
+        start_signal_watch(eng)
+
     tick_task = None
     if os.environ.get("LOOP_INLINE_WORKER") == "1":
 
@@ -161,6 +166,20 @@ class TokenRotateBody(BaseModel):
     token: str
 
 
+class OnboardBody(BaseModel):
+    """Wire a GCP Cloud Run Product Y to Product OS (mint token + push env)."""
+
+    cloud_run_service: str = ""
+    repo: str
+    region: str = ""
+    project: str = ""
+    tenant_id: str = ""
+    name: str = ""
+    product: str = ""
+    deploy_url: str = ""
+    wire: bool = True
+
+
 class IngestSignalBody(BaseModel):
     metric: str = "purchase_conversion"
     magnitude: float = -0.2
@@ -173,16 +192,44 @@ class IngestVoiceBody(BaseModel):
     text: str
     tokenized_user: str = "tok_anon"
     phone: str = ""
+    email: str = ""
     sentiment: str = ""
     meta: dict = Field(default_factory=dict)
 
 
+class RegisterUserBody(BaseModel):
+    """Product Y registration — email required for mail-first outreach."""
+
+    tokenized_user: str
+    email: str
+    phone: str = ""
+    consent_email: bool = True
+    consent_voice: bool = True
+    meta: dict = Field(default_factory=dict)
+
+
 class PlaceCallBody(BaseModel):
-    to_number: str
+    to_number: str = ""
     reason: str = "checkout issue"
     room_id: str = ""
     product: str = ""
     tokenized_user: str = "tok_anon"
+    force: bool = False  # human override of mail-first gate
+    purpose: str = ""  # feedback_ask | fix_notify
+
+
+class AdvanceOutreachBody(BaseModel):
+    room_id: str
+    force_call: bool = False
+    fix_summary: str = ""
+
+
+class MailReplyBody(BaseModel):
+    tokenized_user: str
+    text: str = ""
+    solved: bool = False
+    investigation_id: str = ""
+    room_id: str = ""
 
 
 class ResearchEventBody(BaseModel):
@@ -298,7 +345,7 @@ def health():
 def _status_payload(eng) -> dict:
     """Shared counters for GET /api/status and WebSocket initial_state."""
     from .connectors import google_oauth
-    from .live import funnel_for
+    from .workflow import workflow_from_store
 
     rooms = eng.store.list_rooms()
     pending = eng.store.pending_approvals()
@@ -317,12 +364,9 @@ def _status_payload(eng) -> dict:
     verified = 0
     for room in open_rooms:
         inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
-        state = inv.state if inv else None
-        actions = eng.store.list_actions(inv.id) if inv else []
-        awaiting = any(a.status in {"proposed", "awaiting_approval"} for a in actions)
-        funnel = funnel_for(room.loop_type, state, awaiting=awaiting)
+        funnel = workflow_from_store(eng.store, room, inv)
         st = funnel.get("current") or "signal"
-        if st in {"investigate", "evidence", "root_cause"}:
+        if st in {"investigate", "evidence", "root_cause", "customer", "product"}:
             engaged += 1
         if inv and str(getattr(inv.state, "value", inv.state)) in {
             "resolved",
@@ -458,8 +502,8 @@ def tenants():
 
 @app.post("/api/tenants")
 def upsert_tenant(body: TenantBody, authorization: str | None = Header(default=None)):
-    from .auth import require_admin
     from .audit import record
+    from .auth import require_admin
 
     actor = require_admin(authorization, actor=f"tenant:{body.id}")
     from .tenant import Tenant, hash_token
@@ -506,8 +550,8 @@ def upsert_tenant(body: TenantBody, authorization: str | None = Header(default=N
 
 @app.post("/api/tenants/{tenant_id}/token")
 def rotate_token(tenant_id: str, body: TokenRotateBody, authorization: str | None = Header(default=None)):
-    from .auth import require_admin
     from .audit import record
+    from .auth import require_admin
 
     actor = require_admin(authorization, actor=f"tenant:{tenant_id}")
     from .tenant import hash_token
@@ -530,6 +574,83 @@ def tenant_detail(tenant_id: str):
     if not t:
         raise HTTPException(404, "tenant not found")
     return {"tenant": _public_tenant(t), "flags": _visible_flags(get_engine(), tenant_id), "gate": _gate(get_engine(), tenant_id)}
+
+
+@app.get("/api/onboard/services")
+def onboard_services(
+    project: str = "",
+    region: str = "",
+    authorization: str | None = Header(default=None),
+):
+    """List Cloud Run services in the project for the Connect picker."""
+    from .auth import require_admin
+    from .onboard import list_cloud_run_services
+
+    require_admin(authorization, actor="onboard.list")
+    return list_cloud_run_services(project=project, region=region)
+
+
+@app.post("/api/tenants/onboard")
+def tenants_onboard(body: OnboardBody, authorization: str | None = Header(default=None)):
+    """Create tenant + mint token + push LOOP_* env to Cloud Run (production wire)."""
+    from .audit import record
+    from .auth import require_admin
+    from .onboard import onboard_tenant
+    from .tenant import bind_fixture_tenants
+
+    actor = require_admin(authorization, actor="onboard.wire")
+    if not body.repo.strip():
+        raise HTTPException(400, "repo required")
+    if not body.cloud_run_service.strip() and not body.deploy_url.strip():
+        raise HTTPException(400, "cloud_run_service or deploy_url required")
+    eng = get_engine()
+    out = onboard_tenant(
+        eng.store,
+        cloud_run_service=body.cloud_run_service,
+        repo=body.repo,
+        region=body.region,
+        project=body.project,
+        tenant_id=body.tenant_id,
+        name=body.name,
+        product=body.product,
+        deploy_url=body.deploy_url,
+        wire=body.wire,
+    )
+    if out.get("status") == "skipped" and out.get("detail"):
+        raise HTTPException(400, str(out["detail"]))
+    bind_fixture_tenants(eng.store)
+    tid = out.get("tenant_id") or ""
+    record(
+        eng.store,
+        actor=actor,
+        action="tenant.onboard",
+        resource=f"tenant:{tid}",
+        detail={"repo": body.repo, "service": body.cloud_run_service, "wire": out.get("wire", {}).get("status")},
+    )
+    return out
+
+
+@app.post("/api/tenants/{tenant_id}/onboard")
+def tenant_onboard(tenant_id: str, body: OnboardBody, authorization: str | None = Header(default=None)):
+    """Same as POST /api/tenants/onboard with tenant_id fixed in the path."""
+    body.tenant_id = tenant_id
+    return tenants_onboard(body, authorization)
+
+
+@app.post("/api/tenants/{tenant_id}/verify")
+def tenant_verify(tenant_id: str, authorization: str | None = Header(default=None)):
+    """Run the e2e checklist (flags, ingest, GitHub readiness)."""
+    from .audit import record
+    from .auth import require_admin
+    from .onboard import verify_tenant
+
+    actor = require_admin(authorization, actor=f"onboard.verify:{tenant_id}")
+    eng = get_engine()
+    if not eng.store.get_tenant(tenant_id):
+        raise HTTPException(404, "tenant not found")
+    out = verify_tenant(eng, tenant_id)
+    record(eng.store, actor=actor, action="tenant.verify", resource=f"tenant:{tenant_id}", detail={"ok": out.get("ok")})
+    return out
 
 
 @app.get("/api/t/{tenant_id}/flags")
@@ -646,19 +767,47 @@ def tenant_voice(tenant_id: str, body: IngestVoiceBody, authorization: str | Non
 
     t = _require_tenant(tenant_id, authorization)
     phone = body.phone or str((body.meta or {}).get("phone") or "")
+    email = body.email or str((body.meta or {}).get("email") or "")
     out = ingest_tenant_voice(
         get_engine(),
         t,
         text=body.text,
         tokenized_user=body.tokenized_user,
         phone=phone,
+        email=email,
     )
     return {
         "voice": out["voice"],
         "room_id": out["room_id"],
         "joined": out["joined"],
         "classification": out.get("classification"),
+        "identity": out.get("identity"),
     }
+
+
+@app.post("/api/t/{tenant_id}/users")
+def tenant_register_user(
+    tenant_id: str,
+    body: RegisterUserBody,
+    authorization: str | None = Header(default=None),
+):
+    """Product Y registration webhook — store email (+ optional phone) for mail-first outreach."""
+    from .customer_contact import upsert_registration
+
+    t = _require_tenant(tenant_id, authorization)
+    if not body.email or "@" not in body.email:
+        raise HTTPException(400, "email required at registration")
+    identity = upsert_registration(
+        get_engine().store,
+        tokenized_user=body.tokenized_user,
+        tenant_id=t.id,
+        email=body.email,
+        phone=body.phone,
+        consent_email=body.consent_email,
+        consent_voice=body.consent_voice,
+        meta=body.meta,
+    )
+    return {"ok": True, "identity": identity}
 
 
 @app.get("/api/telephony")
@@ -710,7 +859,7 @@ def adk_status():
 @app.post("/api/research")
 def research_event(body: ResearchEventBody):
     """Generic event → probes → brief → call → structured evidence (recipe-agnostic)."""
-    from .adk_runtime import adk_inline_enabled, forward_post, run_adk_research
+    from .adk_runtime import adk_inline_enabled, run_adk_research
     from .customer_research import ResearchEvent, run_customer_research
     from .models import LoopType, PathKind, RoomKind
 
@@ -740,13 +889,8 @@ def research_event(body: ResearchEventBody):
         "place_real_call": body.place_real_call,
         "scenario_id": body.scenario_id,
     }
-    forwarded = forward_post(
-        "/internal/adk/research",
-        {"event": event.model_dump(mode="json"), "kwargs": kwargs},
-    )
-    if forwarded and "error" not in forwarded:
-        out = forwarded
-    elif adk_inline_enabled():
+    # Rooms live in this service's SQLite — do not forward to ADK worker (separate ephemeral DB).
+    if adk_inline_enabled():
         out = run_adk_research(eng, event, **kwargs)
     else:
         out = run_customer_research(eng, event, **kwargs)
@@ -970,32 +1114,167 @@ def product_intel(body: ProductIntelBody):
 
 @app.post("/api/calls")
 def place_outbound_call(body: PlaceCallBody):
-    """Human-triggered outbound call from a room."""
+    """Outbound call — mail-first gate: only non-responders (or human force)."""
     from .connectors.voice import place_call
+    from .customer_contact import resolve_callback_phone
+    from .outreach import call_brief_for_outreach, gate_place_call
     from .tenant import product_for_room
     from .world import post as room_post
 
     eng = get_engine()
     product = body.product.strip() or product_for_room(eng.store, body.room_id)
+    to_number = (body.to_number or "").strip()
+    resolved = None
+
+    gate = gate_place_call(
+        eng.store,
+        room_id=body.room_id,
+        tokenized_user=body.tokenized_user,
+        force=body.force,
+    )
+    if not gate.get("allowed"):
+        if body.room_id and eng.store.get_room(body.room_id):
+            room_post(
+                eng,
+                body.room_id,
+                author="customer_voice_agent",
+                author_kind="agent",
+                kind="chat",
+                text=str(gate.get("detail") or "Mail feedback first — don't spam-call."),
+                artifact_type="contact_lookup",
+                artifact=gate,
+            )
+        raise HTTPException(409, gate.get("detail") or "mail_first")
+
+    if not to_number and body.room_id:
+        resolved = resolve_callback_phone(eng.store, body.room_id)
+        if resolved.get("found") and resolved.get("phone"):
+            to_number = str(resolved["phone"])
+            if eng.store.get_room(body.room_id):
+                room_post(
+                    eng,
+                    body.room_id,
+                    author="customer_voice_agent",
+                    author_kind="agent",
+                    kind="chat",
+                    text=(
+                        f"Looked up contact. Callback {to_number}. "
+                        f"Calling only because mail wait elapsed / non-responder ({gate.get('reason')})."
+                    ),
+                    artifact_type="contact_lookup",
+                    artifact={**resolved, "gate": gate},
+                )
+        elif body.room_id and eng.store.get_room(body.room_id):
+            room_post(
+                eng,
+                body.room_id,
+                author="customer_voice_agent",
+                author_kind="agent",
+                kind="chat",
+                text="No callback number on file yet. Capture phone at registration or Cove feedback.",
+                artifact_type="contact_lookup",
+                artifact=resolved or {"found": False},
+            )
+
+    purpose = (body.purpose or "").strip() or "feedback_ask"
+    brief = call_brief_for_outreach({"purpose": purpose})
     report = place_call(
         body.tokenized_user,
         body.reason,
-        to_number=body.to_number,
+        to_number=to_number,
         room_id=body.room_id,
         product=product,
+        brief=brief,
     )
     if body.room_id and eng.store.get_room(body.room_id):
-        room_post(
+        from .receipts import call_proof, post_receipt
+
+        art = {
+            **report.model_dump(),
+            "resolved_from": (resolved or {}).get("source"),
+            "purpose": purpose,
+            "gate": gate,
+            "to_number": to_number or report.model_dump().get("to_number"),
+            "title": "Customer call" if purpose == "feedback_ask" else purpose.replace("_", " ").title(),
+            "reason": body.reason,
+        }
+        post_receipt(
             eng,
             body.room_id,
-            author="outreach_caller",
+            kind="contacts",
+            title=str(art["title"]),
+            agent="outreach_caller",
+            status="done" if report.status in {"applied", "queued", "simulated"} else "failed",
+            detail=report.detail,
+            proof=call_proof(art),
+            extra=art,
+        )
+    return {
+        "report": report.model_dump(),
+        "resolved": resolved,
+        "to_number": to_number or None,
+        "gate": gate,
+        "purpose": purpose,
+    }
+
+
+@app.post("/api/outreach/advance")
+def outreach_advance(body: AdvanceOutreachBody):
+    """After mail wait: call non-responders (or fix-notify if mail replies already solved it)."""
+    from .outreach import advance_outreach
+
+    eng = get_engine()
+    if not eng.store.get_room(body.room_id):
+        raise HTTPException(404, "room not found")
+    return advance_outreach(
+        eng,
+        room_id=body.room_id,
+        force_call=body.force_call,
+        fix_summary=body.fix_summary,
+    )
+
+
+@app.post("/api/outreach/mail-reply")
+def outreach_mail_reply(body: MailReplyBody):
+    """Inbound reply to a feedback email (from Product Y or mail webhook)."""
+    from .outreach import record_mail_reply
+    from .world import post as room_post
+
+    eng = get_engine()
+    row = record_mail_reply(
+        eng.store,
+        tokenized_user=body.tokenized_user,
+        investigation_id=body.investigation_id,
+        room_id=body.room_id,
+        summary=body.text,
+        solved=body.solved,
+    )
+    if not row:
+        raise HTTPException(404, "no outreach email on file for this user")
+    rid = body.room_id or row.get("room_id") or ""
+    if rid and eng.store.get_room(rid):
+        room_post(
+            eng,
+            rid,
+            author="customer_voice_agent",
             author_kind="agent",
             kind="artifact",
-            text=report.detail,
-            artifact_type="call",
-            artifact=report.model_dump(),
+            text=f"Mail reply from {body.tokenized_user}: {(body.text or '')[:160]}",
+            artifact_type="mail_reply",
+            artifact=row,
         )
-    return {"report": report.model_dump()}
+    return {"ok": True, "outreach": row}
+
+
+@app.get("/api/rooms/{room_id}/contact")
+def room_contact(room_id: str):
+    """Email + phone on file for this room (registration / Cove feedback / memory)."""
+    from .customer_contact import resolve_customer_contact
+
+    eng = get_engine()
+    if not eng.store.get_room(room_id):
+        raise HTTPException(404, "room not found")
+    return resolve_customer_contact(eng.store, room_id=room_id)
 
 
 @app.post("/api/twilio/voice")
@@ -1043,12 +1322,16 @@ async def twilio_gather(request: Request, room: str = Query(default="")):
 
 @app.post("/api/twilio/status")
 async def twilio_status(request: Request):
+    from .customer_contact import feedback_summary_from_transcript
     from .telephony import finalize_call
     from .world import post as room_post
 
     form = await request.form()
     call_sid = str(form.get("CallSid") or "")
     status = str(form.get("CallStatus") or "completed")
+    # Only summarize when the call is finished.
+    if status not in {"completed", "busy", "failed", "no-answer", "canceled"}:
+        return {"ok": True, "ignored": status}
     result = finalize_call(call_sid, status)
     sess = (result.get("session") or {}) if result.get("ok") else {}
     room_id = sess.get("room_id") or ""
@@ -1056,6 +1339,24 @@ async def twilio_status(request: Request):
     if room_id and eng.store.get_room(room_id):
         outcome = result.get("outcome") or {}
         structured = result.get("structured") or sess.get("structured") or {}
+        transcript = sess.get("transcript") or []
+        summary = feedback_summary_from_transcript(transcript)
+        room_post(
+            eng,
+            room_id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="chat",
+            text=summary,
+            artifact_type="call_feedback",
+            artifact={
+                "call_sid": call_sid,
+                "status": status,
+                "transcript": transcript,
+                "outcome": outcome,
+                "to": sess.get("to"),
+            },
+        )
         room_post(
             eng,
             room_id,
@@ -1067,24 +1368,21 @@ async def twilio_status(request: Request):
             artifact={
                 "call_sid": call_sid,
                 "status": status,
-                "transcript": sess.get("transcript") or [],
+                "transcript": transcript,
                 "outcome": outcome,
             },
         )
         if structured:
+            reason = structured.get("reason") or "feedback"
             room_post(
                 eng,
                 room_id,
                 author="customer_voice_agent",
                 author_kind="agent",
                 kind="artifact",
-                text=(
-                    f"Structured evidence · {structured.get('reason')} · "
-                    f"intent={structured.get('purchase_intent')} · "
-                    f"friction={structured.get('friction')}"
-                ),
+                text=f"Recorded feedback about {reason}. Intent {structured.get('purchase_intent') or 'unknown'}.",
                 artifact_type="call_evidence",
-                artifact={"structured": structured, "transcript": sess.get("transcript") or []},
+                artifact={"structured": structured, "transcript": transcript},
             )
     return {"ok": True}
 
@@ -1136,9 +1434,8 @@ def room_by_scenario(slug: str):
 
 
 def _pipeline_cards(eng, tenant_id: str | None = None) -> list[dict]:
-    from .live import funnel_for
-    from .models import InvestigationState
     from .tenant import resolve_tenant
+    from .workflow import workflow_from_store
 
     cards = []
     for room in eng.store.list_rooms():
@@ -1150,7 +1447,7 @@ def _pipeline_cards(eng, tenant_id: str | None = None) -> list[dict]:
         state = inv.state if inv else None
         actions = eng.store.list_actions(inv.id) if inv else []
         awaiting = any(a.status in {"proposed", "awaiting_approval"} for a in actions)
-        funnel = funnel_for(room.loop_type, state, awaiting=awaiting)
+        funnel = workflow_from_store(eng.store, room, inv)
         tenant = resolve_tenant(eng.store, investigation=inv, room=room)
         pr_url = None
         pending_action_id = None
@@ -1171,29 +1468,112 @@ def _pipeline_cards(eng, tenant_id: str | None = None) -> list[dict]:
                     evidence_snippet = (ev[0].claim or "")[:120]
         inv_state = str(getattr(state, "value", state) if state else "")
         verified = inv_state in {"resolved", "partially_resolved"}
-        denied = room.scenario_id == "security_exfil" or any(a.status == "denied" for a in actions)
+        denied = any(a.status == "denied" for a in actions) or (
+            str(getattr(room, "path", "") or "").upper() == "SECURITY"
+            or str(getattr(room, "kind", "") or "") == "review"
+        )
         active_agents = [
             aid
             for aid, ev in HUB.presence.get(room.id, {}).items()
             if str(ev.get("status") or "idle") not in {"idle", ""}
         ]
         calendar_snippet = ""
+        calendar_url = None
+        meet_url = None
+        gmail_url = None
         voice_snippet = ""
+        contact_phone = None
+        call_feedback = None
+        warehouse_snippet = ""
+        code_snippet = ""
+        activity_line = ""
+        activity_author = ""
         for msg in reversed(eng.store.list_messages(room.id)):
-            if not calendar_snippet and msg.artifact_type == "coordination":
-                slot = (msg.artifact or {}).get("slot") or {}
-                if slot.get("start"):
+            art = msg.artifact if isinstance(msg.artifact, dict) else {}
+            if msg.artifact_type == "coordination":
+                slot = art.get("slot") or {}
+                if not calendar_snippet and slot.get("start"):
                     calendar_snippet = f"Hold {str(slot['start'])[:16].replace('T', ' ')}"
+                if slot.get("event_url"):
+                    url = str(slot["event_url"])
+                    if "meet.google" in url:
+                        meet_url = meet_url or url
+                    else:
+                        calendar_url = calendar_url or url
+                if art.get("gmail_url"):
+                    gmail_url = gmail_url or str(art["gmail_url"])
             if not voice_snippet and msg.artifact_type == "voice" and msg.text:
                 voice_snippet = (msg.text or "")[:80]
-            if calendar_snippet and voice_snippet:
+            if not contact_phone:
+                for key in ("phone", "callback_phone", "to_number"):
+                    raw = art.get(key)
+                    if isinstance(raw, str) and raw.strip():
+                        contact_phone = raw.strip()
+                        break
+            if not call_feedback and msg.artifact_type in {"call_feedback", "call_evidence"} and msg.text:
+                call_feedback = (msg.text or "")[:160]
+            if not warehouse_snippet and msg.artifact_type in {
+                "analytics",
+                "warehouse",
+                "bq",
+                "metric",
+                "evidence",
+            }:
+                warehouse_snippet = (msg.text or "")[:100]
+            if not code_snippet and msg.artifact_type in {"code", "code_brief", "pr", "patch"}:
+                code_snippet = (msg.text or "")[:100]
+            if not activity_line and msg.author_kind == "agent" and (msg.text or "").strip():
+                # Prefer contact lookup / call / warehouse / code chatter for the live footer.
+                if msg.artifact_type in {
+                    "contact",
+                    "contact_lookup",
+                    "call",
+                    "call_feedback",
+                    "call_transcript",
+                    "voice",
+                    "analytics",
+                    "warehouse",
+                    "code",
+                    "code_brief",
+                    "pr",
+                    "coordination",
+                } or msg.kind == "chat":
+                    activity_line = (msg.text or "")[:120]
+                    activity_author = msg.author or ""
+            if (
+                calendar_snippet
+                and voice_snippet
+                and contact_phone
+                and call_feedback
+                and activity_line
+            ):
                 break
+        if not activity_line:
+            if call_feedback:
+                activity_line = call_feedback
+                activity_author = "customer_voice_agent"
+            elif warehouse_snippet:
+                activity_line = warehouse_snippet
+                activity_author = "analytics_agent"
+            elif code_snippet:
+                activity_line = code_snippet
+                activity_author = "code_agent"
+            elif voice_snippet:
+                activity_line = voice_snippet
+                activity_author = "customer_voice"
         cards.append(
             {
                 "room_id": room.id,
                 "title": room.title,
                 "stage": funnel["current"],
                 "kind": funnel["kind"],
+                "workflow": {
+                    "nodes": funnel.get("nodes"),
+                    "steps": funnel.get("steps"),
+                    "current": funnel.get("current"),
+                    "needs": funnel.get("needs"),
+                    "tags": funnel.get("tags"),
+                },
                 "tenant_id": room.tenant_id,
                 "tenant_product": tenant.product if tenant else None,
                 "scenario_id": room.scenario_id,
@@ -1203,7 +1583,16 @@ def _pipeline_cards(eng, tenant_id: str | None = None) -> list[dict]:
                 "pr_url": pr_url,
                 "evidence_snippet": evidence_snippet,
                 "calendar_snippet": calendar_snippet or None,
+                "calendar_url": calendar_url,
+                "meet_url": meet_url,
+                "gmail_url": gmail_url,
                 "voice_snippet": voice_snippet or None,
+                "contact_phone": contact_phone,
+                "call_feedback": call_feedback,
+                "warehouse_snippet": warehouse_snippet or None,
+                "code_snippet": code_snippet or None,
+                "activity_line": activity_line or None,
+                "activity_author": activity_author or None,
                 "verified": verified,
                 "denied": denied,
                 "active_agents": active_agents,
@@ -1214,14 +1603,154 @@ def _pipeline_cards(eng, tenant_id: str | None = None) -> list[dict]:
 
 @app.get("/api/pipeline")
 def pipeline_board(tenant_id: str | None = Query(default=None)):
-    """Kanban-style cards for open investigations."""
-    from .live import PIPELINE_BUG
+    """Kanban-style cards for open investigations — columns from active workflows."""
+    from .workflow import NODE_LABEL, focus_steps, union_columns
 
     eng = get_engine()
+    cards = _pipeline_cards(eng, tenant_id=tenant_id)
+    workflows = [c.get("workflow") or {} for c in cards]
+    columns = union_columns(workflows)
+    focus = None
+    ranked: list[dict] = []
+    if cards:
+        ranked = sorted(
+            cards,
+            key=lambda c: (
+                2 if c.get("awaiting_approval") else 1 if c.get("active_agents") else 0,
+                1 if c.get("kind") == "bug" else 0,
+            ),
+            reverse=True,
+        )
+        focus = ranked[0].get("workflow")
+    from .orchestration import home_orchestration
+
+    orch = home_orchestration(eng.store, eng)
     return {
-        "columns": PIPELINE_BUG,
-        "cards": _pipeline_cards(eng, tenant_id=tenant_id),
+        "columns": columns,
+        "column_labels": {c: NODE_LABEL.get(c, c) for c in columns},
+        "cards": cards,
+        "focus": {
+            "mode": orch.get("mode"),
+            "watch_line": orch.get("watch_line"),
+            "signal_agent": orch.get("signal_agent"),
+            "steps": focus_steps(orchestration=orch),
+            "handoffs": orch.get("handoffs") or [],
+            "current": orch.get("current") or (focus or {}).get("current"),
+            "kind": orch.get("kind") or (focus or {}).get("kind"),
+            "needs": orch.get("needs") or (focus or {}).get("needs"),
+            "tags": orch.get("tags") or (focus or {}).get("tags") or [],
+            "room_id": orch.get("room_id") or (ranked[0]["room_id"] if ranked else None),
+        },
     }
+
+
+@app.get("/api/orchestration/home")
+def orchestration_home(tenant_id: str | None = Query(default=None)):
+    """Progressive homepage flow — watching or active case with handoff reasons."""
+    from .orchestration import home_orchestration
+
+    eng = get_engine()
+    _ = tenant_id  # reserved for tenant-scoped watch
+    return home_orchestration(eng.store, eng)
+
+
+@app.get("/api/workflows/focus")
+def workflows_focus(tenant_id: str | None = Query(default=None)):
+    """Homepage flow — progressive steps + handoffs, not a hardcoded pipeline."""
+    from .orchestration import home_orchestration
+
+    eng = get_engine()
+    _ = tenant_id
+    orch = home_orchestration(eng.store, eng)
+    return {
+        "mode": orch.get("mode", "watching"),
+        "watch_line": orch.get("watch_line"),
+        "signal_agent": orch.get("signal_agent"),
+        "steps": orch.get("steps") or [],
+        "handoffs": orch.get("handoffs") or [],
+        "current": orch.get("current"),
+        "kind": orch.get("kind"),
+        "needs": orch.get("needs") or {},
+        "tags": orch.get("tags") or [],
+        "room_id": orch.get("room_id"),
+    }
+
+
+@app.get("/api/live-work")
+def live_work_board():
+    """Homepage live work board — receipts that pile into Signal → Evidence → Code → Approve → Verify."""
+    from .live_work import build_live_work
+    from .proof import enrich_card_proof
+
+    eng = get_engine()
+    out = build_live_work(eng.store)
+    cards = []
+    for card in out.get("cards") or []:
+        # Prefer proof already stored on the message artifact
+        room_id = card.get("room_id")
+        if room_id and not card.get("proof"):
+            for msg in eng.store.list_messages(room_id):
+                if msg.id != card.get("id"):
+                    continue
+                art = msg.artifact if isinstance(msg.artifact, dict) else {}
+                if isinstance(art.get("proof"), dict):
+                    card["proof"] = art["proof"]
+                break
+        cards.append(enrich_card_proof(eng.store, card, engine=eng))
+    out["cards"] = cards
+    return out
+
+
+@app.get("/api/proof")
+def proof_bundle():
+    """Homepage trust strip — live BQ/GA4 tables + latest GitHub PR."""
+    from .proof import homepage_proofs
+
+    return homepage_proofs(get_engine())
+
+
+@app.get("/api/proof/resources")
+def proof_resources(
+    agent: str = Query(default=""),
+    signal: str = Query(default=""),
+    arm: str = Query(default=""),
+):
+    """Live connector cards scoped to an agent, signal source, or fan-out arm."""
+    from .proof import (
+        agent_resources,
+        all_resource_cards,
+        fanout_arm_resources,
+        signal_source_resources,
+    )
+
+    eng = get_engine()
+    if agent.strip():
+        return {"scope": "agent", "id": agent.strip(), "cards": agent_resources(eng, agent.strip())}
+    if signal.strip() in {"push", "pull"}:
+        return {"scope": "signal", "id": signal.strip(), "cards": signal_source_resources(eng, signal.strip())}
+    if arm.strip():
+        return {"scope": "arm", "id": arm.strip(), "cards": fanout_arm_resources(eng, arm.strip())}
+    return {"scope": "all", "id": "", "cards": all_resource_cards(eng)}
+
+
+@app.get("/api/proof/github")
+def proof_github(url: str = Query(default="")):
+    from .proof import github_pr_proof
+
+    eng = get_engine()
+    tenants = eng.store.list_tenants()
+    tenant = next((t for t in tenants if t.repo), None)
+    return github_pr_proof(url, tenant=tenant)
+
+
+@app.get("/api/proof/warehouse")
+def proof_warehouse(metric: str = Query(default="purchase_conversion")):
+    from .proof import warehouse_proof
+
+    eng = get_engine()
+    tenants = eng.store.list_tenants()
+    tenant = next((t for t in tenants if t.repo or t.connected), tenants[0] if tenants else None)
+    return warehouse_proof(eng, tenant, metric=metric)
 
 
 @app.get("/api/activity")
@@ -1233,7 +1762,7 @@ def activity_feed(limit: int = Query(default=60, ge=1, le=200)):
 
 @app.post("/api/demo/run")
 def demo_run():
-    """One-click tenant signal demo — no fixture knowledge required."""
+    """One-click tenant signal demo — real pipeline, paced so you can watch it."""
     from .tenant import seed_placeholder
     from .world import ingest_tenant_signal
 
@@ -1241,12 +1770,18 @@ def demo_run():
     if not eng.store.list_rooms():
         eng.seed_world()
     tenant = seed_placeholder(eng.store)
-    from .activity import emit_activity
     import os
 
+    from .activity import emit_activity
+
     prev_staged = os.environ.get("LOOP_DEMO_STAGED")
+    prev_ms = os.environ.get("LOOP_DEMO_STAGE_MS")
     os.environ["LOOP_DEMO_STAGED"] = "1"
-    emit_activity(agent_id="demo", message="Demo signal started", stage="signal", tenant_id=tenant.id)
+    # Visible pacing between real investigator steps (~0.9s each)
+    os.environ.setdefault("LOOP_DEMO_STAGE_MS", "900")
+    # Return as soon as the room opens; finish fan-out in a background thread
+    async_finish = os.environ.get("LOOP_DEMO_ASYNC", "1") == "1"
+    emit_activity(agent_id="demo", message="Demo signal started — collecting live warehouse facts", stage="signal", tenant_id=tenant.id)
     try:
         out = ingest_tenant_signal(
             eng,
@@ -1256,15 +1791,19 @@ def demo_run():
             baseline=0.72,
             note="Demo: checkout conversion dropped after deploy",
             source="demo.run",
+            async_finish=async_finish,
         )
     finally:
         if prev_staged is None:
             os.environ.pop("LOOP_DEMO_STAGED", None)
         else:
             os.environ["LOOP_DEMO_STAGED"] = prev_staged
+        if prev_ms is None and "LOOP_DEMO_STAGE_MS" in os.environ and os.environ.get("LOOP_DEMO_STAGE_MS") == "900":
+            # only clear if we set the default and there was no prior value — keep if caller set
+            pass
     emit_activity(
         agent_id="signal_agent",
-        message="Investigation pipeline running",
+        message="Room open — investigators working (watch Live work + Traces)",
         room_id=out.get("room_id", ""),
         stage="investigate",
         tenant_id=tenant.id,
@@ -1275,6 +1814,7 @@ def demo_run():
         "room_id": out.get("room_id"),
         "investigation_id": out.get("investigation_id"),
         "joined": out.get("joined", False),
+        "async": bool(out.get("async")),
     }
 
 
@@ -1306,19 +1846,16 @@ def room_detail(room_id: str):
         raise HTTPException(404, "room not found")
     inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
     bundle = _bundle(eng, room.investigation_id) if inv else None
-    awaiting = False
-    state = None
-    if bundle and bundle.get("investigation"):
-        state = bundle["investigation"].get("state")
-        awaiting = any(a.get("status") in {"proposed", "awaiting_approval"} for a in bundle.get("actions") or [])
     tenant = resolve_tenant(eng.store, investigation=inv, room=room)
+    from .workflow import workflow_from_store
+
     return {
         "room": room.model_dump(mode="json"),
         "messages": [m.model_dump(mode="json") for m in eng.store.list_messages(room_id)],
         "bundle": bundle,
         "members": room.members,
         "presence": HUB.agents_in(room_id),
-        "funnel": funnel_for(room.loop_type, state, awaiting=awaiting),
+        "funnel": workflow_from_store(eng.store, room, inv),
         "tenant": (
             {"id": tenant.id, "name": tenant.name, "product": tenant.product, "repo": tenant.repo}
             if tenant
@@ -1425,11 +1962,57 @@ def scenarios():
 
 @app.get("/api/traces")
 def traces():
+    """Workflow group chats — natural language end-to-end, not handoff pairs."""
+    from .narrate import build_workflow_chat, humanize_handoff
+
     eng = get_engine()
-    calls = []
+    rooms_by_inv = {r.investigation_id: r for r in eng.store.list_rooms() if r.investigation_id}
+    calls: list[dict] = []
+    threads: list[dict] = []
     for inv in eng.store.list_investigations():
-        calls.extend(c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv.id))
-    return {"traces": calls, "verdicts": [v.model_dump(mode="json") for v in eng.store.list_verdicts()]}
+        room = rooms_by_inv.get(inv.id)
+        agent_calls = list(eng.store.list_agent_calls(inv.id))
+        for c in agent_calls:
+            row = c.model_dump(mode="json")
+            row["summary"] = humanize_handoff(c.from_agent, c.to_agent, c.summary)
+            if room:
+                row["room_id"] = room.id
+                row["room_title"] = room.title
+            calls.append(row)
+        messages = list(eng.store.list_messages(room.id)) if room else []
+        events = build_workflow_chat(
+            investigation_id=inv.id,
+            room=room,
+            agent_calls=agent_calls,
+            messages=messages,
+        )
+        if not events:
+            continue
+        # Members who spoke in this workflow
+        members = []
+        seen: set[str] = set()
+        for e in events:
+            a = e.get("author")
+            if a and a not in seen and e.get("kind") == "chat":
+                seen.add(str(a))
+                members.append(str(a))
+        threads.append(
+            {
+                "investigation_id": inv.id,
+                "room_id": room.id if room else None,
+                "title": (room.title if room else None) or inv.title or inv.id,
+                "kind": room.kind.value if room else None,
+                "events": events,
+                "members": members,
+                "latest_at": events[-1].get("at"),
+            }
+        )
+    threads.sort(key=lambda t: str(t.get("latest_at") or ""), reverse=True)
+    return {
+        "traces": calls,
+        "threads": threads,
+        "verdicts": [v.model_dump(mode="json") for v in eng.store.list_verdicts()],
+    }
 
 
 @app.get("/api/traces/{trace_id}")
@@ -1456,7 +2039,10 @@ def trace_detail(trace_id: str):
 
 @app.get("/api/signals")
 def signals():
-    return {"signals": [s.model_dump(mode="json") for s in get_engine().store.list_signals()]}
+    from .engine import dedupe_signals
+
+    raw = get_engine().store.list_signals()
+    return {"signals": [s.model_dump(mode="json") for s in dedupe_signals(raw)]}
 
 
 @app.post("/api/signals")
@@ -1533,7 +2119,7 @@ def _publish_human_input_after_approve(eng, action, rid: str | None) -> None:
             {
                 "type": "human_input_required",
                 "kind": "oauth",
-                "reason": "Calendar holds and Gmail drafts need Workspace OAuth once.",
+                "reason": "Calendar holds and mail to your connected inbox need Workspace OAuth once.",
                 "authorize_url": oauth.get("authorize_url") or "/api/oauth/google/start",
                 "redirect_uri": oauth.get("redirect_uri"),
                 "room_id": rid,
@@ -1571,9 +2157,9 @@ def approvals():
 @app.post("/api/approvals/{action_id}")
 def decide(action_id: str, body: ApproveBody, authorization: str | None = Header(default=None)):
     from .audit import record
-    from .auth import require_admin
+    from .auth import require_approval
 
-    require_admin(authorization, actor=body.approver)
+    require_approval(authorization, actor=body.approver)
     eng = get_engine()
     action = eng.store.get_action(action_id)
     if not action:
@@ -1581,12 +2167,19 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
     # Skip-if-done HITL (before_tool_callback pattern).
     if body.decision == "approve" and action.status == "executed":
         execution = (action.artifacts or {}).get("execution") or {}
+        inv_id = action.investigation_id
+        has_outcome = any(o.investigation_id == inv_id for o in eng.store.list_outcomes())
+        outcome_payload = None
+        if not has_outcome:
+            outcome = eng.verify(inv_id)
+            outcome_payload = outcome.model_dump(mode="json")
         return {
             "approval": "approve",
             "reused": True,
+            "outcome": outcome_payload,
             "execution": execution,
             "pr_url": execution.get("pr_url"),
-            **_bundle(eng, action.investigation_id),
+            **_bundle(eng, inv_id),
         }
     if body.decision == "approve":
         outcome = eng.resume_after_approval(action_id, body.approver, body.rationale)
@@ -1619,6 +2212,31 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
                         "pr_url": execution.get("pr_url"),
                         "title": room.title if room else "",
                     }
+                )
+                from .proof import github_pr_proof
+                from .world import post as room_post
+
+                tenant = eng.store.get_tenant(room.tenant_id) if room and room.tenant_id else None
+                proof = github_pr_proof(str(execution.get("pr_url")), tenant=tenant)
+                if fresh:
+                    exe = dict((fresh.artifacts or {}).get("execution") or {})
+                    exe["proof"] = proof
+                    fresh.artifacts["execution"] = exe
+                    eng.store.put_action(fresh)
+                room_post(
+                    eng,
+                    rid,
+                    author="code_agent",
+                    author_kind="agent",
+                    kind="artifact",
+                    text=f"Opened PR: {execution.get('pr_url')}",
+                    artifact_type="pr",
+                    artifact={
+                        "pr_url": execution.get("pr_url"),
+                        "url": execution.get("pr_url"),
+                        "status": "open",
+                        "proof": proof,
+                    },
                 )
             _publish_human_input_after_approve(eng, fresh or action, rid)
         record(
@@ -1819,6 +2437,15 @@ def workflows():
     from .agents.graphs import adk2_alignment
 
     return adk2_alignment()
+
+
+@app.get("/api/workflows/links")
+def workflow_links():
+    """Openable Calendar / Meet / Gmail / PR links from coordination + actions."""
+    from .workflow_links import collect_workflow_links
+
+    eng = get_engine()
+    return collect_workflow_links(eng)
 
 
 class AgentCallbackBody(BaseModel):
