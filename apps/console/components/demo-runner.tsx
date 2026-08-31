@@ -14,7 +14,7 @@ import { useGlobalWs } from "@/lib/use-global-ws";
 import { GuidedDemoStrip } from "@/components/guided-demo-strip";
 import { Button } from "@/components/ui";
 
-export function DemoRunner() {
+export function DemoRunner({ variant = "card" }: { variant?: "card" | "bar" }) {
   const router = useRouter();
   const demo = useDemoGuide();
   const { activity } = useGlobalWs();
@@ -83,25 +83,21 @@ export function DemoRunner() {
       {(fleetWorking || busy) && demo?.active ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-lg">
-            <p className="text-[13px] text-[var(--faint)]">Fleet working</p>
-            <h2 className="mt-1 text-[20px] font-semibold tracking-tight">Running tenant signal</h2>
-            <p className="mt-2 text-[14px] text-[var(--dim)]">
-              Agents fan out, merge evidence, and stop at Approve. You can dismiss when the modal appears.
-            </p>
+            <h2 className="text-[20px] font-semibold tracking-tight">Fleet working</h2>
             <ul className="mt-4 space-y-1.5 text-[13px] text-[var(--dim)]">
               {log.map((line, i) => (
                 <li key={i} className={i === 0 ? "font-medium text-foreground" : ""}>
-                  · {line}
+                  {line}
                 </li>
               ))}
             </ul>
             {!busy ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button variant="ghost" onClick={() => demo?.requestFlowView()}>
-                  See flow
+                  Flow
                 </Button>
                 <Button variant="ghost" onClick={() => demo?.setFleetWorking(false)}>
-                  Dismiss overlay
+                  Dismiss
                 </Button>
               </div>
             ) : null}
@@ -109,13 +105,26 @@ export function DemoRunner() {
         </div>
       ) : null}
 
+      {variant === "bar" ? (
+        <div id="demo" className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => void run()} disabled={busy} className="rounded-full px-4">
+            {busy ? "Starting…" : "Run demo"}
+          </Button>
+          {roomId ? (
+            <>
+              <Button variant="ghost" onClick={() => router.push(`/rooms/${roomId}`)} className="rounded-full">
+                Room
+              </Button>
+              <Button variant="ghost" onClick={() => demo?.requestFlowView()} className="rounded-full">
+                Flow
+              </Button>
+            </>
+          ) : null}
+          {err ? <p className="text-[12px] text-red-600">{err}</p> : null}
+        </div>
+      ) : (
       <div id="demo" className="rounded-2xl border border-border bg-white px-5 py-4">
-        <p className="text-[13px] text-[var(--faint)]">Try it</p>
-        <h2 className="mt-1 text-[20px] font-semibold tracking-tight">Run a tenant checkout drop</h2>
-        <p className="mt-2 max-w-lg text-[14px] leading-6 text-[var(--dim)]">
-          One click posts a real signal, runs investigate → evidence → risk, and moves a card on the pipeline board.
-          Approve from the modal when it lands — or open the room for the full transcript.
-        </p>
+        <h2 className="text-[20px] font-semibold tracking-tight">Run demo</h2>
         <GuidedDemoStrip />
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button onClick={() => void run()} disabled={busy}>
@@ -132,21 +141,19 @@ export function DemoRunner() {
             </>
           ) : null}
           <Link href="/labs/architecture?tab=loop" className="text-[13px] text-[var(--dim)] hover:text-accent">
-            How it works →
-          </Link>
-          <Link href="/labs" className="text-[13px] text-[var(--dim)] hover:text-accent">
-            Eval fixtures →
+            Architecture →
           </Link>
           {err ? <p className="text-[13px] text-red-600">{err}</p> : null}
         </div>
         {!fleetWorking && log.length ? (
           <ul className="mt-4 space-y-1 text-[12px] text-[var(--dim)]">
             {log.slice(0, 6).map((line, i) => (
-              <li key={i}>· {line}</li>
+              <li key={i}>{line}</li>
             ))}
           </ul>
         ) : null}
       </div>
+      )}
     </>
   );
 }

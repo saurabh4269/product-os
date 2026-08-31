@@ -26,7 +26,28 @@ import {
 } from "@/components/diagrams/system-hub-diagram";
 import { TenantWireDiagram } from "@/components/diagrams/tenant-wire-diagram";
 import { TrustBoundariesDiagram } from "@/components/diagrams/trust-boundaries-diagram";
+import { DiagramDetailPanel } from "@/components/diagrams/diagram-detail-panel";
 import { SevenStepLoop } from "@/components/seven-step-loop";
+
+const LANE_DETAILS: Record<string, { body: string; adk: string }> = {
+  Detect: { body: "Signal agent ingests tenant webhooks and warehouse anomalies — never investigates alone.", adk: "Single-agent detect · opens room" },
+  Investigate: { body: "Parallel investigators fan out; each posts artifacts to the room.", adk: "Workflow + JoinNode" },
+  Decide: { body: "Evidence merges ≥3 independence groups; root cause agent synthesizes.", adk: "MergeNode · confidence gate" },
+  Act: { body: "BUG path → code + test. FEATURE path → product + experiment.", adk: "Type A / B fork" },
+  Govern: { body: "HIGH risk stops at operator modal; OAuth for side effects.", adk: "RequestInput · HITL" },
+  Verify: { body: "Learning agent watches metric window and writes lesson.", adk: "Metric window → memory" },
+};
+
+const TB_DETAILS: Record<string, string> = {
+  "TB-0": "Hard DENY for exfil — enforced by Gateway identity, not prompt.",
+  "TB-1": "Orchestration merge, evidence groups, approval gate.",
+  "TB-2": "Warehouse + logs read-only investigators.",
+  "TB-3": "Customer voice with SDP redaction.",
+  "TB-4": "Code clone, test, PR — no auto-merge.",
+  "TB-5": "Product specs, calendar drafts, coordination.",
+  "TB-6": "Pct rollout experiments with guardrails.",
+  "TB-7": "Post-ship verification and lessons.",
+};
 
 function parseTab(raw: string | null): ArchTab {
   if (raw === "loop" || raw === "fleet" || raw === "deep") return raw;
@@ -39,6 +60,10 @@ export default function ArchitectureContent() {
   const stage = usePipelineHighlight();
   const [agents, setAgents] = useState<Array<{ id: string; room: string; role: string; tb?: string }>>([]);
   const [workflows, setWorkflows] = useState<Awaited<ReturnType<typeof api.workflows>> | null>(null);
+  const [fleetLane, setFleetLane] = useState<string | null>(null);
+  const [trustTb, setTrustTb] = useState<string | null>(null);
+  const [signalSide, setSignalSide] = useState<"push" | "pull" | null>(null);
+  const [eventPath, setEventPath] = useState<string | null>(null);
 
   useEffect(() => {
     setTab(parseTab(searchParams.get("tab")));
@@ -131,7 +156,20 @@ export default function ArchitectureContent() {
           </section>
           <section>
             <h2 className="text-[20px] font-semibold tracking-tight">Signal sources</h2>
-            <SignalSourcesDiagram />
+            <SignalSourcesDiagram selected={signalSide} onSelect={setSignalSide} />
+            {signalSide ? (
+              <DiagramDetailPanel
+                className="mt-3"
+                title={signalSide === "push" ? "Push" : "Pull"}
+                subtitle={signalSide === "push" ? "Tenant initiates" : "OS reads facts"}
+                body={
+                  signalSide === "push"
+                    ? "Real-time webhooks from Product Y — checkout hangs, voice, feedback."
+                    : "Scheduled warehouse pull — GA4 → BQ → investigators query metrics."
+                }
+                onClear={() => setSignalSide(null)}
+              />
+            ) : null}
             <div className="mt-4">
               <MermaidDiagram source={SIGNAL_SOURCES} title="Push + pull + live callback paths" />
             </div>
@@ -147,9 +185,8 @@ export default function ArchitectureContent() {
           </section>
           <section>
             <h2 className="text-[20px] font-semibold tracking-tight">Event paths</h2>
-            <p className="mt-2 text-[14px] text-[var(--dim)]">Reactive triggers beyond “user clicked Run”.</p>
             <div className="mt-4">
-              <EventPathsDiagram />
+              <EventPathsDiagram selected={eventPath} onSelect={setEventPath} />
             </div>
           </section>
           <section>
@@ -175,8 +212,20 @@ export default function ArchitectureContent() {
                       }
                     : null
                 }
+                selected={fleetLane}
+                onSelect={setFleetLane}
               />
             </div>
+            {fleetLane && LANE_DETAILS[fleetLane] ? (
+              <DiagramDetailPanel
+                className="mt-3"
+                title={fleetLane}
+                subtitle="Functional lane"
+                body={LANE_DETAILS[fleetLane].body}
+                meta={[{ label: "ADK 2", value: LANE_DETAILS[fleetLane].adk }]}
+                onClear={() => setFleetLane(null)}
+              />
+            ) : null}
             <div className="mt-4">
               <WorkflowDetailPanel workflows={workflows} />
             </div>
@@ -185,8 +234,17 @@ export default function ArchitectureContent() {
             <h2 className="text-[20px] font-semibold tracking-tight">Trust boundaries × agents</h2>
             <p className="mt-2 text-[14px] text-[var(--dim)]">Seven TBs from PRD §7.2 — generated from registry.</p>
             <div className="mt-4 rounded-2xl border border-border bg-white p-4">
-              <TrustBoundariesDiagram agents={agents} />
+              <TrustBoundariesDiagram agents={agents} selected={trustTb} onSelect={setTrustTb} />
             </div>
+            {trustTb && TB_DETAILS[trustTb] ? (
+              <DiagramDetailPanel
+                className="mt-3"
+                title={trustTb}
+                subtitle="Trust boundary"
+                body={TB_DETAILS[trustTb]}
+                onClear={() => setTrustTb(null)}
+              />
+            ) : null}
           </section>
           <section>
             <h2 className="text-[20px] font-semibold tracking-tight">Investigation fan-out</h2>

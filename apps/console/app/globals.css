@@ -113,11 +113,8 @@ body {
   }
 }
 
-.agent-bob {
-  animation: bob 2.4s ease-in-out infinite;
-}
 .agent-bob.is-working {
-  animation-duration: 0.8s;
+  animation: bob 1.1s ease-in-out infinite;
 }
 
 .chamber {

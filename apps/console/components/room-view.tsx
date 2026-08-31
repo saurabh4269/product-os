@@ -3,19 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { StreamBody } from "@/components/stream-body";
 import { HandoffPacket } from "@/components/handoff-packet";
 import { api, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { shortName } from "@/lib/names";
 import { queryId, segmentId } from "@/lib/route-id";
-import { when } from "@/lib/utils";
+import { when, cn } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
-import { PixelOffice, PixelSprite } from "@/components/pixel-office";
 import { WorkFlipbook } from "@/components/work-flipbook";
 import { pagesFromRoom } from "@/lib/work-pages";
 import { FunnelChips } from "@/components/funnel-chips";
 import { ArtifactCard } from "@/components/artifact-card";
-import { ActivityLog } from "@/components/activity-log";
+import { ChatBubble, RoomAgentRail } from "@/components/room-chat";
 
 function useRoomId(fallback?: string) {
   const path = usePathname() || "";
@@ -83,10 +81,12 @@ export function RoomView({ initialId }: { initialId?: string }) {
   const [callPhone, setCallPhone] = useState("");
   const [callNote, setCallNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"work" | "transcript">("work");
+  const [tab, setTab] = useState<"work" | "transcript">("transcript");
   const [livePresence, setLivePresence] = useState<Record<string, string>>({});
   const [freshHandoff, setFreshHandoff] = useState<string | null>(null);
   const [seenMsgIds, setSeenMsgIds] = useState<Set<string>>(new Set());
+  const [filterAgent, setFilterAgent] = useState<string | null>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const gateRef = useRef<HTMLDivElement | null>(null);
 
   async function load(target: string) {
@@ -356,199 +356,258 @@ export function RoomView({ initialId }: { initialId?: string }) {
 
   let lastAuthor = "";
 
+  const members = data.room.members.filter((m) => m !== "system");
+  const filteredThread = filterAgent
+    ? thread.filter((row) => {
+        if (row.kind === "handoff" && row.handoff) {
+          const from = String(row.handoff.from_agent ?? "");
+          const to = String(row.handoff.to_agent ?? "");
+          return from === filterAgent || to === filterAgent;
+        }
+        return row.msg?.author === filterAgent;
+      })
+    : thread;
+
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="px-5 pb-5 pt-6 sm:px-8 lg:px-12 lg:pt-8">
-        <Link href="/" className="text-[13px] text-[var(--faint)] hover:text-foreground">
-          ← Campus
-        </Link>
-        <p className="mt-3 text-[13px] text-[var(--faint)]">
-          {data.room.kind === "incident" ? "Incident" : data.room.kind === "opportunity" ? "Idea" : "Room"}
-        </p>
-        <h1 className="mt-1 max-w-2xl text-[26px] font-semibold leading-8 tracking-tight">{data.room.title}</h1>
-        <p className="mt-2 max-w-2xl text-[14px] leading-6 text-[var(--dim)]">{data.room.topic}</p>
-        {data.funnel ? (
-          <div className="mt-4">
-            <FunnelChips
-              steps={data.funnel.steps}
-              current={data.funnel.current}
-              presence={livePresence}
-            />
-          </div>
-        ) : null}
-        {needsApproval ? (
-          <div
-            ref={gateRef}
-            className="mt-4 max-w-xl rounded-2xl border border-accent/30 bg-accent/5 px-4 py-3"
+    <div className="flex h-full min-h-0 flex-col bg-[var(--bg)]">
+      <div className="flex items-start justify-between gap-3 border-b border-border bg-white px-4 py-3 sm:px-6">
+        <div className="min-w-0">
+          <Link href="/" className="text-[12px] text-[var(--faint)] hover:text-foreground">
+            ← Campus
+          </Link>
+          <h1 className="mt-1 truncate text-[18px] font-semibold tracking-tight sm:text-[20px]">{data.room.title}</h1>
+          {data.funnel ? (
+            <div className="mt-2">
+              <FunnelChips steps={data.funnel.steps} current={data.funnel.current} presence={livePresence} />
+            </div>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setToolsOpen((o) => !o)}
+            className="rounded-full border border-border px-3 py-1.5 text-[12px] font-medium text-[var(--dim)] hover:bg-[var(--elev)]"
           >
-            <p className="text-[13px] font-medium text-accent">Waiting on you</p>
-            <p className="mt-1 text-[14px] text-[var(--dim)]">
-              A proposed change needs approval before the fleet can execute. Review below or in Work.
-            </p>
-          </div>
-        ) : null}
-        <div className="mt-5 flex max-w-xl flex-wrap items-end gap-2">
-          <label className="min-w-[11rem] flex-1 text-[12px] text-[var(--faint)]">
-            Call customer
-            <input
-              className="mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] text-foreground outline-none focus:border-accent"
-              value={callPhone}
-              onChange={(e) => setCallPhone(e.target.value)}
-              placeholder="+1…"
-              inputMode="tel"
-              autoComplete="tel"
-            />
-          </label>
-          <Button type="button" onClick={() => void callCustomer()} disabled={busy}>
-            {busy ? "Calling…" : "Place call"}
-          </Button>
+            Tools
+          </button>
+          {needsApproval ? (
+            <button
+              type="button"
+              onClick={() => {
+                setTab("work");
+                gateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
+              className="rounded-full bg-accent px-3 py-1.5 text-[12px] font-medium text-white"
+            >
+              Approve
+            </button>
+          ) : null}
         </div>
-        {callNote ? <p className="mt-2 max-w-xl text-[13px] leading-5 text-[var(--dim)]">{callNote}</p> : null}
       </div>
 
-      <div className="mx-5 overflow-hidden rounded-[20px] border border-border sm:mx-8 lg:mx-12">
-        <PixelOffice members={data.room.members} working={working} activity={activity} furniture={false} />
-      </div>
-
-      {data.bundle ? (
-        <div className="mx-5 mt-4 sm:mx-8 lg:mx-12">
-          <WorkFlipbook
-            pages={pagesFromRoom(data.room, [], data).filter((p) => !p.id.endsWith("-open"))}
-          />
+      {toolsOpen ? (
+        <div className="border-b border-border bg-white px-4 py-3 sm:px-6">
+          <div className="flex max-w-md flex-wrap items-end gap-2">
+            <label className="min-w-[10rem] flex-1 text-[11px] text-[var(--faint)]">
+              Call customer
+              <input
+                className="mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] outline-none focus:border-accent"
+                value={callPhone}
+                onChange={(e) => setCallPhone(e.target.value)}
+                placeholder="+1…"
+                inputMode="tel"
+              />
+            </label>
+            <Button type="button" onClick={() => void callCustomer()} disabled={busy}>
+              {busy ? "…" : "Call"}
+            </Button>
+          </div>
+          {callNote ? <p className="mt-2 text-[12px] text-[var(--dim)]">{callNote}</p> : null}
         </div>
       ) : null}
 
-      {recalled.length ? (
-        <div className="mx-5 mt-4 rounded-2xl bg-[var(--elev)] px-5 py-4 sm:mx-8 lg:mx-12">
-          <p className="text-[12px] text-[var(--faint)]">From last time</p>
-          <p className="mt-1 text-[14px] leading-6 text-[var(--ink)]">{recalled[0]}</p>
-        </div>
-      ) : null}
-
-      <div className="relative mx-5 mt-4 flex w-fit rounded-full border border-border bg-[var(--elev)] p-0.5 sm:mx-8 lg:mx-12">
-        <button
-          type="button"
-          className={
-            "rounded-full px-4 py-1.5 text-[13px] font-medium " +
-            (tab === "work" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]")
-          }
-          onClick={() => setTab("work")}
-        >
-          Work
-        </button>
-        <button
-          type="button"
-          className={
-            "rounded-full px-4 py-1.5 text-[13px] font-medium " +
-            (tab === "transcript" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]")
-          }
-          onClick={() => setTab("transcript")}
-        >
-          Transcript
-        </button>
-      </div>
-
-      <div className="chat-scroll flex-1 space-y-1 overflow-y-auto px-5 py-6 sm:px-8 lg:px-12">
-        {tab === "work" ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {artifacts.map((m) => (
-              <ArtifactCard key={m.id} msg={m} />
-            ))}
-            {artifacts.length === 0 ? (
-              <p className="text-[14px] text-[var(--dim)]">No artifacts yet — the fleet posts evidence here.</p>
-            ) : null}
-            {pending.map((action) => (
-              <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
-            ))}
-          </div>
-        ) : (
-          <>
-            {thread.map((row) => {
-              if (row.kind === "handoff" && row.handoff) {
-                lastAuthor = "";
-                const hk = row.key;
-                return (
-                  <HandoffPacket
-                    key={hk}
-                    from={String(row.handoff.from_agent ?? "")}
-                    to={String(row.handoff.to_agent ?? "")}
-                    summary={String(row.handoff.summary ?? "")}
-                    at={when(row.at)}
-                    fresh={freshHandoff !== null && hk.includes(String(row.handoff.to_agent ?? ""))}
-                  />
-                );
-              }
-              const msg = row.msg;
-              if (!msg) return null;
-              const repeat = msg.author === lastAuthor;
-              lastAuthor = msg.author;
-              const href = msg.author_kind === "agent" ? `/agents/${msg.author}` : null;
-              return (
-                <div key={msg.id} className={repeat ? "pt-1" : "pt-4"}>
-                  {repeat ? null : (
-                    <div className="mb-1 flex items-center gap-2">
-                      {href ? (
-                        <Link href={href} className="flex items-center gap-2 hover:opacity-80">
-                          <PixelSprite name={msg.author} scale={2} />
-                          <span className="text-[14px] font-medium">{shortName(msg.author)}</span>
-                        </Link>
-                      ) : (
-                        <>
-                          <PixelSprite name={msg.author} scale={2} />
-                          <span className="text-[14px] font-medium">{shortName(msg.author)}</span>
-                        </>
-                      )}
-                      <span className="text-[12px] text-[var(--faint)]">{when(msg.created_at)}</span>
-                      {livePresence[msg.author] && livePresence[msg.author] !== "idle" ? (
-                        <span className="text-[11px] text-accent">{livePresence[msg.author]}</span>
-                      ) : null}
-                    </div>
-                  )}
-                  <div className="pl-10">
-                    {msg.kind === "artifact" ? (
-                      <ArtifactCard msg={msg} />
-                    ) : (
-                      <StreamBody
-                        text={msg.text}
-                        live={
-                          msg.id === latestMsgId &&
-                          msg.author_kind === "agent" &&
-                          (seenMsgIds.has(msg.id) || Boolean(livePresence[msg.author]))
-                        }
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {pending.map((action) => (
-              <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
-            ))}
-          </>
-        )}
-      </div>
-
-      <div className="border-t border-border px-5 py-3 sm:px-8 lg:px-12">
-        <ActivityLog roomId={id} compact />
-      </div>
-
-      <form
-        className="flex items-center gap-2 border-t border-border px-5 py-3 sm:px-8 lg:px-12"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send();
-        }}
-      >
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Message the room"
-          className="h-12 min-w-0 flex-1 rounded-full bg-[var(--elev)] px-5 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/25"
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <RoomAgentRail
+          members={data.room.members}
+          working={working}
+          presence={livePresence}
+          activity={activity}
+          picked={filterAgent}
+          onPick={setFilterAgent}
         />
-        <Button type="submit" disabled={busy || !text.trim()}>
-          Send
-        </Button>
-      </form>
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white lg:bg-[var(--bg)]">
+          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2 sm:px-5">
+            <div className="flex rounded-full border border-border bg-[var(--elev)] p-0.5 text-[12px]">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-full px-3 py-1 font-medium",
+                  tab === "transcript" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]"
+                )}
+                onClick={() => setTab("transcript")}
+              >
+                Chat
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-full px-3 py-1 font-medium",
+                  tab === "work" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]"
+                )}
+                onClick={() => setTab("work")}
+              >
+                Work
+              </button>
+            </div>
+            {filterAgent ? (
+              <button
+                type="button"
+                className="text-[11px] text-accent hover:underline"
+                onClick={() => setFilterAgent(null)}
+              >
+                Clear filter · {shortName(filterAgent)}
+              </button>
+            ) : (
+              <span className="text-[11px] text-[var(--faint)]">{members.length} agents</span>
+            )}
+          </div>
+
+          <div className="chat-scroll flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
+            {tab === "work" ? (
+              <div ref={gateRef} className="grid gap-3 sm:grid-cols-2">
+                {artifacts.map((m) => (
+                  <ArtifactCard key={m.id} msg={m} />
+                ))}
+                {artifacts.length === 0 && !pending.length ? (
+                  <p className="text-[13px] text-[var(--faint)]">Evidence lands here as agents work.</p>
+                ) : null}
+                {pending.map((action) => (
+                  <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
+                ))}
+                {data.bundle ? (
+                  <div className="sm:col-span-2">
+                    <WorkFlipbook
+                      pages={pagesFromRoom(data.room, [], data).filter((p) => !p.id.endsWith("-open"))}
+                    />
+                  </div>
+                ) : null}
+                {recalled.length ? (
+                  <div className="rounded-2xl bg-[var(--elev)] px-4 py-3 sm:col-span-2">
+                    <p className="text-[11px] text-[var(--faint)]">Memory</p>
+                    <p className="mt-1 text-[13px] leading-5">{recalled[0]}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                {filteredThread.length === 0 ? (
+                  <p className="py-8 text-center text-[13px] text-[var(--faint)]">Waiting for the fleet…</p>
+                ) : null}
+                {filteredThread.map((row) => {
+                  if (row.kind === "handoff" && row.handoff) {
+                    lastAuthor = "";
+                    const hk = row.key;
+                    return (
+                      <HandoffPacket
+                        key={hk}
+                        from={String(row.handoff.from_agent ?? "")}
+                        to={String(row.handoff.to_agent ?? "")}
+                        summary={String(row.handoff.summary ?? "")}
+                        at={when(row.at)}
+                        fresh={freshHandoff !== null && hk.includes(String(row.handoff.to_agent ?? ""))}
+                      />
+                    );
+                  }
+                  const msg = row.msg;
+                  if (!msg) return null;
+                  const isYou = msg.author === "you" || msg.author_kind === "human";
+                  const repeat = msg.author === lastAuthor;
+                  lastAuthor = msg.author;
+                  const href = msg.author_kind === "agent" ? `/agents/${msg.author}` : null;
+                  if (msg.kind === "artifact") {
+                    return (
+                      <div key={msg.id} className="max-w-md">
+                        <ArtifactCard msg={msg} />
+                      </div>
+                    );
+                  }
+                  if (repeat) {
+                    return (
+                      <div key={msg.id} className={cn("flex", isYou ? "justify-end pr-0" : "justify-start pl-9")}>
+                        <ChatBubble
+                          author={msg.author}
+                          text={msg.text}
+                          isYou={isYou}
+                          compact
+                          live={
+                            msg.id === latestMsgId &&
+                            msg.author_kind === "agent" &&
+                            (seenMsgIds.has(msg.id) || Boolean(livePresence[msg.author]))
+                          }
+                          href={href}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={msg.id}>
+                      <div className={cn("mb-1 flex items-center gap-2", isYou && "justify-end")}>
+                        {!isYou && href ? (
+                          <Link href={href} className="text-[12px] font-medium hover:text-accent">
+                            {shortName(msg.author)}
+                          </Link>
+                        ) : !isYou ? (
+                          <span className="text-[12px] font-medium">{shortName(msg.author)}</span>
+                        ) : (
+                          <span className="text-[12px] font-medium text-[var(--faint)]">You</span>
+                        )}
+                        {livePresence[msg.author] && livePresence[msg.author] !== "idle" ? (
+                          <span className="text-[10px] text-accent">{livePresence[msg.author]}</span>
+                        ) : null}
+                      </div>
+                      <div className={cn("flex", isYou ? "justify-end" : "justify-start")}>
+                        <ChatBubble
+                          author={msg.author}
+                          text={msg.text}
+                          isYou={isYou}
+                          live={
+                            msg.id === latestMsgId &&
+                            msg.author_kind === "agent" &&
+                            (seenMsgIds.has(msg.id) || Boolean(livePresence[msg.author]))
+                          }
+                          href={href}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {pending.map((action) => (
+                  <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
+                ))}
+              </>
+            )}
+          </div>
+
+          <form
+            className="flex items-center gap-2 border-t border-border bg-white px-4 py-3 sm:px-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void send();
+            }}
+          >
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Message the room"
+              className="h-11 min-w-0 flex-1 rounded-full bg-[var(--elev)] px-4 text-[15px] outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/25"
+            />
+            <Button type="submit" disabled={busy || !text.trim()}>
+              Send
+            </Button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

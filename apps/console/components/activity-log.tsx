@@ -45,14 +45,16 @@ export function ActivityLog({
   roomId,
   compact,
   defaultScope,
+  defaultOpen = true,
 }: {
   roomId?: string;
   compact?: boolean;
   defaultScope?: "all" | "room";
+  defaultOpen?: boolean;
 }) {
   const { activity: live, tick } = useGlobalWs();
   const [seed, setSeed] = useState<ActivityEvent[]>([]);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(defaultOpen);
   const [scope, setScope] = useState<"all" | "room">(defaultScope || (roomId ? "room" : "all"));
 
   useEffect(() => {
@@ -75,7 +77,18 @@ export function ActivityLog({
   return (
     <div className={cn("rounded-2xl border border-border bg-white px-4 py-3", compact ? "" : "mt-8")}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">Activity</p>
+        <button
+          type="button"
+          className="flex items-center gap-2 text-left"
+          onClick={() => setOpen((o) => !o)}
+        >
+          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">Live feed</p>
+          {rows.length ? (
+            <span className="rounded-full bg-[var(--elev)] px-2 py-0.5 text-[10px] font-medium text-[var(--dim)]">
+              {rows.length}
+            </span>
+          ) : null}
+        </button>
         <div className="flex items-center gap-3">
           {roomId ? (
             <div className="flex rounded-full border border-border bg-[#eef2ee] p-0.5 text-[11px]">

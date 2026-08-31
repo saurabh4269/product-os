@@ -7,15 +7,15 @@ import { DemoGuideProvider, useDemoGuide } from "@/lib/demo-guide-context";
 import { pct } from "@/lib/utils";
 import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
+import { HomeCommandBar } from "@/components/home-command-bar";
 import { IsoOffice } from "@/components/iso-office";
 import { OfficeFloor } from "@/components/office-floor";
 import { RoomCard } from "@/components/work-flipbook";
-import { StatusStrip } from "@/components/status-strip";
 import { PipelineBoard } from "@/components/pipeline-board";
 import { ActivityLog } from "@/components/activity-log";
-import { DemoRunner } from "@/components/demo-runner";
 import { SevenStepLoop } from "@/components/seven-step-loop";
 import { ApprovalModal } from "@/components/approval-modal";
+import { GuidedDemoStrip } from "@/components/guided-demo-strip";
 import Link from "next/link";
 
 function magLabel(raw: unknown) {
@@ -77,37 +77,11 @@ function HomeContent() {
   return (
     <>
       <ApprovalModal />
-      {/* Command center first — pipeline + activity before the campus metaphor */}
-      <section className="page-pad border-b border-border bg-background">
-        <header className="max-w-xl">
-          <p className="text-[13px] text-[var(--faint)]">Product OS</p>
-          <h1 className="mt-1 text-[28px] font-semibold tracking-tight sm:text-[32px]">Watch work move</h1>
-          <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
-            Signals become investigations. Agents gather evidence. You approve risky changes. The fleet verifies and
-            remembers.{" "}
-            <Link href="/labs/architecture" className="text-accent hover:underline">
-              Architecture
-            </Link>
-          </p>
-        </header>
-        <div className="mt-8">
-          <StatusStrip />
-        </div>
-        <div className="mt-6">
-          <DemoRunner />
-        </div>
-        <div className="mt-6">
-          <SevenStepLoop activeStage={demo?.highlightStage} />
-        </div>
-        <PipelineBoard />
-        <ActivityLog
-          roomId={demo?.active && demo.roomId ? demo.roomId : undefined}
-          defaultScope={demo?.active && demo.roomId ? "room" : "all"}
-        />
-      </section>
 
-      <section className="relative shrink-0 min-h-[min(52vh,420px)] sm:min-h-[min(58vh,480px)] lg:h-[min(72vh,640px)]">
+      {/* Campus hero — visual first, agents on the map */}
+      <section className="relative border-b border-border">
         <CityMap
+          hero
           rooms={chambers}
           desks={desks}
           handoffs={handoffs}
@@ -115,40 +89,51 @@ function HomeContent() {
           onPick={(id) => setPicked(id)}
           onWalkInside={walkInside}
         />
+        <HomeCommandBar className="absolute bottom-4 left-4 right-4 z-30 mx-auto max-w-4xl sm:bottom-6" />
       </section>
 
-      <section className="page-pad bg-background">
-        <header className="max-w-xl mt-4 sm:mt-6">
-          <p className="text-[13px] text-[var(--faint)]">Campus</p>
-          <h2 className="mt-1 text-[24px] font-semibold tracking-tight sm:text-[28px]">The office, up close</h2>
-          <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
-            Walk the isometric floor, then flip a piece of work until you are in the room.{" "}
-            <Link href="/labs" className="text-accent hover:underline">
-              Eval fixtures
-            </Link>{" "}
-            live in Labs.
-          </p>
-        </header>
+      {/* Work panel — pipeline + live feed */}
+      <section id="work" className="page-pad border-b border-border bg-background">
+        {demo?.active ? (
+          <>
+            <GuidedDemoStrip />
+            <SevenStepLoop activeStage={demo.highlightStage} compact className="mt-4" />
+          </>
+        ) : null}
+        <PipelineBoard />
+        <ActivityLog
+          roomId={demo?.active && demo.roomId ? demo.roomId : undefined}
+          defaultScope={demo?.active && demo.roomId ? "room" : "all"}
+          defaultOpen={false}
+          compact
+        />
+      </section>
 
+      {/* Office floor — tap through to rooms */}
+      <section className="page-pad bg-[var(--floor)]">
         {signals.length > 0 ? (
-          <div className="mt-10 flex flex-wrap gap-x-10 gap-y-4">
-            {signals.map((s) => {
+          <div className="mb-8 flex flex-wrap gap-3">
+            {signals.slice(0, 4).map((s) => {
               const segs =
-                (s.affected_segments as Array<{ browser?: string; os?: string; platform?: string; geo?: string }>) ?? [];
+                (s.affected_segments as Array<{ browser?: string; os?: string; platform?: string; geo?: string }>) ??
+                [];
               const who = segs[0]?.browser || segs[0]?.os || segs[0]?.platform || segs[0]?.geo || "all";
               return (
-                <div key={String(s.id)}>
-                  <p className="text-[12px] text-[var(--faint)]">
+                <div
+                  key={String(s.id)}
+                  className="rounded-xl border border-border bg-white px-4 py-2.5 shadow-sm"
+                >
+                  <p className="text-[11px] text-[var(--faint)]">
                     {String(s.metric).replace(/_/g, " ")} · {who}
                   </p>
-                  <p className="mt-0.5 text-[20px] font-semibold tracking-tight text-foreground">{magLabel(s.magnitude)}</p>
+                  <p className="text-[18px] font-semibold tracking-tight">{magLabel(s.magnitude)}</p>
                 </div>
               );
             })}
           </div>
         ) : null}
 
-        <div id="inside" className="mt-12 scroll-mt-6">
+        <div id="inside" className="scroll-mt-6">
           <IsoOffice
             desks={desks}
             rooms={chambers}
@@ -164,15 +149,17 @@ function HomeContent() {
           />
         </div>
 
-        <div className="mt-12">
+        <div className="mt-10">
           <OfficeFloor desks={desks} handoffs={handoffs} working={office?.working ?? 0} />
         </div>
 
-        <div className="mt-12 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <h3 className="mt-0 text-[22px] font-semibold tracking-tight">Rooms</h3>
-          <p className="text-[13px] text-[var(--dim)]">Click the work to go deeper</p>
+        <div className="mt-10 flex items-end justify-between gap-2">
+          <h3 className="text-[20px] font-semibold tracking-tight">Rooms</h3>
+          <Link href="/labs" className="text-[12px] text-accent hover:underline">
+            Fixtures
+          </Link>
         </div>
-        <div className="rise mt-5 grid grid-cols-1 gap-8 sm:gap-10 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="rise mt-4 grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 xl:grid-cols-3">
           {chambers.map((room) => (
             <RoomCard key={room.id} room={room} desks={desks} />
           ))}

@@ -72,9 +72,13 @@ const TB_LANES: Array<{
 export function TrustBoundariesDiagram({
   agents,
   className,
+  selected,
+  onSelect,
 }: {
   agents: Array<{ id: string; room: string; role: string; tb?: string }>;
   className?: string;
+  selected?: string | null;
+  onSelect?: (tb: string | null) => void;
 }) {
   const stage = usePipelineHighlight();
   const byTb = new Map<string, string[]>();
@@ -100,12 +104,15 @@ export function TrustBoundariesDiagram({
           {TB_LANES.map((lane) => {
             const hot = stage ? lane.matchStages.includes(stage) : false;
             const regAgents = byTb.get(lane.tb) ?? [...lane.agents];
+            const picked = selected === lane.tb;
             return (
               <tr
                 key={lane.tb}
+                onClick={() => onSelect?.(picked ? null : lane.tb)}
                 className={cn(
-                  "border-b border-border/60 transition-colors",
-                  hot && "bg-[color-mix(in_srgb,var(--accent)_8%,white)]"
+                  "cursor-pointer border-b border-border/60 transition-colors",
+                  (hot || picked) && "bg-[color-mix(in_srgb,var(--accent)_8%,white)]",
+                  picked && "ring-1 ring-inset ring-accent/25"
                 )}
               >
                 <td className="py-2.5 pr-3 font-semibold text-foreground">{lane.name}</td>

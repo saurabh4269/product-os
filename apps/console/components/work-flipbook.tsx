@@ -86,7 +86,7 @@ export function WorkFlipbook({
               {page.people?.length && i !== 0 ? (
                 <span className="mt-3 flex gap-1">
                   {page.people.slice(0, 5).map((id) => (
-                    <PixelSprite key={id} name={id} scale={1} />
+                    <PixelSprite key={id} name={id} scale={2} />
                   ))}
                 </span>
               ) : null}

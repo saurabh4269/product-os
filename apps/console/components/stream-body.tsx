@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 
 /** product-os-v2 word-stream for fresh agent lines. */
-export function StreamBody({ text, live = false }: { text: string; live?: boolean }) {
+export function StreamBody({
+  text,
+  live = false,
+  className,
+}: {
+  text: string;
+  live?: boolean;
+  className?: string;
+}) {
   const [shown, setShown] = useState(live ? "" : text);
 
   useEffect(() => {
@@ -21,5 +29,5 @@ export function StreamBody({ text, live = false }: { text: string; live?: boolea
     return () => window.clearInterval(id);
   }, [text, live]);
 
-  return <p className="max-w-[620px] text-[14px] leading-6 text-[var(--ink)]">{shown}</p>;
+  return <p className={className ?? "max-w-[620px] text-[14px] leading-6 text-[var(--ink)]"}>{shown}</p>;
 }

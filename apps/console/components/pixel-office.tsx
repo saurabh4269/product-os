@@ -116,16 +116,20 @@ export function PixelSprite({
   name,
   scale = 3,
   working = false,
+  animate,
   className,
 }: {
   name: string;
   scale?: number;
   working?: boolean;
+  /** Override leg animation; default is only when `working`. */
+  animate?: boolean;
   className?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const pal = useMemo(() => paletteFor(name), [name]);
   const size = 16 * scale;
+  const shouldAnimate = animate ?? working;
 
   useLayoutEffect(() => {
     const canvas = ref.current;
@@ -138,18 +142,19 @@ export function PixelSprite({
       paint(ctx, frame % 2 === 0 ? FRAME_A : FRAME_B, scale, pal);
       frame += 1;
     };
+    paint(ctx, FRAME_A, scale, pal);
+    if (!shouldAnimate) return;
     tick();
-    const ms = working ? 180 : 520;
-    const id = window.setInterval(tick, ms);
+    const id = window.setInterval(tick, working ? 220 : 480);
     return () => window.clearInterval(id);
-  }, [pal, scale, working]);
+  }, [pal, scale, working, shouldAnimate]);
 
   return (
     <canvas
       ref={ref}
       width={size}
       height={size}
-      className={cn("pixelated agent-bob block", working && "is-working", className)}
+      className={cn("pixelated block", working && "agent-bob is-working", className)}
       style={{ width: size, height: size }}
       aria-hidden
     />
@@ -179,13 +184,16 @@ export function PixelOffice({
   furniture?: boolean;
 }) {
   const showFurniture = furniture ?? !compact;
-  const shown = members.filter((m) => m !== "system").slice(0, compact ? 4 : 8);
+  const shown = members.filter((m) => m !== "system").slice(0, compact ? 4 : 6);
+  const workingList = shown.filter((m) => working.has(m));
+  const idleList = shown.filter((m) => !working.has(m));
+  const ordered = [...workingList, ...idleList];
   return (
     <div className={cn("bg-[var(--floor)]", compact ? "px-4 pb-4 pt-6" : "px-4 pb-5 pt-6")}>
       <div className="-mx-1 flex justify-center gap-4 overflow-x-auto overflow-y-visible px-1 py-2">
-        {shown.map((name, i) => {
+        {ordered.map((name, i) => {
           const isWork = working.has(name);
-          const note = compact ? undefined : activity?.[name];
+          const note = compact ? undefined : isWork ? activity?.[name] : undefined;
           const inner = (
             <>
               {note ? (

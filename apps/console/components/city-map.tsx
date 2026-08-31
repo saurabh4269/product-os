@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type Handoff, type OfficeDesk, type Room, type RoomDetail } from "@/lib/api";
-import { BUILDINGS, LANDMARKS, busiestRoom, cluster, slotFor } from "@/lib/campus";
+import { BUILDINGS, LANDMARKS, busiestRoom, cluster, districtPods, slotFor } from "@/lib/campus";
 import { pagesFromDistrict, pagesFromRoom } from "@/lib/work-pages";
 import { PixelSprite } from "@/components/pixel-office";
 import { WorkFlipbook } from "@/components/work-flipbook";
+import { cn } from "@/lib/utils";
 
 const LQIP =
   "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/2wBDAVVaWldsY2JsbVRfeMi7g8CnJ1dXVy8+Qz5UVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRU/wAARCAAEAAYDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAwT/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGdAf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//Z";
@@ -55,6 +56,7 @@ export function CityMap({
   picked,
   onPick,
   onWalkInside,
+  hero = false,
 }: {
   rooms: Room[];
   desks: OfficeDesk[];
@@ -62,6 +64,8 @@ export function CityMap({
   picked: string | null;
   onPick: (roomId: string | null, district?: string) => void;
   onWalkInside: (district: string) => void;
+  /** Full-bleed homepage hero — minimal copy, agents on buildings. */
+  hero?: boolean;
 }) {
   const router = useRouter();
   const [rooms, setRooms] = useState(roomsIn);
@@ -129,6 +133,8 @@ export function CityMap({
   };
 
   const groups = cluster(desks, rooms);
+  const pods = districtPods(desks);
+  const workingCount = desks.filter((d) => d.status !== "idle").length;
   const selected = rooms.find((r) => r.id === picked);
   const inside = desks.filter((d) => (picked ? d.room_id === picked : d.district === district));
   const pages = selected
@@ -138,18 +144,24 @@ export function CityMap({
       : [];
 
   return (
-    <section className="relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]">
-      <header className="relative z-20 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
-        <h1 className="mt-1 font-display text-[1.65rem] leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.6rem]">
-          The work has a place.
-        </h1>
-        <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-[#6e6e73]">
-          {desks.length
-            ? `${desks.filter((d) => d.status !== "idle").length} people are already in the buildings. Tap a building, then flip the work.`
-            : "Tap a building, then flip the work."}
-        </p>
-      </header>
+    <section className={cn("relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]", hero && "min-h-[min(78vh,680px)]")}>
+      {!hero ? (
+        <header className="relative z-20 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
+          <h1 className="mt-1 font-display text-[1.65rem] leading-[1.08] tracking-tight sm:text-3xl lg:text-[2.6rem]">
+            The work has a place.
+          </h1>
+        </header>
+      ) : (
+        <div className="pointer-events-none absolute left-5 top-4 z-20 sm:left-8 sm:top-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#86868b]">Campus</p>
+          {workingCount > 0 ? (
+            <p className="mt-1 text-[13px] font-medium text-[#1d1d1f]">
+              {workingCount} agent{workingCount === 1 ? "" : "s"} in the buildings
+            </p>
+          ) : null}
+        </div>
+      )}
 
       <div className="relative mx-auto w-full max-w-[1100px] lg:absolute lg:inset-0 lg:max-w-none">
         <div
@@ -215,7 +227,7 @@ export function CityMap({
               </svg>
 
               <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                {handoffs.slice(-8).map((h, i) => {
+                {handoffs.slice(-5).map((h, i) => {
                   const a = slotFor(desks.find((d) => d.id === h.from_agent), rooms);
                   const b = slotFor(desks.find((d) => d.id === h.to_agent), rooms);
                   if (a.x === b.x && a.y === b.y) return null;
@@ -229,8 +241,8 @@ export function CityMap({
                         strokeWidth="0.35"
                         strokeDasharray="1.2 0.8"
                       />
-                      <circle r="0.85" fill="#1d1d1f">
-                        <animateMotion dur="3.6s" repeatCount="indefinite">
+                      <circle r="0.65" fill="#1d1d1f" opacity="0.55">
+                        <animateMotion dur="5.2s" repeatCount="indefinite">
                           <mpath href={`#road-${i}`} />
                         </animateMotion>
                       </circle>
@@ -265,6 +277,34 @@ export function CityMap({
                 </button>
               ))}
 
+              {pods.map((pod) => {
+                const hot = hover === pod.id || district === pod.id;
+                const shown = (pod.working.length ? pod.working : pod.total).slice(0, 4);
+                if (!shown.length) return null;
+                return (
+                  <div
+                    key={`pod-${pod.id}`}
+                    className={cn(
+                      "pointer-events-none absolute z-[8] flex -translate-x-1/2 -translate-y-1/2 items-end gap-0.5 transition-opacity duration-300",
+                      hot ? "opacity-100" : "opacity-85"
+                    )}
+                    style={{ left: `${pod.x}%`, top: `${pod.y}%` }}
+                  >
+                    {shown.map((p) => (
+                      <span
+                        key={p.id}
+                        className={cn(
+                          "rounded-md bg-white/80 p-0.5 shadow-sm",
+                          p.status !== "idle" && "ring-1 ring-accent/35"
+                        )}
+                      >
+                        <PixelSprite name={p.id} scale={2} working={p.status !== "idle"} />
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
+
               {groups.map((g) => {
                 const room = rooms.find((r) => r.id === g.key);
                 const on = picked === g.key;
@@ -291,16 +331,16 @@ export function CityMap({
                       className="relative flex min-h-11 min-w-11 flex-col items-center touch-manipulation"
                       aria-label={room?.title ?? "Open building"}
                     >
-                      {on && room && (
+                      {on && room ? (
                         <span className="mb-1 hidden max-w-[160px] truncate rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-medium shadow-sm sm:block">
                           {room.title}
                         </span>
-                      )}
+                      ) : null}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src="/city/pin.webp" alt="" width={28} height={36} className="h-8 w-auto drop-shadow-md sm:h-9" />
-                      <span className="absolute -bottom-1 flex gap-0.5">
+                      <span className="absolute -top-1 flex -translate-y-full gap-0.5">
                         {g.people.slice(0, 3).map((p) => (
-                          <PixelSprite key={p.id} name={p.id} scale={1} working={p.status !== "idle"} />
+                          <PixelSprite key={p.id} name={p.id} scale={2} working={p.status !== "idle"} />
                         ))}
                       </span>
                     </button>
@@ -313,7 +353,12 @@ export function CityMap({
       </div>
 
       {pages.length ? (
-        <aside className="relative z-30 mx-4 mb-4 mt-2 sm:absolute sm:bottom-6 sm:right-6 sm:mx-0 sm:mb-0 sm:mt-0 sm:w-[300px] sm:max-h-[min(72vh,540px)] sm:overflow-y-auto">
+        <aside
+          className={cn(
+            "relative z-30 mx-4 mb-4 mt-2 sm:absolute sm:mx-0 sm:mb-0 sm:mt-0 sm:w-[280px] sm:max-h-[min(60vh,480px)] sm:overflow-y-auto",
+            hero ? "sm:right-6 sm:top-6" : "sm:bottom-6 sm:right-6 sm:max-h-[min(72vh,540px)]"
+          )}
+        >
           <WorkFlipbook
             pages={pages}
             cover={
@@ -321,7 +366,7 @@ export function CityMap({
                 <div className="flex flex-wrap gap-2 px-5 pt-5">
                   {inside.slice(0, 6).map((d) => (
                     <span key={d.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#f5f5f7] px-2 py-1 text-[11px]">
-                      <PixelSprite name={d.id} scale={1} working={d.status !== "idle"} />
+                      <PixelSprite name={d.id} scale={2} working={d.status !== "idle"} />
                       {d.display_name.split(" ")[0]}
                     </span>
                   ))}

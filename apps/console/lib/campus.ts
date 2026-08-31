@@ -75,6 +75,26 @@ export function cluster<T extends { district?: string | null; room_id?: string |
   return raw;
 }
 
+export type DistrictPod<T> = {
+  id: District;
+  x: number;
+  y: number;
+  working: T[];
+  total: T[];
+};
+
+/** Working agents grouped by district — for campus building overlays. */
+export function districtPods<T extends { id: string; district?: string | null; status?: string }>(
+  desks: T[]
+): DistrictPod<T>[] {
+  return DISTRICTS.map((id) => {
+    const slot = SLOTS[id] ?? SLOTS.Office;
+    const total = desks.filter((d) => d.district === id);
+    const working = total.filter((d) => d.status && d.status !== "idle");
+    return { id, x: slot.x, y: slot.y - 4, working, total };
+  }).filter((p) => p.working.length > 0 || p.total.length > 0);
+}
+
 export function busiestRoom<T extends { room_id?: string | null; district?: string | null }>(
   district: string,
   desks: T[],

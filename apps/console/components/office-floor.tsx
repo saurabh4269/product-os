@@ -29,8 +29,8 @@ function DeskTile({ desk }: { desk: OfficeDesk }) {
         <FurnitureSet name={desk.id} district={desk.district} working={busy} scale={2} compact />
       </div>
       <p className="mt-2 w-full truncate text-[13px] font-medium leading-4">{desk.display_name}</p>
-      <p className="mt-0.5 line-clamp-2 min-h-[32px] w-full text-[12px] leading-4 text-[var(--faint)]">
-        {desk.room_title ?? (busy ? "Working" : "Around the office")}
+      <p className="mt-0.5 line-clamp-1 w-full text-[11px] leading-4 text-[var(--faint)]">
+        {busy ? desk.doing : desk.room_title ?? "Idle"}
       </p>
     </Link>
   );
@@ -48,14 +48,9 @@ export function OfficeFloor({
   const recent = handoffs.slice(-4).reverse();
   return (
     <section className="rounded-[24px] border border-border bg-white">
-      <div className="flex flex-col gap-1 px-5 pt-6 sm:flex-row sm:items-end sm:justify-between sm:px-6">
-        <div>
-          <p className="text-[13px] text-[var(--faint)]">The office</p>
-          <h2 className="mt-1 text-[22px] font-semibold tracking-tight">Who’s up to what</h2>
-        </div>
-        <p className="text-[13px] text-[var(--dim)]">
-          {working} working · tap anyone to read their chat
-        </p>
+      <div className="flex flex-col gap-1 px-5 pt-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <h2 className="text-[18px] font-semibold tracking-tight">Office</h2>
+        <p className="text-[12px] text-[var(--faint)]">{working} working</p>
       </div>
 
       <div className="mt-5 space-y-3 px-3 pb-5 sm:px-4">

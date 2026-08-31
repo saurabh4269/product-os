@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useDemoGuide } from "@/lib/demo-guide-context";
 import { useGlobalWs } from "@/lib/use-global-ws";
-import { Pixel } from "@/components/pixel-office";
+import { AgentBadge } from "@/components/agent-badge";
 import { PipelineFlowOverlay } from "@/components/pipeline-flow-overlay";
 import { cn } from "@/lib/utils";
 
@@ -74,6 +74,14 @@ function cardAgent(c: Card): string {
   return defaults?.[0] || "orchestrator_agent";
 }
 
+function statusChip(c: Card) {
+  if (c.awaiting_approval) return { label: "Approve", tone: "accent" as const };
+  if (c.denied) return { label: "Held", tone: "danger" as const };
+  if (c.verified) return { label: "Verified", tone: "ok" as const };
+  if (c.pr_url) return { label: "PR", tone: "ok" as const };
+  return { label: LABELS[c.stage] || c.stage, tone: "faint" as const };
+}
+
 function PipelineCard({
   c,
   moved,
@@ -86,40 +94,43 @@ function PipelineCard({
   onShowFlow?: () => void;
 }) {
   const agent = c.active_agents?.[0] || cardAgent(c);
+  const chip = statusChip(c);
+  const working = Boolean(c.active_agents?.length);
   return (
     <div
       className={cn(
         "rounded-xl border bg-white shadow-sm transition-all duration-500 hover:border-accent/40",
         c.denied && "border-danger/40 bg-red-50/40",
         c.verified && "border-ok/40",
-        c.awaiting_approval && "border-accent/50 ring-2 ring-accent/30 animate-pulse",
+        c.awaiting_approval && "border-accent/50 ring-2 ring-accent/30",
         demoFocus && !c.awaiting_approval && "ring-2 ring-accent/35 border-accent/40",
         !c.denied && !c.verified && !c.awaiting_approval && !demoFocus && "border-border",
         moved && "scale-[1.02]"
       )}
     >
-      <Link href={`/rooms/${c.room_id}`} className="block px-3 py-2">
+      <Link href={`/rooms/${c.room_id}`} className="block px-3 py-2.5">
         <div className="flex items-start gap-2">
-          <Pixel name={agent} size={20} />
-          <p className="min-w-0 flex-1 text-[13px] font-medium leading-5 text-foreground line-clamp-2">{c.title}</p>
+          <AgentBadge name={agent} working={working} size={22} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium leading-5 text-foreground line-clamp-2">{c.title}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                  chip.tone === "accent" && "bg-accent/10 text-accent",
+                  chip.tone === "ok" && "bg-ok/10 text-ok",
+                  chip.tone === "danger" && "bg-danger/10 text-danger",
+                  chip.tone === "faint" && "bg-[var(--elev)] text-[var(--faint)]"
+                )}
+              >
+                {chip.label}
+              </span>
+              {c.calendar_snippet ? (
+                <span className="truncate text-[10px] text-accent">{c.calendar_snippet}</span>
+              ) : null}
+            </div>
+          </div>
         </div>
-        {c.evidence_snippet ? (
-          <p className="mt-1 text-[11px] leading-4 text-[var(--dim)] line-clamp-2">{c.evidence_snippet}</p>
-        ) : null}
-        {c.voice_snippet ? (
-          <p className="mt-1 text-[11px] leading-4 text-[var(--dim)] italic line-clamp-2">“{c.voice_snippet}”</p>
-        ) : null}
-        <p className="mt-1 text-[10px] text-[var(--faint)]">{LABELS[c.stage] || c.stage}</p>
-        {c.tenant_product ? <p className="mt-0.5 text-[11px] text-[var(--faint)]">{c.tenant_product}</p> : null}
-        {c.calendar_snippet ? (
-          <p className="mt-1 text-[11px] font-medium text-accent">{c.calendar_snippet}</p>
-        ) : null}
-        {c.awaiting_approval ? <p className="mt-1 text-[11px] font-medium text-accent">Needs your approval →</p> : null}
-        {c.verified ? <p className="mt-1 text-[11px] font-medium text-ok">Verified</p> : null}
-        {c.denied ? <p className="mt-1 text-[11px] font-medium text-danger">Denied</p> : null}
-        {c.pr_url ? (
-          <span className="mt-1 block text-[11px] font-medium text-ok">PR opened</span>
-        ) : null}
       </Link>
       <div className="flex items-center justify-between border-t border-border/60 px-2 py-1">
         <button
@@ -232,7 +243,7 @@ export function PipelineBoard() {
   }
 
   return (
-    <div id="pipeline-board" className="mt-8">
+    <div id="pipeline-board" className={cn(demo?.active ? "mt-4" : "mt-0")}>
       <PipelineFlowOverlay
         open={Boolean(liveFlow)}
         onClose={() => setFlowCard(null)}
@@ -243,12 +254,9 @@ export function PipelineBoard() {
         voiceSnippet={liveFlow?.voice_snippet}
         calendarSnippet={liveFlow?.calendar_snippet}
       />
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[13px] text-[var(--faint)]">Pipeline</p>
-          <h2 className="mt-1 text-[20px] font-semibold tracking-tight">Work in flight</h2>
-        </div>
-        <div className="flex flex-col items-end gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-[18px] font-semibold tracking-tight">Pipeline</h2>
+        <div className="flex items-center gap-2">
           <div className="flex rounded-full border border-border bg-white p-0.5 text-[12px]">
             <button
               type="button"
@@ -271,18 +279,11 @@ export function PipelineBoard() {
               By agent
             </button>
           </div>
-          <p className="text-[12px] text-[var(--dim)]">
-            {cards.length ? `${cards.length} open` : loaded ? "Run demo to add a card" : "…"}
-          </p>
-          {highlight ? (
-            <Link href="/labs/architecture" className="text-[12px] text-accent hover:underline">
-              Diagram ↔ {highlight.replace(/_/g, " ")}
-            </Link>
-          ) : (
-            <Link href="/labs/architecture" className="text-[12px] text-[var(--faint)] hover:text-accent">
-              Architecture
-            </Link>
-          )}
+          {cards.length ? (
+            <span className="text-[12px] text-[var(--faint)]">{cards.length} open</span>
+          ) : loaded ? (
+            <span className="text-[12px] text-[var(--faint)]">Run demo</span>
+          ) : null}
         </div>
       </div>
 
@@ -302,7 +303,7 @@ export function PipelineBoard() {
                 )}
               >
                 <div className="flex items-center gap-1.5 px-2 py-1">
-                  <span className={cn("h-1.5 w-1.5 rounded-full", colLive ? "bg-accent animate-pulse" : "bg-[var(--faint)]/40")} />
+                  <span className={cn("h-1.5 w-1.5 rounded-full", colLive ? "bg-accent" : "bg-[var(--faint)]/40")} />
                   <p className="text-[11px] font-medium text-[var(--faint)]">
                     {LABELS[col] || col}
                     {inCol.length ? ` · ${inCol.length}` : ""}
@@ -342,8 +343,7 @@ export function PipelineBoard() {
                 )}
               >
                 <div className="flex items-center gap-1.5 px-2 py-1">
-                  <Pixel name={col.id} size={16} />
-                  <span className={cn("h-1.5 w-1.5 rounded-full", colLive ? "bg-accent animate-pulse" : "bg-[var(--faint)]/40")} />
+                  <span className={cn("h-1.5 w-1.5 rounded-full", colLive ? "bg-accent" : "bg-[var(--faint)]/40")} />
                   <p className="text-[11px] font-medium text-[var(--faint)]">
                     {col.label}
                     {inCol.length ? ` · ${inCol.length}` : ""}

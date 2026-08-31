@@ -28,19 +28,15 @@ export function SevenStepLoop({
   }
 
   return (
-    <div className={cn("rounded-2xl border border-border bg-white px-4 py-4", className)}>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">How it works</p>
-          {!compact ? (
-            <p className="mt-1 text-[14px] text-[var(--dim)]">What happens when you click Run demo</p>
-          ) : null}
+    <div className={cn("rounded-2xl border border-border bg-white px-4 py-3", className)}>
+      {!compact ? (
+        <div className="mb-2 flex justify-end">
+          <Link href="/labs/architecture?tab=loop" className="text-[12px] text-accent hover:underline">
+            Architecture
+          </Link>
         </div>
-        <Link href="/labs/architecture?tab=loop" className="text-[12px] text-accent hover:underline">
-          Full architecture
-        </Link>
-      </div>
-      <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      ) : null}
+      <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {LOOPS_STEPS.map((step) => {
           const hot = current === step.stage || (step.altStages?.includes(current || "") ?? false);
           const idx = LOOPS_STEPS.findIndex((s) => s.n === step.n);
