@@ -36,14 +36,14 @@ export function RoomAgentRail({
   return (
     <aside
       className={cn(
-        "flex w-full shrink-0 flex-col border-b border-border bg-[var(--floor)] lg:w-52 lg:border-b-0 lg:border-r",
+        "flex w-full shrink-0 flex-col border-b border-border bg-[var(--floor)] lg:w-52 lg:min-h-0 lg:border-b-0 lg:border-r",
         className
       )}
     >
       <div className="hidden px-3 py-3 lg:block">
         <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--faint)]">In this room</p>
       </div>
-      <div className="flex gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:gap-0.5 lg:overflow-y-auto lg:px-2 lg:pb-3">
+      <div className="flex gap-1 overflow-x-auto px-2 py-2 lg:max-h-full lg:flex-1 lg:flex-col lg:gap-0.5 lg:overflow-x-hidden lg:overflow-y-auto lg:px-2 lg:pb-3">
         {shown.map((id) => {
           const st = presence[id] || (working.has(id) ? "thinking" : "idle");
           const hot = picked === id;
@@ -57,7 +57,9 @@ export function RoomAgentRail({
               <span className="min-w-0 flex-1 lg:block">
                 <span className="block truncate text-[13px] font-medium">{shortName(id)}</span>
                 {activity[id] ? (
-                  <span className="hidden truncate text-[10px] text-[var(--faint)] lg:block">{activity[id]}</span>
+                  <span className="hidden max-w-[9rem] truncate text-[10px] text-[var(--faint)] lg:block">
+                    {activity[id]}
+                  </span>
                 ) : null}
               </span>
             </>
@@ -108,8 +110,8 @@ export function ChatBubble({
   const bubble = (
     <div
       className={cn(
-        "max-w-[min(100%,36rem)] rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 shadow-sm",
-        isYou ? "rounded-br-md bg-accent text-white" : "rounded-bl-md bg-white border border-border text-foreground"
+        "max-w-[min(100%,36rem)] break-words rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 shadow-sm",
+        isYou ? "rounded-br-md bg-accent text-white" : "rounded-bl-md border border-border bg-white text-foreground"
       )}
       style={!isYou ? { borderLeftColor: `hsl(${hue} 35% 55%)`, borderLeftWidth: 3 } : undefined}
     >

@@ -19,15 +19,18 @@ export function EvidenceGraph({
   const height = 320;
   const cx = width / 2;
   const cy = 70;
-  const nodes = trusted.map((e, i) => {
-    const x = 90 + i * Math.min(180, Math.floor((width - 180) / Math.max(trusted.length, 1)));
-    const y = 210;
-    return { e, x, y };
-  });
+  const spread = (count: number, start: number, end: number) => {
+    if (count <= 1) return [cx];
+    const step = (end - start) / (count - 1);
+    return Array.from({ length: count }, (_, i) => start + i * step);
+  };
+  const xs = spread(trusted.length, 90, width - 90);
+  const nodes = trusted.map((e, i) => ({ e, x: xs[i], y: 210 }));
+  const ux = spread(untrusted.length, 90, width - 90);
 
   return (
-    <div className="rounded-2xl border border-border bg-white p-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="Evidence graph">
+    <div className="overflow-x-auto rounded-2xl border border-border bg-white p-3">
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto min-w-[320px] w-full" role="img" aria-label="Evidence graph">
         {nodes.map((n) => {
           const linked = hyp?.supporting_evidence_ids.includes(n.e.id);
           const hot = picked === n.e.id;
@@ -82,7 +85,7 @@ export function EvidenceGraph({
           );
         })}
         {untrusted.map((e, i) => {
-          const x = 90 + i * 180;
+          const x = ux[i];
           const y = 290;
           const hot = picked === e.id;
           return (

@@ -106,6 +106,9 @@ export function RoomView({ initialId }: { initialId?: string }) {
     if (!id) return;
     setData(null);
     setErr(null);
+    setFilterAgent(null);
+    setToolsOpen(false);
+    setTab("transcript");
     void load(id);
   }, [id]);
 
@@ -164,13 +167,13 @@ export function RoomView({ initialId }: { initialId?: string }) {
             const to = String(e.to ?? env.to_agent ?? "");
             const summary = String(e.summary ?? payload.summary ?? "handed off");
             if (from || to) {
-              const key = `${from}-${to}-${Date.now()}`;
-              setFreshHandoff(key);
+              const callId = `live-a2a-${Date.now()}`;
+              setFreshHandoff(callId);
               window.setTimeout(() => setFreshHandoff(null), 800);
               setData((r) => {
                 if (!r?.bundle) return r;
                 const call = {
-                  id: `live-a2a-${Date.now()}`,
+                  id: callId,
                   from_agent: from,
                   to_agent: to,
                   summary,
@@ -231,11 +234,6 @@ export function RoomView({ initialId }: { initialId?: string }) {
     for (const [agent, st] of Object.entries(livePresence)) {
       if (st && st !== "idle") set.add(agent);
     }
-    for (const m of data.messages.slice(-8)) set.add(m.author);
-    for (const call of data.bundle?.agent_calls ?? []) {
-      set.add(String(call.to_agent ?? ""));
-      set.add(String(call.from_agent ?? ""));
-    }
     return set;
   }, [data, livePresence]);
 
@@ -250,7 +248,10 @@ export function RoomView({ initialId }: { initialId?: string }) {
       if (st && st !== "idle") map[agent] = st;
     }
     for (const m of data.messages) {
-      if (m.author && m.author !== "system") map[m.author] = m.text;
+      if (m.author && m.author !== "system") {
+        const snippet = m.text.length > 48 ? `${m.text.slice(0, 48)}…` : m.text;
+        map[m.author] = snippet;
+      }
     }
     return map;
   }, [data, livePresence]);
@@ -377,7 +378,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
           </Link>
           <h1 className="mt-1 truncate text-[18px] font-semibold tracking-tight sm:text-[20px]">{data.room.title}</h1>
           {data.funnel ? (
-            <div className="mt-2">
+            <div className="mt-2 max-w-full overflow-x-auto">
               <FunnelChips steps={data.funnel.steps} current={data.funnel.current} presence={livePresence} />
             </div>
           ) : null}
@@ -426,7 +427,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <RoomAgentRail
           members={data.room.members}
           working={working}
@@ -463,10 +464,10 @@ export function RoomView({ initialId }: { initialId?: string }) {
             {filterAgent ? (
               <button
                 type="button"
-                className="text-[11px] text-accent hover:underline"
+                className="max-w-[45%] truncate text-[11px] text-accent hover:underline"
                 onClick={() => setFilterAgent(null)}
               >
-                Clear filter · {shortName(filterAgent)}
+                Clear · {shortName(filterAgent)}
               </button>
             ) : (
               <span className="text-[11px] text-[var(--faint)]">{members.length} agents</span>
@@ -502,7 +503,9 @@ export function RoomView({ initialId }: { initialId?: string }) {
             ) : (
               <>
                 {filteredThread.length === 0 ? (
-                  <p className="py-8 text-center text-[13px] text-[var(--faint)]">Waiting for the fleet…</p>
+                  <p className="py-8 text-center text-[13px] text-[var(--faint)]">
+                    {filterAgent ? `No messages from ${shortName(filterAgent)} yet.` : "Waiting for the fleet…"}
+                  </p>
                 ) : null}
                 {filteredThread.map((row) => {
                   if (row.kind === "handoff" && row.handoff) {
@@ -515,7 +518,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
                         to={String(row.handoff.to_agent ?? "")}
                         summary={String(row.handoff.summary ?? "")}
                         at={when(row.at)}
-                        fresh={freshHandoff !== null && hk.includes(String(row.handoff.to_agent ?? ""))}
+                        fresh={freshHandoff === hk}
                       />
                     );
                   }
@@ -526,6 +529,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
                   lastAuthor = msg.author;
                   const href = msg.author_kind === "agent" ? `/agents/${msg.author}` : null;
                   if (msg.kind === "artifact") {
+                    lastAuthor = "";
                     return (
                       <div key={msg.id} className="max-w-md">
                         <ArtifactCard msg={msg} />

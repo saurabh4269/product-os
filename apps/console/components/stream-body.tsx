@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 /** product-os-v2 word-stream for fresh agent lines. */
 export function StreamBody({
@@ -29,5 +30,9 @@ export function StreamBody({
     return () => window.clearInterval(id);
   }, [text, live]);
 
-  return <p className={className ?? "max-w-[620px] text-[14px] leading-6 text-[var(--ink)]"}>{shown}</p>;
+  return (
+    <p className={cn(className ?? "max-w-[620px] text-[14px] leading-6 text-[var(--ink)]", "break-words whitespace-pre-wrap")}>
+      {shown}
+    </p>
+  );
 }

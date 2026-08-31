@@ -144,7 +144,7 @@ export function CityMap({
       : [];
 
   return (
-    <section className={cn("relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]", hero && "min-h-[min(78vh,680px)]")}>
+    <section className={cn("relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]", hero && "min-h-[min(78vh,680px)] pb-28 sm:pb-32")}>
       {!hero ? (
         <header className="relative z-20 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
@@ -279,7 +279,7 @@ export function CityMap({
 
               {pods.map((pod) => {
                 const hot = hover === pod.id || district === pod.id;
-                const shown = (pod.working.length ? pod.working : pod.total).slice(0, 4);
+                const shown = pod.working.slice(0, 4);
                 if (!shown.length) return null;
                 return (
                   <div
@@ -355,8 +355,8 @@ export function CityMap({
       {pages.length ? (
         <aside
           className={cn(
-            "relative z-30 mx-4 mb-4 mt-2 sm:absolute sm:mx-0 sm:mb-0 sm:mt-0 sm:w-[280px] sm:max-h-[min(60vh,480px)] sm:overflow-y-auto",
-            hero ? "sm:right-6 sm:top-6" : "sm:bottom-6 sm:right-6 sm:max-h-[min(72vh,540px)]"
+            "relative z-30 mx-4 mb-4 mt-2 sm:absolute sm:mx-0 sm:mb-0 sm:mt-0 sm:w-[280px] sm:max-h-[min(50vh,420px)] sm:overflow-y-auto",
+            hero ? "sm:right-6 sm:top-6 sm:mb-0" : "sm:bottom-6 sm:right-6 sm:max-h-[min(72vh,540px)]"
           )}
         >
           <WorkFlipbook

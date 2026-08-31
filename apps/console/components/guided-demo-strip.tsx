@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { LOOPS_STEPS, useDemoGuide } from "@/lib/demo-guide-context";
 import { setPipelineHighlight } from "@/lib/pipeline-highlight";
 import { cn } from "@/lib/utils";

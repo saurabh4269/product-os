@@ -92,7 +92,7 @@ export function districtPods<T extends { id: string; district?: string | null; s
     const total = desks.filter((d) => d.district === id);
     const working = total.filter((d) => d.status && d.status !== "idle");
     return { id, x: slot.x, y: slot.y - 4, working, total };
-  }).filter((p) => p.working.length > 0 || p.total.length > 0);
+  }).filter((p) => p.working.length > 0);
 }
 
 export function busiestRoom<T extends { room_id?: string | null; district?: string | null }>(

@@ -21,11 +21,11 @@ export function HandoffPacket({
   return (
     <div
       className={
-        "my-3 flex flex-col gap-2 rounded-2xl border border-border bg-[var(--elev)] px-4 py-3 sm:flex-row sm:items-center " +
+        "my-3 flex flex-col gap-2 rounded-2xl border border-border bg-[var(--elev)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center " +
         (fresh ? "animate-[handoff_0.6s_ease-out]" : "")
       }
     >
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-[var(--faint)]">
           Handoff
         </span>

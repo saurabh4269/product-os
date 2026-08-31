@@ -59,7 +59,7 @@ export function StatusStrip({ compact }: { compact?: boolean }) {
     Workspace: "Wire",
   };
 
-  const stats = [
+  const stats: Array<{ label: string; value: number | string; hot?: boolean; flash?: boolean }> = [
     { label: "Open investigations", value: open, flash: flashOpen },
     { label: "Waiting on you", value: waiting, hot: waiting > 0, flash: flashWaiting },
     { label: "In flight", value: s.engaged ?? 0 },

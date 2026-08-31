@@ -14,8 +14,10 @@ export function HomeCommandBar({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <StatusStrip compact />
+      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 overflow-x-auto">
+          <StatusStrip compact />
+        </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <DemoRunner variant="bar" />
           <Link
