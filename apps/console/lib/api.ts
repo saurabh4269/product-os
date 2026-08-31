@@ -242,6 +242,8 @@ export const api = {
       ok: boolean;
       rooms: { total: number; open: number; by_kind: Record<string, number> };
       approvals_pending: number;
+      engaged?: number;
+      verified?: number;
       presence: { agents: number; by_status: Record<string, number> };
       funnel: { signal: number; approve: number; learn: number };
       workspace: { connected: boolean; email: string };
@@ -370,6 +372,7 @@ export const api = {
   rotateToken: (id: string, token: string) =>
     post<{ rotated: boolean; tenant: Tenant }>(`/api/tenants/${id}/token`, { token }, { admin: true }),
   oauth: () => get<GoogleOAuth>("/api/oauth/google"),
+  ga4Status: () => get<{ ready: boolean }>("/api/oauth/ga4/status"),
   saveGoogleClient: (client_id: string, client_secret: string) =>
     post<GoogleOAuth>("/api/oauth/google/client", { client_id, client_secret }, { admin: true }),
   telephony: () =>
@@ -436,6 +439,7 @@ export const api = {
     action_id?: string;
     pr_url?: string;
     dimensions?: Record<string, unknown>;
+    apply_calendar?: boolean;
   }) => post<Record<string, unknown>>("/api/coordinate", body),
   signalsCatalog: () => get<Record<string, unknown>>("/api/signals/catalog"),
   investigate: (body: {
@@ -456,6 +460,13 @@ export const api = {
     revenue_affected_usd?: number;
   }) => post<Record<string, unknown>>("/api/product-intel", body),
   calendar: () => get<{ oauth: boolean; mode: string; detail: string; tools: string[] }>("/api/calendar"),
+  calendarSuggest: (body?: { duration_minutes?: number; limit?: number }) =>
+    post<{
+      status?: string;
+      connector?: string;
+      slots?: Array<{ start: string; end: string; duration_minutes?: number }>;
+      detail?: string;
+    }>("/api/calendar/suggest", body ?? { limit: 5 }),
   placeCall: (body: { to_number: string; reason?: string; room_id?: string; product?: string }) =>
     post<{ report: { status: string; connector: string; detail: string; url?: string | null } }>(
       "/api/calls",
@@ -494,6 +505,9 @@ export const api = {
       preferred_2x?: string[];
       investigation_fanout?: string;
       proposal_critique?: string;
+      investigators_fanout?: string[];
+      adopted_patterns?: string[];
+      hitl?: Record<string, unknown>;
       note?: string;
       enterprise?: Record<string, string>;
     }>("/api/workflows"),
@@ -519,7 +533,14 @@ export const api = {
         scenario_id?: string | null;
         investigation_id?: string | null;
         awaiting_approval?: boolean;
+        pending_action_id?: string | null;
         pr_url?: string | null;
+        evidence_snippet?: string | null;
+        calendar_snippet?: string | null;
+        voice_snippet?: string | null;
+        verified?: boolean;
+        denied?: boolean;
+        active_agents?: string[];
       }>;
     }>("/api/pipeline"),
   activity: () =>

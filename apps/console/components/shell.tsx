@@ -9,6 +9,7 @@ import {
   FlaskConical,
   GitBranch,
   House,
+  Layers,
   PanelLeftClose,
   PanelLeftOpen,
   Plug,
@@ -19,6 +20,10 @@ import { cn } from "@/lib/utils";
 import { BeanMark } from "@/components/mascot";
 import { PixelSprite } from "@/components/pixel-office";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { HumanInputProvider } from "@/lib/human-input-context";
+import { HumanInputModals } from "@/components/human-input-modals";
+import { ToastProvider } from "@/lib/toast-context";
+import { ToastHost } from "@/components/toast-host";
 
 const STORAGE = "loop-sidebar";
 
@@ -27,6 +32,7 @@ const SYSTEM = [
   { href: "/registry", label: "Agents", icon: Users },
   { href: "/memory", label: "Memory", icon: BookMarked },
   { href: "/approvals", label: "Approvals", icon: CircleCheck, badgeKey: "approvals" as const },
+  { href: "/labs/architecture", label: "Architecture", icon: Layers },
   { href: "/labs", label: "Labs", icon: FlaskConical },
   { href: "/traces", label: "Traces", icon: GitBranch },
   { href: "/connect", label: "Connect", icon: Plug },
@@ -43,7 +49,9 @@ function kindLabel(kind: string) {
 }
 
 function isActive(path: string, href: string) {
-  return href === "/" ? path === "/" : path.startsWith(href);
+  if (href === "/") return path === "/";
+  if (href === "/labs") return path === "/labs";
+  return path.startsWith(href);
 }
 
 function Tip({
@@ -226,6 +234,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const wide = expanded;
 
   return (
+    <ToastProvider>
+    <HumanInputProvider>
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       <aside
         className={cn(
@@ -300,5 +310,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
     </div>
+    <HumanInputModals />
+    <ToastHost />
+    </HumanInputProvider>
+    </ToastProvider>
   );
 }

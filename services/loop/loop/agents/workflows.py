@@ -1,6 +1,6 @@
 """ADK 2.0 Workflow graphs — supersede pre-2.0 Sequential/Parallel/Loop agents.
 
-SalesShortcut (hackathon winners, pre-ADK-2) used:
+Typical pre–ADK-2 stacks used:
   SequentialAgent, ParallelAgent, LoopAgent + before_tool_callback skip-if-done.
 
 ADK 2.0 prefers:
@@ -95,7 +95,7 @@ def build_investigation_workflow() -> Any | None:
                 name="investigation_fanout",
                 description=(
                     "Fan-out analytics/logs/deploy/db/customer/code evidence, then join. "
-                    "Replaces ParallelAgent from ADK 1.x / SalesShortcut."
+                    "Replaces ParallelAgent from ADK 1.x."
                 ),
                 input_schema=InvestigationIn,
                 edges=[(START, node, joiner) for node in fanout] + [(joiner, join_evidence)],
@@ -161,7 +161,7 @@ def workflow_catalog() -> dict[str, str]:
         "hitl": hitl["pattern"],
         "note": (
             "ADK 2 Workflow + JoinNode + RequestInput replace SequentialAgent/"
-            "ParallelAgent/LoopAgent from the pre-2.0 SalesShortcut era. "
+            "ParallelAgent/LoopAgent from the pre-2.0 ADK era. "
             "Workflow-as-Tool (≥2.4) needs Pydantic input_schema on the Workflow. "
             "Hosted LOOP uses the deterministic engine; graphs attach when ADK is present."
         ),

@@ -1,6 +1,6 @@
-"""ADK lifecycle hooks — SalesShortcut patterns, ADK 2.0-ready.
+"""ADK lifecycle hooks — common ADK 1.x patterns, ADK 2.0-ready.
 
-SalesShortcut used before_tool_callback for skip-if-done HITL
+Typical ADK 1.x stacks used before_tool_callback for skip-if-done HITL
 (e.g. prevent_duplicate_call, _skip_human_creation_if_exists).
 
 ADK 2.0 maps the same idea to:
@@ -20,7 +20,7 @@ from typing import Any, Callable
 def skip_if_done(state: dict[str, Any] | None, key: str, done_values: set[str] | None = None) -> Any | None:
     """Return a cached result when work already completed; else None (proceed).
 
-    Mirror of SalesShortcut prevent_duplicate_call_callback /
+    Mirror of prevent_duplicate_call_callback /
     _skip_human_creation_if_exists. Returning a non-None value skips the tool.
     """
     if not state:
@@ -67,7 +67,7 @@ def after_agent_push(
     message: str = "",
     data: dict[str, Any] | None = None,
 ) -> None:
-    """SalesShortcut after_agent_callback → UI /agent_callback energy."""
+    """after_agent_callback → UI /agent_callback push."""
     push(
         {
             "room_id": room_id,

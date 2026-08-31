@@ -67,6 +67,48 @@ def test_post_signal_uses_investigation_pipeline(engine, monkeypatch):
         assert room and room.investigation_id
 
 
+def test_pipeline_card_enrichment(engine, monkeypatch):
+    from datetime import UTC, datetime
+
+    from loop.models import RoomMessage
+
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    engine.seed_world()
+    room = next(r for r in engine.store.list_rooms() if r.status == "open")
+    engine.store.put_message(
+        RoomMessage(
+            id="msg-voice",
+            room_id=room.id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="artifact",
+            text="Safari users abandon at 3DS challenge screen",
+            artifact_type="voice",
+            artifact={"severity": "high"},
+            created_at=datetime.now(UTC),
+        )
+    )
+    engine.store.put_message(
+        RoomMessage(
+            id="msg-cal",
+            room_id=room.id,
+            author="coordination",
+            author_kind="agent",
+            kind="artifact",
+            text="Review hold",
+            artifact_type="coordination",
+            artifact={"slot": {"start": "2026-09-01T14:00:00+00:00"}},
+            created_at=datetime.now(UTC),
+        )
+    )
+    with TestClient(api_mod.app) as client:
+        cards = client.get("/api/pipeline").json()["cards"]
+        card = next(c for c in cards if c["room_id"] == room.id)
+        assert "Safari" in (card.get("voice_snippet") or "")
+        assert card.get("calendar_snippet", "").startswith("Hold")
+
+
 def test_room_by_scenario(engine, monkeypatch):
     monkeypatch.setattr(api_mod, "_engine", engine)
     monkeypatch.setattr(api_mod, "get_engine", lambda: engine)

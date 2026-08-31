@@ -1,18 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { useGlobalWs, type ActivityEvent } from "@/lib/use-global-ws";
+import { shortName } from "@/lib/names";
+import { cn } from "@/lib/utils";
 
-function Row({ e }: { e: ActivityEvent }) {
-  const who = e.agent_id || "system";
+function relTime(ts?: string) {
+  if (!ts) return "";
+  const t = new Date(ts).getTime();
+  if (Number.isNaN(t)) return "";
+  const sec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (sec < 8) return "just now";
+  if (sec < 60) return `${sec}s ago`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}m ago`;
+  return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function Row({ e, fresh, hideRoom }: { e: ActivityEvent; fresh?: boolean; hideRoom?: boolean }) {
+  const who = shortName(e.agent_id || "system");
   const room = e.room_id;
   return (
-    <div className="flex gap-2 text-[12px] leading-5 text-[var(--dim)]">
-      <span className="shrink-0 text-[var(--faint)]">{who}</span>
+    <div
+      className={cn(
+        "flex gap-2 text-[12px] leading-5 transition-opacity duration-500 text-[var(--dim)]",
+        fresh ? "opacity-100" : "opacity-90"
+      )}
+    >
+      <span className="w-14 shrink-0 text-[var(--faint)]">{relTime(e.ts)}</span>
+      <span className="w-24 shrink-0 truncate font-medium text-foreground/80">{who}</span>
       <span className="min-w-0 flex-1 truncate">{e.message}</span>
-      {room ? (
+      {room && !hideRoom ? (
         <Link href={`/rooms/${room}`} className="shrink-0 text-accent hover:underline">
           room
         </Link>
@@ -21,9 +41,23 @@ function Row({ e }: { e: ActivityEvent }) {
   );
 }
 
-export function ActivityLog() {
+export function ActivityLog({
+  roomId,
+  compact,
+  defaultScope,
+}: {
+  roomId?: string;
+  compact?: boolean;
+  defaultScope?: "all" | "room";
+}) {
   const { activity: live, tick } = useGlobalWs();
   const [seed, setSeed] = useState<ActivityEvent[]>([]);
+  const [open, setOpen] = useState(true);
+  const [scope, setScope] = useState<"all" | "room">(defaultScope || (roomId ? "room" : "all"));
+
+  useEffect(() => {
+    if (roomId && defaultScope === "room") setScope("room");
+  }, [roomId, defaultScope]);
 
   useEffect(() => {
     api
@@ -32,18 +66,63 @@ export function ActivityLog() {
       .catch(() => setSeed([]));
   }, [tick]);
 
-  const rows = [...live, ...seed].slice(0, 40);
+  const rows = useMemo(() => {
+    const merged = [...live, ...seed].slice(0, 80);
+    if (!roomId || scope === "all") return merged.slice(0, compact ? 24 : 40);
+    return merged.filter((e) => e.room_id === roomId).slice(0, compact ? 24 : 40);
+  }, [live, seed, roomId, scope, compact]);
 
   return (
-    <div className="mt-8 rounded-2xl border border-border bg-white px-4 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">Activity</p>
-      <div className="mt-2 max-h-36 space-y-1 overflow-y-auto">
-        {rows.length ? (
-          rows.map((e, i) => <Row key={`${e.ts}-${i}`} e={e} />)
-        ) : (
-          <p className="text-[12px] text-[var(--faint)]">Fleet idle — run demo to see agents work.</p>
-        )}
+    <div className={cn("rounded-2xl border border-border bg-white px-4 py-3", compact ? "" : "mt-8")}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--faint)]">Activity</p>
+        <div className="flex items-center gap-3">
+          {roomId ? (
+            <div className="flex rounded-full border border-border bg-[#eef2ee] p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setScope("room")}
+                className={cn(
+                  "rounded-full px-2 py-0.5 font-medium",
+                  scope === "room" ? "bg-white text-accent shadow-sm" : "text-[var(--dim)]"
+                )}
+              >
+                This room
+              </button>
+              <button
+                type="button"
+                onClick={() => setScope("all")}
+                className={cn(
+                  "rounded-full px-2 py-0.5 font-medium",
+                  scope === "all" ? "bg-white text-accent shadow-sm" : "text-[var(--dim)]"
+                )}
+              >
+                Fleet
+              </button>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="text-[12px] text-[var(--dim)] hover:text-foreground"
+            onClick={() => setOpen((o) => !o)}
+          >
+            {open ? "Hide" : "Show"}
+          </button>
+        </div>
       </div>
+      {open ? (
+        <div className={cn("mt-2 space-y-1 overflow-y-auto", compact ? "max-h-32" : "max-h-40")}>
+          {rows.length ? (
+            rows.map((e, i) => (
+              <Row key={`${e.ts}-${e.agent_id}-${i}`} e={e} fresh={i === 0 && live.length > 0} hideRoom={Boolean(roomId)} />
+            ))
+          ) : (
+            <p className="text-[12px] text-[var(--faint)]">
+              {roomId && scope === "room" ? "No activity in this room yet." : "Fleet idle — run demo to see agents work."}
+            </p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

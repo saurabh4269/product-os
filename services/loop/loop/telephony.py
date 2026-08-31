@@ -5,7 +5,7 @@ Cost path for this hackathon:
     Twilio <Say> uses trial-included TTS.
   - PSTN: Twilio free trial (~$15 credit). Google has no free outbound PSTN for ADK.
 
-Flow (SalesShortcut energy, Google-documented Twilio path):
+Flow (Google-documented Twilio path):
   place_call → Twilio REST create call → TwiML Say/Gather loop →
   Gemini text replies → hangup → classify transcript → room artifact.
 """

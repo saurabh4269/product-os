@@ -89,7 +89,7 @@ Northstar does not vendor — it is stdlib-only (`python app.py`).
 
 ### ADK 2 Workflow vs SequentialAgent
 
-**Symptom:** Copying SalesShortcut ParallelAgent / LoopAgent into ADK 2 triggers deprecation; Workflow is not a drop-in `sub_agent`.
+**Symptom:** Copying ADK 1.x ParallelAgent / LoopAgent trees into ADK 2 triggers deprecation; Workflow is not a drop-in `sub_agent`.
 
 **Fix:** Prefer Workflow + JoinNode + RequestInput. Workflow-as-Tool (≥2.4) needs an explicit Pydantic `input_schema` on the Workflow or NodeTool rejects it. Attach only schema'd workflows on investigator. Hosted path stays the deterministic engine — soft-fail if `google-adk` missing.
 

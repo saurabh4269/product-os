@@ -1,4 +1,4 @@
-# Hackathon story — what we took from winners, and what ADK 2.0 changes
+# Hackathon story — adopted patterns and ADK 2.0 changes
 
 ## What Product OS is
 
@@ -25,9 +25,9 @@ Product Y (Cove) is a **separate** repo + Cloud Run service — never `/shop` on
 | Scenario chips on campus | `ScenarioChips` → `POST /api/scenarios/{slug}/run` |
 | Richer flip artifacts | Kind tones + nested fields + expand |
 
-### SalesShortcut (ADK hackathon winners, **pre-ADK-2**)
+### Common ADK 1.x multi-agent patterns
 
-Shipped with Sequential / Parallel / Loop agents and multi-service Cloud Run.
+Typical pre–ADK-2 stacks used Sequential / Parallel / Loop agents and multiple Cloud Run services.
 
 | Pattern | Where it landed |
 |---------|-----------------|
@@ -100,9 +100,9 @@ Voice diagnostic context  |  Code issue brief  |  Risk policy
 
 `POST /api/investigate` / `GET /api/signals/catalog` / `POST /api/product-intel` (N requests → one proposal). Segmented conversion / Apple Pay fixtures are recipes only.
 
-### Phone (winner path, free/GCP)
+### Phone (outbound path, free/GCP)
 
-Google Telephony Platform / CX Phone Gateway = **inbound only** (PRD K-6). SalesShortcut dialed out via ElevenLabs → Twilio; we keep optional **Twilio + Gemini** for outbound, default **simulate** so evidence still ships without a carrier. No ElevenLabs.
+Google Telephony Platform / CX Phone Gateway = **inbound only** (PRD K-6). We keep optional **Twilio + Gemini** for outbound, default **simulate** so evidence still ships without a carrier.
 
 | Piece | Where |
 |-------|--------|
@@ -115,7 +115,7 @@ Google Telephony Platform / CX Phone Gateway = **inbound only** (PRD K-6). Sales
 
 Optional Cloud Run `loop` env: `TWILIO_*`, `GOOGLE_API_KEY`, `LOOP_GTP_PHONE_NUMBER`, `LOOP_PUBLIC_URL`.
 
-## ADK 2.0 (winners could not use this)
+## ADK 2.0 (what changed)
 
 | ADK 1.x | ADK 2.0 |
 |---------|---------|

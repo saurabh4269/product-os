@@ -1110,7 +1110,14 @@ def run_investigation(
             HUB.publish_global(
                 {
                     "type": "approval_required",
-                    "approval": {"room_id": room.id, "investigation_id": inv.id, "action_id": action.id},
+                    "approval": {
+                        "room_id": room.id,
+                        "investigation_id": inv.id,
+                        "action_id": action.id,
+                        "risk_tier": risk.tier.value,
+                        "consequence": action.consequence or risk.rationale,
+                        "title": room.title,
+                    },
                 }
             )
 

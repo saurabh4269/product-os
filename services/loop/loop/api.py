@@ -295,10 +295,11 @@ def health():
     return {"ok": True, "service": "loop", "hosted": bool(os.environ.get("K_SERVICE")), "region": settings().region}
 
 
-@app.get("/api/status")
-def status():
-    """SalesShortcut dashboard energy — funnel counts, presence, gates (not a CRUD board)."""
-    eng = get_engine()
+def _status_payload(eng) -> dict:
+    """Shared counters for GET /api/status and WebSocket initial_state."""
+    from .connectors import google_oauth
+    from .live import funnel_for
+
     rooms = eng.store.list_rooms()
     pending = eng.store.pending_approvals()
     presence_n = sum(len(v) for v in HUB.presence.values())
@@ -308,18 +309,34 @@ def status():
         k = r.kind.value if hasattr(r.kind, "value") else str(r.kind)
         by_kind[k] = by_kind.get(k, 0) + 1
     stages: dict[str, int] = {}
-    for rid, agents in HUB.presence.items():
+    for _rid, agents in HUB.presence.items():
         for ev in agents.values():
             st = str(ev.get("status") or "idle")
             stages[st] = stages.get(st, 0) + 1
-    from .connectors import google_oauth
-
+    engaged = 0
+    verified = 0
+    for room in open_rooms:
+        inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
+        state = inv.state if inv else None
+        actions = eng.store.list_actions(inv.id) if inv else []
+        awaiting = any(a.status in {"proposed", "awaiting_approval"} for a in actions)
+        funnel = funnel_for(room.loop_type, state, awaiting=awaiting)
+        st = funnel.get("current") or "signal"
+        if st in {"investigate", "evidence", "root_cause"}:
+            engaged += 1
+        if inv and str(getattr(inv.state, "value", inv.state)) in {
+            "resolved",
+            "partially_resolved",
+        }:
+            verified += 1
     oauth = google_oauth.status()
     return {
         "ok": True,
         "running": True,
         "rooms": {"total": len(rooms), "open": len(open_rooms), "by_kind": by_kind},
         "approvals_pending": len(pending),
+        "engaged": engaged,
+        "verified": verified,
         "presence": {"agents": presence_n, "by_status": stages},
         "funnel": {
             "signal": by_kind.get("incident", 0) + by_kind.get("opportunity", 0),
@@ -329,6 +346,12 @@ def status():
         "workspace": {"connected": bool(oauth.get("connected")), "email": oauth.get("email") or ""},
         "patterns": ["parallel_fanout", "review_critique", "skip_if_done", "agent_callback"],
     }
+
+
+@app.get("/api/status")
+def status():
+    """Live dashboard — funnel counts, presence, gates (not a CRUD board)."""
+    return _status_payload(get_engine())
 
 
 def _visible_flags(eng, tenant_id: str) -> dict[str, str]:
@@ -827,7 +850,9 @@ def coordinate(body: CoordinateBody):
             prefer_meet=body.prefer_meet,
             notify_channels=body.notify_channels,
             dimensions=body.dimensions,
+            apply_calendar=body.apply_calendar,
         )
+        _publish_coordination_payoff(out, body.room_id)
         return out
 
     tier = body.risk_tier.upper() if body.risk_tier else "MEDIUM"
@@ -848,7 +873,25 @@ def coordinate(body: CoordinateBody):
         pr_url=body.pr_url,
         dimensions=body.dimensions,
     )
-    return run_coordination(eng, req, apply_calendar=body.apply_calendar)
+    out = run_coordination(eng, req, apply_calendar=body.apply_calendar)
+    _publish_coordination_payoff(out, body.room_id)
+    return out
+
+
+def _publish_coordination_payoff(out: dict, room_id: str | None) -> None:
+    coord = out.get("coordination") or {}
+    slot = coord.get("slot") if isinstance(coord, dict) else None
+    if not isinstance(slot, dict) or not slot.get("start"):
+        return
+    HUB.publish_global(
+        {
+            "type": "payoff",
+            "kind": "calendar_scheduled",
+            "room_id": room_id or coord.get("room_id"),
+            "event_url": slot.get("event_url"),
+            "start": slot.get("start"),
+        }
+    )
 
 
 @app.get("/api/signals/catalog")
@@ -927,7 +970,7 @@ def product_intel(body: ProductIntelBody):
 
 @app.post("/api/calls")
 def place_outbound_call(body: PlaceCallBody):
-    """Human-triggered outbound call from a room (SalesShortcut OutreachCaller energy)."""
+    """Human-triggered outbound call from a room."""
     from .connectors.voice import place_call
     from .tenant import product_for_room
     from .world import post as room_post
@@ -1092,13 +1135,11 @@ def room_by_scenario(slug: str):
     return {"room_id": room.id, "room": room.model_dump(mode="json")}
 
 
-@app.get("/api/pipeline")
-def pipeline_board(tenant_id: str | None = Query(default=None)):
-    """Kanban-style cards for open investigations (SalesShortcut board energy)."""
-    from .live import PIPELINE_BUG, PIPELINE_FEATURE, funnel_for
+def _pipeline_cards(eng, tenant_id: str | None = None) -> list[dict]:
+    from .live import funnel_for
+    from .models import InvestigationState
     from .tenant import resolve_tenant
 
-    eng = get_engine()
     cards = []
     for room in eng.store.list_rooms():
         if room.status != "open":
@@ -1112,10 +1153,41 @@ def pipeline_board(tenant_id: str | None = Query(default=None)):
         funnel = funnel_for(room.loop_type, state, awaiting=awaiting)
         tenant = resolve_tenant(eng.store, investigation=inv, room=room)
         pr_url = None
+        pending_action_id = None
         for act in actions:
             exe = (act.artifacts or {}).get("execution") if act.artifacts else {}
             if isinstance(exe, dict):
                 pr_url = exe.get("pr_url") or exe.get("code_pr_url") or pr_url
+            if act.status in {"proposed", "awaiting_approval"} and not pending_action_id:
+                pending_action_id = act.id
+        evidence_snippet = ""
+        if inv:
+            hyps = eng.store.list_hypotheses(inv.id)
+            if hyps:
+                evidence_snippet = (hyps[0].statement or "")[:120]
+            if not evidence_snippet:
+                ev = eng.store.list_evidence(inv.id)
+                if ev:
+                    evidence_snippet = (ev[0].claim or "")[:120]
+        inv_state = str(getattr(state, "value", state) if state else "")
+        verified = inv_state in {"resolved", "partially_resolved"}
+        denied = room.scenario_id == "security_exfil" or any(a.status == "denied" for a in actions)
+        active_agents = [
+            aid
+            for aid, ev in HUB.presence.get(room.id, {}).items()
+            if str(ev.get("status") or "idle") not in {"idle", ""}
+        ]
+        calendar_snippet = ""
+        voice_snippet = ""
+        for msg in reversed(eng.store.list_messages(room.id)):
+            if not calendar_snippet and msg.artifact_type == "coordination":
+                slot = (msg.artifact or {}).get("slot") or {}
+                if slot.get("start"):
+                    calendar_snippet = f"Hold {str(slot['start'])[:16].replace('T', ' ')}"
+            if not voice_snippet and msg.artifact_type == "voice" and msg.text:
+                voice_snippet = (msg.text or "")[:80]
+            if calendar_snippet and voice_snippet:
+                break
         cards.append(
             {
                 "room_id": room.id,
@@ -1127,12 +1199,28 @@ def pipeline_board(tenant_id: str | None = Query(default=None)):
                 "scenario_id": room.scenario_id,
                 "investigation_id": room.investigation_id,
                 "awaiting_approval": awaiting,
+                "pending_action_id": pending_action_id,
                 "pr_url": pr_url,
+                "evidence_snippet": evidence_snippet,
+                "calendar_snippet": calendar_snippet or None,
+                "voice_snippet": voice_snippet or None,
+                "verified": verified,
+                "denied": denied,
+                "active_agents": active_agents,
             }
         )
+    return cards
+
+
+@app.get("/api/pipeline")
+def pipeline_board(tenant_id: str | None = Query(default=None)):
+    """Kanban-style cards for open investigations."""
+    from .live import PIPELINE_BUG
+
+    eng = get_engine()
     return {
         "columns": PIPELINE_BUG,
-        "cards": cards,
+        "cards": _pipeline_cards(eng, tenant_id=tenant_id),
     }
 
 
@@ -1434,6 +1522,43 @@ def investigation(inv_id: str):
     return _bundle(eng, inv_id)
 
 
+def _publish_human_input_after_approve(eng, action, rid: str | None) -> None:
+    """After HIGH approve — prompt OAuth or calendar slot on homepage (HITL in workflow)."""
+    from .connectors import calendar as cal
+    from .connectors import google_oauth
+
+    oauth = google_oauth.status()
+    if not oauth.get("connected"):
+        HUB.publish_global(
+            {
+                "type": "human_input_required",
+                "kind": "oauth",
+                "reason": "Calendar holds and Gmail drafts need Workspace OAuth once.",
+                "authorize_url": oauth.get("authorize_url") or "/api/oauth/google/start",
+                "redirect_uri": oauth.get("redirect_uri"),
+                "room_id": rid,
+                "action_id": getattr(action, "id", None),
+            }
+        )
+        return
+    suggested = cal.suggest_times(limit=5)
+    slots = suggested.get("slots") or []
+    if not slots:
+        return
+    room = eng.store.get_room(rid) if rid else None
+    title = room.title if room else "Post-approve review"
+    HUB.publish_global(
+        {
+            "type": "human_input_required",
+            "kind": "calendar",
+            "room_id": rid,
+            "action_id": getattr(action, "id", None),
+            "title": title,
+            "slots": slots,
+        }
+    )
+
+
 @app.get("/api/approvals")
 def approvals():
     eng = get_engine()
@@ -1453,7 +1578,7 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
     action = eng.store.get_action(action_id)
     if not action:
         raise HTTPException(404, "action not found")
-    # Skip-if-done HITL (SalesShortcut before_tool_callback pattern).
+    # Skip-if-done HITL (before_tool_callback pattern).
     if body.decision == "approve" and action.status == "executed":
         execution = (action.artifacts or {}).get("execution") or {}
         return {
@@ -1478,6 +1603,24 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
                     "approval": {"id": action_id, "status": "approved", "reused": False},
                 },
             )
+            HUB.publish_global(
+                {
+                    "type": "approval_resolved",
+                    "approval": {"action_id": action_id, "room_id": rid, "status": "approved"},
+                }
+            )
+            if execution.get("pr_url"):
+                room = eng.store.get_room(rid)
+                HUB.publish_global(
+                    {
+                        "type": "payoff",
+                        "kind": "pr_opened",
+                        "room_id": rid,
+                        "pr_url": execution.get("pr_url"),
+                        "title": room.title if room else "",
+                    }
+                )
+            _publish_human_input_after_approve(eng, fresh or action, rid)
         record(
             eng.store,
             actor=body.approver,
@@ -1692,7 +1835,7 @@ class AgentCallbackBody(BaseModel):
 
 @app.post("/api/agent_callback")
 def agent_callback(body: AgentCallbackBody):
-    """SalesShortcut-style push: agents POST updates → WebSocket fans out."""
+    """Live push: agents POST updates → WebSocket fans out."""
     from .activity import emit_activity
 
     rid = body.room_id
@@ -1742,8 +1885,24 @@ def agent_callback(body: AgentCallbackBody):
 
 @app.websocket("/ws")
 async def ws_global(ws: WebSocket):
+    import json
+
+    from .activity import list_activity
+
     await HUB.connect_global(ws)
     try:
+        eng = get_engine()
+        await ws.send_text(
+            json.dumps(
+                {
+                    "type": "initial_state",
+                    "status": _status_payload(eng),
+                    "activity": list_activity(25),
+                    "pipeline": {"cards": _pipeline_cards(eng)},
+                },
+                default=str,
+            )
+        )
         while True:
             await ws.receive_text()
     except WebSocketDisconnect:

@@ -1,6 +1,6 @@
-"""Live Type A / Type B graph — product-os-v2 + SalesShortcut patterns.
+"""Live Type A / Type B graph — product-os-v2 + common ADK multi-agent patterns.
 
-SalesShortcut (pre-ADK-2 winners) taught us:
+Typical pre–ADK-2 stacks used:
   - Parallel fan-out then merger (ParallelAgent → JoinNode energy)
   - Review/Critique loop with output_key state (draft → fact-check)
   - after_agent_callback → UI push with funnel status
@@ -31,7 +31,7 @@ INVESTIGATORS = (
     "code_agent",
 )
 
-# Agent → SalesShortcut-style funnel stage (for UI counters / chips).
+# Agent → funnel stage (for UI counters / chips).
 AGENT_STAGE = {
     "orchestrator": "signal",
     "signal_agent": "signal",
@@ -71,7 +71,7 @@ PIPELINE_FEATURE = (
     "customer_voice_agent",
     "evidence_agent",
     "product_agent",
-    "feedback_agent",  # SalesShortcut FactChecker / Review-Critique
+    "feedback_agent",  # Review / critique loop
     "experiment_agent",
     "risk_agent",
     "learning_agent",
@@ -83,7 +83,7 @@ def graph_for(fork: str = "BUG") -> tuple[str, ...]:
 
 
 class RunContext:
-    """v2 RunContext + SalesShortcut output_key / after_agent energy."""
+    """v2 RunContext + output_key / after_agent push."""
 
     def __init__(self, engine: Any, room_id: str, signal: dict[str, Any], fork: str = "BUG") -> None:
         self.engine = engine
@@ -96,7 +96,7 @@ class RunContext:
         self.funnel_stage = "signal"
 
     def set_output(self, key: str, value: Any) -> None:
-        """SalesShortcut output_key — pass structured state between agents."""
+        """output_key — pass structured state between agents."""
         self.state[key] = value
 
     def get_output(self, key: str, default: Any = None) -> Any:
@@ -284,7 +284,7 @@ def _run_agent(ctx: RunContext, agent_id: str) -> None:
 
 
 def _run_parallel_investigators(ctx: RunContext) -> None:
-    """SalesShortcut ParallelAgent fan-out → JoinNode gather."""
+    """Parallel fan-out → JoinNode gather."""
     from loop.unified_runner import enrich_signal_dict
 
     tid = (ctx.signal.get("dimensions") or {}).get("tenant_id")
@@ -309,7 +309,7 @@ def _run_parallel_investigators(ctx: RunContext) -> None:
 
 
 def _critique_loop(ctx: RunContext, metric: str, dims: dict[str, Any], max_iterations: int = 2) -> None:
-    """SalesShortcut LoopAgent review/critique — draft → fact-check (max N)."""
+    """Review/critique loop — draft → fact-check (max N)."""
     draft = ctx.get_output("draft_proposal") or {
         "draft": dims.get("hypothesis") or f"Proposal for {metric}",
         "metric": metric,
@@ -763,7 +763,7 @@ def adk2_alignment() -> dict[str, Any]:
         "adk_version": "2.x",
         "deprecated_1x": ["SequentialAgent", "ParallelAgent", "LoopAgent"],
         "preferred_2x": ["Workflow", "JoinNode", "RequestInput", "Workflow-as-Tool≥2.4"],
-        "salesshortcut_patterns": [
+        "adopted_patterns": [
             "parallel_fanout_merge",
             "review_critique_output_key",
             "after_agent_callback_push",

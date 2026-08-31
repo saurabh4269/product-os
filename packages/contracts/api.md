@@ -19,7 +19,11 @@ Room.kind: `incident` | `opportunity` | `review` | …
 { type: "agent_presence", agentId, status: "idle"|"thinking"|"tool"|"speaking", pixel }
 { type: "artifact", artifact }
 { type: "approval_required" | "approval_resolved", approval }
-{ type: "a2a", envelope | from, to, kind, summary }
+{ type: "funnel_stage", stage, agentId? }
+{ type: "activity", agent_id, message, room_id?, stage? }
+{ type: "human_input_required", kind: oauth|calendar, ... }
+{ type: "payoff", kind: pr_opened|calendar_scheduled|verified, pr_url?, event_url?, room_id? }
+{ type: "initial_state", activity[], status, pipeline }
 { type: "trace", traceId, step }
 { type: "signal", signal }
 ```
@@ -35,7 +39,7 @@ Room.kind: `incident` | `opportunity` | `review` | …
 
 - `GET  /api/approvals`
 - `POST /api/approvals/:id` `{ decision: approve|deny, approver, rationale }`
-  - Skip-if-done: already `executed` → `{ reused: true }` (SalesShortcut before_tool pattern)
+  - Skip-if-done: already `executed` → `{ reused: true }` (before_tool HITL pattern)
   - HIGH + tenant repo → real GitHub PR; OS never merges / never deploys Y
 
 ## Workspace OAuth (enterprise pattern)
@@ -50,7 +54,7 @@ Room.kind: `incident` | `opportunity` | `review` | …
 ## Agents / live push
 
 - `GET  /api/agents` · `GET /api/agents/:id`
-- `POST /api/agent_callback` SalesShortcut-style push → Hub fan-out
+- `POST /api/agent_callback` live push → Hub fan-out
 - `GET  /api/workflows` ADK 2 Workflow catalog (soft-fail without google-adk)
 - `GET  /api/office`
 
@@ -87,8 +91,14 @@ Room.kind: `incident` | `opportunity` | `review` | …
 - `GET  /api/signals`
 - `POST /api/signals` body SignalIn → `{ signalId, roomId, trace_id }` — opens/joins a room and runs the **live fleet graph** (presence, messages, artifacts, gateway)
 
-## Status (SalesShortcut dashboard energy)
+## Status (live dashboard)
 - `GET /api/status` → open rooms, pending approvals, live presence, funnel counters, Workspace connected
+
+## Pipeline (homepage kanban)
+- `GET /api/pipeline` → `{ columns, cards }` — one card per open investigation
+- Card fields: `room_id`, `title`, `stage`, `kind`, `awaiting_approval`, `pending_action_id`, `pr_url`, `evidence_snippet`, `voice_snippet`, `calendar_snippet`, `verified`, `denied`, `active_agents[]`
+- `GET /api/activity` → `{ events }` fleet feed (also pushed on `WS /ws`)
+- `POST /api/demo/run` → tenant signal demo; returns `{ room_id, investigation_id }`
 
 ## Memory
 - `GET  /api/memory?q=&type=`

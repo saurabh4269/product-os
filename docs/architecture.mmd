@@ -1,4 +1,10 @@
 flowchart TB
+  subgraph tenant_y [Product Y — tenant origin]
+    COVE[Cove storefront]
+    WIRE[Loop wire · flags client]
+    COVE --> WIRE
+  end
+
   subgraph signals [Signal plane]
     GA4[GA4 / Ads / PostHog / Firebase]
     LOGS[Cloud Logging]
@@ -6,6 +12,7 @@ flowchart TB
     GA4 --> BQ[(BigQuery facts)]
     LOGS --> BQ
     CRM --> BQ
+    WIRE -->|push ingest| INGEST[Ingest API]
   end
 
   subgraph agents [Agent plane — ADK 2]
@@ -17,11 +24,21 @@ flowchart TB
     CODE[Code + Test]
     PROD[Product + Experiment]
     RISK[Risk]
+    HITL{HIGH HITL gate}
+    APR[Approve]
     LEARN[Learning]
     SIG --> INV --> SPEC --> RCA --> PATH
     PATH -->|Type A| CODE --> RISK
     PATH -->|Type B| PROD --> RISK
-    RISK --> LEARN
+    RISK --> HITL
+    HITL -->|human| APR --> LEARN
+    HITL -->|LOW/MED| LEARN
+  end
+
+  subgraph hybrid [Hybrid engine]
+    LOOP_HOST[Cloud Run loop — deterministic]
+    ADK_HOST[Cloud Run loop-adk — optional]
+    LOOP_HOST -.-> ADK_HOST
   end
 
   subgraph security [Security plane]
@@ -29,7 +46,10 @@ flowchart TB
     GW[Gateway / IAM policies]
     MA[Model Armor]
     SDP[Sensitive Data Protection]
+    DENY{Exfil DENY?}
     ID --> GW --> MA --> SDP
+    GW --> DENY
+    DENY -->|yes| REV[Reviews — blocked]
   end
 
   subgraph tools [Tool plane]
@@ -47,6 +67,7 @@ flowchart TB
   end
 
   BQ --> SIG
+  INGEST --> SIG
   LEARN --> MB
   MB --> SIG
   REG --> INV
@@ -57,3 +78,4 @@ flowchart TB
   SPEC --> TEL
   RISK --> FLAG
   RT --> OTEL
+  LOOP_HOST --> INV

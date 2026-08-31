@@ -8,7 +8,7 @@ An autonomous product team that observes the product, understands users, identif
 
 **New agent?** Start on **`main`**. Read [`AGENTS.md`](AGENTS.md), then [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md). Pitfalls: [`docs/LEARNINGS.md`](docs/LEARNINGS.md) · [`docs/RESEARCH_LEARNINGS.md`](docs/RESEARCH_LEARNINGS.md). Tenant product (separate repo): [`docs/TENANT.md`](docs/TENANT.md).
 
-Spec: [`docs/PRD.md`](docs/PRD.md). Architecture: [`docs/architecture.mmd`](docs/architecture.mmd) · [`docs/architecture.svg`](docs/architecture.svg).
+Spec: [`docs/PRD.md`](docs/PRD.md). Architecture: [`docs/architecture.mmd`](docs/architecture.mmd) · [`docs/architecture.svg`](docs/architecture.svg) · [live `/labs/architecture`](https://loop-5uy6fkd7bq-uc.a.run.app/labs/architecture).
 
 ## One command
 

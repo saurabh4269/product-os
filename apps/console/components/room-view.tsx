@@ -15,6 +15,7 @@ import { WorkFlipbook } from "@/components/work-flipbook";
 import { pagesFromRoom } from "@/lib/work-pages";
 import { FunnelChips } from "@/components/funnel-chips";
 import { ArtifactCard } from "@/components/artifact-card";
+import { ActivityLog } from "@/components/activity-log";
 
 function useRoomId(fallback?: string) {
   const path = usePathname() || "";
@@ -525,6 +526,10 @@ export function RoomView({ initialId }: { initialId?: string }) {
             ))}
           </>
         )}
+      </div>
+
+      <div className="border-t border-border px-5 py-3 sm:px-8 lg:px-12">
+        <ActivityLog roomId={id} compact />
       </div>
 
       <form

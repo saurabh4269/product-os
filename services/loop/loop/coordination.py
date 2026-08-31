@@ -408,7 +408,8 @@ def coordinate_for_action(engine: Any, action_id: str, **overrides: Any) -> dict
     # Normalize codeowners list into map if needed
     if isinstance(req.dimensions.get("codeowners"), list) and not req.owners:
         req.owners = list(req.dimensions["codeowners"])
-    return run_coordination(engine, req)
+    apply_calendar = overrides.pop("apply_calendar", True)
+    return run_coordination(engine, req, apply_calendar=apply_calendar)
 
 
 # --- example recipes (payload only) ------------------------------------------

@@ -1,4 +1,4 @@
-"""Global activity feed — SalesShortcut-style scrolling log on campus."""
+"""Global activity feed — scrolling log on campus."""
 
 from __future__ import annotations
 

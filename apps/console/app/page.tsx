@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type OfficeSnapshot, type Room } from "@/lib/api";
+import { DemoGuideProvider, useDemoGuide } from "@/lib/demo-guide-context";
 import { pct } from "@/lib/utils";
 import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
@@ -13,6 +14,8 @@ import { StatusStrip } from "@/components/status-strip";
 import { PipelineBoard } from "@/components/pipeline-board";
 import { ActivityLog } from "@/components/activity-log";
 import { DemoRunner } from "@/components/demo-runner";
+import { SevenStepLoop } from "@/components/seven-step-loop";
+import { ApprovalModal } from "@/components/approval-modal";
 import Link from "next/link";
 
 function magLabel(raw: unknown) {
@@ -22,6 +25,15 @@ function magLabel(raw: unknown) {
 }
 
 export default function HomePage() {
+  return (
+    <DemoGuideProvider>
+      <HomeContent />
+    </DemoGuideProvider>
+  );
+}
+
+function HomeContent() {
+  const demo = useDemoGuide();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [signals, setSignals] = useState<Array<Record<string, unknown>>>([]);
@@ -64,14 +76,18 @@ export default function HomePage() {
 
   return (
     <>
-      {/* SalesShortcut energy: command center first — pipeline + activity before the campus metaphor */}
+      <ApprovalModal />
+      {/* Command center first — pipeline + activity before the campus metaphor */}
       <section className="page-pad border-b border-border bg-background">
         <header className="max-w-xl">
           <p className="text-[13px] text-[var(--faint)]">Product OS</p>
           <h1 className="mt-1 text-[28px] font-semibold tracking-tight sm:text-[32px]">Watch work move</h1>
           <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
             Signals become investigations. Agents gather evidence. You approve risky changes. The fleet verifies and
-            remembers.
+            remembers.{" "}
+            <Link href="/labs/architecture" className="text-accent hover:underline">
+              Architecture
+            </Link>
           </p>
         </header>
         <div className="mt-8">
@@ -80,8 +96,14 @@ export default function HomePage() {
         <div className="mt-6">
           <DemoRunner />
         </div>
+        <div className="mt-6">
+          <SevenStepLoop activeStage={demo?.highlightStage} />
+        </div>
         <PipelineBoard />
-        <ActivityLog />
+        <ActivityLog
+          roomId={demo?.active && demo.roomId ? demo.roomId : undefined}
+          defaultScope={demo?.active && demo.roomId ? "room" : "all"}
+        />
       </section>
 
       <section className="relative shrink-0 min-h-[min(52vh,420px)] sm:min-h-[min(58vh,480px)] lg:h-[min(72vh,640px)]">

@@ -1,4 +1,4 @@
-"""SalesShortcut-style conversation classifier — Type A / Type B from text.
+"""Conversation classifier — Type A / Type B from text.
 
 Heuristic first so hosted / CI work without Gemini. Optional Gemini refine when
 GOOGLE_API_KEY or Vertex ADC is present.

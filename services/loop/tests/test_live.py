@@ -51,7 +51,7 @@ def test_agent_callback_sets_presence(engine, monkeypatch):
         body = r.json()
         assert body["ok"] is True
         agents = {p["agentId"]: p["status"] for p in body["presence"]}
-        # Message path ends speaking (SalesShortcut push + world.post).
+        # Message path ends speaking (agent push + world.post).
         assert agents.get("analytics_agent") in {"thinking", "speaking"}
         listed = client.get("/api/rooms").json()["rooms"]
         assert any(x["id"] == room.id for x in listed), (room.id, [x["id"] for x in listed[:3]])

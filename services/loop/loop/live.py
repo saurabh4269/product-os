@@ -1,4 +1,4 @@
-"""Live room bus — SalesShortcut agent_callback + product-os-v2 Hub.
+"""Live room bus — agent_callback push + product-os-v2 Hub.
 
 Agents and the engine push events; the console WebSocket fans them out.
 """

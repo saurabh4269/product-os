@@ -1,4 +1,4 @@
-"""SalesShortcut-style incremental UI updates during investigation."""
+"""Incremental UI updates during investigation."""
 
 from __future__ import annotations
 

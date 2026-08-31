@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, type GoogleOAuth, type Tenant } from "@/lib/api";
 import { Button, ErrorState, Loading } from "@/components/ui";
+import { SignalSourcesDiagram } from "@/components/diagrams/signal-sources-diagram";
+import { TenantWireDiagram } from "@/components/diagrams/tenant-wire-diagram";
 
 const field =
   "mt-1 w-full rounded-xl border border-border bg-white px-3 py-2 text-[14px] text-foreground outline-none focus:border-accent";
@@ -33,6 +36,7 @@ export default function ConnectPage() {
   const [primaryMetric, setPrimaryMetric] = useState("purchase_conversion");
   const [funnelEvents, setFunnelEvents] = useState("");
   const [oauth, setOauth] = useState<GoogleOAuth | null>(null);
+  const [ga4Ready, setGa4Ready] = useState(false);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [telephony, setTelephony] = useState<{
@@ -75,6 +79,7 @@ export default function ConnectPage() {
     setPrimaryMetric(detail.tenant.primary_metric ?? "purchase_conversion");
     setFunnelEvents((detail.tenant.funnel_events ?? []).join(", "));
     setOauth(await api.oauth());
+    setGa4Ready((await api.ga4Status()).ready);
     setTelephony(await api.telephony());
     setAdk(await api.adkStatus());
   }
@@ -82,8 +87,11 @@ export default function ConnectPage() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const ws = q.get("workspace");
+    const ga4 = q.get("ga4");
     if (ws === "ok") setSaved("Google Workspace connected. Drafts and calendar holds can run. Send stays off.");
     if (ws === "error") setErr(q.get("detail") || "Google authorization did not complete.");
+    if (ga4 === "ok") setSaved("GA4 Admin authorized. Analytics export automation can run.");
+    if (ga4 === "error") setErr(q.get("detail") || "GA4 authorization did not complete.");
     load()
       .catch((e) => setErr(e instanceof Error ? e.message : "failed"))
       .finally(() => setReady(true));
@@ -198,8 +206,32 @@ export default function ConnectPage() {
       <h1 className="mt-1 text-[26px] font-semibold tracking-tight sm:text-[32px]">Connect</h1>
       <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
         Their app lives on their origin. This desk holds git, the deploy URL, and a hashed token so they can read flags
-        and post voice. Gmail drafts and calendar holds need a one-time Google consent. Send stays off.
+        and post voice. Gmail drafts and calendar holds need a one-time Google consent. Send stays off.{" "}
+        <Link href="/labs/architecture?tab=overview" className="text-accent hover:underline">
+          View tenant wire architecture
+        </Link>
       </p>
+
+      <section className="mt-10 max-w-4xl">
+        <h2 className="text-[20px] font-semibold tracking-tight">Tenant wire</h2>
+        <p className="mt-2 max-w-lg text-[14px] leading-6 text-[var(--dim)]">
+          Product Y on its deploy URL talks to Product OS through the loop wire. Connect stores credentials; the engine
+          pulls warehouse facts and pushes outcomes (PR, flags, calendar).
+        </p>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-border bg-white p-4">
+          <TenantWireDiagram productName={product || name} deployUrl={deploy} repo={repo} />
+        </div>
+      </section>
+
+      <section className="mt-12 max-w-4xl">
+        <h2 className="text-[20px] font-semibold tracking-tight">Signal sources</h2>
+        <p className="mt-2 max-w-lg text-[14px] leading-6 text-[var(--dim)]">
+          Push opens rooms from the tenant app. Pull reads GA4 / Ads / logs from BigQuery during investigation.
+        </p>
+        <div className="mt-4">
+          <SignalSourcesDiagram />
+        </div>
+      </section>
 
       <form
         className="mt-10 max-w-xl space-y-5"
@@ -371,6 +403,29 @@ export default function ConnectPage() {
           Save warehouse config
         </Button>
       </form>
+
+      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">GA4 Admin OAuth</h2>
+      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        Warehouse reads GA4 exports from BigQuery. Automating property + export setup needs a separate consent with{" "}
+        <code className="text-[13px]">analytics.edit</code> — not included in Workspace OAuth above.
+      </p>
+      {ga4Ready ? (
+        <p className="mt-4 text-[14px] text-[var(--dim)]">
+          GA4 Admin ready. Hosted token saved — run warehouse setup or{" "}
+          <code className="text-[13px]">scripts/setup-ga4-cove.py</code> to link export.
+        </p>
+      ) : oauth?.configured ? (
+        <p className="mt-4 text-[14px]">
+          <a href="/api/oauth/ga4/start" className="text-accent">
+            Authorize GA4 Admin
+          </a>{" "}
+          with the Google account that owns the Analytics property.
+        </p>
+      ) : (
+        <p className="mt-4 text-[14px] text-[var(--dim)]">
+          Save the OAuth Web client below first — the same client works for Workspace and GA4 flows.
+        </p>
+      )}
 
       <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Phone calls</h2>
       <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
