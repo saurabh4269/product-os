@@ -115,6 +115,12 @@ Northstar does not vendor — it is stdlib-only (`python app.py`).
 
 **Do not:** use the Site Verification REST API from a default `gcloud` token (403 insufficient scope) — use `gcloud domains verify` or Search Console UI. Wrangler/Cloudflare API is optional; DNS is manual in Cloudflare when no API token is configured.
 
+### Auto-deploy on push to `main`
+
+CI uses `./scripts/verify-deploy.sh` (skips Remotion). On green `main`, GitHub Actions runs
+`package-host.sh` + `deploy-gcp.sh` — no laptop deploy needed. Requires repo secret
+`GCP_SA_KEY`. See [`docs/DEPLOY.md`](DEPLOY.md).
+
 ---
 
 ## 2. Console API / CORS

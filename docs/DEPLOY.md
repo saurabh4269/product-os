@@ -37,6 +37,19 @@ downloads the bundle and serves FastAPI + the static console.
 ./scripts/deploy-gcp.sh
 ```
 
+### Auto-deploy on push to `main`
+
+CI runs `./scripts/verify-deploy.sh` (no Remotion render). When it passes on `main`, the
+[`deploy-gcp`](../.github/workflows/deploy-gcp.yml) workflow packages and runs
+`deploy-gcp.sh` — you do not need to deploy from your laptop.
+
+One-time setup: add repo secret **`GCP_SA_KEY`** (JSON for a service account with
+`roles/run.admin`, `roles/storage.admin`, and permission to describe/update Cloud Run
+`loop`). Use the same account as local deploy (`loop-cloud-agent@…` or your owner SA).
+Then push to `main`; watch **Actions → deploy-gcp**.
+
+Manual deploy anytime: **Actions → deploy-gcp → Run workflow**.
+
 SQLite is ephemeral on Cloud Run. Cold start re-runs the seeded Safari loop.
 
 ## Cloud Run (image build — optional, needs extra IAM)

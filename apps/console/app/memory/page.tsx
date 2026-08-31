@@ -160,12 +160,20 @@ export default function MemoryPage() {
       ) : (
         <>
           {filtered.lessons.length > 0 ? (
-            <section className="mt-10 max-w-3xl">
-              <div className="flex items-baseline justify-between gap-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Lessons learned</h2>
-                <span className="text-[12px] tabular-nums text-[var(--faint)]">{filtered.lessons.length}</span>
+            <section className="surface-lg mt-10 max-w-3xl overflow-hidden">
+              <div className="flex items-start gap-3 border-b border-border px-5 py-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/[0.08] text-accent">
+                  <BookOpen className="h-4 w-4" aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-medium text-foreground">Lessons learned</p>
+                  <p className="mt-0.5 text-[12px] text-[var(--faint)]">Verified outcomes agents recall on similar signals</p>
+                </div>
+                <span className="shrink-0 tabular-nums text-[13px] font-medium text-[var(--dim)]">
+                  {filtered.lessons.length}
+                </span>
               </div>
-              <div className="mt-4 space-y-3">
+              <div className="space-y-2.5 px-5 py-4">
                 {filtered.lessons.map((lesson, i) => {
                   const statement = String(lesson.statement ?? lesson.title ?? "");
                   const family = humanizeToken(lesson.root_cause_family);
@@ -173,11 +181,11 @@ export default function MemoryPage() {
                   return (
                     <article
                       key={String(lesson.id ?? i)}
-                      className="surface-lg border-l-[3px] border-l-accent/70 p-5 pl-[calc(1.25rem-3px)]"
+                      className="rounded-xl border border-border/70 border-l-[3px] border-l-accent/70 bg-[var(--elev)]/35 px-4 py-3.5 transition-colors hover:border-accent/20 hover:bg-white"
                     >
-                      <p className="text-[15px] leading-relaxed text-foreground">{statement}</p>
+                      <p className="text-[14px] leading-6 text-foreground">{statement}</p>
                       {(family || confidence) && (
-                        <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="mt-2 flex flex-wrap gap-2">
                           {family ? <Chip tone="accent">{family}</Chip> : null}
                           {confidence ? (
                             <Chip tone={confidenceTone(lesson.confidence)}>{confidence} confidence</Chip>

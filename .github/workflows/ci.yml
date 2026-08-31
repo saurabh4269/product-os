@@ -15,5 +15,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Verify
-        run: ./scripts/verify.sh
+      - name: Verify (deploy gate)
+        run: ./scripts/verify-deploy.sh
