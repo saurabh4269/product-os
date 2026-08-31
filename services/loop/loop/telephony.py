@@ -86,7 +86,7 @@ def _gemini_reply(system: str, user: str, history: list[dict[str, str]]) -> str:
         return fallback
 
 
-def opening_line(reason: str, product: str = "Cove") -> str:
+def opening_line(reason: str, product: str = "your product") -> str:
     r = (reason or "a checkout problem").strip()[:200]
     return (
         f"Hi, this is Lexi from the {product} product team. "
@@ -99,7 +99,7 @@ def place_call(
     to_number: str,
     reason: str,
     room_id: str = "",
-    product: str = "Cove",
+    product: str = "",
     tokenized_user: str = "tok_anon",
     brief: dict[str, Any] | None = None,
     system_prompt: str = "",
@@ -202,7 +202,7 @@ def twiml_open(room: str, reason: str, product: str, brief: dict[str, Any] | Non
     from loop.abandon_research import build_customer_context_brief
 
     b = brief or build_customer_context_brief()
-    opening = ((b.get("call_plan") or {}).get("opening")) or opening_line(reason, product or "Cove")
+    opening = ((b.get("call_plan") or {}).get("opening")) or opening_line(reason, product or "your product")
     say = xml.escape(opening)
     base = _public_base()
     action = f"{base}/api/twilio/gather?{urlencode({'room': room})}"
@@ -225,7 +225,7 @@ def twiml_gather(call_sid: str, speech: str, room: str) -> str:
         "transcript": [],
         "turns": 0,
         "reason": "checkout",
-        "product": "Cove",
+        "product": "your product",
         "room_id": room,
         "brief": {},
         "scripted_questions": [],

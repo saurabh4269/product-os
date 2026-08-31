@@ -36,6 +36,15 @@ def _token() -> str:
         return ""
 
 
+def token_for_tenant(tenant: Tenant | None) -> str:
+    if tenant:
+        env_key = f"LOOP_GITHUB_TOKEN_{tenant.id.upper().replace('-', '_')}"
+        scoped = (os.environ.get(env_key) or "").strip()
+        if scoped:
+            return scoped
+    return _token()
+
+
 def _request(method: str, url: str, token: str, body: dict | None = None) -> tuple[int, dict]:
     data = None if body is None else json.dumps(body).encode()
     req = urllib.request.Request(
@@ -89,7 +98,7 @@ def open_pr(
     file_content: str = "",
     branch: str | None = None,
 ) -> ConnectorReport:
-    token = _token()
+    token = token_for_tenant(tenant)
     if not token or not tenant.repo:
         return ConnectorReport(
             status="skipped",
@@ -147,7 +156,7 @@ def open_pr_multi_file(
     branch: str | None = None,
 ) -> ConnectorReport:
     """Commit multiple files on a branch and open one PR."""
-    token = _token()
+    token = token_for_tenant(tenant)
     if not token or not tenant.repo:
         return ConnectorReport(
             status="skipped",
@@ -203,7 +212,7 @@ def open_pr_multi_file(
 
 
 def create_issue(tenant: Tenant, title: str, body: str) -> ConnectorReport:
-    token = _token()
+    token = token_for_tenant(tenant)
     if not token or not tenant.repo:
         return ConnectorReport(
             status="skipped",

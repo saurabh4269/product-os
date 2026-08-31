@@ -9,8 +9,11 @@ import { CityMap } from "@/components/city-map";
 import { IsoOffice } from "@/components/iso-office";
 import { OfficeFloor } from "@/components/office-floor";
 import { RoomCard } from "@/components/work-flipbook";
-import { ScenarioChips } from "@/components/scenario-chips";
 import { StatusStrip } from "@/components/status-strip";
+import { PipelineBoard } from "@/components/pipeline-board";
+import { ActivityLog } from "@/components/activity-log";
+import { DemoRunner } from "@/components/demo-runner";
+import Link from "next/link";
 
 function magLabel(raw: unknown) {
   const n = Number(raw);
@@ -22,17 +25,21 @@ export default function HomePage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [signals, setSignals] = useState<Array<Record<string, unknown>>>([]);
+  const [evalMode, setEvalMode] = useState(true);
+  const [fixtureSlugs, setFixtureSlugs] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [inside, setInside] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    Promise.all([api.rooms(), api.signals(), api.office()])
-      .then(([r, s, o]) => {
+    Promise.all([api.rooms(), api.signals(), api.office(), api.config()])
+      .then(([r, s, o, cfg]) => {
         setRooms(r.rooms);
         setSignals(s.signals);
         setOffice(o);
+        setEvalMode(cfg.eval_mode);
+        setFixtureSlugs(new Set(cfg.fixture_scenarios ?? []));
         setErr(null);
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "API unreachable"));
@@ -42,7 +49,11 @@ export default function HomePage() {
 
   const desks = office?.desks ?? [];
   const handoffs = office?.handoffs ?? [];
-  const chambers = rooms.filter((r) => r.scenario_id || ["review", "research", "ops"].includes(r.kind));
+  const chambers = rooms.filter((r) => {
+    const isFixture = r.scenario_id && fixtureSlugs.has(r.scenario_id);
+    if (!evalMode && isFixture) return false;
+    return Boolean(r.scenario_id) || ["review", "research", "ops"].includes(r.kind);
+  });
 
   function walkInside(district: string) {
     setInside(district);
@@ -53,7 +64,27 @@ export default function HomePage() {
 
   return (
     <>
-      <section className="relative shrink-0 min-h-[min(68vh,520px)] sm:min-h-[min(72vh,580px)] lg:h-[100dvh] lg:max-h-[100dvh]">
+      {/* SalesShortcut energy: command center first — pipeline + activity before the campus metaphor */}
+      <section className="page-pad border-b border-border bg-background">
+        <header className="max-w-xl">
+          <p className="text-[13px] text-[var(--faint)]">Product OS</p>
+          <h1 className="mt-1 text-[28px] font-semibold tracking-tight sm:text-[32px]">Watch work move</h1>
+          <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
+            Signals become investigations. Agents gather evidence. You approve risky changes. The fleet verifies and
+            remembers.
+          </p>
+        </header>
+        <div className="mt-8">
+          <StatusStrip />
+        </div>
+        <div className="mt-6">
+          <DemoRunner />
+        </div>
+        <PipelineBoard />
+        <ActivityLog />
+      </section>
+
+      <section className="relative shrink-0 min-h-[min(52vh,420px)] sm:min-h-[min(58vh,480px)] lg:h-[min(72vh,640px)]">
         <CityMap
           rooms={chambers}
           desks={desks}
@@ -65,13 +96,15 @@ export default function HomePage() {
       </section>
 
       <section className="page-pad bg-background">
-        <StatusStrip />
-        <ScenarioChips />
-        <header className="max-w-xl mt-10 sm:mt-12">
-          <p className="text-[13px] text-[var(--faint)]">Below the campus</p>
+        <header className="max-w-xl mt-4 sm:mt-6">
+          <p className="text-[13px] text-[var(--faint)]">Campus</p>
           <h2 className="mt-1 text-[24px] font-semibold tracking-tight sm:text-[28px]">The office, up close</h2>
           <p className="mt-3 text-[15px] leading-6 text-[var(--dim)]">
-            Walk the isometric floor, then flip a piece of work until you are in the room.
+            Walk the isometric floor, then flip a piece of work until you are in the room.{" "}
+            <Link href="/labs" className="text-accent hover:underline">
+              Eval fixtures
+            </Link>{" "}
+            live in Labs.
           </p>
         </header>
 

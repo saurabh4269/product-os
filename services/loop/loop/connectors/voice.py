@@ -14,7 +14,7 @@ def place_call(
     *,
     to_number: str = "",
     room_id: str = "",
-    product: str = "Cove",
+    product: str = "",
     brief: dict[str, Any] | None = None,
     system_prompt: str = "",
 ) -> ConnectorReport:

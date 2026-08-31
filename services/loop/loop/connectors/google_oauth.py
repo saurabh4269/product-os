@@ -31,6 +31,12 @@ SCOPES = (
     "https://www.googleapis.com/auth/userinfo.email",
 )
 
+GA4_SCOPES = (
+    "https://www.googleapis.com/auth/analytics.edit",
+    "https://www.googleapis.com/auth/cloud-platform",
+    "https://www.googleapis.com/auth/userinfo.email",
+)
+
 CONSOLE_OVERVIEW = f"https://console.cloud.google.com/auth/overview?project={PROJECT}"
 CONSOLE_CREATE_CLIENT = f"https://console.cloud.google.com/auth/clients/create?project={PROJECT}"
 CONSOLE_AUDIENCE = f"https://console.cloud.google.com/auth/audience?project={PROJECT}"
@@ -40,6 +46,12 @@ def blob_path() -> Path:
     env = os.environ.get("LOOP_DATA_DIR")
     root = Path(env) if env else settings().data_dir
     return root / "workspace_oauth.json"
+
+
+def ga4_adc_path() -> Path:
+    env = os.environ.get("LOOP_DATA_DIR")
+    root = Path(env) if env else settings().data_dir
+    return root / "ga4_adc.json"
 
 
 def _oauth_gcs_uri() -> str:
@@ -97,6 +109,37 @@ def _gcs_read_json() -> dict[str, Any]:
         return {}
     except (OSError, urllib.error.URLError, json.JSONDecodeError, TimeoutError):
         return {}
+
+
+def _gcs_write_bytes(object_name: str, payload: bytes) -> None:
+    uri = _oauth_gcs_uri()
+    if not uri:
+        return
+    try:
+        bucket, _ = _parse_gs_uri(uri)
+    except ValueError:
+        return
+    token = _metadata_access_token()
+    if not token:
+        return
+    quoted = urllib.parse.quote(object_name, safe="")
+    url = (
+        f"https://storage.googleapis.com/upload/storage/v1/b/{bucket}/o"
+        f"?uploadType=media&name={quoted}"
+    )
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        urllib.request.urlopen(req, timeout=15)
+    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+        return
 
 
 def _gcs_write_json(data: dict[str, Any]) -> None:
@@ -229,6 +272,18 @@ def console_return(ok: bool, detail: str = "") -> str:
     return origin.rstrip("/") + "/connect?" + q
 
 
+def ga4_console_return(ok: bool, detail: str = "") -> str:
+    q = "ga4=ok" if ok else "ga4=error"
+    if detail and not ok:
+        q += "&detail=" + urllib.parse.quote(detail[:80])
+    if os.environ.get("K_SERVICE"):
+        return f"/connect?{q}"
+    origin = os.environ.get("LOOP_CONSOLE_ORIGIN", "http://127.0.0.1:3000")
+    if origin in {"", "*"}:
+        return f"{HOSTED_URL}/connect?{q}"
+    return origin.rstrip("/") + "/connect?" + q
+
+
 def has_client(data: dict[str, Any] | None = None) -> bool:
     blob = data if data is not None else _load()
     return bool(blob.get("client_id") and blob.get("client_secret"))
@@ -280,19 +335,20 @@ def status(request_base: str = "") -> dict[str, Any]:
     }
 
 
-def authorization_url(request_base: str = "") -> str | None:
+def _authorization_url_for(scopes: tuple[str, ...], *, mode: str, request_base: str = "") -> str | None:
     blob = _load()
     if not has_client(blob):
         return None
     state = secrets.token_urlsafe(24)
     blob["pending_state"] = state
     blob["pending_at"] = time.time()
+    blob["pending_mode"] = mode
     _save(blob)
     params = {
         "client_id": blob["client_id"],
         "redirect_uri": redirect_uri(request_base),
         "response_type": "code",
-        "scope": " ".join(SCOPES),
+        "scope": " ".join(scopes),
         "access_type": "offline",
         "prompt": "consent",
         "include_granted_scopes": "true",
@@ -301,17 +357,76 @@ def authorization_url(request_base: str = "") -> str | None:
     return AUTH_URL + "?" + urllib.parse.urlencode(params)
 
 
-def exchange_code(code: str, state: str, request_base: str = "") -> tuple[bool, str]:
+def authorization_url(request_base: str = "") -> str | None:
+    return _authorization_url_for(SCOPES, mode="workspace", request_base=request_base)
+
+
+def ga4_authorization_url(request_base: str = "") -> str | None:
+    return _authorization_url_for(GA4_SCOPES, mode="ga4", request_base=request_base)
+
+
+def _save_ga4_adc(client_id: str, client_secret: str, refresh_token: str, email: str = "") -> None:
+    adc = {
+        "account": email,
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "refresh_token": refresh_token,
+        "type": "authorized_user",
+        "universe_domain": "googleapis.com",
+    }
+    path = ga4_adc_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = (json.dumps(adc, indent=2) + "\n").encode()
+    path.write_bytes(raw)
+    _gcs_write_bytes("ga4_adc.json", raw)
+
+
+def ga4_adc_ready() -> bool:
+    path = ga4_adc_path()
+    if path.is_file():
+        try:
+            data = json.loads(path.read_text())
+            if data.get("refresh_token"):
+                return True
+        except (OSError, json.JSONDecodeError):
+            pass
+    uri = _oauth_gcs_uri()
+    if not uri:
+        return False
+    try:
+        bucket, _ = _parse_gs_uri(uri)
+    except ValueError:
+        return False
+    token = _metadata_access_token()
+    if not token:
+        return False
+    quoted = urllib.parse.quote("ga4_adc.json", safe="")
+    url = f"https://storage.googleapis.com/storage/v1/b/{bucket}/o/{quoted}?alt=media"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            return bool(data.get("refresh_token"))
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return False
+        return False
+    except (OSError, urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+        return False
+
+
+def exchange_code(code: str, state: str, request_base: str = "") -> tuple[bool, str, str]:
     blob = _load()
     expected = blob.get("pending_state") or ""
     started = float(blob.get("pending_at") or 0)
+    mode = str(blob.pop("pending_mode", None) or "workspace")
     blob.pop("pending_state", None)
     blob.pop("pending_at", None)
     if not expected or state != expected or time.time() - started > 900:
         _save(blob)
-        return False, "state"
+        return False, "state", mode
     if not has_client(blob):
-        return False, "client"
+        return False, "client", mode
     status_code, payload = _http(
         "POST",
         TOKEN_URL,
@@ -326,15 +441,21 @@ def exchange_code(code: str, state: str, request_base: str = "") -> tuple[bool, 
     if status_code != 200 or not payload.get("refresh_token"):
         _save(blob)
         err = str(payload.get("error") or payload.get("error_description") or status_code)
-        return False, err[:80]
+        return False, err[:80], mode
+    email = blob.get("email") or ""
+    if payload.get("access_token"):
+        _, info = _json_http("GET", USERINFO_URL, token=payload["access_token"])
+        email = info.get("email") or email
+    if mode == "ga4":
+        _save_ga4_adc(blob["client_id"], blob["client_secret"], payload["refresh_token"], email)
+        _save(blob)
+        return True, email, mode
     blob["refresh_token"] = payload["refresh_token"]
     blob["token"] = payload.get("access_token") or ""
     blob["expiry"] = time.time() + int(payload.get("expires_in") or 3500)
-    if blob["token"]:
-        _, info = _json_http("GET", USERINFO_URL, token=blob["token"])
-        blob["email"] = info.get("email") or blob.get("email") or ""
+    blob["email"] = email
     _save(blob)
-    return True, blob.get("email") or ""
+    return True, email, mode
 
 
 def access_token() -> str:

@@ -5,4 +5,6 @@ pydantic-settings>=2.7
 pyyaml>=6.0
 httpx>=0.28
 google-cloud-pubsub>=2.27
+google-cloud-bigquery>=3.27
 google-cloud-modelarmor>=0.3
+python-multipart>=0.0.9

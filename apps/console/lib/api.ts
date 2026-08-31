@@ -2,16 +2,24 @@ const BASE =
   process.env.NEXT_PUBLIC_API_URL ??
   (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8080");
 
+const ADMIN_TOKEN = process.env.NEXT_PUBLIC_LOOP_ADMIN_TOKEN ?? "";
+
+function adminHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (ADMIN_TOKEN) headers.Authorization = `Bearer ${ADMIN_TOKEN}`;
+  return headers;
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { cache: "no-store", credentials: "same-origin" });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
   return res.json();
 }
 
-async function post<T>(path: string, body?: unknown): Promise<T> {
+async function post<T>(path: string, body?: unknown, opts?: { admin?: boolean }): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: opts?.admin ? adminHeaders() : { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : "{}",
   });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
@@ -77,6 +85,23 @@ export type Tenant = {
   last_pr_url?: string;
   last_ingest_at?: string;
   last_connector?: string;
+  flag_names?: string[];
+  code_paths?: string[];
+  flag_file_path?: string;
+  stack?: string;
+  test_command?: string;
+  default_surface?: string;
+  metric_catalog?: string[];
+  bq_project?: string;
+  bq_raw_dataset?: string;
+  bq_metrics_dataset?: string;
+  ga4_property_id?: string;
+  ga4_dataset?: string;
+  ads_dataset?: string;
+  ads_customer_id?: string;
+  warehouse_mode?: string;
+  primary_metric?: string;
+  funnel_events?: string[];
 };
 
 export type GoogleOAuth = {
@@ -143,6 +168,7 @@ export type Bundle = {
 
 export type RoomDetail = {
   room: Room;
+  tenant?: { id: string; name: string; product: string; repo?: string } | null;
   messages: RoomMessage[];
   bundle: Bundle | null;
   members: string[];
@@ -298,7 +324,7 @@ export const api = {
         decision === "approve"
           ? "Evidence pack and risk gate reviewed in-room."
           : "Need more evidence before this change ships.",
-    }),
+    }, { admin: true }),
   approvalStatus: (actionId: string) =>
     get<{
       action_id: string;
@@ -323,12 +349,29 @@ export const api = {
     repo: string;
     deploy_url: string;
     token?: string;
-  }) => post<{ tenant: Tenant }>("/api/tenants", body),
+    flag_names?: string[];
+    code_paths?: string[];
+    flag_file_path?: string;
+    stack?: string;
+    test_command?: string;
+    default_surface?: string;
+    metric_catalog?: string[];
+    bq_project?: string;
+    bq_raw_dataset?: string;
+    bq_metrics_dataset?: string;
+    ga4_property_id?: string;
+    ga4_dataset?: string;
+    ads_dataset?: string;
+    ads_customer_id?: string;
+    warehouse_mode?: string;
+    primary_metric?: string;
+    funnel_events?: string[];
+  }) => post<{ tenant: Tenant }>("/api/tenants", body, { admin: true }),
   rotateToken: (id: string, token: string) =>
-    post<{ rotated: boolean; tenant: Tenant }>(`/api/tenants/${id}/token`, { token }),
+    post<{ rotated: boolean; tenant: Tenant }>(`/api/tenants/${id}/token`, { token }, { admin: true }),
   oauth: () => get<GoogleOAuth>("/api/oauth/google"),
   saveGoogleClient: (client_id: string, client_secret: string) =>
-    post<GoogleOAuth>("/api/oauth/google/client", { client_id, client_secret }),
+    post<GoogleOAuth>("/api/oauth/google/client", { client_id, client_secret }, { admin: true }),
   telephony: () =>
     get<{
       twilio: boolean;
@@ -463,6 +506,43 @@ export const api = {
       resolved: number;
       failOpen: boolean;
     }>("/api/metrics"),
+  pipeline: () =>
+    get<{
+      columns: string[];
+      cards: Array<{
+        room_id: string;
+        title: string;
+        stage: string;
+        kind: string;
+        tenant_id?: string | null;
+        tenant_product?: string | null;
+        scenario_id?: string | null;
+        investigation_id?: string | null;
+        awaiting_approval?: boolean;
+        pr_url?: string | null;
+      }>;
+    }>("/api/pipeline"),
+  activity: () =>
+    get<{
+      events: Array<{
+        ts?: string;
+        agent_id?: string;
+        message?: string;
+        room_id?: string;
+        stage?: string;
+        tenant_id?: string;
+      }>;
+    }>("/api/activity"),
+  demoRun: () =>
+    post<{
+      demo: boolean;
+      tenant_id: string;
+      room_id?: string;
+      investigation_id?: string;
+      joined?: boolean;
+    }>("/api/demo/run"),
+  config: () =>
+    get<{ eval_mode: boolean; hosted: boolean; fixture_scenarios?: string[] }>("/api/config"),
 };
 
 /** Same-origin or NEXT_PUBLIC_API_URL WebSocket for a room. */
@@ -470,4 +550,11 @@ export function roomSocket(roomId: string): WebSocket {
   const http = BASE || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:8080");
   const ws = http.replace(/^http/, "ws");
   return new WebSocket(`${ws}/ws/rooms/${roomId}`);
+}
+
+/** Campus-wide WebSocket — activity log + pipeline refresh. */
+export function globalSocket(): WebSocket {
+  const http = BASE || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:8080");
+  const ws = http.replace(/^http/, "ws");
+  return new WebSocket(`${ws}/ws`);
 }

@@ -174,6 +174,24 @@ class LoopEngine:
             found.append(sig)
         return found
 
+    def detect_all_signals(self, as_of: date | None = None) -> list[Signal]:
+        """File warehouse detect + tenant BQ detect for every configured tenant."""
+        found = list(self.detect_signals(as_of))
+        seen = {s.id for s in found}
+        try:
+            from .connectors.bigquery import detect_anomalies_for_tenant, has_bq
+
+            for tenant in self.store.list_tenants():
+                if not has_bq(tenant):
+                    continue
+                for sig in detect_anomalies_for_tenant(self, tenant, as_of=as_of):
+                    if sig.id not in seen:
+                        found.append(sig)
+                        seen.add(sig.id)
+        except Exception:
+            pass
+        return found
+
     def _should_suppress(self, sig: Signal) -> bool:
         for inv in self.store.list_investigations():
             if inv.state in {
@@ -194,14 +212,14 @@ class LoopEngine:
                 return True
         return False
 
-    def open_investigation(self, signal: Signal) -> Investigation | None:
+    def open_investigation(self, signal: Signal, *, tenant_id: str | None = None) -> Investigation | None:
         """Signal Agent only detects/classifies/opens — never investigates (A-4)."""
         if signal.status == SignalStatus.SUPPRESSED:
             return None
         for inv in self.store.list_investigations():
             if signal.id in inv.originating_signal_ids:
                 return inv
-        recalled = self.recall_lessons(*self._recall_needles(signal))
+        recalled = self.recall_lessons(*self._recall_needles(signal), tenant_id=tenant_id)
         inv = Investigation(
             id=_id("inv"),
             originating_signal_ids=[signal.id],
@@ -210,6 +228,7 @@ class LoopEngine:
             invocation_id=_id("job"),
             assigned_agents=["orchestrator"],
             recalled_lessons=recalled,
+            tenant_id=tenant_id,
         )
         signal.status = SignalStatus.INVESTIGATING
         self.store.put_signal(signal)
@@ -217,7 +236,7 @@ class LoopEngine:
         self.timeline(inv.id, "signal_agent", "signal", "Investigation opened", f"{signal.metric} {signal.magnitude:.1%} vs baseline {signal.baseline:.1%}")
         return inv
 
-    def recall_lessons(self, *needles: str) -> list[str]:
+    def recall_lessons(self, *needles: str, tenant_id: str | None = None) -> list[str]:
         """Retrieve organizational memory. Facts stay in the warehouse; lessons are knowledge."""
         tokens = {n.lower() for n in needles if n and len(n) > 3}
         if not tokens:
@@ -225,11 +244,20 @@ class LoopEngine:
         hits: list[str] = []
         seen: set[str] = set()
         for lesson in self.store.list_lessons():
+            if tenant_id and lesson.tenant_id and lesson.tenant_id != tenant_id:
+                continue
             blob = f"{lesson.statement} {lesson.root_cause_family} {' '.join(lesson.applicable_conditions)}".lower()
             if any(t in blob for t in tokens):
                 if lesson.statement not in seen:
                     hits.append(lesson.statement)
                     seen.add(lesson.statement)
+        for mem in self.store.list_memory(tenant_id=tenant_id):
+            blob = f"{mem.get('statement', '')} {mem.get('body', '')} {mem.get('title', '')}".lower()
+            if any(t in blob for t in tokens):
+                stmt = str(mem.get("statement") or mem.get("title") or "")
+                if stmt and stmt not in seen:
+                    hits.append(stmt)
+                    seen.add(stmt)
         return hits
 
     def _recall_needles(self, signal: Signal) -> list[str]:
@@ -261,10 +289,19 @@ class LoopEngine:
 
         items: list[Evidence] = []
 
-        # Analytics — daily tables only
+        # Analytics — daily tables only (file warehouse or tenant BQ)
+        from .tenant import resolve_tenant
+        from .connectors.bigquery import conversion_by_browser as bq_conversion, has_bq
+
+        tenant = resolve_tenant(self.store, investigation=inv)
+        if tenant and has_bq(tenant):
+            cur = bq_conversion(tenant, w_start, w_end)
+            base = bq_conversion(tenant, b_start, b_end)
+            src_label = "bigquery"
+        else:
+            cur = self.wh.conversion_by_browser(w_start, w_end)
+            base = self.wh.conversion_by_browser(b_start, b_end)
         self.a2a(inv.id, "orchestrator", "analytics_agent", "TB-2", "funnel conversion by browser")
-        cur = self.wh.conversion_by_browser(w_start, w_end)
-        base = self.wh.conversion_by_browser(b_start, b_end)
         safari_cur = cur.get(SAFARI, {}).get("conversion", 0)
         safari_base = base.get(SAFARI, {}).get("conversion", 0)
         chrome_cur = cur.get("Chrome", {}).get("conversion", 0)
@@ -522,35 +559,23 @@ class LoopEngine:
         action_type: str = "flag_rollback",
         artifacts: dict | None = None,
         consequence: str | None = None,
-        semantic: str = "rollback-pay-sdk-4.3",
+        semantic: str = "propose-action",
     ) -> ProposedAction:
-        surface = surface or "payment authorization / 3DS / pay-sdk"
+        from .tenant import resolve_tenant
+        from .tenant_context import consequence_for, merge_proposed_artifacts
+
+        tenant = resolve_tenant(self.store, investigation=inv)
+        merged = merge_proposed_artifacts(inv, hyp, tenant, artifacts)
+        has_flag = "flag" in merged
+        surface = (
+            surface
+            or (tenant.default_surface if tenant else None)
+            or str((merged.get("code_brief") or {}).get("surface") or "")
+            or inv.title
+            or "product"
+        )
         tier = assign_risk_tier(surface, hyp.statement)
         key = idempotency_key(inv.id, "propose_action", semantic)
-        default_artifacts = {
-            "flag": "pay_sdk_4_3",
-            "from": "on",
-            "to": "off",
-            "code_fix": True,
-            "code_brief": {
-                "issue": "Safari 3DS callback regression after pay-sdk 4.3",
-                "likely_files": [
-                    "payment/callback.ts",
-                    "payment/3ds.ts",
-                    "src/app/(store)/checkout/page.tsx",
-                    "src/lib/loop.ts",
-                ],
-                "expected_behavior": "Safari checkout completes; 3DS callback returns within timeout.",
-                "regression_test": "Safari checkout does not hang when pay_sdk_4_3 is off.",
-                "surface": "payment authorization / 3DS",
-                "hypothesis": hyp.statement,
-            },
-            "pr": {
-                "title": "Fix Safari 3DS checkout regression (pay-sdk 4.3)",
-                "body": f"Investigation {inv.id}. Hypothesis: {hyp.statement}",
-                "tests": "tests/regression/safari-3ds-checkout.test.ts",
-            },
-        }
         action = ProposedAction(
             id=_id("act"),
             investigation_id=inv.id,
@@ -560,14 +585,10 @@ class LoopEngine:
                 f"Touched surface is {surface}. Tier follows the surface, not model confidence (H-1)."
             ),
             required_approver_role="eng-manager" if tier == RiskTier.HIGH else "developer",
-            artifacts=artifacts or default_artifacts,
+            artifacts=merged,
             idempotency_key=key,
             status="awaiting_approval" if tier in {RiskTier.HIGH, RiskTier.MEDIUM} else "proposed",
-            consequence=consequence
-            or (
-                "On approval, LOOP will flip feature flag pay_sdk_4_3 to off (rollback to 4.2.x) "
-                "and open a PR with a Safari 3DS regression test. No merge, no production deploy."
-            ),
+            consequence=consequence or consequence_for(tenant, inv, hyp, has_flag=has_flag),
         )
         self.store.put_action(action)
         inv.linked_action_ids.append(action.id)
@@ -629,10 +650,11 @@ class LoopEngine:
         self.store.put_investigation(inv)
 
         from .connectors import calendar_hold, create_issue, mail_draft, open_pr
-        from .tenant import flag_key
+        from .tenant import flag_key, is_tenant_scenario, resolve_tenant
+        from .tenant_context import flag_file_for
 
-        tenants = self.store.list_tenants()
-        tenant = next((t for t in tenants if t.connected), None) or (tenants[0] if tenants else None)
+        tenant = resolve_tenant(self.store, investigation=inv)
+        tenant_bound = is_tenant_scenario(inv.scenario_id)
 
         reports = []
         result: dict = {"merged": False, "pr_opened": False}
@@ -642,15 +664,19 @@ class LoopEngine:
             import json as json_lib
 
             name = str(action.artifacts["flag"])
-            value, reused = self.store.set_flag(name, str(action.artifacts.get("to", "off")), action.idempotency_key)
-            if tenant:
-                self.store.set_flag(
-                    flag_key(tenant.id, name),
-                    str(action.artifacts.get("to", "off")),
-                    action.idempotency_key + ":t",
-                )
+            value_str = str(action.artifacts.get("to", "off"))
+            if tenant_bound:
+                if not tenant:
+                    raise PermissionError("investigation is not bound to a tenant")
+                value, reused = self.store.set_flag(flag_key(tenant.id, name), value_str, action.idempotency_key)
+            else:
+                value, reused = self.store.set_flag(name, value_str, action.idempotency_key)
+                if tenant and inv.tenant_id:
+                    self.store.set_flag(flag_key(tenant.id, name), value_str, action.idempotency_key + ":mirror")
             result["flag"] = name
             result["value"] = value
+            if tenant:
+                result["tenant_id"] = tenant.id
             pr_meta = action.artifacts.get("pr") if isinstance(action.artifacts.get("pr"), dict) else {}
             title = pr_meta.get("title") or f"Product OS: {name}"
             body = pr_meta.get("body") or f"Investigation {inv.id}. Flag {name} → {value}."
@@ -683,7 +709,7 @@ class LoopEngine:
                         tenant,
                         title,
                         body,
-                        file_path="config/flags.json",
+                        file_path=flag_file_for(tenant),
                         file_content=file_content,
                     ).model_dump(),
                 )
@@ -809,49 +835,87 @@ class LoopEngine:
         return outcome
 
     def _verify_generic(self, inv: Investigation) -> Outcome:
+        from .connectors.warehouse import read_metric_window
+        from .models import Direction
+        from .tenant import resolve_tenant
+
         inv.state = InvestigationState.VERIFYING
         self.store.put_investigation(inv)
         self.a2a(inv.id, "orchestrator", "learning_agent", "TB-7", "measure originating metric")
         sig = self.store.get_signal(inv.originating_signal_ids[0]) if inv.originating_signal_ids else None
         pre = float(sig.baseline) if sig else 0.0
-        post = pre * (1.12 if sig and sig.direction.value == "negative" else 1.0)
-        if sig and sig.magnitude and sig.magnitude < 0:
-            post = pre * (1 + abs(sig.magnitude) * 0.9)
-        verdict = OutcomeVerdict.RESOLVED
+        post = pre
+        verdict = OutcomeVerdict.INCONCLUSIVE
+        tenant = resolve_tenant(self.store, investigation=inv)
+        reading = None
+        if tenant and sig:
+            reading = read_metric_window(self, tenant, sig.metric, baseline=pre)
+        if reading and reading.get("value") is not None:
+            post = float(reading["value"])
+            delta = post - pre
+            if sig and sig.direction == Direction.NEGATIVE:
+                if post >= pre * 1.05:
+                    verdict = OutcomeVerdict.RESOLVED
+                elif post > pre:
+                    verdict = OutcomeVerdict.PARTIALLY_RESOLVED
+                else:
+                    verdict = OutcomeVerdict.NOT_RESOLVED
+            elif sig and sig.direction == Direction.POSITIVE:
+                if post >= pre * 1.05:
+                    verdict = OutcomeVerdict.RESOLVED
+                else:
+                    verdict = OutcomeVerdict.NOT_RESOLVED
+            else:
+                verdict = OutcomeVerdict.INCONCLUSIVE
         outcome = Outcome(
             id=_id("out"),
             investigation_id=inv.id,
             metric=sig.metric if sig else "impact",
             pre_value=pre,
             post_value=post,
-            control_comparison=None,
+            control_comparison=reading.get("source") if reading else None,
             delta=post - pre,
             verdict=verdict,
             measured_at=_now(),
         )
         self.store.put_outcome(outcome)
+        if verdict == OutcomeVerdict.INCONCLUSIVE:
+            lesson_text = (
+                f"Scenario {inv.scenario_id}: post-deploy verification needs a tenant metric connector. "
+                f"No live re-read for {outcome.metric}; marked inconclusive instead of auto-resolved."
+            )
+        else:
+            lesson_text = (
+                f"Post-deploy verify for {outcome.metric}: {pre:.4g} → {post:.4g} "
+                f"({verdict.value}) via {reading.get('source') if reading else 'connector'}."
+            )
         lesson = Lesson(
             id=_id("les"),
             investigation_id=inv.id,
-            statement=(
-                f"Scenario {inv.scenario_id}: {inv.title or inv.id} verified. "
-                f"Metric {outcome.metric} moved {pre:.3g} → {post:.3g}."
-            ),
+            statement=lesson_text,
             root_cause_family=inv.scenario_id or "generic",
             applicable_conditions=[inv.scenario_id or "generic"],
             linked_playbook_skill=f"playbooks/{inv.scenario_id}" if inv.scenario_id else None,
-            confidence=0.8,
+            confidence=0.7 if verdict != OutcomeVerdict.INCONCLUSIVE else 0.5,
             author_agent="learning_agent",
+            tenant_id=inv.tenant_id,
         )
         self.store.put_lesson(lesson)
         mem_kind = "product" if inv.loop_type and inv.loop_type.value == "type_b" else "engineering"
         self.store.put_memory(
             lesson.id,
             mem_kind,
-            {"statement": lesson.statement, "provenance": inv.id, "kind": mem_kind, "confidence": lesson.confidence},
+            {
+                "statement": lesson.statement,
+                "provenance": inv.id,
+                "kind": mem_kind,
+                "confidence": lesson.confidence,
+                "tenant_id": inv.tenant_id,
+            },
+            tenant_id=inv.tenant_id,
         )
         inv.verification_result = verdict.value
-        inv.state = InvestigationState(verdict.value)
+        inv.state = InvestigationState(verdict.value) if verdict != OutcomeVerdict.INCONCLUSIVE else InvestigationState.INCONCLUSIVE
         inv.closed_at = _now()
         self.store.put_investigation(inv)
         self.timeline(inv.id, "learning_agent", "verify", f"Verification {verdict.value}", lesson.statement)
@@ -883,6 +947,8 @@ class LoopEngine:
         hyp = self.form_hypothesis(inv)
         if not hyp:
             raise RuntimeError("three-source gate failed on seeded world")
+        inv.scenario_id = inv.scenario_id or "safari_3ds"
+        self.store.put_investigation(inv)
         self.propose_action(inv, hyp)
         inv = self.store.get_investigation(inv.id)
         assert inv

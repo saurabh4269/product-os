@@ -6,6 +6,7 @@ pipeline. Other recipes should build a ResearchEvent the same way.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from loop.customer_research import ResearchEvent, run_customer_research
@@ -80,6 +81,7 @@ def example_abandon_event(
         path=PathKind.BUG,
         room_kind=RoomKind.RESEARCH,
         dimensions={
+            "tenant_id": os.environ.get("LOOP_TENANT_ID", "acme"),
             "acquisition": {"channel": "Google Ads", "campaign": "Campaign X"},
             "device": {"model": "Pixel 9", "os": "Android 15", "browser": "Chrome"},
             "app_version": "4.3.1",
@@ -121,8 +123,8 @@ def example_abandon_event(
             },
             "call_goal": "Confirm error vs loading; capture retries and willingness to retry.",
             "call_opening": (
-                "Hi, this is Lexi from Cove. We noticed you almost finished checkout a few days ago "
-                "and wanted to check what happened — do you have thirty seconds?"
+                "Hi, this is Lexi calling about your recent checkout. We noticed you almost finished "
+                "a few days ago and wanted to check what happened — do you have thirty seconds?"
             ),
             "call_questions": [
                 "When you tried to complete your payment, did the payment screen show an error, or did it remain loading?",

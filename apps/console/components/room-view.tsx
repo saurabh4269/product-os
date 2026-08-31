@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { StreamBody } from "@/components/stream-body";
+import { HandoffPacket } from "@/components/handoff-packet";
 import { api, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { shortName } from "@/lib/names";
 import { queryId, segmentId } from "@/lib/route-id";
 import { when } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
 import { PixelOffice, PixelSprite } from "@/components/pixel-office";
-import { RoomHandoff } from "@/components/office-floor";
 import { WorkFlipbook } from "@/components/work-flipbook";
 import { pagesFromRoom } from "@/lib/work-pages";
 import { FunnelChips } from "@/components/funnel-chips";
@@ -83,6 +84,9 @@ export function RoomView({ initialId }: { initialId?: string }) {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"work" | "transcript">("work");
   const [livePresence, setLivePresence] = useState<Record<string, string>>({});
+  const [freshHandoff, setFreshHandoff] = useState<string | null>(null);
+  const [seenMsgIds, setSeenMsgIds] = useState<Set<string>>(new Set());
+  const gateRef = useRef<HTMLDivElement | null>(null);
 
   async function load(target: string) {
     try {
@@ -116,6 +120,8 @@ export function RoomView({ initialId }: { initialId?: string }) {
             setLivePresence((prev) => ({ ...prev, [e.agentId]: e.status || "thinking" }));
           }
           if (e.type === "message" && e.message) {
+            const msg = e.message as RoomMessage;
+            setSeenMsgIds((prev) => new Set(prev).add(msg.id));
             setData((r) =>
               r
                 ? {
@@ -144,7 +150,11 @@ export function RoomView({ initialId }: { initialId?: string }) {
             });
           }
           if (e.type === "approval_required" || e.type === "approval_resolved") {
+            setTab("work");
             void load(id);
+            window.requestAnimationFrame(() => {
+              gateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
           }
           if (e.type === "a2a") {
             const env = (e.envelope ?? {}) as Record<string, unknown>;
@@ -153,6 +163,9 @@ export function RoomView({ initialId }: { initialId?: string }) {
             const to = String(e.to ?? env.to_agent ?? "");
             const summary = String(e.summary ?? payload.summary ?? "handed off");
             if (from || to) {
+              const key = `${from}-${to}-${Date.now()}`;
+              setFreshHandoff(key);
+              window.setTimeout(() => setFreshHandoff(null), 800);
               setData((r) => {
                 if (!r?.bundle) return r;
                 const call = {
@@ -280,7 +293,9 @@ export function RoomView({ initialId }: { initialId?: string }) {
   if (!id || !data) return <Loading label="Opening the room" />;
 
   const pending = data.bundle?.actions ?? [];
+  const needsApproval = pending.some((a) => ["proposed", "awaiting_approval"].includes(a.status));
   const recalled = data.bundle?.investigation.recalled_lessons ?? [];
+  const latestMsgId = data.messages.length ? data.messages[data.messages.length - 1]?.id : "";
 
   async function send() {
     if (!text.trim()) return;
@@ -299,6 +314,14 @@ export function RoomView({ initialId }: { initialId?: string }) {
     setBusy(true);
     try {
       await api.approve(actionId, decision);
+      if (decision === "approve") {
+        for (let i = 0; i < 24; i++) {
+          const st = await api.approvalStatus(actionId);
+          const url = st.pr_url || (st.execution?.pr_url as string | undefined);
+          if (url || st.status === "executed" || st.job?.status === "done") break;
+          await new Promise((r) => window.setTimeout(r, 500));
+        }
+      }
       await load(id);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "failed");
@@ -319,7 +342,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
         to_number: callPhone.trim(),
         reason: data?.room.topic || data?.room.title || "customer follow-up",
         room_id: id,
-        product: "Cove",
+        product: data?.tenant?.product || "Product",
       });
       setCallNote(out.report.detail);
       await load(id);
@@ -350,6 +373,17 @@ export function RoomView({ initialId }: { initialId?: string }) {
               current={data.funnel.current}
               presence={livePresence}
             />
+          </div>
+        ) : null}
+        {needsApproval ? (
+          <div
+            ref={gateRef}
+            className="mt-4 max-w-xl rounded-2xl border border-accent/30 bg-accent/5 px-4 py-3"
+          >
+            <p className="text-[13px] font-medium text-accent">Waiting on you</p>
+            <p className="mt-1 text-[14px] text-[var(--dim)]">
+              A proposed change needs approval before the fleet can execute. Review below or in Work.
+            </p>
           </div>
         ) : null}
         <div className="mt-5 flex max-w-xl flex-wrap items-end gap-2">
@@ -431,13 +465,15 @@ export function RoomView({ initialId }: { initialId?: string }) {
             {thread.map((row) => {
               if (row.kind === "handoff" && row.handoff) {
                 lastAuthor = "";
+                const hk = row.key;
                 return (
-                  <RoomHandoff
-                    key={row.key}
+                  <HandoffPacket
+                    key={hk}
                     from={String(row.handoff.from_agent ?? "")}
                     to={String(row.handoff.to_agent ?? "")}
                     summary={String(row.handoff.summary ?? "")}
                     at={when(row.at)}
+                    fresh={freshHandoff !== null && hk.includes(String(row.handoff.to_agent ?? ""))}
                   />
                 );
               }
@@ -471,7 +507,14 @@ export function RoomView({ initialId }: { initialId?: string }) {
                     {msg.kind === "artifact" ? (
                       <ArtifactCard msg={msg} />
                     ) : (
-                      <p className="max-w-[620px] text-[14px] leading-6 text-[var(--ink)]">{msg.text}</p>
+                      <StreamBody
+                        text={msg.text}
+                        live={
+                          msg.id === latestMsgId &&
+                          msg.author_kind === "agent" &&
+                          (seenMsgIds.has(msg.id) || Boolean(livePresence[msg.author]))
+                        }
+                      />
                     )}
                   </div>
                 </div>

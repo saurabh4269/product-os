@@ -127,6 +127,25 @@ class Hub:
             else:
                 self.global_clients.discard(ws)
 
+    def publish_global(self, event: dict[str, Any]) -> None:
+        """Campus-wide feed (activity log, counters) — no room required."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._broadcast_global(event))
+        except RuntimeError:
+            pass
+
+    async def _broadcast_global(self, event: dict[str, Any]) -> None:
+        payload = json.dumps(event, default=str)
+        dead: list[WebSocket] = []
+        for ws in list(self.global_clients):
+            try:
+                await ws.send_text(payload)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self.global_clients.discard(ws)
+
     def set_presence(self, room_id: str, agent_id: str, status: str, pixel: dict[str, Any] | None = None) -> dict[str, Any]:
         event = {
             "type": "agent_presence",

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Any
 
-from loop.tenant import ConnectorReport
+from loop.tenant import ConnectorReport, Tenant
 
 
 def publish_signal(payload: dict) -> ConnectorReport:
@@ -42,3 +43,16 @@ def publish_signal(payload: dict) -> ConnectorReport:
             connector="warehouse.pubsub",
             detail=str(exc)[:200],
         )
+
+
+def read_metric_window(
+    engine: Any,
+    tenant: Tenant | None,
+    metric: str,
+    *,
+    baseline: float | None = None,
+) -> dict[str, Any] | None:
+    """Honest metric re-read for verify / probes. BQ when configured; else file warehouse; else None."""
+    from loop.connectors.bigquery import read_metric_window as bq_read
+
+    return bq_read(engine, tenant, metric, baseline=baseline)

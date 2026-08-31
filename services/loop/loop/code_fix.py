@@ -29,10 +29,10 @@ def code_backend() -> str:
     return (os.environ.get("LOOP_CODE_BACKEND") or "auto").strip().lower()
 
 
-def _token() -> str:
-    from loop.connectors.github import _token as gh_token
+def _token(tenant: Tenant | None = None) -> str:
+    from loop.connectors.github import token_for_tenant
 
-    return gh_token()
+    return token_for_tenant(tenant)
 
 
 def resolve_brief(action: Any, inv: Any, store: Any) -> dict[str, Any] | None:
@@ -54,7 +54,7 @@ def resolve_brief(action: Any, inv: Any, store: Any) -> dict[str, Any] | None:
     return None
 
 
-def _expand_files(paths: list[str]) -> list[str]:
+def _expand_files(paths: list[str], tenant: Tenant | None = None) -> list[str]:
     out: list[str] = []
     for p in paths:
         out.extend(_FILE_ALIASES.get(p, [p]))
@@ -64,13 +64,13 @@ def _expand_files(paths: list[str]) -> list[str]:
         if p not in seen:
             seen.add(p)
             deduped.append(p)
-    if not deduped:
-        deduped = ["src/app/(store)/checkout/page.tsx", "src/lib/loop.ts"]
+    if not deduped and tenant and tenant.code_paths:
+        deduped = list(tenant.code_paths)
     return deduped
 
 
 def clone_tenant_repo(tenant: Tenant, dest: Path) -> tuple[bool, str]:
-    token = _token()
+    token = _token(tenant)
     if not token or not tenant.repo:
         return False, "no github token or tenant.repo"
     if dest.exists():
@@ -195,8 +195,8 @@ def gemini_generate_patches(brief: dict[str, Any], files: dict[str, str]) -> tup
     return merged, summary
 
 
-def generate_patches(repo: Path, brief: dict[str, Any]) -> tuple[dict[str, str], str, str]:
-    rels = _expand_files(list(brief.get("likely_files") or []))
+def generate_patches(repo: Path, brief: dict[str, Any], tenant: Tenant | None = None) -> tuple[dict[str, str], str, str]:
+    rels = _expand_files(list(brief.get("likely_files") or []), tenant)
     existing = _read_repo_files(repo, rels)
     fixture = str(brief.get("fixture_id") or brief.get("scenario_id") or "")
     pref = code_backend()
@@ -254,12 +254,14 @@ def run_code_fix(
         if not ok:
             return ConnectorReport(status="skipped", connector="code_fix", detail=detail)
 
-        patches, summary, backend = generate_patches(repo, brief)
+        patches, summary, backend = generate_patches(repo, brief, tenant)
         if flag_patch:
-            patches["config/flags.json"] = json.dumps(flag_patch, indent=2) + "\n"
+            from loop.tenant_context import flag_file_for
+
+            patches[flag_file_for(tenant)] = json.dumps(flag_patch, indent=2) + "\n"
 
         touched = apply_patches(repo, patches)
-        tests_ok, test_log = run_tests(repo)
+        tests_ok, test_log = run_tests(repo, test_command=tenant.test_command or None)
         if not tests_ok:
             return ConnectorReport(
                 status="failed",
@@ -286,10 +288,7 @@ def run_code_fix_job(engine: Any, job: Any) -> dict[str, Any]:
     payload = job.payload or {}
     tenant = engine.store.get_tenant(str(payload.get("tenant_id") or ""))
     if not tenant:
-        tenants = engine.store.list_tenants()
-        tenant = next((t for t in tenants if t.connected), None) or (tenants[0] if tenants else None)
-    if not tenant:
-        return {"status": "skipped", "detail": "no tenant"}
+        return {"status": "skipped", "detail": "no tenant bound to job"}
 
     inv = engine.store.get_investigation(str(payload.get("investigation_id") or ""))
     report = run_code_fix(

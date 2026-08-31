@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -31,6 +32,8 @@ def get_engine() -> LoopEngine:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    import asyncio
+
     cfg = settings()
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
     from loop.state_persist import hydrate_db
@@ -54,7 +57,29 @@ async def lifespan(_app: FastAPI):
     from .tenant import seed_placeholder
 
     seed_placeholder(eng.store)
+
+    tick_task = None
+    if os.environ.get("LOOP_INLINE_WORKER") == "1":
+
+        async def _worker_loop() -> None:
+            from .jobs import process_one
+
+            interval = max(5, int(os.environ.get("LOOP_WORKER_INTERVAL", "30")))
+            while True:
+                await asyncio.sleep(interval)
+                try:
+                    process_one(eng.store, eng)
+                except Exception:
+                    pass
+
+        tick_task = asyncio.create_task(_worker_loop())
+
     yield
+
+    if tick_task:
+        tick_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await tick_task
 
 
 _origin = settings().console_origin
@@ -113,6 +138,23 @@ class TenantBody(BaseModel):
     repo: str = ""
     deploy_url: str = ""
     token: str = ""
+    flag_names: list[str] = Field(default_factory=list)
+    code_paths: list[str] = Field(default_factory=list)
+    flag_file_path: str = "config/flags.json"
+    stack: str = ""
+    test_command: str = ""
+    default_surface: str = "product"
+    metric_catalog: list[str] = Field(default_factory=list)
+    bq_project: str = ""
+    bq_raw_dataset: str = ""
+    bq_metrics_dataset: str = ""
+    ga4_property_id: str = ""
+    ga4_dataset: str = ""
+    ads_dataset: str = ""
+    ads_customer_id: str = ""
+    warehouse_mode: str = "auto"
+    primary_metric: str = "purchase_conversion"
+    funnel_events: list[str] = Field(default_factory=list)
 
 
 class TokenRotateBody(BaseModel):
@@ -139,7 +181,7 @@ class PlaceCallBody(BaseModel):
     to_number: str
     reason: str = "checkout issue"
     room_id: str = ""
-    product: str = "Cove"
+    product: str = ""
     tokenized_user: str = "tok_anon"
 
 
@@ -291,14 +333,7 @@ def status():
 
 def _visible_flags(eng, tenant_id: str) -> dict[str, str]:
     raw = eng.store.list_flags()
-    flags = {k.split(":", 2)[-1]: v for k, v in raw.items() if k.startswith(f"t:{tenant_id}:")}
-    globals_ = {k: v for k, v in raw.items() if not k.startswith("t:")}
-    for name in ("pay_sdk_4_3", "onboarding_copy_exp_b", "show_delivery_date_earlier"):
-        if name not in flags:
-            default = "off" if name == "show_delivery_date_earlier" else "on"
-            flags[name] = globals_.get(name) or default
-    flags["pay_sdk"] = "4.2.1" if flags.get("pay_sdk_4_3") == "off" else "4.3.0"
-    return flags
+    return {k.split(":", 2)[-1]: v for k, v in raw.items() if k.startswith(f"t:{tenant_id}:")}
 
 
 def _public_tenant(t) -> dict:
@@ -327,12 +362,14 @@ def _require_tenant(tenant_id: str, authorization: str | None):
     return t
 
 
-def _gate(eng) -> dict:
-    from .tenant import seed_placeholder
+def _gate(eng, tenant_id: str | None = None) -> dict:
+    from .tenant import resolve_tenant, seed_placeholder
 
     seed_placeholder(eng.store)
-    tenants = eng.store.list_tenants()
-    t = next((x for x in tenants if x.repo), None) or (tenants[0] if tenants else None)
+    t = resolve_tenant(eng.store, tenant_id=tenant_id)
+    if not t:
+        tenants = eng.store.list_tenants()
+        t = next((x for x in tenants if x.repo), None)
     if t and t.repo:
         return {
             "mode": "github_pr",
@@ -347,8 +384,10 @@ def _gate(eng) -> dict:
 
 
 def _action_gate(eng, action) -> dict:
-    tenants = eng.store.list_tenants()
-    t = next((x for x in tenants if getattr(x, "repo", None)), None)
+    from .tenant import resolve_tenant
+
+    inv = eng.store.get_investigation(action.investigation_id)
+    t = resolve_tenant(eng.store, investigation=inv)
     repo = (t.repo if t else "") or ""
     arts = action.artifacts or {}
     if "flag" in arts and repo:
@@ -416,8 +455,28 @@ def upsert_tenant(body: TenantBody, authorization: str | None = Header(default=N
         last_pr_url=prev.last_pr_url if prev else "",
         last_ingest_at=prev.last_ingest_at if prev else "",
         last_connector=prev.last_connector if prev else "",
+        flag_names=body.flag_names or (prev.flag_names if prev else []),
+        code_paths=body.code_paths or (prev.code_paths if prev else []),
+        flag_file_path=body.flag_file_path or (prev.flag_file_path if prev else "config/flags.json"),
+        stack=body.stack or (prev.stack if prev else ""),
+        test_command=body.test_command or (prev.test_command if prev else ""),
+        default_surface=body.default_surface or (prev.default_surface if prev else "product"),
+        metric_catalog=body.metric_catalog or (prev.metric_catalog if prev else []),
+        bq_project=body.bq_project or (prev.bq_project if prev else ""),
+        bq_raw_dataset=body.bq_raw_dataset or (prev.bq_raw_dataset if prev else ""),
+        bq_metrics_dataset=body.bq_metrics_dataset or (prev.bq_metrics_dataset if prev else ""),
+        ga4_property_id=body.ga4_property_id or (prev.ga4_property_id if prev else ""),
+        ga4_dataset=body.ga4_dataset or (prev.ga4_dataset if prev else ""),
+        ads_dataset=body.ads_dataset or (prev.ads_dataset if prev else ""),
+        ads_customer_id=body.ads_customer_id or (prev.ads_customer_id if prev else ""),
+        warehouse_mode=body.warehouse_mode or (prev.warehouse_mode if prev else "auto"),
+        primary_metric=body.primary_metric or (prev.primary_metric if prev else "purchase_conversion"),
+        funnel_events=body.funnel_events or (prev.funnel_events if prev else []),
     )
     eng.store.put_tenant(t)
+    from .tenant import bind_fixture_tenants
+
+    bind_fixture_tenants(eng.store)
     record(eng.store, actor=actor, action="tenant.upsert", resource=f"tenant:{t.id}", detail={"repo": t.repo})
     return {"tenant": _public_tenant(t)}
 
@@ -447,7 +506,7 @@ def tenant_detail(tenant_id: str):
     t = get_engine().store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(404, "tenant not found")
-    return {"tenant": _public_tenant(t), "flags": _visible_flags(get_engine(), tenant_id)}
+    return {"tenant": _public_tenant(t), "flags": _visible_flags(get_engine(), tenant_id), "gate": _gate(get_engine(), tenant_id)}
 
 
 @app.get("/api/t/{tenant_id}/flags")
@@ -522,8 +581,30 @@ def google_oauth_callback(request: Request, code: str = "", state: str = "", err
 
     if error or not code:
         return RedirectResponse(google_oauth.console_return(False, error or "denied"), status_code=302)
-    ok, detail = google_oauth.exchange_code(code, state, _request_base(request))
+    ok, detail, mode = google_oauth.exchange_code(code, state, _request_base(request))
+    if mode == "ga4":
+        return RedirectResponse(google_oauth.ga4_console_return(ok, "" if ok else detail), status_code=302)
     return RedirectResponse(google_oauth.console_return(ok, "" if ok else detail), status_code=302)
+
+
+@app.get("/api/oauth/ga4/start")
+def google_oauth_ga4_start(request: Request):
+    from .connectors import google_oauth
+
+    url = google_oauth.ga4_authorization_url(_request_base(request))
+    if not url:
+        return RedirectResponse(
+            google_oauth.ga4_console_return(False, "Paste OAuth client on Connect first"),
+            status_code=302,
+        )
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/oauth/ga4/status")
+def google_oauth_ga4_status():
+    from .connectors import google_oauth
+
+    return {"ready": google_oauth.ga4_adc_ready()}
 
 
 def _request_base(request: Request) -> str:
@@ -848,15 +929,17 @@ def product_intel(body: ProductIntelBody):
 def place_outbound_call(body: PlaceCallBody):
     """Human-triggered outbound call from a room (SalesShortcut OutreachCaller energy)."""
     from .connectors.voice import place_call
+    from .tenant import product_for_room
     from .world import post as room_post
 
     eng = get_engine()
+    product = body.product.strip() or product_for_room(eng.store, body.room_id)
     report = place_call(
         body.tokenized_user,
         body.reason,
         to_number=body.to_number,
         room_id=body.room_id,
-        product=body.product,
+        product=product,
     )
     if body.room_id and eng.store.get_room(body.room_id):
         room_post(
@@ -877,9 +960,13 @@ async def twilio_voice(
     request: Request,
     room: str = Query(default=""),
     reason: str = Query(default="checkout"),
-    product: str = Query(default="Cove"),
+    product: str = Query(default=""),
 ):
     from .telephony import put_session, twiml_open
+    from .tenant import product_for_room
+
+    eng = get_engine()
+    resolved = product.strip() or product_for_room(eng.store, room)
 
     form = await request.form()
     call_sid = str(form.get("CallSid") or "")
@@ -890,13 +977,13 @@ async def twilio_voice(
                 "to": str(form.get("To") or ""),
                 "room_id": room,
                 "reason": reason,
-                "product": product,
+                "product": resolved,
                 "status": "in-progress",
                 "turns": 0,
                 "transcript": [],
             },
         )
-    xml = twiml_open(room, reason, product)
+    xml = twiml_open(room, reason, resolved)
     return Response(content=xml, media_type="application/xml")
 
 
@@ -962,7 +1049,7 @@ async def twilio_status(request: Request):
 @app.post("/api/detect")
 def detect():
     eng = get_engine()
-    signals = eng.detect_signals()
+    signals = eng.detect_all_signals()
     return {"signals": [s.model_dump(mode="json") for s in signals]}
 
 
@@ -979,10 +1066,12 @@ def world_seed():
 
 
 @app.get("/api/rooms")
-def rooms():
+def rooms(tenant_id: str | None = Query(default=None)):
     eng = get_engine()
     items = []
     for room in eng.store.list_rooms():
+        if tenant_id and room.tenant_id not in (None, tenant_id):
+            continue
         msgs = eng.store.list_messages(room.id)
         items.append(
             {
@@ -994,18 +1083,147 @@ def rooms():
     return {"rooms": items}
 
 
+@app.get("/api/rooms/by-scenario/{slug}")
+def room_by_scenario(slug: str):
+    eng = get_engine()
+    room = next((r for r in eng.store.list_rooms() if r.scenario_id == slug), None)
+    if not room:
+        raise HTTPException(404, "room not found for scenario")
+    return {"room_id": room.id, "room": room.model_dump(mode="json")}
+
+
+@app.get("/api/pipeline")
+def pipeline_board(tenant_id: str | None = Query(default=None)):
+    """Kanban-style cards for open investigations (SalesShortcut board energy)."""
+    from .live import PIPELINE_BUG, PIPELINE_FEATURE, funnel_for
+    from .tenant import resolve_tenant
+
+    eng = get_engine()
+    cards = []
+    for room in eng.store.list_rooms():
+        if room.status != "open":
+            continue
+        if tenant_id and room.tenant_id not in (None, tenant_id):
+            continue
+        inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
+        state = inv.state if inv else None
+        actions = eng.store.list_actions(inv.id) if inv else []
+        awaiting = any(a.status in {"proposed", "awaiting_approval"} for a in actions)
+        funnel = funnel_for(room.loop_type, state, awaiting=awaiting)
+        tenant = resolve_tenant(eng.store, investigation=inv, room=room)
+        pr_url = None
+        for act in actions:
+            exe = (act.artifacts or {}).get("execution") if act.artifacts else {}
+            if isinstance(exe, dict):
+                pr_url = exe.get("pr_url") or exe.get("code_pr_url") or pr_url
+        cards.append(
+            {
+                "room_id": room.id,
+                "title": room.title,
+                "stage": funnel["current"],
+                "kind": funnel["kind"],
+                "tenant_id": room.tenant_id,
+                "tenant_product": tenant.product if tenant else None,
+                "scenario_id": room.scenario_id,
+                "investigation_id": room.investigation_id,
+                "awaiting_approval": awaiting,
+                "pr_url": pr_url,
+            }
+        )
+    return {
+        "columns": PIPELINE_BUG,
+        "cards": cards,
+    }
+
+
+@app.get("/api/activity")
+def activity_feed(limit: int = Query(default=60, ge=1, le=200)):
+    from .activity import list_activity
+
+    return {"events": list_activity(limit=limit)}
+
+
+@app.post("/api/demo/run")
+def demo_run():
+    """One-click tenant signal demo — no fixture knowledge required."""
+    from .tenant import seed_placeholder
+    from .world import ingest_tenant_signal
+
+    eng = get_engine()
+    if not eng.store.list_rooms():
+        eng.seed_world()
+    tenant = seed_placeholder(eng.store)
+    from .activity import emit_activity
+    import os
+
+    prev_staged = os.environ.get("LOOP_DEMO_STAGED")
+    os.environ["LOOP_DEMO_STAGED"] = "1"
+    emit_activity(agent_id="demo", message="Demo signal started", stage="signal", tenant_id=tenant.id)
+    try:
+        out = ingest_tenant_signal(
+            eng,
+            tenant,
+            metric="checkout_conversion",
+            magnitude=-0.14,
+            baseline=0.72,
+            note="Demo: checkout conversion dropped after deploy",
+            source="demo.run",
+        )
+    finally:
+        if prev_staged is None:
+            os.environ.pop("LOOP_DEMO_STAGED", None)
+        else:
+            os.environ["LOOP_DEMO_STAGED"] = prev_staged
+    emit_activity(
+        agent_id="signal_agent",
+        message="Investigation pipeline running",
+        room_id=out.get("room_id", ""),
+        stage="investigate",
+        tenant_id=tenant.id,
+    )
+    return {
+        "demo": True,
+        "tenant_id": tenant.id,
+        "room_id": out.get("room_id"),
+        "investigation_id": out.get("investigation_id"),
+        "joined": out.get("joined", False),
+    }
+
+
+@app.get("/api/config")
+def public_config():
+    import os
+
+    return {
+        "eval_mode": os.environ.get("LOOP_EVAL", "1") == "1",
+        "hosted": bool(os.environ.get("K_SERVICE")),
+        "fixture_scenarios": [
+            "safari_3ds",
+            "android_sdk",
+            "onboarding_activation",
+            "apple_pay",
+            "shipping_ux",
+            "security_exfil",
+        ],
+    }
+
+
 @app.get("/api/rooms/{room_id}")
 def room_detail(room_id: str):
+    from .tenant import resolve_tenant
+
     eng = get_engine()
     room = eng.store.get_room(room_id)
     if not room:
         raise HTTPException(404, "room not found")
-    bundle = _bundle(eng, room.investigation_id) if room.investigation_id and eng.store.get_investigation(room.investigation_id) else None
+    inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
+    bundle = _bundle(eng, room.investigation_id) if inv else None
     awaiting = False
     state = None
     if bundle and bundle.get("investigation"):
         state = bundle["investigation"].get("state")
         awaiting = any(a.get("status") in {"proposed", "awaiting_approval"} for a in bundle.get("actions") or [])
+    tenant = resolve_tenant(eng.store, investigation=inv, room=room)
     return {
         "room": room.model_dump(mode="json"),
         "messages": [m.model_dump(mode="json") for m in eng.store.list_messages(room_id)],
@@ -1013,6 +1231,11 @@ def room_detail(room_id: str):
         "members": room.members,
         "presence": HUB.agents_in(room_id),
         "funnel": funnel_for(room.loop_type, state, awaiting=awaiting),
+        "tenant": (
+            {"id": tenant.id, "name": tenant.name, "product": tenant.product, "repo": tenant.repo}
+            if tenant
+            else None
+        ),
     }
 
 
@@ -1054,10 +1277,10 @@ def registry():
 
 
 @app.get("/api/memory")
-def memory(q: str = "", type: str | None = None):
+def memory(q: str = "", type: str | None = None, tenant_id: str | None = None):
     eng = get_engine()
     by_kind: dict[str, list] = {"customer": [], "product": [], "engineering": [], "organizational": []}
-    items = eng.store.list_memory(type) if type else eng.store.list_memory()
+    items = eng.store.list_memory(type, tenant_id=tenant_id) if type else eng.store.list_memory(tenant_id=tenant_id)
     if q:
         ql = q.lower()
         items = [
@@ -1150,35 +1373,13 @@ def signals():
 
 @app.post("/api/signals")
 def post_signal(body: SignalInBody):
-    """v2-style: ingest a signal → open/join a room → run the live fleet graph."""
-    from .agents.graphs import run_live_graph
-    from .adk_runtime import dispatch_signal
-    from .engine import _id, _now
-    from .models import LoopType, Room, RoomKind
+    """Ingest a signal → investigation pipeline with live WS events."""
+    from .unified_runner import run_signal_pipeline
 
     eng = get_engine()
     eng.seed_world()
     fork = (body.fork or ("FEATURE" if body.polarity == "positive" else "BUG")).upper()
-    kind = RoomKind.OPPORTUNITY if fork == "FEATURE" else RoomKind.INCIDENT
-    title = body.title or f"{body.metric} ({body.polarity})"
-    # Prefer an open room for the same metric/scenario when present.
-    room = None
-    if body.scenario:
-        room = next((r for r in eng.store.list_rooms() if r.scenario_id == body.scenario), None)
-    if room is None:
-        room = Room(
-            id=_id("room"),
-            kind=kind,
-            title=title,
-            topic=f"{body.source} · {body.domain} · {body.metric}",
-            members=["orchestrator", "signal_agent", "investigator_agent", "risk_agent"],
-            status="open",
-            created_at=_now(),
-            last_message_at=_now(),
-            loop_type=LoopType.TYPE_B if fork == "FEATURE" else LoopType.TYPE_A,
-            scenario_id=body.scenario,
-        )
-        eng.store.put_room(room)
+    scenario = body.scenario or f"signal:{body.metric}"
     sig = {
         "source": body.source,
         "polarity": body.polarity,
@@ -1187,30 +1388,32 @@ def post_signal(body: SignalInBody):
         "delta": body.delta,
         "dimensions": body.dimensions,
         "fork": fork,
-        "scenario": body.scenario,
-        "title": title,
+        "scenario": scenario,
+        "title": body.title or f"{body.metric} ({body.polarity})",
     }
     try:
         from .connectors.warehouse import publish_signal
 
-        publish_signal({**sig, "room_id": room.id, "path": "api.signals"})
+        publish_signal({**sig, "path": "api.signals"})
     except Exception:
         pass
-    result = dispatch_signal(
+    result = run_signal_pipeline(
         eng,
-        room.id,
+        None,
         sig,
         fork=fork,
         probe_exfil=body.scenario in {"security_exfil", "pii-exfil-deny"},
     )
     return {
-        "signalId": f"sig-{result['trace_id'][:8]}",
-        "roomId": room.id,
-        "room_id": room.id,
-        "trace_id": result["trace_id"],
-        "fork": result["fork"],
+        "signalId": f"sig-{str(result.get('trace_id', ''))[:8]}",
+        "roomId": result.get("room_id"),
+        "room_id": result.get("room_id"),
+        "trace_id": result.get("trace_id"),
+        "fork": result.get("fork"),
         "pipeline": result.get("pipeline"),
         "steps": result.get("steps"),
+        "investigation_id": result.get("investigation_id"),
+        "reused": result.get("reused", False),
     }
 
 
@@ -1243,7 +1446,9 @@ def approvals():
 @app.post("/api/approvals/{action_id}")
 def decide(action_id: str, body: ApproveBody, authorization: str | None = Header(default=None)):
     from .audit import record
+    from .auth import require_admin
 
+    require_admin(authorization, actor=body.approver)
     eng = get_engine()
     action = eng.store.get_action(action_id)
     if not action:
@@ -1351,13 +1556,14 @@ def worker_tick(
 
     require_admin_or_internal(authorization, internal_header=x_loop_worker)
     eng = get_engine()
+    detected = eng.detect_all_signals()
     processed: list[dict] = []
     for _ in range(limit):
         result = process_one(eng.store, eng)
         if not result:
             break
         processed.append(result)
-    return {"processed": processed, "count": len(processed)}
+    return {"processed": processed, "count": len(processed), "detected": len(detected)}
 
 
 @app.get("/api/approvals/{action_id}/status")
@@ -1392,7 +1598,7 @@ def audit_log(authorization: str | None = Header(default=None), limit: int = Que
 @app.post("/api/scenarios/{slug}/run")
 def scenario_run(slug: str, request: Request):
     """Eval fixture runner — live fleet walk into the scenario room."""
-    from .agents.graphs import run_live_graph
+    from .unified_runner import run_signal_pipeline
 
     eng = get_engine()
     eng.seed_world()
@@ -1434,13 +1640,25 @@ def scenario_run(slug: str, request: Request):
         "fork": fork,
         "title": room.title,
     }
-    result = run_live_graph(
-        eng,
-        room.id,
-        signal,
-        fork=fork,
-        probe_exfil=slug in {"security_exfil", "pii-exfil-deny"},
-    )
+    import os
+
+    prev_staged = os.environ.get("LOOP_DEMO_STAGED")
+    os.environ["LOOP_DEMO_STAGED"] = "1"
+    try:
+        result = run_signal_pipeline(
+            eng,
+            room.id,
+            signal,
+            fork=fork,
+            probe_exfil=slug in {"security_exfil", "pii-exfil-deny"},
+            tenant_id=room.tenant_id,
+            live_progress=True,
+        )
+    finally:
+        if prev_staged is None:
+            os.environ.pop("LOOP_DEMO_STAGED", None)
+        else:
+            os.environ["LOOP_DEMO_STAGED"] = prev_staged
     return {
         "scenario": slug,
         "room_id": room.id,
@@ -1462,21 +1680,35 @@ def workflows():
 
 class AgentCallbackBody(BaseModel):
     room_id: str = ""
+    tenant_id: str = ""
     agent_id: str = "orchestrator"
     status: str = "thinking"
     message: str = ""
     kind: str = "agent_presence"
+    stage: str = ""
     data: dict = {}
+    artifact: dict = {}
 
 
 @app.post("/api/agent_callback")
 def agent_callback(body: AgentCallbackBody):
     """SalesShortcut-style push: agents POST updates → WebSocket fans out."""
+    from .activity import emit_activity
+
     rid = body.room_id
     if not rid:
         raise HTTPException(400, "room_id required")
     if body.kind == "agent_presence" or body.status:
         HUB.set_presence(rid, body.agent_id, body.status or "thinking", {"label": body.agent_id})
+    if body.message or body.stage:
+        emit_activity(
+            agent_id=body.agent_id,
+            message=body.message or f"{body.agent_id} · {body.stage or body.status}",
+            room_id=rid,
+            stage=body.stage or body.status,
+            tenant_id=body.tenant_id,
+            artifact=body.artifact or None,
+        )
     if body.message:
         from .world import post
 

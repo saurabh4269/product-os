@@ -470,9 +470,17 @@ def voice_system_prompt(ctx: VoiceDiagnosticContext) -> str:
     )
 
 
-def build_code_brief(event: AnomalyEvent, pack: EvidencePack, hypothesis: str) -> CodeIssueBrief:
+def build_code_brief(
+    event: AnomalyEvent,
+    pack: EvidencePack,
+    hypothesis: str,
+    tenant: Any | None = None,
+) -> CodeIssueBrief:
     code = dict(event.dimensions.get("code") or {})
     files = list(code.get("files") or code.get("likely_files") or [])
+    if not files and tenant and getattr(tenant, "code_paths", None):
+        files = list(tenant.code_paths)
+    surface = str(code.get("surface") or (tenant.default_surface if tenant else None) or event.funnel_position)
     return CodeIssueBrief(
         issue=str(code.get("issue") or pack.correlation_summary),
         evidence_summary=[c.claim for c in pack.claims],
@@ -482,7 +490,7 @@ def build_code_brief(event: AnomalyEvent, pack: EvidencePack, hypothesis: str) -
             code.get("regression_test")
             or f"Reproduce {event.metric} failure for segment {event.dimensions.get('segments') or {}}."
         ),
-        surface=str(code.get("surface") or event.funnel_position),
+        surface=surface,
         hypothesis=hypothesis,
         confidence=pack.confidence,
     )
@@ -721,6 +729,7 @@ def run_investigation(
     event: AnomalyEvent,
     *,
     scenario_id: str | None = None,
+    tenant_id: str | None = None,
     propose_action: bool = True,
     action_type: str = "code_change",
     classification: Classification | None = None,
@@ -729,6 +738,7 @@ def run_investigation(
     room_kind: RoomKind | None = None,
     surface: str | None = None,
     extra_artifacts: dict[str, Any] | None = None,
+    live_progress: bool = False,
 ) -> dict[str, Any]:
     """Detect → fan-out → evidence → hypothesis → voice/code briefs → risk → propose."""
     from loop.world import _add_facts, post
@@ -744,6 +754,20 @@ def run_investigation(
         clas = classification
 
     scenario = scenario_id or f"invest:{event.kind}"
+    bound_tenant = tenant_id or str((event.dimensions.get("tenant_id") or "")) or None
+    if bound_tenant == "":
+        bound_tenant = None
+    tenant = engine.store.get_tenant(bound_tenant) if bound_tenant else None
+    if bound_tenant and tenant:
+        from loop.connectors.bigquery import enrich_anomaly_dimensions, read_metric_window
+
+        dims = enrich_anomaly_dimensions(engine.store, tenant, dict(event.dimensions))
+        reading = read_metric_window(engine, tenant, event.metric, baseline=event.baseline)
+        if reading:
+            dims.setdefault("analytics_claim", reading.get("claim"))
+            dims.setdefault("database", {"value": reading.get("value"), "source": reading.get("source")})
+            dims.setdefault("database_claim", reading.get("claim"))
+        event = event.model_copy(update={"dimensions": dims})
     claims = run_investigators(event)
     pack = aggregate_evidence(event, claims)
     hyp_statement = str(
@@ -787,10 +811,12 @@ def run_investigation(
         detected_at=_now(),
     )
     engine.store.put_signal(sig)
-    inv = engine.open_investigation(sig)
+    inv = engine.open_investigation(sig, tenant_id=bound_tenant)
     assert inv
     inv.scenario_id = scenario
     inv.loop_type = lt
+    if bound_tenant:
+        inv.tenant_id = bound_tenant
     title = event.title or f"{event.metric} anomaly"
     members = [
         "orchestrator",
@@ -817,6 +843,7 @@ def run_investigation(
         members=members,
         investigation_id=inv.id,
         scenario_id=scenario,
+        tenant_id=bound_tenant,
         loop_type=lt,
         path=pth,
     )
@@ -824,6 +851,26 @@ def run_investigation(
     inv.title = title
     engine.store.put_investigation(inv)
     engine.store.put_room(room)
+
+    if live_progress:
+        from loop.live_progress import publish_agent_progress
+
+        publish_agent_progress(
+            room.id,
+            "signal_agent",
+            title,
+            tenant_id=bound_tenant or "",
+            stage="signal",
+            delay=True,
+        )
+        publish_agent_progress(
+            room.id,
+            "investigator_agent",
+            "Dispatching specialists in parallel",
+            tenant_id=bound_tenant or "",
+            stage="investigate",
+            delay=True,
+        )
 
     post(
         engine,
@@ -864,6 +911,16 @@ def run_investigation(
             artifact_type="evidence",
             artifact=claim.model_dump(),
         )
+        if live_progress:
+            from loop.live_progress import publish_agent_progress
+
+            publish_agent_progress(
+                room.id,
+                claim.agent,
+                claim.claim[:120],
+                tenant_id=bound_tenant or "",
+                delay=True,
+            )
 
     facts = [
         {
@@ -896,10 +953,21 @@ def run_investigation(
         artifact_type="evidence_pack",
         artifact=pack.model_dump(),
     )
+    if live_progress:
+        from loop.live_progress import publish_agent_progress
+
+        publish_agent_progress(
+            room.id,
+            "evidence_agent",
+            pack.correlation_summary[:120],
+            tenant_id=bound_tenant or "",
+            stage="evidence",
+            delay=True,
+        )
 
     hyp = engine.form_hypothesis(inv, statement=hyp_statement, classification=clas)
     voice_ctx = build_voice_context(event, pack, hyp_statement)
-    code_brief = build_code_brief(event, pack, hyp_statement)
+    code_brief = build_code_brief(event, pack, hyp_statement, tenant=tenant)
     surf = surface or str((event.dimensions.get("code") or {}).get("surface") or event.funnel_position)
     risk = assess_risk(surf, hyp_statement, action_type)
 
@@ -948,6 +1016,17 @@ def run_investigation(
             "confidence": pack.confidence,
         },
     )
+    if live_progress:
+        from loop.live_progress import publish_agent_progress
+
+        publish_agent_progress(
+            room.id,
+            "root_cause_agent",
+            hyp.statement[:120],
+            tenant_id=bound_tenant or "",
+            stage="root_cause",
+            delay=True,
+        )
     post(
         engine,
         room.id,
@@ -1004,6 +1083,36 @@ def run_investigation(
             semantic=f"invest-{event.kind}-{risk.tier.value.lower()}",
         )
         result["action"] = action.model_dump(mode="json")
+        if live_progress:
+            from loop.live import HUB
+            from loop.live_progress import publish_stage
+
+            publish_stage(
+                room.id,
+                "approve",
+                "risk_agent",
+                f"Waiting on approval · {risk.tier.value}",
+                tenant_id=bound_tenant or "",
+                delay=True,
+            )
+            HUB.publish(
+                room.id,
+                {
+                    "type": "approval_required",
+                    "approval": {
+                        "investigation_id": inv.id,
+                        "action_id": action.id,
+                        "status": "pending",
+                        "risk_level": risk.tier.value,
+                    },
+                },
+            )
+            HUB.publish_global(
+                {
+                    "type": "approval_required",
+                    "approval": {"room_id": room.id, "investigation_id": inv.id, "action_id": action.id},
+                }
+            )
 
     return result
 

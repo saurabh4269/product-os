@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useGlobalWs } from "@/lib/use-global-ws";
 
-/** SalesShortcut dashboard counters — light pulse, not a CRUD board. */
+/** SalesShortcut dashboard counters — live via global WS + fallback poll. */
 export function StatusStrip() {
+  const { tick } = useGlobalWs();
   const [s, setS] = useState<{
     rooms?: { open?: number; total?: number };
     approvals_pending?: number;
@@ -18,11 +20,7 @@ export function StatusStrip() {
       .status()
       .then(setS)
       .catch(() => setS(null));
-    const id = window.setInterval(() => {
-      api.status().then(setS).catch(() => undefined);
-    }, 12000);
-    return () => window.clearInterval(id);
-  }, []);
+  }, [tick]);
 
   if (!s) return null;
 

@@ -19,6 +19,19 @@ export default function ConnectPage() {
   const [repo, setRepo] = useState("");
   const [deploy, setDeploy] = useState("");
   const [token, setToken] = useState("");
+  const [flagNames, setFlagNames] = useState("");
+  const [codePaths, setCodePaths] = useState("");
+  const [testCommand, setTestCommand] = useState("");
+  const [bqProject, setBqProject] = useState("");
+  const [bqRaw, setBqRaw] = useState("");
+  const [bqMetrics, setBqMetrics] = useState("");
+  const [ga4Property, setGa4Property] = useState("");
+  const [ga4Dataset, setGa4Dataset] = useState("");
+  const [adsDataset, setAdsDataset] = useState("");
+  const [adsCustomer, setAdsCustomer] = useState("");
+  const [warehouseMode, setWarehouseMode] = useState("auto");
+  const [primaryMetric, setPrimaryMetric] = useState("purchase_conversion");
+  const [funnelEvents, setFunnelEvents] = useState("");
   const [oauth, setOauth] = useState<GoogleOAuth | null>(null);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -31,20 +44,36 @@ export default function ConnectPage() {
   } | null>(null);
   const [adk, setAdk] = useState<Awaited<ReturnType<typeof api.adkStatus>> | null>(null);
 
-  async function load() {
+  const [allTenants, setAllTenants] = useState<Tenant[]>([]);
+
+  async function load(selectedId?: string) {
     const listed = await api.tenants();
-    const first = listed.tenants[0];
-    if (!first) {
+    setAllTenants(listed.tenants);
+    const pick = selectedId || tenant?.id || listed.tenants[0]?.id;
+    if (!pick) {
       setTenant(null);
       return;
     }
-    const detail = await api.tenant(first.id);
+    const detail = await api.tenant(pick);
     setTenant(detail.tenant);
     setFlags(detail.flags);
     setName(detail.tenant.name);
     setProduct(detail.tenant.product);
     setRepo(detail.tenant.repo);
     setDeploy(detail.tenant.deploy_url);
+    setFlagNames((detail.tenant.flag_names ?? []).join(", "));
+    setCodePaths((detail.tenant.code_paths ?? []).join(", "));
+    setTestCommand(detail.tenant.test_command ?? "");
+    setBqProject(detail.tenant.bq_project ?? "");
+    setBqRaw(detail.tenant.bq_raw_dataset ?? "");
+    setBqMetrics(detail.tenant.bq_metrics_dataset ?? "");
+    setGa4Property(detail.tenant.ga4_property_id ?? "");
+    setGa4Dataset(detail.tenant.ga4_dataset ?? "");
+    setAdsDataset(detail.tenant.ads_dataset ?? "");
+    setAdsCustomer(detail.tenant.ads_customer_id ?? "");
+    setWarehouseMode(detail.tenant.warehouse_mode ?? "auto");
+    setPrimaryMetric(detail.tenant.primary_metric ?? "purchase_conversion");
+    setFunnelEvents((detail.tenant.funnel_events ?? []).join(", "));
     setOauth(await api.oauth());
     setTelephony(await api.telephony());
     setAdk(await api.adkStatus());
@@ -84,6 +113,28 @@ export default function ConnectPage() {
         product,
         repo,
         deploy_url: deploy,
+        flag_names: flagNames
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        code_paths: codePaths
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        test_command: testCommand.trim(),
+        bq_project: bqProject.trim(),
+        bq_raw_dataset: bqRaw.trim(),
+        bq_metrics_dataset: bqMetrics.trim(),
+        ga4_property_id: ga4Property.trim(),
+        ga4_dataset: ga4Dataset.trim(),
+        ads_dataset: adsDataset.trim(),
+        ads_customer_id: adsCustomer.trim(),
+        warehouse_mode: warehouseMode.trim() || "auto",
+        primary_metric: primaryMetric.trim() || "purchase_conversion",
+        funnel_events: funnelEvents
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
       });
       if (token.trim()) {
         const rotated = await api.rotateToken(tenant.id, token.trim());
@@ -126,6 +177,24 @@ export default function ConnectPage() {
   return (
     <div className="page-pad">
       <p className="text-[13px] text-[var(--faint)]">{tenant.id}</p>
+      {allTenants.length > 1 ? (
+        <label className="mt-2 block text-[13px] text-[var(--faint)]">
+          Tenant
+          <select
+            className={field}
+            value={tenant.id}
+            onChange={(e) => {
+              void load(e.target.value);
+            }}
+          >
+            {allTenants.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} ({t.id})
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <h1 className="mt-1 text-[26px] font-semibold tracking-tight sm:text-[32px]">Connect</h1>
       <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
         Their app lives on their origin. This desk holds git, the deploy URL, and a hashed token so they can read flags
@@ -168,6 +237,36 @@ export default function ConnectPage() {
           />
         </label>
         <label className="block text-[13px] text-[var(--faint)]">
+          Feature flags (comma-separated names)
+          <input
+            className={field}
+            value={flagNames}
+            onChange={(e) => setFlagNames(e.target.value)}
+            placeholder="new_checkout_flow, pay_sdk_4_3"
+            autoComplete="off"
+          />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Code paths for fixes (comma-separated)
+          <input
+            className={field}
+            value={codePaths}
+            onChange={(e) => setCodePaths(e.target.value)}
+            placeholder="app/checkout.rb, lib/payments.ts"
+            autoComplete="off"
+          />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Test command
+          <input
+            className={field}
+            value={testCommand}
+            onChange={(e) => setTestCommand(e.target.value)}
+            placeholder="npm test -- --run"
+            autoComplete="off"
+          />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
           Rotate tenant token
           <input
             className={field}
@@ -204,6 +303,73 @@ export default function ConnectPage() {
           Save
         </Button>
         {saved ? <p className="text-[14px] text-[var(--dim)]">{saved}</p> : null}
+      </form>
+
+      <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Warehouse (GA4 · Ads · BigQuery)</h2>
+      <p className="mt-3 max-w-lg text-[15px] leading-6 text-[var(--dim)]">
+        Product OS reads facts from BigQuery — not your app. Link a GA4 property export, optional Ads transfer, and
+        loop_raw for synthetic or log sinks. Agents use these datasets for detect, evidence, and verify.
+      </p>
+      <form
+        className="mt-6 max-w-xl space-y-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        <label className="block text-[13px] text-[var(--faint)]">
+          Mode
+          <select className={field} value={warehouseMode} onChange={(e) => setWarehouseMode(e.target.value)}>
+            <option value="auto">auto (BQ when datasets set)</option>
+            <option value="file">file (fixtures only)</option>
+            <option value="bq_raw">bq_raw (loop_raw tables)</option>
+            <option value="ga4">ga4 (analytics_* export)</option>
+          </select>
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          BQ project
+          <input className={field} value={bqProject} onChange={(e) => setBqProject(e.target.value)} placeholder="mystical-timing-442601-q8" />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Raw dataset (loop_raw)
+          <input className={field} value={bqRaw} onChange={(e) => setBqRaw(e.target.value)} placeholder="loop_raw" />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Metrics dataset
+          <input className={field} value={bqMetrics} onChange={(e) => setBqMetrics(e.target.value)} placeholder="loop_metrics" />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          GA4 property ID
+          <input className={field} value={ga4Property} onChange={(e) => setGa4Property(e.target.value)} placeholder="123456789" />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          GA4 BQ dataset (analytics_*)
+          <input className={field} value={ga4Dataset} onChange={(e) => setGa4Dataset(e.target.value)} placeholder="analytics_123456789" />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Ads dataset
+          <input className={field} value={adsDataset} onChange={(e) => setAdsDataset(e.target.value)} placeholder="loop_raw or google_ads_transfer" />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Ads customer ID
+          <input className={field} value={adsCustomer} onChange={(e) => setAdsCustomer(e.target.value)} placeholder="1234567890" />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Primary metric
+          <input className={field} value={primaryMetric} onChange={(e) => setPrimaryMetric(e.target.value)} />
+        </label>
+        <label className="block text-[13px] text-[var(--faint)]">
+          Funnel events (comma-separated)
+          <input
+            className={field}
+            value={funnelEvents}
+            onChange={(e) => setFunnelEvents(e.target.value)}
+            placeholder="page_view, view_item, begin_checkout, add_payment_info, purchase"
+          />
+        </label>
+        <Button type="submit" disabled={busy}>
+          Save warehouse config
+        </Button>
       </form>
 
       <h2 className="mt-12 text-[20px] font-semibold tracking-tight">Phone calls</h2>

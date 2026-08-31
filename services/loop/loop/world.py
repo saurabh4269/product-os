@@ -30,6 +30,11 @@ MEMORY_KINDS = ("customer", "product", "engineering", "organizational")
 
 def seed_world(engine: LoopEngine) -> dict[str, Any]:
     """Stand up rooms + six fixtures through the same pipeline. Idempotent."""
+    import os
+
+    from .tenant import bind_fixture_tenants, seed_placeholder
+
+    seed_placeholder(engine.store)
     if engine.store.get_flag("world_seeded") == "1":
         return {
             "reused": True,
@@ -38,6 +43,15 @@ def seed_world(engine: LoopEngine) -> dict[str, Any]:
         }
     _ensure_standing_rooms(engine)
     _plant_organizational_memory(engine)
+    if os.environ.get("LOOP_EVAL", "1") != "1":
+        bind_fixture_tenants(engine.store)
+        engine.store.set_flag("world_seeded", "1", idempotency_key("world", "seed", "v1"))
+        return {
+            "reused": False,
+            "eval_skipped": True,
+            "rooms": [r.id for r in engine.store.list_rooms()],
+            "scenarios": _scenario_index(engine),
+        }
     existing_rooms = {r.scenario_id: r for r in engine.store.list_rooms() if r.scenario_id}
     invs = engine.store.list_investigations()
     if "safari_3ds" in existing_rooms:
@@ -58,6 +72,7 @@ def seed_world(engine: LoopEngine) -> dict[str, Any]:
         _run_shipping_experiment(engine)
     if "security_exfil" not in existing_rooms:
         _run_security_exfil(engine)
+    bind_fixture_tenants(engine.store)
     engine.store.set_flag("world_seeded", "1", idempotency_key("world", "seed", "v1"))
     return {
         "reused": False,
@@ -270,6 +285,7 @@ def _open_typed(
     loop_type: LoopType,
     path: PathKind,
     members: list[str],
+    tenant_id: str | None = None,
 ) -> tuple[Investigation, Room]:
     engine.store.put_signal(signal)
     inv = engine.open_investigation(signal)
@@ -277,6 +293,8 @@ def _open_typed(
     inv.scenario_id = scenario_id
     inv.loop_type = loop_type
     inv.title = title
+    if tenant_id:
+        inv.tenant_id = tenant_id
     room = Room(
         id=_id("room"),
         kind=kind,
@@ -287,6 +305,7 @@ def _open_typed(
         members=members,
         investigation_id=inv.id,
         scenario_id=scenario_id,
+        tenant_id=tenant_id,
         loop_type=loop_type,
         path=path,
     )
@@ -327,41 +346,11 @@ def ingest_tenant_signal(
     note: str = "",
     source: str = "tenant.ingest",
 ) -> dict[str, Any]:
-    """Posted tenant events open or join a room the same way warehouse detect does."""
+    """Posted tenant events open or join a room; new signals run the investigation pipeline."""
     from .tenant import Tenant
 
     assert isinstance(tenant, Tenant)
     scenario = f"t:{tenant.id}:{metric}"
-    sig = Signal(
-        id=_id("sig"),
-        family=SignalFamily.BUSINESS,
-        direction=Direction.NEGATIVE if magnitude < 0 else Direction.POSITIVE,
-        funnel_position="checkout" if "conversion" in metric or "checkout" in metric else "product",
-        metric=metric,
-        magnitude=magnitude,
-        baseline=baseline,
-        affected_segments=[Segment(channel=f"tenant.{tenant.id}")],
-        detection_window={"source": source},
-        confidence=0.6,
-        source=f"tenant.{tenant.id}",
-        status=SignalStatus.OPEN,
-        detected_at=_now(),
-    )
-    try:
-        from .connectors.warehouse import publish_signal
-
-        publish_signal(
-            {
-                "signal_id": sig.id,
-                "tenant_id": tenant.id,
-                "metric": metric,
-                "magnitude": magnitude,
-                "baseline": baseline,
-                "source": source,
-            }
-        )
-    except Exception:
-        pass
     existing = next(
         (r for r in engine.store.list_rooms() if r.scenario_id == scenario and r.status == "open"),
         None,
@@ -369,6 +358,37 @@ def ingest_tenant_signal(
     text = note or f"{metric} {magnitude} from {tenant.product}"
     tenant.last_ingest_at = _now().isoformat()
     if existing:
+        sig = Signal(
+            id=_id("sig"),
+            family=SignalFamily.BUSINESS,
+            direction=Direction.NEGATIVE if magnitude < 0 else Direction.POSITIVE,
+            funnel_position="checkout" if "conversion" in metric or "checkout" in metric else "product",
+            metric=metric,
+            magnitude=magnitude,
+            baseline=baseline,
+            affected_segments=[Segment(channel=f"tenant.{tenant.id}")],
+            detection_window={"source": source},
+            confidence=0.6,
+            source=f"tenant.{tenant.id}",
+            status=SignalStatus.OPEN,
+            detected_at=_now(),
+        )
+        try:
+            from .connectors.warehouse import publish_signal
+
+            report = publish_signal(
+                {
+                    "signal_id": sig.id,
+                    "tenant_id": tenant.id,
+                    "metric": metric,
+                    "magnitude": magnitude,
+                    "baseline": baseline,
+                    "source": source,
+                }
+            )
+            tenant.last_connector = f"{report.connector} ({report.status})"
+        except Exception:
+            pass
         engine.store.put_signal(sig)
         inv = engine.store.get_investigation(existing.investigation_id) if existing.investigation_id else None
         if inv:
@@ -389,19 +409,54 @@ def ingest_tenant_signal(
     kind = RoomKind.INCIDENT if magnitude < 0 else RoomKind.OPPORTUNITY
     loop_type = LoopType.TYPE_A if magnitude < 0 else LoopType.TYPE_B
     path = PathKind.BUG if magnitude < 0 else PathKind.FEATURE
-    _inv, room = _open_typed(
-        engine,
-        sig,
-        scenario_id=scenario,
+    from .investigation import AnomalyEvent, run_investigation
+
+    event = AnomalyEvent(
+        kind="tenant_signal",
+        metric=metric,
         title=f"{tenant.product}: {metric}",
-        topic=text,
-        kind=kind,
+        magnitude=magnitude,
+        baseline=baseline,
+        funnel_position="checkout" if "conversion" in metric or "checkout" in metric else "product",
+        confidence=0.6,
+        source=f"tenant.{tenant.id}",
+        polarity="negative" if magnitude < 0 else "positive",
+        dimensions={"note": note, "tenant_id": tenant.id},
+    )
+    out = run_investigation(
+        engine,
+        event,
+        scenario_id=scenario,
+        tenant_id=tenant.id,
+        propose_action=magnitude < 0,
         loop_type=loop_type,
         path=path,
-        members=["orchestrator", "signal_agent", "you"],
+        room_kind=kind,
+        live_progress=True,
     )
+    inv = engine.store.get_investigation(out["investigation_id"])
+    assert inv and inv.originating_signal_ids
+    sig = engine.store.get_signal(inv.originating_signal_ids[0])
+    assert sig
+    try:
+        from .connectors.warehouse import publish_signal
+
+        report = publish_signal(
+            {
+                "signal_id": sig.id,
+                "tenant_id": tenant.id,
+                "metric": metric,
+                "magnitude": magnitude,
+                "baseline": baseline,
+                "source": source,
+            }
+        )
+        tenant.last_connector = f"{report.connector} ({report.status})"
+    except Exception:
+        pass
+    tenant.last_ingest_at = _now().isoformat()
     engine.store.put_tenant(tenant)
-    return {"signal": sig, "room_id": room.id, "joined": False}
+    return {"signal": sig, "room_id": out["room_id"], "joined": False, "investigation_id": inv.id}
 
 
 def ingest_tenant_voice(
@@ -986,6 +1041,9 @@ def publish_safari_room(engine: LoopEngine, inv: Investigation) -> Room:
     inv.scenario_id = inv.scenario_id or "safari_3ds"
     inv.loop_type = inv.loop_type or LoopType.TYPE_A
     inv.title = inv.title or "Safari 3DS timeout after pay-sdk 4.3"
+    demo_tenant = engine.store.get_tenant("acme")
+    if demo_tenant:
+        inv.tenant_id = demo_tenant.id
     room = Room(
         id=_id("room"),
         kind=RoomKind.INCIDENT,
@@ -1005,6 +1063,7 @@ def publish_safari_room(engine: LoopEngine, inv: Investigation) -> Room:
         ],
         investigation_id=inv.id,
         scenario_id="safari_3ds",
+        tenant_id=inv.tenant_id,
         loop_type=LoopType.TYPE_A,
         path=PathKind.BUG,
     )

@@ -285,6 +285,17 @@ def _run_agent(ctx: RunContext, agent_id: str) -> None:
 
 def _run_parallel_investigators(ctx: RunContext) -> None:
     """SalesShortcut ParallelAgent fan-out → JoinNode gather."""
+    from loop.unified_runner import enrich_signal_dict
+
+    tid = (ctx.signal.get("dimensions") or {}).get("tenant_id")
+    if not tid:
+        room = ctx.engine.store.get_room(ctx.room_id)
+        tid = room.tenant_id if room else None
+    if tid:
+        ctx.signal = {
+            **ctx.signal,
+            "dimensions": enrich_signal_dict(ctx.engine, ctx.signal, tenant_id=str(tid)),
+        }
     ctx.stage("evidence", "investigator_agent")
     ctx.say("investigator_agent", "Fan-out: analytics, logs, deploy, warehouse (parallel).")
     for aid in INVESTIGATORS:
@@ -361,72 +372,109 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         ctx.say(agent_id, "Dispatching specialists in parallel.")
         return
     if agent_id == "analytics_agent":
-        fact = ctx.tool(
+        from loop.unified_runner import signal_to_event
+        from loop.investigation import run_investigators
+
+        event = signal_to_event(ctx.signal)
+        claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
+        fact = {
+            "metric": metric,
+            "claim": claim.claim if claim else f"{metric} moved",
+            "confidence": claim.confidence if claim else 0.7,
+            "independence_group": claim.independence_group if claim else "ga4",
+            "status": "done",
+        }
+        ctx.tool(
             agent_id,
             "ga4.read",
-            lambda: {
-                "metric": metric,
-                "baseline": 0.82 if ctx.fork == "BUG" else 0.11,
-                "delta": delta,
-                "note": "warehouse fact, not memory",
-                "status": "done",
-            },
+            lambda: fact,
             output_key=f"evidence_{agent_id}",
         )
-        ctx.artifact(agent_id, "evidence", fact, text=f"Analytics · {metric}")
+        ctx.artifact(agent_id, "evidence", fact, text=f"Analytics · {fact['claim'][:80]}")
         ctx.state.setdefault("groups", set()).add("ga4")
         return
     if agent_id == "logs_agent":
-        cluster = ctx.tool(
+        from loop.unified_runner import signal_to_event
+        from loop.investigation import run_investigators
+
+        event = signal_to_event(ctx.signal)
+        claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
+        cluster = {
+            "cluster": f"{dims.get('error') or metric}-cluster",
+            "claim": claim.claim if claim else f"errors clustered on {metric}",
+            "count": 140 + abs(int(float(delta or 0) * 800)),
+            "status": "done",
+        }
+        ctx.tool(
             agent_id,
             "logs.read",
-            lambda: {
-                "cluster": f"{dims.get('error') or metric}-cluster",
-                "count": 140 + abs(int(float(delta or 0) * 800)),
-                "example": dims.get("error") or "timeout_or_drop",
-                "status": "done",
-            },
+            lambda: cluster,
             output_key=f"evidence_{agent_id}",
         )
-        ctx.artifact(agent_id, "evidence", cluster, text=f"Logs · {cluster['cluster']}")
+        ctx.artifact(agent_id, "evidence", cluster, text=f"Logs · {cluster['claim'][:80]}")
         ctx.state.setdefault("groups", set()).add("logs")
         return
     if agent_id == "deployment_agent":
-        deploy = ctx.tool(
+        from loop.unified_runner import signal_to_event
+        from loop.investigation import run_investigators
+
+        event = signal_to_event(ctx.signal)
+        claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
+        deploy = {
+            "service": dims.get("sdk") or dims.get("service") or "app-web",
+            "version": dims.get("version") or "4.2.0",
+            "claim": claim.claim if claim else "deploy timeline correlated",
+            "minutes_ago": dims.get("deploy_minutes_ago") or dims.get("minutes_ago") or 42,
+            "status": "done",
+        }
+        ctx.tool(
             agent_id,
             "deploys.read",
-            lambda: {
-                "service": dims.get("sdk") or dims.get("service") or "app-web",
-                "version": dims.get("version") or "4.2.0",
-                "minutes_ago": dims.get("deploy_minutes_ago", 42),
-                "status": "done",
-            },
+            lambda: deploy,
             output_key=f"evidence_{agent_id}",
         )
         ctx.artifact(agent_id, "evidence", deploy, text=f"Deploy · {deploy['service']} {deploy['version']}")
         ctx.state.setdefault("groups", set()).add("deploys")
         return
     if agent_id == "database_agent":
-        row = ctx.tool(
+        from loop.unified_runner import signal_to_event
+        from loop.investigation import run_investigators
+
+        event = signal_to_event(ctx.signal)
+        claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
+        row = {
+            "aggregate": metric,
+            "segments": dims or {"segment": "all"},
+            "claim": claim.claim if claim else f"Warehouse read for {metric}",
+            "ok": True,
+            "status": "done",
+        }
+        ctx.tool(
             agent_id,
             "warehouse.read",
-            lambda: {"aggregate": metric, "segments": dims or {"segment": "all"}, "ok": True, "status": "done"},
+            lambda: row,
             output_key=f"evidence_{agent_id}",
         )
-        ctx.artifact(agent_id, "evidence", row, text="Warehouse aggregate")
+        ctx.artifact(agent_id, "evidence", row, text=f"Warehouse · {row['claim'][:80]}")
         ctx.state.setdefault("groups", set()).add("warehouse")
         return
     if agent_id == "customer_voice_agent":
+        from loop.unified_runner import signal_to_event
+        from loop.investigation import run_investigators
+
+        event = signal_to_event(ctx.signal)
+        claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
         persona = "confused" if ctx.fork == "BUG" else "technical"
         voice = {
             "persona": persona,
             "reason": dims.get("error") or f"{metric}_friction",
+            "claim": claim.claim if claim else f"Customer friction on {metric}",
             "severity": "high" if ctx.fork == "BUG" else "medium",
             "willing_to_retry": True,
             "status": "done",
         }
         ctx.set_output("voice_result", voice)
-        ctx.artifact(agent_id, "evidence", voice, text=f"Voice · {persona}")
+        ctx.artifact(agent_id, "evidence", voice, text=f"Voice · {voice['claim'][:80]}")
         ctx.state.setdefault("groups", set()).add("voice")
         return
     if agent_id == "evidence_agent":
@@ -481,13 +529,21 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         _critique_loop(ctx, metric, dims, max_iterations=2)
         return
     if agent_id == "code_agent":
-        ctx.artifact(
-            agent_id,
-            "pr",
-            {"title": f"Fix {metric}", "status": "proposed", "merged": False},
-            text=f"PR brief · Fix {metric}",
-        )
-        ctx.set_output("pr_brief", {"title": f"Fix {metric}", "status": "done"})
+        from loop.unified_runner import signal_to_event
+        from loop.investigation import run_investigators
+
+        event = signal_to_event(ctx.signal)
+        claim = next((c for c in run_investigators(event) if c.agent == agent_id), None)
+        detail = dict(claim.detail) if claim and claim.detail else {}
+        brief = {
+            "title": f"Fix {metric}",
+            "claim": claim.claim if claim else f"Code surfaces for {metric}",
+            "likely_files": list(detail.get("files") or detail.get("likely_files") or []),
+            "status": "proposed",
+            "merged": False,
+        }
+        ctx.artifact(agent_id, "pr", brief, text=f"PR brief · {brief['claim'][:80]}")
+        ctx.set_output("pr_brief", brief)
         return
     if agent_id == "experiment_agent":
         proposal = ctx.get_output("proposal") or ctx.get_output("draft_proposal") or {}
@@ -506,10 +562,38 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
         return
     if agent_id == "risk_agent":
         tier = "HIGH" if ctx.fork == "BUG" and abs(float(delta or 0.2)) >= 0.1 else "MEDIUM"
+        action_id: str | None = None
+        room = ctx.engine.store.get_room(ctx.room_id)
+        inv_id = room.investigation_id if room else None
+        if inv_id:
+            inv = ctx.engine.store.get_investigation(inv_id)
+            hyps = ctx.engine.store.list_hypotheses(inv_id) if inv else []
+            acts = ctx.engine.store.list_actions(inv_id) if inv else []
+            open_acts = [a for a in acts if a.status in {"awaiting_approval", "proposed"}]
+            if inv and hyps and not open_acts:
+                from loop.tenant import resolve_tenant
+                from loop.tenant_context import code_paths_for, merge_proposed_artifacts
+
+                tenant = resolve_tenant(ctx.engine.store, investigation=inv, room=room)
+                hyp = hyps[-1]
+                brief = {
+                    "issue": f"Fix {metric}",
+                    "likely_files": code_paths_for(tenant, None),
+                    "hypothesis": hyp.statement,
+                }
+                arts = merge_proposed_artifacts(inv, hyp, tenant, {"code_brief": brief})
+                act = ctx.engine.propose_action(
+                    inv,
+                    hyp,
+                    surface=(tenant.default_surface if tenant else None) or metric,
+                    artifacts=arts,
+                    semantic=f"live-graph-{ctx.room_id}",
+                )
+                action_id = act.id
         ctx.artifact(
             agent_id,
             "risk",
-            {"tier": tier, "needs_approval": True},
+            {"tier": tier, "needs_approval": True, "action_id": action_id},
             text=f"Risk · {tier} — waiting on a human",
         )
         ctx.stage("approve", agent_id)
@@ -517,19 +601,52 @@ def _dispatch(ctx: RunContext, agent_id: str) -> None:
             ctx.room_id,
             {
                 "type": "approval_required",
-                "approval": {"agent_id": agent_id, "risk_level": tier, "status": "pending"},
+                "approval": {
+                    "agent_id": agent_id,
+                    "risk_level": tier,
+                    "status": "pending",
+                    "action_id": action_id,
+                    "investigation_id": inv_id,
+                },
             },
         )
         return
     if agent_id == "learning_agent":
-        lesson = dims.get("hypothesis") or f"Lesson from {metric}"
+        from loop.models import Lesson
+
+        lesson_text = str(dims.get("hypothesis") or f"Lesson from {metric}")
+        room = ctx.engine.store.get_room(ctx.room_id)
+        inv_id = room.investigation_id if room else None
+        tenant_id: str | None = None
+        inv = ctx.engine.store.get_investigation(inv_id) if inv_id else None
+        if inv:
+            tenant_id = inv.tenant_id
+        mem_kind = "engineering" if ctx.fork == "BUG" else "product"
+        if inv_id and inv:
+            les = Lesson(
+                id=str(uuid4()),
+                investigation_id=inv_id,
+                statement=lesson_text,
+                root_cause_family=inv.scenario_id or "live-graph",
+                applicable_conditions=[inv.scenario_id or metric],
+                confidence=0.65,
+                author_agent="learning_agent",
+                tenant_id=tenant_id,
+            )
+            ctx.engine.store.put_lesson(les)
+            ctx.engine.store.put_memory(
+                les.id,
+                mem_kind,
+                {"statement": lesson_text, "provenance": inv_id, "kind": mem_kind, "confidence": 0.65},
+                tenant_id=tenant_id,
+            )
         ctx.artifact(
             agent_id,
             "memory",
-            {"type": "engineering" if ctx.fork == "BUG" else "product", "title": lesson},
-            text=lesson,
+            {"type": mem_kind, "title": lesson_text},
+            text=lesson_text,
         )
-        ctx.set_output("lesson", {"title": lesson, "status": "done"})
+        ctx.set_output("lesson", {"title": lesson_text, "status": "done"})
         ctx.say(agent_id, "Remembered. Investigation can close after verify.")
         return
     if agent_id == "security_policy_agent":
@@ -549,6 +666,12 @@ def run_live_graph(
     probe_exfil: bool = False,
 ) -> dict[str, Any]:
     """Walk the fleet with live presence, parallel fan-out, review/critique, gateway."""
+    room = engine.store.get_room(room_id)
+    tid = (room.tenant_id if room else None) or (signal.get("dimensions") or {}).get("tenant_id")
+    if tid:
+        from loop.unified_runner import enrich_signal_dict
+
+        signal = {**signal, "dimensions": enrich_signal_dict(engine, signal, tenant_id=str(tid))}
     forced = fork or signal.get("fork") or ("FEATURE" if signal.get("polarity") == "positive" else "BUG")
     ctx = RunContext(engine, room_id, signal, fork=str(forced))
     HUB.publish(room_id, {"type": "signal", "signal": {**signal, "roomId": room_id}})

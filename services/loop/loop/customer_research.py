@@ -410,6 +410,14 @@ def run_customer_research(
     from loop.world import post
 
     scenario = scenario_id or f"research:{event.kind}"
+    tid = str(event.dimensions.get("tenant_id") or "")
+    tenant = engine.store.get_tenant(tid) if tid else None
+    if tenant:
+        from loop.connectors.bigquery import enrich_research_dimensions
+
+        event = event.model_copy(
+            update={"dimensions": enrich_research_dimensions(engine.store, tenant, dict(event.dimensions))}
+        )
     sources = run_probes(event, probes)
     memory_hits = match_memory(engine.store, event.memory_conditions)
     brief = build_brief(event, sources, memory_hits)

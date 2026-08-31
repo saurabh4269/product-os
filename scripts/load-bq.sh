@@ -28,7 +28,25 @@ try:
 except ImportError:
     sys.exit("install extras: pip install -e services/loop[gcp]")
 
-client = bigquery.Client(project=project, location=os.environ.get("GOOGLE_CLOUD_REGION", "us-central1"))
+def _credentials():
+    try:
+        import google.auth
+        creds, _ = google.auth.default()
+        return creds
+    except Exception:
+        pass
+    legacy = sorted(Path.home().glob(".config/gcloud/legacy_credentials/*/adc.json"))
+    if legacy:
+        from google.oauth2.credentials import Credentials
+        raw = json.loads(legacy[-1].read_text())
+        return Credentials.from_authorized_user_info(raw)
+    sys.exit("no ADC — run: gcloud auth login && gcloud auth application-default login")
+
+client = bigquery.Client(
+    project=project,
+    location=os.environ.get("GOOGLE_CLOUD_REGION", "us-central1"),
+    credentials=_credentials(),
+)
 
 def load_jsonl(table_id: str, rows: list[dict], schema: list):
     job = client.load_table_from_json(
@@ -98,6 +116,77 @@ load_jsonl(
     [{"payload": json.dumps(d)} for d in deploys],
     [bigquery.SchemaField("payload", "STRING")],
 )
+
+ads = json.loads((root / "ads.json").read_text()) if (root / "ads.json").exists() else []
+load_jsonl(
+    f"{project}.loop_raw.ads",
+    [{"payload": json.dumps(d)} for d in ads],
+    [bigquery.SchemaField("payload", "STRING")],
+)
+
+# metrics_daily — tenant-scoped rollup for verify + probes
+metrics = []
+for day_s in sorted({e["event_date"] for e in events}):
+    day_events = [e for e in events if e["event_date"] == day_s]
+    bc = sum(1 for e in day_events if e["event_name"] == "begin_checkout")
+    pu = sum(1 for e in day_events if e["event_name"] == "purchase")
+    conv = (pu / bc) if bc else 0.0
+    for tid in ("acme", "default"):
+        metrics.append(
+            {
+                "tenant_id": tid,
+                "metric": "purchase_conversion",
+                "day": day_s,
+                "value": conv,
+            }
+        )
+load_jsonl(
+    f"{project}.loop_metrics.metrics_daily",
+    metrics,
+    [
+        bigquery.SchemaField("tenant_id", "STRING"),
+        bigquery.SchemaField("metric", "STRING"),
+        bigquery.SchemaField("day", "DATE"),
+        bigquery.SchemaField("value", "FLOAT64"),
+    ],
+)
+
+# Optional Ads daily rollup for attribution probes
+campaign_daily = []
+for row in ads:
+    if row.get("_table") != "ads_CampaignStats":
+        continue
+    match = next(
+        (
+            d
+            for d in ads
+            if d.get("_table") == "ads_Campaign"
+            and d.get("campaign_id") == row.get("campaign_id")
+            and d.get("_DATA_DATE") == row.get("_DATA_DATE")
+        ),
+        None,
+    )
+    if not match:
+        continue
+    campaign_daily.append(
+        {
+            "_DATA_DATE": row["_DATA_DATE"],
+            "campaign_name": match.get("campaign_name", "Campaign X"),
+            "channel": "Google Ads",
+            "cost": float(row.get("cost") or 0),
+        }
+    )
+if campaign_daily:
+    load_jsonl(
+        f"{project}.loop_raw.campaign_daily",
+        campaign_daily,
+        [
+            bigquery.SchemaField("_DATA_DATE", "DATE"),
+            bigquery.SchemaField("campaign_name", "STRING"),
+            bigquery.SchemaField("channel", "STRING"),
+            bigquery.SchemaField("cost", "FLOAT64"),
+        ],
+    )
 
 print("bq: warehouse load complete", flush=True)
 PY

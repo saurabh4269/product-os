@@ -126,6 +126,7 @@ class Investigation(BaseModel):
     recalled_lessons: list[str] = Field(default_factory=list)
     scenario_id: str | None = None
     room_id: str | None = None
+    tenant_id: str | None = None
     loop_type: LoopType | None = None
     title: str | None = None
 
@@ -202,6 +203,7 @@ class Lesson(BaseModel):
     confidence: float
     author_agent: str
     human_reviewer: str | None = None
+    tenant_id: str | None = None
 
 
 class PolicyVerdict(BaseModel):
@@ -250,6 +252,7 @@ class Room(BaseModel):
     members: list[str] = Field(default_factory=list)
     investigation_id: str | None = None
     scenario_id: str | None = None
+    tenant_id: str | None = None
     loop_type: LoopType | None = None
     path: PathKind | None = None
     last_message_at: datetime | None = None

@@ -105,6 +105,15 @@ class Store:
         with self._lock:
             self._conn.execute(sql, vals)
             self._conn.commit()
+        self._maybe_snapshot()
+
+    def _maybe_snapshot(self) -> None:
+        try:
+            from loop.state_persist import schedule_snapshot
+
+            schedule_snapshot(self.path)
+        except Exception:
+            pass
 
     def _get(self, table: str, model: type[T], id_: str) -> T | None:
         with self._lock:
@@ -298,15 +307,18 @@ class Store:
             self._conn.commit()
             return True
 
-    def put_memory(self, id_: str, kind: str, payload: dict) -> None:
+    def put_memory(self, id_: str, kind: str, payload: dict, *, tenant_id: str | None = None) -> None:
+        body = dict(payload)
+        if tenant_id:
+            body["tenant_id"] = tenant_id
         with self._lock:
             self._conn.execute(
                 "INSERT INTO memory (id, kind, json) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET json=excluded.json",
-                (id_, kind, json.dumps(payload)),
+                (id_, kind, json.dumps(body)),
             )
             self._conn.commit()
 
-    def list_memory(self, kind: str | None = None) -> list[dict]:
+    def list_memory(self, kind: str | None = None, *, tenant_id: str | None = None) -> list[dict]:
         with self._lock:
             if kind:
                 rows = self._conn.execute("SELECT id, kind, json FROM memory WHERE kind=?", (kind,)).fetchall()
@@ -317,6 +329,8 @@ class Store:
             payload = json.loads(row[2])
             payload.setdefault("id", row[0])
             payload.setdefault("kind", row[1])
+            if tenant_id and payload.get("tenant_id") not in (None, tenant_id):
+                continue
             out.append(payload)
         return out
 

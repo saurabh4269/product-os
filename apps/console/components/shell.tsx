@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   BookMarked,
   CircleCheck,
+  FlaskConical,
   GitBranch,
   House,
   PanelLeftClose,
@@ -17,6 +18,7 @@ import { api, type Room } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BeanMark } from "@/components/mascot";
 import { PixelSprite } from "@/components/pixel-office";
+import { useGlobalWs } from "@/lib/use-global-ws";
 
 const STORAGE = "loop-sidebar";
 
@@ -24,7 +26,8 @@ const SYSTEM = [
   { href: "/", label: "Home", icon: House },
   { href: "/registry", label: "Agents", icon: Users },
   { href: "/memory", label: "Memory", icon: BookMarked },
-  { href: "/approvals", label: "Approvals", icon: CircleCheck },
+  { href: "/approvals", label: "Approvals", icon: CircleCheck, badgeKey: "approvals" as const },
+  { href: "/labs", label: "Labs", icon: FlaskConical },
   { href: "/traces", label: "Traces", icon: GitBranch },
   { href: "/connect", label: "Connect", icon: Plug },
 ] as const;
@@ -112,16 +115,20 @@ function SystemLinks({
   path,
   collapsed,
   onNavigate,
+  approvalsPending = 0,
 }: {
   path: string;
   collapsed: boolean;
   onNavigate?: () => void;
+  approvalsPending?: number;
 }) {
   return (
     <nav className={cn("flex flex-col gap-0.5", collapsed ? "items-center px-2" : "items-stretch px-2")}>
       {SYSTEM.map((item) => {
         const Icon = item.icon;
         const active = isActive(path, item.href);
+        const badge =
+          "badgeKey" in item && item.badgeKey === "approvals" && approvalsPending > 0 ? approvalsPending : 0;
         return (
           <Tip key={item.href} label={item.label} show={collapsed} fill={!collapsed}>
             <Link
@@ -129,13 +136,23 @@ function SystemLinks({
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "group flex items-center rounded-xl transition-colors",
+                "group relative flex items-center rounded-xl transition-colors",
                 collapsed ? "h-11 w-11 justify-center" : "h-10 w-full justify-start gap-3 px-3",
                 active ? "bg-[var(--elev)] text-foreground" : "text-[var(--dim)] hover:bg-[var(--elev)] hover:text-foreground"
               )}
             >
               <Icon size={18} strokeWidth={1.75} />
               {collapsed ? <span className="sr-only">{item.label}</span> : <span className="text-[14px]">{item.label}</span>}
+              {badge ? (
+                <span
+                  className={cn(
+                    "rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-white",
+                    collapsed ? "absolute right-1 top-1" : "ml-auto"
+                  )}
+                >
+                  {badge}
+                </span>
+              ) : null}
             </Link>
           </Tip>
         );
@@ -146,7 +163,9 @@ function SystemLinks({
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const { tick } = useGlobalWs();
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [approvalsPending, setApprovalsPending] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const [ready, setReady] = useState(false);
@@ -156,7 +175,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
       .rooms()
       .then((r) => setRooms(r.rooms))
       .catch(() => setRooms([]));
-  }, [path]);
+  }, [path, tick]);
+
+  useEffect(() => {
+    api
+      .status()
+      .then((s) => setApprovalsPending(s.approvals_pending ?? 0))
+      .catch(() => setApprovalsPending(0));
+  }, [tick]);
 
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 1024px)");
@@ -235,7 +261,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </Tip>
         </div>
 
-        <SystemLinks path={path} collapsed={!wide} onNavigate={!desktop ? () => setExpanded(false) : undefined} />
+        <SystemLinks
+          path={path}
+          collapsed={!wide}
+          onNavigate={!desktop ? () => setExpanded(false) : undefined}
+          approvalsPending={approvalsPending}
+        />
 
         {wide ? (
           <>

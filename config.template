@@ -29,6 +29,8 @@
 # Production hardening (see docs/PLAN_PRODUCTION.md)
 # LOOP_STATE_GCS_URI=gs://PROJECT-loop-host/loop_state.db
 # LOOP_ADMIN_TOKEN=        # Bearer for approve, tenant admin, worker tick
+# LOOP_EVAL=1                 # 0 = production seed (no eval fixtures on cold start)
+# NEXT_PUBLIC_LOOP_EVAL=1     # Console: hide fixture chips when 0
 # LOOP_CODE_REQUIRE_TESTS=1
 # LOOP_CODE_TEST_CMD=      # override e.g. cd repo && npm test -- --run
 # LOOP_PUBSUB_TOPIC=loop.signals
@@ -44,3 +46,17 @@
 # GOOGLE_CLOUD_PROJECT=mystical-timing-442601-q8
 # LOOP_WAREHOUSE_PATH=
 # LOOP_DATA_DIR=           # OAuth refresh token storage (ephemeral on Cloud Run disk)
+
+# Warehouse / BigQuery (tenant acme / Cove — Connect UI or env)
+# LOOP_BQ_DATASET=loop_raw
+# LOOP_BQ_METRICS_DATASET=loop_metrics
+# LOOP_TENANT_BQ_PROJECT=mystical-timing-442601-q8
+# LOOP_TENANT_BQ_RAW_DATASET=loop_raw
+# LOOP_TENANT_BQ_METRICS_DATASET=loop_metrics
+# LOOP_TENANT_GA4_PROPERTY_ID=123456789
+# LOOP_TENANT_GA4_DATASET=analytics_123456789
+# LOOP_TENANT_ADS_DATASET=loop_raw
+# LOOP_TENANT_WAREHOUSE_MODE=bq_raw   # auto | file | bq_raw | ga4
+# LOOP_TENANT_PRIMARY_METRIC=purchase_conversion
+# LOOP_TENANT_FUNNEL_EVENTS=page_view,view_item,begin_checkout,add_payment_info,purchase
+# Run once: ./scripts/load-bq.sh  (synthetic Safari data → loop_raw + loop_metrics)

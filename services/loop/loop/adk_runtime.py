@@ -177,6 +177,6 @@ def dispatch_signal(
         return forwarded
     if adk_inline_enabled():
         return run_adk_signal(engine, room_id, signal, fork=fork, probe_exfil=probe_exfil)
-    from loop.agents.graphs import run_live_graph
+    from loop.unified_runner import run_signal_pipeline
 
-    return run_live_graph(engine, room_id, signal, fork=fork, probe_exfil=probe_exfil)
+    return run_signal_pipeline(engine, room_id, signal, fork=fork, probe_exfil=probe_exfil)

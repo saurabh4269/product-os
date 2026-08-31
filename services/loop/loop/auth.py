@@ -13,9 +13,7 @@ def admin_token() -> str:
 
 def admin_required() -> bool:
     """When true, admin bearer is mandatory."""
-    if admin_token():
-        return True
-    return os.environ.get("K_SERVICE") is not None
+    return bool(admin_token())
 
 
 def bearer_token(authorization: str | None) -> str | None:

@@ -31,9 +31,24 @@ echo "deploy-gcp: bundle ${BUNDLE_URL}"
 if [[ -z "${LOOP_GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null; then
   LOOP_GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
 fi
-ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_REGION=${REGION},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://loop-5uy6fkd7bq-uc.a.run.app,LOOP_OAUTH_GCS_URI=gs://${BUCKET}/workspace_oauth.json,LOOP_FLAGS_GCS_URI=gs://${BUCKET}/tenant_flags.json,LOOP_STATE_GCS_URI=gs://${BUCKET}/loop_state.db,LOOP_CODE_REQUIRE_TESTS=1,LOOP_PUBSUB_TOPIC=loop.signals,LOOP_TASKS_QUEUE=loop-jobs,LOOP_USE_VERTEX=1,LOOP_ANTIGRAVITY_VERTEX=1,LOOP_VERTEX_MODEL=gemini-2.5-flash"
-: "${LOOP_TENANT_REPO:=saurabh4269/cove}"
-: "${LOOP_TENANT_DEPLOY_URL:=https://cove-5uy6fkd7bq-uc.a.run.app}"
+COVE_URL="${LOOP_TENANT_DEPLOY_URL:-https://cove-5uy6fkd7bq-uc.a.run.app}"
+ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_REGION=${REGION},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://loop-5uy6fkd7bq-uc.a.run.app,LOOP_OAUTH_GCS_URI=gs://${BUCKET}/workspace_oauth.json,LOOP_FLAGS_GCS_URI=gs://${BUCKET}/tenant_flags.json,LOOP_STATE_GCS_URI=gs://${BUCKET}/loop_state.db,LOOP_CODE_REQUIRE_TESTS=1,LOOP_PUBSUB_TOPIC=loop.signals,LOOP_TASKS_QUEUE=loop-jobs,LOOP_USE_VERTEX=1,LOOP_ANTIGRAVITY_VERTEX=1,LOOP_VERTEX_MODEL=gemini-2.5-flash,LOOP_BQ_DATASET=loop_raw,LOOP_BQ_METRICS_DATASET=loop_metrics,LOOP_TENANT_ID=acme,LOOP_TENANT_REPO=saurabh4269/cove,LOOP_TENANT_DEPLOY_URL=${COVE_URL},LOOP_TENANT_WAREHOUSE_MODE=bq_raw,LOOP_TENANT_BQ_PROJECT=${PROJECT},LOOP_TENANT_BQ_RAW_DATASET=loop_raw,LOOP_TENANT_BQ_METRICS_DATASET=loop_metrics,LOOP_TENANT_PRIMARY_METRIC=purchase_conversion"
+# Tenant bootstrap is optional — override LOOP_TENANT_* in env before deploy. Connect can refine per tenant.
+
+# Preserve secrets from the live revision when not set in the shell (deploy --set-env-vars replaces all).
+PRESERVE_KEYS=(LOOP_ADMIN_TOKEN LOOP_TENANT_BOOTSTRAP_TOKEN LOOP_GITHUB_TOKEN LOOP_GOOGLE_OAUTH_CLIENT_ID LOOP_GOOGLE_OAUTH_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM_NUMBER GOOGLE_API_KEY)
+EXISTING_JSON="$(gcloud run services describe "${SERVICE}" --project "${PROJECT}" --region "${REGION}" --format=json 2>/dev/null || true)"
+if [[ -n "${EXISTING_JSON}" ]]; then
+  for key in "${PRESERVE_KEYS[@]}"; do
+    if [[ -z "${!key:-}" ]]; then
+      val="$(python3 -c "import json,sys; d=json.loads(sys.argv[1]); env=(d.get('spec') or {}).get('template',{}).get('spec',{}).get('containers',[{}])[0].get('env') or []; print(next((e.get('value') or '' for e in env if e.get('name')==sys.argv[2]), ''))" "${EXISTING_JSON}" "${key}" 2>/dev/null || true)"
+      if [[ -n "${val}" ]]; then
+        export "${key}=${val}"
+        echo "deploy-gcp: preserved ${key} from revision"
+      fi
+    fi
+  done
+fi
 
 # Cloud Tasks queue for durable background jobs (best-effort; inline fallback if missing).
 if gcloud services list --enabled --project="$PROJECT" --filter="name:cloudtasks.googleapis.com" --format="value(name)" 2>/dev/null | grep -q cloudtasks; then
@@ -50,7 +65,7 @@ if [[ -n "$ADK_URL" ]]; then
   ENV_VARS="${ENV_VARS},LOOP_ADK_WORKER_URL=${ADK_URL}"
   echo "deploy-gcp: ADK worker ${ADK_URL}"
 fi
-for key in LOOP_GITHUB_TOKEN LOOP_TENANT_REPO LOOP_TENANT_DEPLOY_URL LOOP_TENANT_BOOTSTRAP_TOKEN LOOP_GOOGLE_OAUTH_CLIENT_ID LOOP_GOOGLE_OAUTH_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM_NUMBER GOOGLE_API_KEY LOOP_ADMIN_TOKEN LOOP_ADK_WORKER_URL; do
+for key in LOOP_GITHUB_TOKEN LOOP_TENANT_REPO LOOP_TENANT_DEPLOY_URL LOOP_TENANT_BOOTSTRAP_TOKEN LOOP_TENANT_ID LOOP_TENANT_NAME LOOP_TENANT_PRODUCT LOOP_TENANT_BQ_PROJECT LOOP_TENANT_BQ_RAW_DATASET LOOP_TENANT_BQ_METRICS_DATASET LOOP_TENANT_GA4_PROPERTY_ID LOOP_TENANT_GA4_DATASET LOOP_TENANT_ADS_DATASET LOOP_TENANT_WAREHOUSE_MODE LOOP_TENANT_PRIMARY_METRIC LOOP_TENANT_FUNNEL_EVENTS LOOP_GOOGLE_OAUTH_CLIENT_ID LOOP_GOOGLE_OAUTH_CLIENT_SECRET TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM_NUMBER GOOGLE_API_KEY LOOP_ADMIN_TOKEN LOOP_ADK_WORKER_URL; do
   val="${!key:-}"
   if [[ -n "$val" ]]; then
     ENV_VARS="${ENV_VARS},${key}=${val}"
@@ -86,3 +101,4 @@ EOF
 fi
 
 gcloud run services describe "${SERVICE}" --project "${PROJECT}" --region "${REGION}" --format='value(status.url)'
+echo "deploy-gcp: optional Cloud Scheduler → POST /api/internal/worker/tick (Bearer LOOP_ADMIN_TOKEN) for BQ detect + job drain"

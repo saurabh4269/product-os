@@ -20,10 +20,10 @@ def apply_patches(repo: Path, patches: dict[str, str]) -> list[str]:
     return touched
 
 
-def detect_test_command(repo: Path) -> list[str] | None:
-    override = (os.environ.get("LOOP_CODE_TEST_CMD") or "").strip()
-    if override:
-        return ["bash", "-lc", override]
+def detect_test_command(repo: Path, *, override: str | None = None) -> list[str] | None:
+    cmd = (override or os.environ.get("LOOP_CODE_TEST_CMD") or "").strip()
+    if cmd:
+        return ["bash", "-lc", cmd]
     pkg = repo / "package.json"
     if not pkg.is_file():
         return None
@@ -41,10 +41,10 @@ def detect_test_command(repo: Path) -> list[str] | None:
     return None
 
 
-def run_tests(repo: Path, *, timeout_s: int = 240) -> tuple[bool, str]:
+def run_tests(repo: Path, *, timeout_s: int = 240, test_command: str | None = None) -> tuple[bool, str]:
     if os.environ.get("LOOP_CODE_REQUIRE_TESTS", "1" if os.environ.get("K_SERVICE") else "0") != "1":
         return True, "tests skipped (LOOP_CODE_REQUIRE_TESTS=0)"
-    cmd = detect_test_command(repo)
+    cmd = detect_test_command(repo, override=test_command)
     if not cmd:
         if os.environ.get("K_SERVICE") and os.environ.get("LOOP_CODE_REQUIRE_TESTS") == "1":
             return False, "no test runner in worker environment (need node/npm for tenant tests)"
