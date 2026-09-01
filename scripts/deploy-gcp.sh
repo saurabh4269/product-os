@@ -32,7 +32,7 @@ if [[ -z "${LOOP_GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null; then
   LOOP_GITHUB_TOKEN="$(gh auth token 2>/dev/null || true)"
 fi
 COVE_URL="${LOOP_TENANT_DEPLOY_URL:-https://cove-5uy6fkd7bq-uc.a.run.app}"
-ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_REGION=${REGION},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://productos.heisenbug.in,LOOP_OAUTH_GCS_URI=gs://${BUCKET}/workspace_oauth.json,LOOP_FLAGS_GCS_URI=gs://${BUCKET}/tenant_flags.json,LOOP_STATE_GCS_URI=gs://${BUCKET}/loop_state.db,LOOP_CODE_REQUIRE_TESTS=1,LOOP_PUBSUB_TOPIC=loop.signals,LOOP_TASKS_QUEUE=loop-jobs,LOOP_USE_VERTEX=1,LOOP_ANTIGRAVITY_VERTEX=1,LOOP_VERTEX_MODEL=gemini-2.5-flash,LOOP_BQ_DATASET=loop_raw,LOOP_BQ_METRICS_DATASET=loop_metrics,LOOP_TENANT_ID=acme,LOOP_TENANT_REPO=saurabh4269/cove,LOOP_TENANT_DEPLOY_URL=${COVE_URL},LOOP_TENANT_WAREHOUSE_MODE=bq_raw,LOOP_TENANT_BQ_PROJECT=${PROJECT},LOOP_TENANT_BQ_RAW_DATASET=loop_raw,LOOP_TENANT_BQ_METRICS_DATASET=loop_metrics,LOOP_TENANT_PRIMARY_METRIC=purchase_conversion"
+ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_REGION=${REGION},LOOP_CONSOLE_ORIGIN=*,LOOP_PUBLIC_URL=https://productos.heisenbug.in,LOOP_OAUTH_GCS_URI=gs://${BUCKET}/workspace_oauth.json,LOOP_FLAGS_GCS_URI=gs://${BUCKET}/tenant_flags.json,LOOP_STATE_GCS_URI=gs://${BUCKET}/loop_state.db,LOOP_CODE_REQUIRE_TESTS=1,LOOP_PUBSUB_TOPIC=loop.signals,LOOP_TASKS_QUEUE=loop-jobs,LOOP_USE_VERTEX=1,LOOP_ANTIGRAVITY_VERTEX=1,LOOP_VERTEX_MODEL=gemini-2.5-flash,LOOP_BQ_DATASET=loop_raw,LOOP_BQ_METRICS_DATASET=loop_metrics,LOOP_TENANT_ID=acme,LOOP_TENANT_REPO=saurabh4269/cove,LOOP_TENANT_DEPLOY_URL=${COVE_URL},LOOP_TENANT_WAREHOUSE_MODE=bq_raw,LOOP_TENANT_BQ_PROJECT=${PROJECT},LOOP_TENANT_BQ_RAW_DATASET=loop_raw,LOOP_TENANT_BQ_METRICS_DATASET=loop_metrics,LOOP_TENANT_PRIMARY_METRIC=purchase_conversion,LOOP_FIRESTORE_MEMORY=1,LOOP_INLINE_WORKER=1,LOOP_AUTO_INVESTIGATE=1"
 # Tenant bootstrap is optional — override LOOP_TENANT_* in env before deploy. Connect can refine per tenant.
 
 # Preserve secrets from the live revision when not set in the shell (deploy --set-env-vars replaces all).
@@ -71,6 +71,11 @@ for key in LOOP_GITHUB_TOKEN LOOP_TENANT_REPO LOOP_TENANT_DEPLOY_URL LOOP_TENANT
     ENV_VARS="${ENV_VARS},${key}=${val}"
   fi
 done
+
+# Production profile: close eval approvals and defer verify when admin token is set.
+if [[ -n "${LOOP_ADMIN_TOKEN:-}" ]]; then
+  ENV_VARS="${ENV_VARS},LOOP_EVAL=0,LOOP_VERIFY_DEFER=1,LOOP_WORKER_SECRET=${LOOP_ADMIN_TOKEN}"
+fi
 
 set +e
 gcloud run deploy "${SERVICE}" \

@@ -9,7 +9,7 @@ from typing import Any
 from loop.tenant import ConnectorReport, Tenant
 
 
-def publish_signal(payload: dict) -> ConnectorReport:
+def publish_signal(payload: dict, *, store: Any | None = None) -> ConnectorReport:
     project = (os.environ.get("GOOGLE_CLOUD_PROJECT") or "").strip()
     topic = (os.environ.get("LOOP_PUBSUB_TOPIC") or "loop.signals").strip()
     if not project:
@@ -38,11 +38,25 @@ def publish_signal(payload: dict) -> ConnectorReport:
             detail=f"published {msg_id}",
         )
     except Exception as exc:
-        return ConnectorReport(
+        report = ConnectorReport(
             status="skipped",
             connector="warehouse.pubsub",
             detail=str(exc)[:200],
         )
+        if store is not None:
+            try:
+                from loop.audit import record
+
+                record(
+                    store,
+                    actor="warehouse",
+                    action="pubsub.publish_failed",
+                    resource=str(payload.get("signal_id") or payload.get("tenant_id") or "signal"),
+                    detail={"error": str(exc)[:200]},
+                )
+            except Exception:
+                pass
+        return report
 
 
 def read_metric_window(

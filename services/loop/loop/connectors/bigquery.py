@@ -565,18 +565,26 @@ def enrich_research_dimensions(store: Any, tenant: Tenant, dims: dict[str, Any])
 
 
 def detect_anomalies_for_tenant(engine: Any, tenant: Tenant, *, as_of: date | None = None) -> list[Any]:
-    """Tenant-scoped unprompted detect from BQ — mirrors file warehouse logic."""
+    """Tenant-scoped unprompted detect from BQ — rolling windows in production."""
     from loop.models import Direction, Segment, Signal, SignalFamily, SignalStatus
+    from loop.runtime_mode import is_eval_mode
 
     cfg = resolve_bq_config(tenant)
     if not cfg:
         return []
 
-    as_of = as_of or (RECOVERY_START - timedelta(days=1))
-    window_end = as_of
-    window_start = as_of - timedelta(days=2)
-    baseline_end = REGRESSION_START - timedelta(days=1)
-    baseline_start = baseline_end - timedelta(days=13)
+    if is_eval_mode():
+        as_of = as_of or (RECOVERY_START - timedelta(days=1))
+        window_end = as_of
+        window_start = as_of - timedelta(days=2)
+        baseline_end = REGRESSION_START - timedelta(days=1)
+        baseline_start = baseline_end - timedelta(days=13)
+    else:
+        as_of = as_of or (date.today() - timedelta(days=1))
+        window_end = as_of
+        window_start = as_of - timedelta(days=2)
+        baseline_end = window_start - timedelta(days=1)
+        baseline_start = baseline_end - timedelta(days=13)
 
     current = conversion_by_browser(tenant, window_start, window_end)
     baseline = conversion_by_browser(tenant, baseline_start, baseline_end)

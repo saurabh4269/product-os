@@ -199,7 +199,7 @@ function DataProof({ proof }: { proof: ProofPayload }) {
       icon={meta.icon}
       title={proof.title || "Query results"}
       subtitle={[
-        proof.live ? "live" : proof.source === "file_warehouse" ? "demo tables" : proof.source,
+        proof.live ? "live" : proof.source === "file_warehouse" ? "fixture tables" : proof.source,
         proof.subtitle || proof.detail,
       ]
         .filter(Boolean)

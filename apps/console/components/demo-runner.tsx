@@ -73,7 +73,7 @@ export function DemoRunner({ variant = "card" }: { variant?: "card" | "bar" }) {
         /* pipeline optional */
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Demo failed");
+      setErr(e instanceof Error ? e.message : "Could not start");
       demo?.endDemo();
     } finally {
       setBusy(false);
@@ -145,7 +145,7 @@ export function DemoRunner({ variant = "card" }: { variant?: "card" | "bar" }) {
             disabled={busy}
             className={cn("rounded-full px-4", firstRun && !busy && "cta-pulse")}
           >
-            {busy ? "Starting…" : firstRun ? "See it work" : "Run demo"}
+            {busy ? "Starting…" : firstRun ? "See it work" : "Run scenario"}
           </Button>
           {roomId ? (
             <>
@@ -158,11 +158,11 @@ export function DemoRunner({ variant = "card" }: { variant?: "card" | "bar" }) {
         </div>
       ) : (
         <div id="demo" className="rounded-2xl border border-border bg-white px-5 py-4">
-          <h2 className="text-[20px] font-semibold tracking-tight">Run demo</h2>
+          <h2 className="text-[20px] font-semibold tracking-tight">Fixture scenario</h2>
           <GuidedDemoStrip />
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button onClick={() => void run()} disabled={busy}>
-              {busy ? "Starting…" : "Run demo"}
+              {busy ? "Starting…" : "Run scenario"}
             </Button>
             {roomId ? (
               <Button variant="ghost" onClick={() => router.push(`/rooms/${roomId}`)}>

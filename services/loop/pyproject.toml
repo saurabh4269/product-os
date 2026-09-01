@@ -24,6 +24,7 @@ gcp = [
   "google-cloud-pubsub>=2.27",
   "google-cloud-modelarmor>=0.3",
   "google-cloud-dlp>=3.27",
+  "google-cloud-firestore>=2.19",
   "google-auth>=2.38",
 ]
 

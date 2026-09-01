@@ -380,7 +380,7 @@ export function PipelineBoard({ subtitle, className }: { subtitle?: string; clas
           {cards.length ? (
             <span className="text-[12px] text-[var(--faint)]">{cards.length} open</span>
           ) : loaded ? (
-            <span className="text-[12px] text-[var(--faint)]">Run demo</span>
+            <span className="text-[12px] text-[var(--faint)]">Eval scenarios only</span>
           ) : null}
         </div>
       </div>

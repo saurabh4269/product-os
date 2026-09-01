@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from fastapi import HTTPException
 
@@ -11,14 +12,29 @@ def admin_token() -> str:
     return (os.environ.get("LOOP_ADMIN_TOKEN") or "").strip()
 
 
+def is_hosted() -> bool:
+    return bool(os.environ.get("K_SERVICE"))
+
+
+def dev_open() -> bool:
+    """Explicit escape hatch for local/demo — never default on Cloud Run."""
+    return os.environ.get("LOOP_DEV_OPEN", "0") == "1"
+
+
 def admin_required() -> bool:
-    """When true, admin bearer is mandatory."""
-    return bool(admin_token())
+    """When true, admin bearer is mandatory for mutations."""
+    if admin_token():
+        return True
+    if is_hosted() and not dev_open():
+        return True
+    return False
 
 
 def eval_mode_open() -> bool:
     """Demo / fixture path — console approvals without admin bearer."""
-    return os.environ.get("LOOP_EVAL", "1") == "1"
+    from .runtime_mode import is_eval_mode
+
+    return is_eval_mode()
 
 
 def bearer_token(authorization: str | None) -> str | None:
@@ -36,8 +52,33 @@ def require_admin(authorization: str | None, *, actor: str = "admin") -> str:
         return actor or "dev"
     token = bearer_token(authorization)
     if not expected or token != expected:
-        raise HTTPException(401, "admin bearer token required")
+        raise HTTPException(
+            401,
+            "admin bearer token required — set LOOP_ADMIN_TOKEN on the service and authorize in Connect",
+        )
     return actor or "admin"
+
+
+def require_admin_or_tenant(
+    authorization: str | None,
+    *,
+    tenant_id: str,
+    store: Any,
+    actor: str = "tenant",
+) -> str:
+    """Admin bearer or matching tenant token for read-scoped tenant detail."""
+    from .tenant import token_ok
+
+    expected = admin_token()
+    token = bearer_token(authorization)
+    if expected and token == expected:
+        return actor or "admin"
+    if not admin_required():
+        return actor or "dev"
+    t = store.get_tenant(tenant_id)
+    if t and token_ok(t, token):
+        return f"tenant:{tenant_id}"
+    raise HTTPException(401, "admin bearer or tenant token required")
 
 
 def require_approval(authorization: str | None, *, actor: str = "admin") -> str:
@@ -49,9 +90,38 @@ def require_approval(authorization: str | None, *, actor: str = "admin") -> str:
     return require_admin(authorization, actor=actor)
 
 
+def worker_secret() -> str:
+    return (os.environ.get("LOOP_WORKER_SECRET") or admin_token() or "").strip()
+
+
+def verify_internal_oidc(token: str) -> bool:
+    """Cloud Scheduler / Cloud Tasks OIDC (Authorization: Bearer <jwt>)."""
+    if not is_hosted() or not token or token.count(".") != 2:
+        return False
+    audience = (os.environ.get("LOOP_PUBLIC_URL") or "").rstrip("/")
+    if not audience:
+        return False
+    try:
+        from google.auth.transport import requests as grequests
+        from google.oauth2 import id_token
+
+        id_token.verify_oauth2_token(token, grequests.Request(), audience=audience)
+        return True
+    except Exception:
+        return False
+
+
 def require_admin_or_internal(authorization: str | None, *, internal_header: str | None = None) -> str:
-    """Worker tick: admin bearer or matching X-Loop-Worker header."""
+    """Worker tick: admin bearer, X-Loop-Worker secret, or GCP OIDC."""
     expected = admin_token()
-    if internal_header and expected and internal_header == expected:
+    secret = worker_secret()
+    if internal_header and secret and internal_header == secret:
         return "worker"
-    return require_admin(authorization, actor="worker")
+    token = bearer_token(authorization)
+    if token and expected and token == expected:
+        return "worker"
+    if token and verify_internal_oidc(token):
+        return "worker"
+    if not admin_required():
+        return "worker"
+    raise HTTPException(401, "worker auth required — admin bearer, X-Loop-Worker, or OIDC")

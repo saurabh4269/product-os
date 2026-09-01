@@ -27,7 +27,115 @@ unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/deploy-gcp.s
 
 Do not bake `NEXT_PUBLIC_API_URL=http://127.0.0.1:8080` into the Cloud Run bundle.
 
-## What a reviewer should see
+## Reproducible testing
+
+From a clean clone on Linux or macOS, these commands are the source of truth. GitHub Actions runs the same deploy gate on every push to `main` and on pull requests (`.github/workflows/ci.yml`).
+
+### Prerequisites
+
+| Tool | Version | Notes |
+|---|---|---|
+| Python | 3.11+ (CI uses **3.12**) | `services/loop/pyproject.toml` |
+| Node.js | **22** (matches CI) | Console + Remotion demo |
+| `ffmpeg` | any recent | Required only for full `./scripts/verify.sh` (Remotion render) |
+
+No API keys or GCP credentials are required for the test suite — the deterministic engine and SQLite fixtures run entirely locally.
+
+### Full gate (local + Remotion)
+
+Runs warehouse generation, Ruff, pytest, console lint/typecheck/build, and a Remotion smoke render (~5–8 min):
+
+```bash
+./scripts/verify.sh
+```
+
+Success ends with `verify: ok`.
+
+### Pre-deploy gate (same as CI)
+
+Skips Remotion (~2 min saved). Use this before packaging or when iterating on UI/API:
+
+```bash
+./scripts/verify-deploy.sh
+```
+
+Success ends with `verify-deploy: ok`.
+
+### Run layers individually
+
+**Python control plane** — creates `.venv` under `services/loop/` on first run:
+
+```bash
+python3 -m venv services/loop/.venv
+source services/loop/.venv/bin/activate
+pip install -e 'services/loop[dev]'
+
+python3 data/generate.py          # warehouse fixture (verify runs this first)
+ruff check services/loop/loop services/loop/tests data/generate.py
+cd services/loop && python -m pytest -q
+```
+
+**Console only:**
+
+```bash
+cd apps/console
+npm ci                            # or npm install
+npm run lint
+npm run typecheck
+npm run build
+```
+
+For a production-shaped console build (static export, no baked localhost API):
+
+```bash
+cd apps/console
+unset NEXT_PUBLIC_API_URL
+export LOOP_STATIC=1
+npm run build
+```
+
+**Target one test file or case:**
+
+```bash
+source services/loop/.venv/bin/activate
+cd services/loop
+python -m pytest tests/test_investigation.py -q
+python -m pytest -k "exfil" -q
+```
+
+### Manual smoke (browser)
+
+```bash
+./scripts/boot.sh
+```
+
+Open http://127.0.0.1:3000 — API on `:8080`, console on `:3000`, same origin via `NEXT_PUBLIC_API_URL`.
+
+To exercise the console against the **hosted** API (CORS is open on Cloud Run):
+
+```bash
+cd apps/console
+env -u LOOP_STATIC NEXT_PUBLIC_API_URL=https://productos.heisenbug.in \
+  ./node_modules/.bin/next dev --hostname 127.0.0.1 --port 3010
+```
+
+Use the **local** `./node_modules/.bin/next` — do not `npx next` (it can pull Next 16 and race `npm ci`).
+
+### Invariants the suite enforces
+
+These are the behaviors reviewers should be able to reproduce after `./scripts/verify.sh` (see also **Tests that invert defaults** below):
+
+- Seeded Safari regression is detected without a prompt; Chrome does not fire
+- Six fixtures share one pipeline; Type A vs Type B routing
+- Security exfil is **DENY** via Gateway identity
+- Memory Bank recalls the SDK-callback lesson on the later Android signal
+- Three restatements of one GA4 query cannot pass the root-cause gate
+- HIGH-tier action stays blocked across restart and executes once
+- Tool-output injection is blocked and logged
+- Terraform CI fails if Model Armor `failOpen` is true
+
+If verify fails, read [`docs/LEARNINGS.md`](docs/LEARNINGS.md) first — most sharp edges (CORS, baked localhost, SPA placeholders, cold-start room IDs) are documented there.
+
 
 1. Multi-room chat: incidents, opportunities, reviews, research, ops. Pixel agents working in each room.
 2. Heterogeneous signals (conversion, activation, feature requests, policy) — not a single Safari happy path.
@@ -74,7 +182,7 @@ Engineering (`loop-code`): ALLOW GitHub r/w + CI, DENY Gmail send / prod deploy 
 | Gemini 3.5+ | `config/models.yaml` default `gemini-3.5-flash`. Sampling never set on 3.6 / 3.5-lite. |
 | A2A | Structured `AgentCall` records + Registry discovery. Not a mega-prompt. |
 | Agent Registry / Identity / Gateway | `loop/registry.py` + IAM-shaped allow/deny in tool code. Agent Gateway / SGP Terraform is **plan-only** (`infra/terraform/gated`). |
-| Memory Bank | Firestore-shaped SQLite `memory` table, four kinds, lesson recall. |
+| Memory Bank | Firestore `loop_memory` mirror for durable lessons; SQLite control plane on Cloud Run. |
 | Model Armor | Cheap GCP templates applied; `ToolOutputArmorPlugin` on `after_tool_callback` (ADK does not screen tool output). `fail_open = false`. |
 | Gemini Live / Telephony | Media-bridge + transcript screening. No PSTN. |
 | Agent Observability | Local A2A traces; Cloud Trace when the project has it. |

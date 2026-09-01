@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Memory Bank - Organizational Intelligence</title>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config injected from system instructions -->
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#e2dfff",
+                      "surface-container-highest": "#e0e2ed",
+                      "on-primary-fixed": "#001a41",
+                      "on-secondary-container": "#fffbff",
+                      "primary-fixed-dim": "#adc6ff",
+                      "outline": "#717786",
+                      "secondary": "#4a47d2",
+                      "surface-container-high": "#e6e8f3",
+                      "secondary-container": "#6462ec",
+                      "on-secondary-fixed": "#0c006b",
+                      "inverse-primary": "#adc6ff",
+                      "tertiary-fixed": "#ffdbcc",
+                      "on-primary-container": "#fefcff",
+                      "accent-error": "#FF3B30",
+                      "surface-tint": "#005bc1",
+                      "surface-container-low": "#f1f3fe",
+                      "surface-high": "#FFFFFF",
+                      "surface": "#f9f9ff",
+                      "on-tertiary-fixed": "#351000",
+                      "on-tertiary-fixed-variant": "#7c2e00",
+                      "on-secondary-fixed-variant": "#332dbc",
+                      "surface-bright": "#f9f9ff",
+                      "text-secondary": "#86868B",
+                      "on-error-container": "#93000a",
+                      "surface-container-lowest": "#ffffff",
+                      "text-primary": "#1D1D1F",
+                      "surface-variant": "#e0e2ed",
+                      "on-tertiary": "#ffffff",
+                      "secondary-fixed-dim": "#c2c1ff",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#c1c6d7",
+                      "on-surface-variant": "#414755",
+                      "inverse-surface": "#2d3039",
+                      "accent-warning": "#FF9500",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#eef0fc",
+                      "accent-success": "#34C759",
+                      "tertiary-fixed-dim": "#ffb595",
+                      "on-background": "#181c23",
+                      "background": "#f9f9ff",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#004493",
+                      "tertiary-container": "#c64f00",
+                      "surface-base": "#F5F5F7",
+                      "primary-fixed": "#d8e2ff",
+                      "on-tertiary-container": "#fffbff",
+                      "on-surface": "#181c23",
+                      "primary-container": "#0070eb",
+                      "surface-subtle": "#E5E5EA",
+                      "tertiary": "#9e3d00",
+                      "primary": "#0058bc",
+                      "surface-dim": "#d8d9e5",
+                      "surface-container": "#ecedf9"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-lg": "40px",
+                      "margin-md": "24px",
+                      "container-max": "1440px",
+                      "margin-sm": "16px",
+                      "unit": "8px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "label-caps": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "body-md": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "display-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-lg": ["17px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                      "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-md": ["15px", {"lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        /* Ambient shadows & glassmorphism utilities based on guidance */
+        .ambient-shadow-base { box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .ambient-shadow-modal { box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .glass-panel { backdrop-filter: blur(20px); background-color: rgba(255, 255, 255, 0.8); }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary antialiased flex h-screen overflow-hidden font-body-md">
+<!-- SideNavBar (Shared Component) -->
+<!-- The intent is Memory Bank, which isn't explicitly in the nav array, but "Understand" or "Ask" might be closest conceptually. We will highlight "Understand" as the closest semantic fit for organizational intelligence/memory. -->
+<nav class="hidden md:flex flex-col h-full border-r bg-surface dark:bg-surface-dim fixed left-0 top-0 w-[240px] border-outline-variant dark:border-outline z-40">
+<!-- Header -->
+<div class="p-gutter pb-6 border-b border-surface-subtle">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-on-primary-fixed leading-tight">ProductOps Agent</h1>
+<p class="font-body-sm text-body-sm text-text-secondary leading-tight">Reliability &amp; Growth</p>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary rounded-lg py-2 px-4 font-label-lg text-label-lg hover:bg-surface-tint transition-colors shadow-sm">
+                New Mission
+            </button>
+</div>
+<!-- Main Nav Tabs -->
+<div class="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
+<!-- Signal -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-[0.98] transition-transform">sensors</span>
+<span class="font-label-lg text-label-lg">Signal</span>
+</a>
+<!-- Understand (Active) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container-high text-secondary dark:text-secondary-fixed-dim font-bold transition-colors group" href="#">
+<span class="material-symbols-outlined scale-[0.98] transition-transform" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label-lg text-label-lg">Understand</span>
+</a>
+<!-- Ask -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-[0.98] transition-transform">psychology</span>
+<span class="font-label-lg text-label-lg">Ask</span>
+</a>
+<!-- Diagnose -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-[0.98] transition-transform">biotech</span>
+<span class="font-label-lg text-label-lg">Diagnose</span>
+</a>
+<!-- Fix -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-[0.98] transition-transform">build</span>
+<span class="font-label-lg text-label-lg">Fix</span>
+</a>
+<!-- Verify -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-[0.98] transition-transform">verified</span>
+<span class="font-label-lg text-label-lg">Verify</span>
+</a>
+</div>
+<!-- Footer Nav -->
+<div class="p-3 border-t border-surface-subtle flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-[0.98] transition-transform">settings</span>
+<span class="font-label-lg text-label-lg">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-[0.98] transition-transform">help</span>
+<span class="font-label-lg text-label-lg">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-[240px] w-full md:w-[calc(100%-240px)] min-h-screen relative">
+<!-- TopAppBar (Shared Component) -->
+<header class="flex justify-between items-center w-full px-gutter h-16 bg-surface-container-lowest dark:bg-surface-container-high docked full-width top-0 sticky z-50 border-b border-outline-variant shadow-sm transition-all duration-200 ease-in-out glass-panel">
+<div class="flex items-center gap-4">
+<!-- Search on left -->
+<div class="relative hidden sm:block w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2 rounded-lg bg-surface-subtle border-none focus:ring-2 focus:ring-primary focus:bg-white transition-all font-body-sm text-body-sm text-on-surface placeholder:text-outline-variant" placeholder="Search Memory Bank..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="font-label-lg text-label-lg text-primary bg-primary-fixed px-3 py-1.5 rounded-full hidden sm:block">
+                    Active Agents: 12
+                </div>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-accent-error rounded-full border border-white"></span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="p-1 rounded-full hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out">
+<span class="material-symbols-outlined text-[32px] text-primary" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 overflow-y-auto p-4 md:p-margin-md lg:p-margin-lg bg-surface-base flex flex-col gap-margin-lg">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-display-lg text-display-lg text-text-primary tracking-tight">Memory Bank</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mt-1">Organizational intelligence and learned heuristics across the ecosystem.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-surface-high rounded-lg text-primary font-label-lg text-label-lg ambient-shadow-base hover:bg-surface-subtle transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+                        Filter Views
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-margin-md">
+<!-- Left Column: Knowledge Clusters (Takes up 8 columns on large screens) -->
+<div class="lg:col-span-8 flex flex-col gap-margin-md">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-margin-md">
+<!-- Cluster 1: Customer -->
+<div class="bg-surface-high rounded-xl p-6 ambient-shadow-base border border-surface-subtle hover:border-primary-fixed transition-colors flex flex-col h-full">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[28px]">groups</span>
+</div>
+<span class="bg-surface-subtle text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded">2.4k Nodes</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-text-primary mb-2">Customer Context</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-4 flex-1">Aggregated behaviors, friction points, and persona preferences.</p>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-subtle">
+<span class="font-label-lg text-label-lg text-primary">Explore Cluster</span>
+<span class="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
+</div>
+</div>
+<!-- Cluster 2: Product -->
+<div class="bg-surface-high rounded-xl p-6 ambient-shadow-base border border-surface-subtle hover:border-primary-fixed transition-colors flex flex-col h-full">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 rounded-lg bg-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-[28px]">inventory_2</span>
+</div>
+<span class="bg-surface-subtle text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded">1.8k Nodes</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-text-primary mb-2">Product Mechanics</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-4 flex-1">Feature interactions, expected flows, and business logic mappings.</p>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-subtle">
+<span class="font-label-lg text-label-lg text-primary">Explore Cluster</span>
+<span class="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
+</div>
+</div>
+<!-- Cluster 3: Engineering -->
+<div class="bg-surface-high rounded-xl p-6 ambient-shadow-base border border-surface-subtle hover:border-primary-fixed transition-colors flex flex-col h-full">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[28px]">code_blocks</span>
+</div>
+<span class="bg-surface-subtle text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded">5.1k Nodes</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-text-primary mb-2">System Topology</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-4 flex-1">Service dependencies, API contracts, and historical latency profiles.</p>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-subtle">
+<span class="font-label-lg text-label-lg text-primary">Explore Cluster</span>
+<span class="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
+</div>
+</div>
+<!-- Cluster 4: Organization -->
+<div class="bg-surface-high rounded-xl p-6 ambient-shadow-base border border-surface-subtle hover:border-primary-fixed transition-colors flex flex-col h-full">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 rounded-lg bg-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary-container text-[28px]">corporate_fare</span>
+</div>
+<span class="bg-surface-subtle text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded">840 Nodes</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-text-primary mb-2">Org Operations</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-4 flex-1">Team responsibilities, incident history, and resolution playbooks.</p>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-subtle">
+<span class="font-label-lg text-label-lg text-primary">Explore Cluster</span>
+<span class="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
+</div>
+</div>
+</div>
+<!-- Recent Agent Learnings (Narrative Card Style) -->
+<div class="bg-surface-high rounded-xl ambient-shadow-base border border-surface-subtle overflow-hidden mt-2">
+<div class="p-6 border-b border-surface-subtle bg-surface-container-lowest">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">tips_and_updates</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Recent Agent Learnings</h3>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Heuristics derived from recent autonomous investigations.</p>
+</div>
+<div class="divide-y divide-surface-subtle">
+<!-- Learning 1 -->
+<div class="p-6 hover:bg-surface-container-lowest transition-colors flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-label-lg text-label-lg text-text-primary">Safari Payment Timeout Mitigation</h4>
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant font-label-caps text-[10px] px-2 py-0.5 rounded-sm">New Rule Committed</span>
+</div>
+<p class="font-body-md text-body-md text-text-secondary">Identified pattern of pre-auth drops on iOS WebKit when checkout payload exceeds 45kb. Adjusted timeout tolerance for specific user agents.</p>
+</div>
+<button class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-text-secondary hover:bg-surface-subtle hover:text-text-primary transition-colors font-label-lg text-label-lg">
+                                    Review Rule
+                                </button>
+</div>
+<!-- Learning 2 -->
+<div class="p-6 hover:bg-surface-container-lowest transition-colors flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<h4 class="font-label-lg text-label-lg text-text-primary">Stale Cache in Auth Flow</h4>
+<span class="bg-surface-subtle text-on-surface-variant font-label-caps text-[10px] px-2 py-0.5 rounded-sm">Draft Context</span>
+</div>
+<p class="font-body-md text-body-md text-text-secondary">Observed elevated session refresh rates traced to edge CDN cache invalidation delays in EU-West regions.</p>
+</div>
+<button class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-text-secondary hover:bg-surface-subtle hover:text-text-primary transition-colors font-label-lg text-label-lg">
+                                    Validate
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Interactive Entity relationships & Log (Takes up 4 columns on large screens) -->
+<div class="lg:col-span-4 flex flex-col gap-margin-md">
+<!-- Entity Relationships Visualizer Placeholder -->
+<div class="bg-surface-high rounded-xl ambient-shadow-base border border-surface-subtle overflow-hidden flex flex-col relative h-[400px]">
+<div class="p-4 border-b border-surface-subtle absolute top-0 w-full z-10 glass-panel">
+<h3 class="font-label-lg text-label-lg text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+                                Entity Relationships
+                            </h3>
+</div>
+<!-- Visualization area (using Threejs scene placeholder as requested for sophisticated aesthetic) -->
+<div class="flex-1 w-full h-full relative bg-inverse-on-surface">
+
+<!-- Overlay UI elements on the viz -->
+<div class="absolute bottom-4 left-4 right-4 flex justify-between items-center bg-surface-high/90 backdrop-blur-sm p-3 rounded-lg border border-surface-subtle">
+<div>
+<div class="font-label-caps text-label-caps text-text-secondary">Active Node Focus</div>
+<div class="font-label-lg text-label-lg text-primary">Checkout_Service_v2</div>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-subtle flex items-center justify-center hover:bg-outline-variant transition-colors">
+<span class="material-symbols-outlined text-[18px]">open_in_full</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Access Log -->
+<div class="bg-surface-high rounded-xl ambient-shadow-base border border-surface-subtle flex-1 flex flex-col">
+<div class="p-4 border-b border-surface-subtle flex justify-between items-center">
+<h3 class="font-label-lg text-label-lg text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">history</span>
+                                Memory Access Log
+                            </h3>
+<button class="text-primary hover:text-primary-container text-body-sm font-label-lg">View All</button>
+</div>
+<div class="p-0 overflow-y-auto">
+<ul class="divide-y divide-surface-subtle">
+<li class="p-4 flex gap-3 hover:bg-surface-container-lowest transition-colors">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-primary text-[16px]">smart_toy</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-text-primary"><strong>Investigator Agent</strong> queried <span class="text-secondary font-medium">Customer Context</span> for 'Checkout Abandonment'</p>
+<p class="font-label-caps text-label-caps text-text-secondary mt-1">2 mins ago</p>
+</div>
+</li>
+<li class="p-4 flex gap-3 hover:bg-surface-container-lowest transition-colors">
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-tertiary text-[16px]">person</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-text-primary"><strong>Sarah Jenkins</strong> updated relation in <span class="text-secondary font-medium">System Topology</span></p>
+<p class="font-label-caps text-label-caps text-text-secondary mt-1">45 mins ago</p>
+</div>
+</li>
+<li class="p-4 flex gap-3 hover:bg-surface-container-lowest transition-colors">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-primary text-[16px]">smart_toy</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-text-primary"><strong>Triage Agent</strong> committed new rule to <span class="text-secondary font-medium">Product Mechanics</span></p>
+<p class="font-label-caps text-label-caps text-text-secondary mt-1">3 hours ago</p>
+</div>
+</li>
+<li class="p-4 flex gap-3 hover:bg-surface-container-lowest transition-colors">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-primary text-[16px]">smart_toy</span>
+</div>
+<div>
+<p class="font-body-sm text-body-sm text-text-primary"><strong>Triage Agent</strong> accessed <span class="text-secondary font-medium">Org Operations</span> escalation paths</p>
+<p class="font-label-caps text-label-caps text-text-secondary mt-1">5 hours ago</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom padding for breathing room -->
+<div class="h-8"></div>
+</main>
+</div>
+</body></html>

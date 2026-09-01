@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agent Registry - ProductOps</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#001a41",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "on-secondary-fixed": "#0c006b",
+                        "accent-success": "#34C759",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "tertiary-container": "#c64f00",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#fffbff",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "surface-container-highest": "#e0e2ed",
+                        "inverse-on-surface": "#eef0fc",
+                        "secondary-fixed": "#e2dfff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-tint": "#005bc1",
+                        "error-container": "#ffdad6",
+                        "surface-high": "#FFFFFF",
+                        "text-primary": "#1D1D1F",
+                        "on-surface-variant": "#414755",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-background": "#181c23",
+                        "inverse-primary": "#adc6ff",
+                        "surface-container-high": "#e6e8f3",
+                        "accent-warning": "#FF9500",
+                        "primary-container": "#0070eb",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "inverse-surface": "#2d3039",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline": "#717786",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-container-low": "#f1f3fe",
+                        "surface-dim": "#d8d9e5",
+                        "secondary": "#4a47d2",
+                        "surface": "#f9f9ff",
+                        "surface-bright": "#f9f9ff",
+                        "accent-error": "#FF3B30",
+                        "tertiary": "#9e3d00",
+                        "text-secondary": "#86868B",
+                        "surface-container": "#ecedf9",
+                        "on-surface": "#181c23",
+                        "background": "#f9f9ff",
+                        "surface-variant": "#e0e2ed",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#6462ec",
+                        "outline-variant": "#c1c6d7",
+                        "surface-subtle": "#E5E5EA",
+                        "surface-base": "#F5F5F7",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed": "#d8e2ff",
+                        "primary": "#0058bc",
+                        "on-primary-container": "#fefcff",
+                        "on-primary-fixed-variant": "#004493"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-md": "24px",
+                        "container-max": "1440px",
+                        "margin-sm": "16px",
+                        "unit": "8px",
+                        "margin-lg": "40px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-base text-text-primary antialiased min-h-screen flex selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (Shared Component) -->
+<nav class="hidden md:flex flex-col fixed left-0 top-0 h-screen w-64 p-margin-sm border-r border-surface-subtle bg-surface-base z-40 transition-all duration-300">
+<div class="mb-margin-lg px-unit mt-unit flex flex-col gap-1">
+<h1 class="font-headline-md text-headline-md text-on-surface">Research Lab</h1>
+<p class="font-body-sm text-body-sm text-text-secondary">Autonomous Ops</p>
+</div>
+<button class="mb-margin-md w-full bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-lg text-label-lg py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(0,88,188,0.2)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+            New Investigation
+        </button>
+<div class="flex flex-col gap-1 flex-1 overflow-y-auto">
+<!-- Navigation Items -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform duration-200">sensors</span>
+<span class="font-label-lg text-label-lg">Signal</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform duration-200">psychology</span>
+<span class="font-label-lg text-label-lg">Understand</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform duration-200">chat_bubble</span>
+<span class="font-label-lg text-label-lg">Ask</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform duration-200">biotech</span>
+<span class="font-label-lg text-label-lg">Diagnose</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform duration-200">build_circle</span>
+<span class="font-label-lg text-label-lg">Fix</span>
+</a>
+<!-- Active State -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-primary bg-white shadow-sm font-bold transition-all duration-200 cursor-pointer relative overflow-hidden" href="#">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r"></div>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-lg text-label-lg">Verify</span>
+</a>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-subtle flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-subtle rounded-lg transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-lg text-label-lg">Docs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary hover:bg-surface-subtle rounded-lg transition-colors cursor-pointer" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-lg text-label-lg">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- Mobile Top Nav (Hidden on Desktop) -->
+<header class="md:hidden sticky top-0 z-30 bg-surface/80 backdrop-blur-xl border-b border-surface-subtle px-margin-sm h-16 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<button class="p-2 -ml-2 rounded-lg text-on-surface hover:bg-surface-subtle">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="font-headline-md text-headline-md font-bold text-primary">Research Lab</span>
+</div>
+<img class="w-8 h-8 rounded-full object-cover shadow-sm border border-surface-subtle" data-alt="A small, circular avatar portrait of a professional woman with short dark hair, wearing a navy blazer, smiling subtly against a soft, light grey background. Modern corporate photography style, well-lit and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6zZNWOgIc1ZJybwfcLBGvhaCoLXfg9EcBzxLX--GgEREqqY0xkJ2pLFxL8HdexWyPG6womz93Al13NIluhFmFDqoLIfWu2cbAyHX6gJKQ7LrEdAaleZBMcuCW2sbk3QiHqjr7deM412zfBGefEfHuc-zKd_ydDJJ5svUMsRPXib2ZGEwG8MEC4lGyJ6zD7l2aAD8MNQt8uF9FWv144fv4g3mTTCQGPvzCCL8fAylRTh332zDsgosC"/>
+</header>
+<!-- Content Canvas -->
+<div class="p-margin-md md:p-margin-lg max-w-container-max mx-auto w-full flex flex-col gap-margin-lg flex-1">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div class="flex flex-col gap-2 max-w-2xl">
+<h2 class="font-display-lg text-display-lg text-text-primary tracking-tight">Agent Registry</h2>
+<p class="font-body-lg text-body-lg text-text-secondary">Manage your autonomous workforce, identities, and permissions.</p>
+</div>
+<button class="bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-lg text-label-lg py-3 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-[0_4px_12px_rgba(0,88,188,0.2)] w-full md:w-auto justify-center group active:scale-95">
+<span class="material-symbols-outlined group-hover:rotate-90 transition-transform duration-300">person_add</span>
+                    Register New Agent
+                </button>
+</div>
+<!-- Controls (Search & Filters) -->
+<div class="bg-surface-high rounded-xl p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-surface-subtle/50 flex flex-col lg:flex-row gap-4 items-center">
+<!-- Search -->
+<div class="relative w-full lg:max-w-md group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-surface-base hover:bg-surface-container-high focus:bg-surface-high border border-transparent focus:border-primary/30 rounded-lg font-body-md text-body-md text-text-primary placeholder:text-outline transition-all focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Search agents by name or capability..." type="text"/>
+</div>
+<!-- Filters -->
+<div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+<div class="relative inline-block">
+<select class="appearance-none bg-surface-base hover:bg-surface-container-high border border-transparent focus:border-primary/30 focus:ring-2 focus:ring-primary/20 rounded-lg pl-4 pr-10 py-2.5 font-label-lg text-label-lg text-on-surface-variant cursor-pointer outline-none transition-colors">
+<option value="">Status: All</option>
+<option value="active">Active</option>
+<option value="idle">Idle</option>
+<option value="training">Training</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-sm">expand_more</span>
+</div>
+<div class="relative inline-block">
+<select class="appearance-none bg-surface-base hover:bg-surface-container-high border border-transparent focus:border-primary/30 focus:ring-2 focus:ring-primary/20 rounded-lg pl-4 pr-10 py-2.5 font-label-lg text-label-lg text-on-surface-variant cursor-pointer outline-none transition-colors">
+<option value="">Role: All</option>
+<option value="signal">Signal</option>
+<option value="research">Research</option>
+<option value="engineering">Engineering</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-sm">expand_more</span>
+</div>
+<div class="relative inline-block">
+<select class="appearance-none bg-surface-base hover:bg-surface-container-high border border-transparent focus:border-primary/30 focus:ring-2 focus:ring-primary/20 rounded-lg pl-4 pr-10 py-2.5 font-label-lg text-label-lg text-on-surface-variant cursor-pointer outline-none transition-colors">
+<option value="">Risk: All</option>
+<option value="low">Low</option>
+<option value="medium">Medium</option>
+<option value="high">High</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-sm">expand_more</span>
+</div>
+<button class="ml-auto lg:ml-0 p-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors flex items-center justify-center border border-surface-subtle bg-surface-high shadow-sm" title="Filter Settings">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+</div>
+<!-- Agent Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Agent Card 1 -->
+<div class="bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-subtle/40 overflow-hidden flex flex-col transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-1 group cursor-pointer relative">
+<!-- Top Section -->
+<div class="p-6 pb-4 border-b border-surface-subtle/50 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full object-cover border-2 border-surface-base shadow-sm group-hover:border-primary/30 transition-colors" data-alt="A clean, highly realistic generated avatar portrait of an intelligent-looking young man with glasses, soft natural lighting, set against a pristine white background. Modern, corporate aesthetic, conveying approachability and competence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB24lBrXhDLXSIG-2R_Oqr2JxWlxxmHBUAGQDKZsB-91H4MCK1ID8HgG0t8FR32vtHce3kHriZOUrMX3Tj6H8oZ7R1J3ui5XPh3ZZoQ5fiH75Fw1CQ4g6DzsBDB5t9JX5V3eykZzLIfueEpiZ43xG3u5iZet5bsn2esDz1CDLtftNYFvvrZ-GI4InoCcJIHCWadvlbvXVUCgmuVNaAqfCQqiMJJ0f0qGw-8L2Pgt_e4sHblIYkv1xAZ"/>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-accent-success border-2 border-surface-high rounded-full z-10" title="Active"></div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-headline-md text-headline-md text-text-primary group-hover:text-primary transition-colors leading-tight">Atlas</h3>
+<span class="font-body-sm text-body-sm text-text-secondary">Signal Agent - Reliability</span>
+</div>
+</div>
+<button class="text-outline hover:text-primary transition-colors p-1 rounded-md hover:bg-surface-container-low">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<!-- Live Activity -->
+<div class="bg-inverse-on-surface/50 rounded-lg p-3 flex items-start gap-3 border border-primary-fixed/30">
+<span class="material-symbols-outlined text-primary text-sm animate-pulse mt-0.5">query_stats</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-primary tracking-wider uppercase mb-0.5">Live Activity</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant leading-snug">Monitoring API latency anomalies in production cluster EU-West.</span>
+</div>
+</div>
+</div>
+<!-- Middle Section (Capabilities & Metrics) -->
+<div class="p-6 py-5 flex flex-col gap-5 flex-1">
+<div>
+<p class="font-label-caps text-label-caps text-outline mb-2">Capabilities</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2.5 py-1 bg-surface-base rounded-md font-body-sm text-body-sm text-on-surface-variant border border-surface-subtle">Datadog</span>
+<span class="px-2.5 py-1 bg-surface-base rounded-md font-body-sm text-body-sm text-on-surface-variant border border-surface-subtle">AWS CloudWatch</span>
+<span class="px-2.5 py-1 bg-surface-base rounded-md font-body-sm text-body-sm text-on-surface-variant border border-surface-subtle">PagerDuty</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-2">
+<div class="flex flex-col">
+<span class="font-display-lg text-display-lg text-text-primary leading-none">99.8<span class="text-lg text-text-secondary font-medium">%</span></span>
+<span class="font-label-caps text-label-caps text-outline mt-1">Accuracy</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display-lg text-display-lg text-text-primary leading-none">1.2<span class="text-lg text-text-secondary font-medium">k</span></span>
+<span class="font-label-caps text-label-caps text-outline mt-1">Issues Prevented</span>
+</div>
+</div>
+</div>
+<!-- Footer (Permissions) -->
+<div class="p-4 bg-surface-base border-t border-surface-subtle flex items-center justify-between">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">shield</span>
+<span class="font-label-lg text-label-lg">Read-only Access</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors transform group-hover:translate-x-1">arrow_forward</span>
+</div>
+</div>
+<!-- Agent Card 2 -->
+<div class="bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-subtle/40 overflow-hidden flex flex-col transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-1 group cursor-pointer relative">
+<div class="p-6 pb-4 border-b border-surface-subtle/50 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img class="w-14 h-14 rounded-full object-cover border-2 border-surface-base shadow-sm group-hover:border-primary/30 transition-colors" data-alt="A clean, highly realistic generated avatar portrait of a mature woman with warm brown skin and curly hair, wearing a sleek silver blouse. Soft studio lighting, set against a pristine white background. Corporate modern aesthetic, conveying wisdom and calm." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzuqNR-LlwEJHriYzDqNGN_NKubaQRAc3zMfhD9FW5sgm-1PkDIBHAUlv1E_6W1OU1Inu-MA6nvDLhTSTd2EpbdeBBhMyfd47VZNrh-xmBfjjHUlfuBWOnI6_PC_AEuof86kStdo73h7wbAbZ8zRJ3VfjWGl5mWgFelupjAwuBJzpEZmrJmCc4s5oj5GT56gPBN9EapDMG-xXLx4VvAPXQauTIlXjnWZ5VL7wAqKkdgphVqhN1x_3K"/>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-accent-warning border-2 border-surface-high rounded-full z-10" title="Idle"></div>
+</div>
+<div class="flex flex-col">
+<h3 class="font-headline-md text-headline-md text-text-primary group-hover:text-primary transition-colors leading-tight">Cora</h3>
+<span class="font-body-sm text-body-sm text-text-secondary">Research Agent - CX</span>
+</div>
+</div>
+<button class="text-outline hover:text-primary transition-colors p-1 rounded-md hover:bg-surface-container-low">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="bg-surface-container-lowest rounded-lg p-3 flex items-start gap-3 border border-surface-subtle">
+<span class="material-symbols-outlined text-text-secondary text-sm mt-0.5">check_circle</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-text-secondary tracking-wider uppercase mb-0.5">Last Task (2h ago)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant leading-snug">Synthesized Q3 user feedback from Zendesk tickets.</span>
+</div>
+</div>
+</div>
+<div class="p-6 py-5 flex flex-col gap-5 flex-1">
+<div>
+<p class="font-label-caps text-label-caps text-outline mb-2">Capabilities</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2.5 py-1 bg-surface-base rounded-md font-body-sm text-body-sm text-on-surface-variant border border-surface-subtle">Zendesk</span>
+<span class="px-2.5 py-1 bg-surface-base rounded-md font-body-sm text-body-sm text-on-surface-variant border border-surface-subtle">Gong</span>
+<span class="px-2.5 py-1 bg-surface-base rounded-md font-body-sm text-body-sm text-on-surface-variant border border-surface-subtle">Qualtrics</span>
+<span class="px-2.5 py-1 bg-surface-base rounded-md font-body-sm text-body-sm text-on-surface-variant border border-surface-subtle border-dashed bg-transparent">+2</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-2">
+<div class="flex flex-col">
+<span class="font-display-lg text-display-lg text-text-primary leading-none">4.9<span class="text-lg text-text-secondary font-medium">/5</span></span>
+<span class="font-label-caps text-label-caps text-outline mt-1">Insight Quality</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display-lg text-display-lg text-text-primary leading-none">340</span>
+<span class="font-label-caps text-label-caps text-outline mt-1">Reports Gen.</span>
+</div>
+</div>
+</div>
+<div class="p-4 bg-surface-base border-t border-surface-subtle flex items-center justify-between">
+<div class="flex items-center gap-2 text-accent-warning">
+<span class="material-symbols-outlined text-sm">gpp_maybe</span>
+<span class="font-label-lg text-label-lg">Requires Human Approval</span>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors transform group-hover:translate-x-1">arrow_forward</span>
+</div>
+</div>
+<!-- Add New Agent Placeholder Card -->
+<div class="bg-transparent border-2 border-dashed border-surface-subtle rounded-xl flex flex-col items-center justify-center p-8 text-center transition-all duration-300 hover:border-primary/50 hover:bg-primary-fixed/10 cursor-pointer group min-h-[380px]">
+<div class="w-16 h-16 rounded-full bg-surface-base flex items-center justify-center mb-4 group-hover:bg-primary transition-colors duration-300 shadow-sm">
+<span class="material-symbols-outlined text-3xl text-outline group-hover:text-white transition-colors duration-300">add</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-text-primary mb-2">Onboard New Agent</h3>
+<p class="font-body-md text-body-md text-text-secondary max-w-[200px]">Configure a new autonomous unit from the template library.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Side Panel Detail View (Hidden by default, shown for demonstration structure) -->
+<aside class="fixed inset-y-0 right-0 w-full md:w-96 bg-surface-high shadow-[-4px_0_24px_rgba(0,0,0,0.05)] border-l border-surface-subtle z-50 transform translate-x-full transition-transform duration-300 flex flex-col" id="detail-panel">
+<div class="p-4 border-b border-surface-subtle flex items-center justify-between bg-surface-base/50 backdrop-blur-md">
+<h2 class="font-headline-md text-headline-md text-text-primary">Agent Details</h2>
+<button class="p-2 rounded-full hover:bg-surface-subtle text-outline hover:text-text-primary transition-colors" onclick="document.getElementById('detail-panel').classList.add('translate-x-full')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-6 flex-1 overflow-y-auto">
+<!-- Details content would go here -->
+<p class="text-text-secondary">Select an agent to view detailed Model Armor and Gateway policies.</p>
+</div>
+</aside>
+</body></html>

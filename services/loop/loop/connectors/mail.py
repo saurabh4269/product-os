@@ -21,6 +21,14 @@ def connected_email() -> str:
     return (oauth_status().get("email") or "").strip().lower()
 
 
+def _valid_email(addr: str) -> bool:
+    a = (addr or "").strip()
+    if not a or "@" not in a:
+        return False
+    local, _, domain = a.rpartition("@")
+    return bool(local and domain and "." in domain)
+
+
 def draft(to: str, subject: str, body: str) -> ConnectorReport:
     if not access_token():
         return ConnectorReport(
@@ -28,7 +36,15 @@ def draft(to: str, subject: str, body: str) -> ConnectorReport:
             connector="mail.draft",
             detail="no Workspace OAuth",
         )
-    raw = _raw_message(to, subject, body)
+    me = connected_email()
+    dest = (to or me).strip().lower()
+    if not _valid_email(dest):
+        return ConnectorReport(
+            status="skipped",
+            connector="mail.draft",
+            detail="Invalid To address — authorize Google Workspace on Connect",
+        )
+    raw = _raw_message(dest, subject, body)
     code, payload = gmail_json("POST", "/drafts", {"message": {"raw": raw}})
     if code in {200, 201} and payload.get("id"):
         draft_id = payload["id"]

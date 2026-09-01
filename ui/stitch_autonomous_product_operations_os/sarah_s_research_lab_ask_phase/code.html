@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProductOps Agent - Ask</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#414755",
+                        "surface-tint": "#005bc1",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#004493",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "on-error-container": "#93000a",
+                        "primary": "#0058bc",
+                        "outline": "#717786",
+                        "on-background": "#181c23",
+                        "surface-container": "#ecedf9",
+                        "text-secondary": "#86868B",
+                        "accent-error": "#FF3B30",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-container-low": "#f1f3fe",
+                        "surface-high": "#FFFFFF",
+                        "on-secondary-container": "#fffbff",
+                        "accent-success": "#34C759",
+                        "surface-base": "#F5F5F7",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-highest": "#e0e2ed",
+                        "surface-bright": "#f9f9ff",
+                        "tertiary": "#9e3d00",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "background": "#f9f9ff",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#e2dfff",
+                        "outline-variant": "#c1c6d7",
+                        "on-primary-fixed": "#001a41",
+                        "error": "#ba1a1a",
+                        "accent-warning": "#FF9500",
+                        "text-primary": "#1D1D1F",
+                        "primary-container": "#0070eb",
+                        "on-secondary-fixed": "#0c006b",
+                        "on-error": "#ffffff",
+                        "surface": "#f9f9ff",
+                        "surface-container-high": "#e6e8f3",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "inverse-on-surface": "#eef0fc",
+                        "surface-variant": "#e0e2ed",
+                        "secondary": "#4a47d2",
+                        "on-primary-container": "#fefcff",
+                        "on-surface": "#181c23",
+                        "primary-fixed": "#d8e2ff",
+                        "inverse-primary": "#adc6ff",
+                        "secondary-container": "#6462ec",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-dim": "#d8d9e5",
+                        "inverse-surface": "#2d3039",
+                        "surface-subtle": "#E5E5EA",
+                        "tertiary-container": "#c64f00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1440px",
+                        "margin-sm": "16px",
+                        "gutter": "24px",
+                        "margin-lg": "40px",
+                        "unit": "8px",
+                        "margin-md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-header { backdrop-filter: blur(20px); background-color: rgba(249, 249, 255, 0.8); }
+        .ambient-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .elevated-shadow { box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body class="bg-surface-base h-full flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface fixed left-0 top-0 h-full w-[240px] border-r border-outline-variant flex flex-col z-40 hidden md:flex">
+<div class="p-margin-sm flex items-center gap-unit border-b border-outline-variant">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="smart_toy">smart_toy</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">ProductOps Agent</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Reliability &amp; Growth</p>
+</div>
+</div>
+<div class="p-margin-sm">
+<button class="w-full bg-primary text-on-primary rounded-lg py-2 px-4 font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                New Mission
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto py-margin-sm px-margin-sm space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span>
+                Signal
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Understand
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-secondary font-bold bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+                Ask
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+                Diagnose
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="build">build</span>
+                Fix
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="verified">verified</span>
+                Verify
+            </a>
+</div>
+<div class="p-margin-sm border-t border-outline-variant space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-[240px] w-full min-h-screen">
+<!-- TopAppBar -->
+<header class="glass-header docked full-width top-0 sticky z-50 flex justify-between items-center w-full px-gutter h-16 border-b border-outline-variant shadow-sm transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-64 hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full bg-surface-subtle border-none rounded-full pl-10 pr-4 py-2 font-body-sm text-body-sm focus:ring-2 focus:ring-primary focus:bg-white transition-all text-on-surface placeholder-on-surface-variant" placeholder="Search insights..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-lg text-label-lg text-on-surface-variant hidden sm:inline-block">Active Agents: 12</span>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+</button>
+<button class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a corporate user in a modern office setting, bright lighting, high resolution, minimalist background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4Nvqd7MGmo5qpDKFiHBH2LqEJTkDjKyEpLCVHpsdEGfkN85nKGBhoGNWFw1PhblfvkI5Kmlxl5dN1f90KQLwL6_DSYGpFakTRrodU224kuSjD7poO5t3DjZlPGjIh5sNP3bOoFsAqVq3lPPWbU0OG10ZaxxTQ9nhef0OTtOEcYv44FvtR43VDKbt-N0f3uEUS1WFAz3qRx9yEKqT5EFqfjTpS17v8y0k1Z4H7oZ2lMJOk7bSdLRUH"/>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-gutter lg:p-margin-lg space-y-margin-lg bg-surface-base">
+<!-- Header Section -->
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2 py-1 bg-primary-fixed text-on-primary-fixed rounded-md font-label-caps text-label-caps uppercase tracking-wider">Active Interview</span>
+<span class="flex items-center gap-1 text-accent-error font-label-caps text-label-caps">
+<span class="w-2 h-2 rounded-full bg-accent-error animate-pulse"></span> Live
+                        </span>
+</div>
+<h2 class="font-headline-lg text-headline-lg font-semibold text-text-primary">Investigating Payment Failure</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mt-1">Sarah (Customer Voice Agent) interviewing user #42991</p>
+</div>
+<button class="bg-surface-high text-primary border border-outline-variant px-4 py-2 rounded-lg font-label-lg text-label-lg hover:bg-surface-container-low transition-colors shadow-sm">
+                    Intervene or Pause
+                </button>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Context & Analysis (4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<!-- Investigation Context Card -->
+<div class="bg-surface-high rounded-xl ambient-shadow p-margin-md border border-surface-subtle">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-surface-tint" data-icon="travel_explore">travel_explore</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Investigation Context</h3>
+</div>
+<div class="space-y-4">
+<div class="bg-surface-container-low p-3 rounded-lg">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Trigger Event</p>
+<p class="font-body-sm text-body-sm text-on-surface">Transaction $4,200 failed at checkout step 3.</p>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">User Environment</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-surface-subtle text-on-surface rounded font-body-sm text-body-sm flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="phone_iphone">phone_iphone</span> iOS 16.4</span>
+<span class="px-2 py-1 bg-surface-subtle text-on-surface rounded font-body-sm text-body-sm flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="public">public</span> Safari 16</span>
+</div>
+</div>
+<div class="pt-2 border-t border-surface-subtle">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Agent Directive</p>
+<p class="font-body-sm text-body-sm text-text-secondary italic">"Probe for UI unresponsiveness specific to the Safari WebKit rendering engine during the 3D secure modal load."</p>
+</div>
+</div>
+</div>
+<!-- Sentiment & Confidence Dashboard -->
+<div class="bg-surface-high rounded-xl ambient-shadow p-margin-md border border-surface-subtle flex-1">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-secondary" data-icon="monitoring">monitoring</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Real-time Analysis</h3>
+</div>
+<div class="space-y-6">
+<!-- User Frustration -->
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-lg text-label-lg text-text-primary">User Frustration</span>
+<span class="font-body-sm text-body-sm text-accent-warning font-semibold">Elevated (72%)</span>
+</div>
+<div class="w-full bg-surface-subtle rounded-full h-2">
+<div class="bg-accent-warning h-2 rounded-full" style="width: 72%"></div>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1 mt-2 text-xs">Customer is repeating issues regarding 'spinning wheel'.</p>
+</div>
+<!-- Agent Confidence -->
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-lg text-label-lg text-text-primary">Diagnostic Confidence</span>
+<span class="font-body-sm text-body-sm text-accent-success font-semibold">High (88%)</span>
+</div>
+<div class="w-full bg-surface-subtle rounded-full h-2">
+<div class="bg-accent-success h-2 rounded-full" style="width: 88%"></div>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1 mt-2 text-xs">Strong alignment with known WebKit regression #892.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Middle Column: Live Chat (5 cols) -->
+<div class="lg:col-span-5 bg-surface-high rounded-xl ambient-shadow border border-surface-subtle flex flex-col h-[600px]">
+<div class="p-margin-sm border-b border-surface-subtle flex items-center justify-between bg-surface-bright rounded-t-xl">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary" data-icon="record_voice_over">record_voice_over</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-text-primary text-lg">Sarah</h3>
+<p class="font-body-sm text-body-sm text-text-secondary">Customer Voice Agent</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-surface-tint" data-icon="more_horiz">more_horiz</span>
+</div>
+<!-- Chat Area -->
+<div class="flex-1 overflow-y-auto p-margin-md space-y-6 bg-white">
+<!-- System Msg -->
+<div class="flex justify-center">
+<span class="bg-surface-container px-3 py-1 rounded-full font-body-sm text-body-sm text-on-surface-variant text-xs">Connection established. Context loaded.</span>
+</div>
+<!-- Sarah Msg -->
+<div class="flex gap-3 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-on-primary text-sm" data-icon="record_voice_over">record_voice_over</span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-2xl rounded-tl-sm text-on-surface font-body-md text-body-md">
+                                Hi there, I noticed you had trouble completing your purchase a moment ago. I'm Sarah from the support team. Could you tell me what happened when you clicked 'Confirm Payment'?
+                            </div>
+</div>
+<!-- User Msg -->
+<div class="flex gap-3 max-w-[85%] ml-auto justify-end">
+<div class="bg-primary text-white p-3 rounded-2xl rounded-tr-sm font-body-md text-body-md">
+                                Yeah, it just hung. The little circle kept spinning and nothing happened. I didn't want to hit refresh and get charged twice.
+                            </div>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="person">person</span>
+</div>
+</div>
+<!-- Sarah Msg -->
+<div class="flex gap-3 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-on-primary text-sm" data-icon="record_voice_over">record_voice_over</span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-2xl rounded-tl-sm text-on-surface font-body-md text-body-md">
+                                That's definitely frustrating, especially with a large transaction. I can confirm you haven't been charged yet. Did the screen go slightly dark before the spinning circle appeared, or did it stay bright?
+                            </div>
+</div>
+<!-- Agent Reasoning (Internal visible to ops) -->
+<div class="ml-11 border-l-2 border-secondary-container pl-3 py-1">
+<p class="font-label-caps text-label-caps text-secondary-container mb-1 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]" data-icon="psychology">psychology</span> How I reached this conclusion</p>
+<p class="font-body-sm text-body-sm text-text-secondary italic text-xs">Testing hypothesis for Safari WebKit modal overlay issue (Regression #892). The dark overlay indicates the 3D Secure script initialized but failed to render the iframe.</p>
+</div>
+<!-- User Msg -->
+<div class="flex gap-3 max-w-[85%] ml-auto justify-end">
+<div class="bg-primary text-white p-3 rounded-2xl rounded-tr-sm font-body-md text-body-md">
+                                Actually yes, it did go kind of gray like a popup was coming, but nothing showed up except the spinner in the middle.
+                            </div>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="person">person</span>
+</div>
+</div>
+<!-- Typing indicator -->
+<div class="flex gap-3 max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-on-primary text-sm" data-icon="record_voice_over">record_voice_over</span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-2xl rounded-tl-sm text-on-surface flex items-center gap-1 h-10">
+<span class="w-2 h-2 bg-text-secondary rounded-full animate-bounce"></span>
+<span class="w-2 h-2 bg-text-secondary rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+<span class="w-2 h-2 bg-text-secondary rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Evidence Extraction (3 cols) -->
+<div class="lg:col-span-3 bg-surface-high rounded-xl ambient-shadow p-margin-md border border-surface-subtle flex flex-col">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-tertiary" data-icon="data_extraction">save_as</span>
+<h3 class="font-headline-md text-headline-md text-text-primary">Evidence Extraction</h3>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4">Structured data pulled live from the conversation.</p>
+<div class="space-y-4 flex-1">
+<!-- Item -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded-lg relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-accent-success"></div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1 ml-2">Friction Type</p>
+<p class="font-body-md text-body-md text-text-primary ml-2 font-semibold">Modal Rendering Failure</p>
+<p class="font-body-sm text-body-sm text-text-secondary ml-2 mt-1 text-xs">"Popup was coming, but nothing showed up"</p>
+</div>
+<!-- Item -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded-lg relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-accent-warning"></div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1 ml-2">User Action</p>
+<p class="font-body-md text-body-md text-text-primary ml-2 font-semibold">Abandoned (Fear of Double Charge)</p>
+<p class="font-body-sm text-body-sm text-text-secondary ml-2 mt-1 text-xs">"Didn't want to hit refresh and get charged twice"</p>
+</div>
+<!-- Item -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded-lg relative overflow-hidden group border-dashed opacity-70">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-outline"></div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1 ml-2 flex justify-between">Purchase Intent <span class="material-symbols-outlined text-[14px] animate-spin" data-icon="sync">sync</span></p>
+<p class="font-body-md text-body-md text-text-primary ml-2 italic">Awaiting confirmation...</p>
+</div>
+</div>
+<button class="w-full mt-4 py-2 bg-surface-container text-primary font-label-lg text-label-lg rounded-lg hover:bg-primary-fixed transition-colors">
+                        Export Findings to Jira
+                    </button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

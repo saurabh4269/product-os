@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type GoogleOAuth, type Tenant } from "@/lib/api";
+import { api, adminRememberEnabled, clearAdminToken, hasAdminToken, verifyAdminToken, type GoogleOAuth, type Tenant } from "@/lib/api";
 import { Button, ErrorState, Loading, PageHeader } from "@/components/ui";
+import { LiveIncidentPanel } from "@/components/live-incident-panel";
 import { SignalSourcesDiagram } from "@/components/diagrams/signal-sources-diagram";
 import { TenantWireDiagram } from "@/components/diagrams/tenant-wire-diagram";
 import { WorkflowLinksPanel } from "@/components/workflow-links";
@@ -75,6 +76,9 @@ export default function ConnectPage() {
   const [verifyRoomId, setVerifyRoomId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [wireHint, setWireHint] = useState<string | null>(null);
+  const [adminTokenInput, setAdminTokenInput] = useState("");
+  const [adminOk, setAdminOk] = useState(false);
+  const [rememberAdmin, setRememberAdmin] = useState(false);
 
   function applyTenantFields(detail: { tenant: Tenant; flags: Record<string, string> }) {
     setTenant(detail.tenant);
@@ -141,10 +145,49 @@ export default function ConnectPage() {
     if (ws === "error") setErr(q.get("detail") || "Google authorization did not complete.");
     if (ga4 === "ok") setSaved("GA4 Admin authorized. Analytics export automation can run.");
     if (ga4 === "error") setErr(q.get("detail") || "GA4 authorization did not complete.");
+    setAdminOk(hasAdminToken());
+    setRememberAdmin(adminRememberEnabled());
     load()
-      .catch((e) => setErr(e instanceof Error ? e.message : "failed"))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : "failed";
+        if (msg.includes("401") || msg.includes("admin bearer")) {
+          setErr(null);
+        } else {
+          setErr(msg);
+        }
+      })
       .finally(() => setReady(true));
   }, []);
+
+  async function saveAdminToken() {
+    if (!adminTokenInput.trim()) return;
+    setBusy(true);
+    try {
+      const ok = await verifyAdminToken(adminTokenInput.trim(), rememberAdmin);
+      setAdminOk(ok);
+      if (ok) {
+        setSaved(
+          rememberAdmin
+            ? "Admin token saved on this device. Wire, incidents, and approvals stay unlocked."
+            : "Admin token saved for this tab. Check “Remember on this device” to keep it after closing the browser."
+        );
+        setErr(null);
+        await load();
+      } else {
+        setSaved("Admin token rejected — check LOOP_ADMIN_TOKEN on Cloud Run.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function forgetAdminToken() {
+    clearAdminToken();
+    setAdminOk(false);
+    setRememberAdmin(false);
+    setAdminTokenInput("");
+    setSaved("Admin token cleared from this browser.");
+  }
 
   if (err && !ready) return <ErrorState message={err} />;
   if (!ready) return <Loading label="Opening connect" />;
@@ -295,6 +338,48 @@ export default function ConnectPage() {
 
   return (
     <div className="page-pad fade-in">
+      {!adminOk ? (
+        <section className="surface-lg mt-4 max-w-xl space-y-3 p-5">
+          <p className="text-[14px] leading-6 text-[var(--dim)]">
+            Hosted Product OS requires an admin token to wire tenants, approve fixes, and reset walkthroughs. Paste{" "}
+            <code className="text-[13px]">LOOP_ADMIN_TOKEN</code> from Cloud Run.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="password"
+              className={field}
+              placeholder="Admin bearer token"
+              value={adminTokenInput}
+              onChange={(e) => setAdminTokenInput(e.target.value)}
+            />
+            <Button disabled={busy || !adminTokenInput.trim()} onClick={() => void saveAdminToken()}>
+              Authorize
+            </Button>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[var(--dim)]">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-border accent-[#0071e3]"
+              checked={rememberAdmin}
+              onChange={(e) => setRememberAdmin(e.target.checked)}
+            />
+            Remember on this device
+          </label>
+        </section>
+      ) : (
+        <section className="surface-lg mt-4 max-w-xl space-y-2 p-5">
+          <p className="text-[14px] text-[var(--dim)]">
+            Admin authorized{rememberAdmin ? " · remembered on this device" : " · this tab only"}.
+          </p>
+          <button
+            type="button"
+            className="text-[13px] text-[var(--faint)] underline-offset-2 hover:text-foreground hover:underline"
+            onClick={forgetAdminToken}
+          >
+            Forget admin token
+          </button>
+        </section>
+      )}
       {tenant ? <p className="text-[13px] text-[var(--faint)]">{tenant.id}</p> : null}
       {allTenants.length > 1 ? (
         <label className="mt-2 block text-[13px] text-[var(--faint)]">
@@ -430,6 +515,10 @@ export default function ConnectPage() {
         <p className="text-[13px] text-[var(--faint)]">{gate}</p>
         {saved ? <p className="text-[14px] text-[var(--dim)]">{saved}</p> : null}
       </section>
+
+      {tenant ? (
+        <LiveIncidentPanel tenantId={tenant.id} adminReady={adminOk} />
+      ) : null}
 
       <section className="surface-lg mt-8 max-w-4xl p-4 sm:p-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--faint)]">Tenant wire</p>

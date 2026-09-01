@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProductOps Agent - Fix</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#e2dfff",
+                      "surface-container-highest": "#e0e2ed",
+                      "on-primary-fixed": "#001a41",
+                      "on-secondary-container": "#fffbff",
+                      "primary-fixed-dim": "#adc6ff",
+                      "outline": "#717786",
+                      "secondary": "#4a47d2",
+                      "surface-container-high": "#e6e8f3",
+                      "secondary-container": "#6462ec",
+                      "on-secondary-fixed": "#0c006b",
+                      "inverse-primary": "#adc6ff",
+                      "tertiary-fixed": "#ffdbcc",
+                      "on-primary-container": "#fefcff",
+                      "accent-error": "#FF3B30",
+                      "surface-tint": "#005bc1",
+                      "surface-container-low": "#f1f3fe",
+                      "surface-high": "#FFFFFF",
+                      "surface": "#f9f9ff",
+                      "on-tertiary-fixed": "#351000",
+                      "on-tertiary-fixed-variant": "#7c2e00",
+                      "on-secondary-fixed-variant": "#332dbc",
+                      "surface-bright": "#f9f9ff",
+                      "text-secondary": "#86868B",
+                      "on-error-container": "#93000a",
+                      "surface-container-lowest": "#ffffff",
+                      "text-primary": "#1D1D1F",
+                      "surface-variant": "#e0e2ed",
+                      "on-tertiary": "#ffffff",
+                      "secondary-fixed-dim": "#c2c1ff",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#c1c6d7",
+                      "on-surface-variant": "#414755",
+                      "inverse-surface": "#2d3039",
+                      "accent-warning": "#FF9500",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#eef0fc",
+                      "accent-success": "#34C759",
+                      "tertiary-fixed-dim": "#ffb595",
+                      "on-background": "#181c23",
+                      "background": "#f9f9ff",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#004493",
+                      "tertiary-container": "#c64f00",
+                      "surface-base": "#F5F5F7",
+                      "primary-fixed": "#d8e2ff",
+                      "on-tertiary-container": "#fffbff",
+                      "on-surface": "#181c23",
+                      "primary-container": "#0070eb",
+                      "surface-subtle": "#E5E5EA",
+                      "tertiary": "#9e3d00",
+                      "primary": "#0058bc",
+                      "surface-dim": "#d8d9e5",
+                      "surface-container": "#ecedf9"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-lg": "40px",
+                      "margin-md": "24px",
+                      "container-max": "1440px",
+                      "margin-sm": "16px",
+                      "unit": "8px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "17px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.06em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "15px",
+                              {
+                                      "lineHeight": "22px",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .code-block {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .diff-add {
+            background-color: rgba(52, 199, 89, 0.1);
+        }
+        .diff-remove {
+            background-color: rgba(255, 59, 48, 0.1);
+        }
+      </style>
+</head>
+<body class="bg-surface-base text-text-primary font-body-md h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<aside class="bg-surface dark:bg-surface-dim font-body-md text-body-md fixed left-0 top-0 h-full w-[240px] border-r border-outline-variant dark:border-outline flat no shadows flex flex-col h-full z-40">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-8">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A small, stylized profile avatar or logo for ProductOps Agent, featuring a geometric shape or stylized lettermark in primary blue against a soft white background. The image should look like a premium corporate avatar, clean, modern, and high-resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByPceRo2XvzSNCGywEg2pKV-Ne2CELD4O0F-VvKORWzC9uzOneXhFPQXFy7kwGPq1l7025A6_4x6KqYuRhGeXs7Rm0b7UDUNTonyEJATDAuL6ql4sRHpaxyiKj7FhwFDuRf2XapiEDUkxyt0NxXovlJ8du3YvbPFqL78vXlRNP6svlpl0mEemiiFTKN0cJw-Y8-n1Or4T121GouNcLFmorpLRm5r0ByTBNC0SqUKpdz1OW2kVkTWZE"/>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary dark:text-on-primary-fixed text-sm">ProductOps Agent</h2>
+<p class="text-xs text-text-secondary">Reliability &amp; Growth</p>
+</div>
+</div>
+<button class="w-full bg-primary text-white rounded-lg py-2 mb-6 font-label-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Mission
+            </button>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">sensors</span>
+                    Signal
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                    Understand
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">psychology</span>
+                    Ask
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">biotech</span>
+                    Diagnose
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-secondary dark:text-secondary-fixed-dim font-bold bg-secondary-fixed dark:bg-secondary-container Active: scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">build</span>
+                    Fix
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">verified</span>
+                    Verify
+                </a>
+</nav>
+</div>
+<div class="mt-auto p-6 border-t border-outline-variant">
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    Settings
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+                    Support
+                </a>
+</nav>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[240px] flex-1 flex flex-col h-full overflow-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface-container-lowest dark:bg-surface-container-high text-on-surface dark:text-on-surface font-headline-sm text-headline-sm docked full-width top-0 sticky z-50 border-b border-outline-variant shadow-sm transition-all duration-200 ease-in-out flex justify-between items-center w-full px-gutter h-16">
+<div class="flex items-center gap-4">
+<div class="font-display-lg text-display-lg font-black text-primary text-xl tracking-tight">ProductOps Agent</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-sm font-label-lg text-on-surface-variant">
+                    Active Agents: 12
+                </div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-margin-lg">
+<div class="max-w-container-max mx-auto h-full flex flex-col">
+<!-- Page Header & Actions -->
+<div class="flex justify-between items-center mb-margin-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg font-bold text-text-primary mb-1">Resolution Protocol</h1>
+<p class="font-body-lg text-body-lg text-text-secondary">Reviewing proposed fix for incident PR-482</p>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-2 rounded-lg bg-surface-subtle text-text-primary font-label-lg hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+                            View Context
+                        </button>
+<button class="px-6 py-2 rounded-lg bg-primary text-white font-label-lg hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">merge</span>
+                            Merge Fix
+                        </button>
+</div>
+</div>
+<!-- Main Layout Grid -->
+<div class="grid grid-cols-12 gap-margin-md flex-1">
+<!-- Left Column: Code Proposal (Bento Grid Style) -->
+<div class="col-span-8 flex flex-col gap-margin-md">
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex-1 flex flex-col border border-surface-subtle">
+<div class="flex justify-between items-center mb-6 border-b border-surface-subtle pb-4">
+<h3 class="font-headline-md text-headline-md text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">code_blocks</span>
+                                    Code Agent Proposal
+                                </h3>
+<div class="bg-surface-subtle px-3 py-1 rounded-full text-xs font-label-caps text-text-secondary tracking-wider">
+                                    PR #482
+                                </div>
+</div>
+<div class="flex-1 bg-inverse-surface rounded-lg p-4 overflow-hidden flex flex-col font-body-sm text-body-sm text-surface-subtle">
+<div class="flex items-center gap-4 text-xs mb-4 text-outline-variant font-mono">
+<span>src/api/checkout_handler.ts</span>
+</div>
+<div class="overflow-y-auto flex-1 code-block whitespace-pre">
+<div class="flex text-outline-variant"><span class="w-8 text-right pr-4 select-none opacity-50">14</span><span>  async function processOrder(payload) {</span></div>
+<div class="flex text-outline-variant"><span class="w-8 text-right pr-4 select-none opacity-50">15</span><span>    try {</span></div>
+<div class="flex diff-remove text-[#ff8a80]"><span class="w-8 text-right pr-4 select-none opacity-50">16</span><span>-     const result = await db.query('SELECT * FROM inventory WHERE id = ?', [payload.id]);</span></div>
+<div class="flex diff-add text-[#b9f6ca]"><span class="w-8 text-right pr-4 select-none opacity-50">17</span><span>+     const result = await db.query('SELECT * FROM inventory WHERE id = ? FOR UPDATE', [payload.id]);</span></div>
+<div class="flex diff-add text-[#b9f6ca]"><span class="w-8 text-right pr-4 select-none opacity-50">18</span><span>+     if (!result.rows.length) throw new Error('Item out of stock');</span></div>
+<div class="flex text-outline-variant"><span class="w-8 text-right pr-4 select-none opacity-50">19</span><span> </span></div>
+<div class="flex diff-remove text-[#ff8a80]"><span class="w-8 text-right pr-4 select-none opacity-50">20</span><span>-     // Process payment</span></div>
+<div class="flex diff-remove text-[#ff8a80]"><span class="w-8 text-right pr-4 select-none opacity-50">21</span><span>-     await paymentGateway.charge(payload.amount);</span></div>
+<div class="flex diff-add text-[#b9f6ca]"><span class="w-8 text-right pr-4 select-none opacity-50">22</span><span>+     // Process payment with idempotency key</span></div>
+<div class="flex diff-add text-[#b9f6ca]"><span class="w-8 text-right pr-4 select-none opacity-50">23</span><span>+     await paymentGateway.charge(payload.amount, { idempotencyKey: payload.orderId });</span></div>
+<div class="flex text-outline-variant"><span class="w-8 text-right pr-4 select-none opacity-50">24</span><span> </span></div>
+<div class="flex text-outline-variant"><span class="w-8 text-right pr-4 select-none opacity-50">25</span><span>    } catch (e) {</span></div>
+</div>
+</div>
+<div class="mt-4 text-sm text-text-secondary">
+<span class="font-semibold text-text-primary">Agent Reasoning:</span> Implemented row-level locking during inventory check to prevent race conditions observed in recent latency spikes. Added idempotency key to payment gateway call to ensure duplicate charges are avoided during retries.
+                            </div>
+</div>
+</div>
+<!-- Right Column: Analysis & Governance -->
+<div class="col-span-4 flex flex-col gap-margin-md">
+<!-- Impact & Risk Analysis -->
+<div class="bg-surface-high rounded-xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-subtle">
+<h3 class="font-headline-md text-headline-md text-text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">security</span>
+                                Risk Analysis
+                            </h3>
+<div class="flex items-center gap-3 mb-6 p-4 rounded-lg bg-[#e8f5e9]">
+<span class="material-symbols-outlined text-accent-success text-3xl">check_circle</span>
+<div>
+<div class="font-bold text-[#1b5e20]">Low Risk</div>
+<div class="text-sm text-[#2e7d32]">Automated tests passed. No cascading impacts detected.</div>
+</div>
+</div>
+<div class="space-y-3 font-body-sm text-body-sm">
+<div class="flex justify-between items-center border-b border-surface-subtle pb-2">
+<span class="text-text-secondary">Performance Impact</span>
+<span class="text-text-primary font-medium">Neutral</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-subtle pb-2">
+<span class="text-text-secondary">Schema Changes</span>
+<span class="text-text-primary font-medium">None</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-text-secondary">Downtime Required</span>
+<span class="text-text-primary font-medium">No</span>
+</div>
+</div>
+</div>
+<!-- Review Scheduler -->
+<div class="bg-surface-high rounded-xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-subtle flex-1">
+<h3 class="font-headline-md text-headline-md text-text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">event_available</span>
+                                Review Scheduler
+                            </h3>
+<p class="text-sm text-text-secondary mb-4">Required approvals from code owners.</p>
+<div class="space-y-4">
+<!-- Reviewer 1 -->
+<div class="p-3 rounded-lg border border-surface-subtle hover:bg-surface-base transition-colors cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-xs">SA</div>
+<div>
+<div class="font-medium text-sm text-text-primary">Sarah Jenkins</div>
+<div class="text-xs text-text-secondary">Lead Backend</div>
+</div>
+</div>
+<div class="px-2 py-1 bg-[#e8f5e9] text-[#1b5e20] text-xs rounded-full font-medium">Available Now</div>
+</div>
+<div class="flex items-center gap-2 text-xs text-text-secondary mt-2">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+<span>Syncs with Google Calendar</span>
+</div>
+</div>
+<!-- Reviewer 2 -->
+<div class="p-3 rounded-lg border border-surface-subtle hover:bg-surface-base transition-colors cursor-pointer opacity-70">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-dim text-on-surface-variant flex items-center justify-center font-bold text-xs">DC</div>
+<div>
+<div class="font-medium text-sm text-text-primary">David Chen</div>
+<div class="text-xs text-text-secondary">Core Services</div>
+</div>
+</div>
+<div class="px-2 py-1 bg-surface-variant text-text-secondary text-xs rounded-full font-medium">Busy until 3PM</div>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 py-2 border border-outline-variant rounded-lg text-text-primary font-label-lg hover:bg-surface-base transition-colors">
+                                Request Review
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

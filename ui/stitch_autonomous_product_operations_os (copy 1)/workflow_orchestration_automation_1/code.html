@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Workflows &amp; Automation - ProductOps Agent</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed-variant": "#7c2e00",
+                    "tertiary-fixed": "#ffdbcc",
+                    "surface-container-high": "#e6e8f3",
+                    "on-secondary-fixed": "#0c006b",
+                    "secondary-fixed": "#e2dfff",
+                    "secondary-container": "#6462ec",
+                    "outline-variant": "#c1c6d7",
+                    "tertiary": "#9e3d00",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "text-secondary": "#86868B",
+                    "on-tertiary-container": "#fffbff",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#f9f9ff",
+                    "surface-container": "#ecedf9",
+                    "on-secondary": "#ffffff",
+                    "surface-container-low": "#f1f3fe",
+                    "primary-fixed-dim": "#adc6ff",
+                    "text-primary": "#1D1D1F",
+                    "tertiary-container": "#c64f00",
+                    "on-background": "#181c23",
+                    "on-secondary-fixed-variant": "#332dbc",
+                    "surface-dim": "#d8d9e5",
+                    "on-primary": "#ffffff",
+                    "on-secondary-container": "#fffbff",
+                    "inverse-primary": "#adc6ff",
+                    "background": "#f9f9ff",
+                    "on-tertiary-fixed": "#351000",
+                    "on-error": "#ffffff",
+                    "secondary": "#4a47d2",
+                    "primary-container": "#0070eb",
+                    "on-tertiary": "#ffffff",
+                    "on-surface-variant": "#414755",
+                    "on-primary-fixed-variant": "#004493",
+                    "surface-container-highest": "#e0e2ed",
+                    "surface": "#f9f9ff",
+                    "accent-warning": "#FF9500",
+                    "on-primary-fixed": "#001a41",
+                    "tertiary-fixed-dim": "#ffb595",
+                    "on-primary-container": "#fefcff",
+                    "on-surface": "#181c23",
+                    "surface-tint": "#005bc1",
+                    "accent-success": "#34C759",
+                    "outline": "#717786",
+                    "inverse-on-surface": "#eef0fc",
+                    "surface-variant": "#e0e2ed",
+                    "surface-subtle": "#E5E5EA",
+                    "inverse-surface": "#2d3039",
+                    "primary": "#0058bc",
+                    "error": "#ba1a1a",
+                    "surface-base": "#F5F5F7",
+                    "secondary-fixed-dim": "#c2c1ff",
+                    "primary-fixed": "#d8e2ff",
+                    "surface-high": "#FFFFFF",
+                    "accent-error": "#FF3B30"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-lg": "40px",
+                    "margin-sm": "16px",
+                    "unit": "8px",
+                    "margin-md": "24px",
+                    "container-max": "1440px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "label-lg": [
+                            "Inter"
+                    ],
+                    "headline-lg-mobile": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ],
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "headline-lg": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "label-lg": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "letterSpacing": "0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "28px",
+                            {
+                                    "lineHeight": "34px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "17px",
+                            {
+                                    "lineHeight": "24px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-caps": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.06em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "40px",
+                            {
+                                    "lineHeight": "48px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-sm": [
+                            "13px",
+                            {
+                                    "lineHeight": "18px",
+                                    "letterSpacing": "0.01em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-md": [
+                            "15px",
+                            {
+                                    "lineHeight": "22px",
+                                    "letterSpacing": "0em",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary antialiased flex flex-col md:flex-row min-h-screen">
+<!-- TopNavBar (Mobile Only) -->
+<header class="md:hidden fixed top-0 right-0 left-0 z-50 flex justify-between items-center px-margin-sm h-16 bg-surface/80 backdrop-blur-xl shadow-sm border-b border-surface-subtle">
+<div class="flex items-center gap-unit">
+<span class="font-headline-md text-headline-md font-bold text-primary">Lumina Command</span>
+</div>
+<div class="flex items-center gap-margin-sm text-text-secondary">
+<span class="material-symbols-outlined hover:bg-surface-subtle/50 transition-colors duration-200 p-2 rounded-full cursor-pointer">notifications</span>
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small circular profile picture of the Chief Product Officer, professionally lit, corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1tjYSn4IJk2CTqCXscm_XCsg-TqD52ct5lCvCBlLIgDcpPCu1UR3FrehbVjPje3hKOR-9ZcfXVONquPXTD2fguL2qQK4m4Di76AOH7ickC4tW-Eh1NeKwT60_8oLaIjQBMGQ4fJoV5W4XKl6HqXyMyWECobIOoPCY27CNsYTs4YgBeJY9-b_dBDzqnsBWfzO84S_oT2UnPsU27JkHogcEgB5lRoeLadS_R1OKjzIXakIhamXiZ4HK"/>
+</div>
+</header>
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex fixed left-0 top-0 h-screen w-64 flex-col p-margin-md border-r border-surface-subtle bg-surface-base z-40">
+<div class="flex items-center gap-3 mb-margin-lg">
+<img class="w-10 h-10 rounded-lg" data-alt="A sleek minimalist corporate logo for an autonomous agent platform, featuring a glowing blue core in a geometric shell." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHjAvCnWjOlgVB4JRGNge5pSFlwm4o_TAUjajkXRKf2vDtrvRTveTkpELxbuy9JZX-Bc-XP-zFdBH5WNesSfPNsPeAtm9SLzDoeoj2tMV6vSyYq8BCVnjE1Tb4LW5MXDr5R4TsWPCEdCWyC0OvxiDfggEXzw_PICOKq0SMGkyD2uFrMgNPTjfBL8uhMTFeia_uaHWfkD_Dvb7r77EHBsz061AJvgbPBfP444toX5lxCJIsArkuivag"/>
+<div>
+<h1 class="font-headline-md text-headline-md text-on-surface leading-tight">Research Lab</h1>
+<p class="font-body-sm text-body-sm text-text-secondary">Autonomous Ops</p>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary font-label-lg text-label-lg py-2.5 rounded-lg mb-margin-md shadow-sm hover:opacity-90 transition-opacity">
+            New Investigation
+        </button>
+<div class="flex-1 flex flex-col gap-2 overflow-y-auto">
+<!-- Navigation Items -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">sensors</span> Signal
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">psychology</span> Understand
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">chat_bubble</span> Ask
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">biotech</span> Diagnose
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white shadow-sm text-primary font-bold font-label-lg text-label-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">account_tree</span> Workflows
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">build_circle</span> Fix
+            </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">verified</span> Verify
+            </a>
+</div>
+<div class="mt-auto pt-margin-md border-t border-surface-subtle flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-primary transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">description</span> Docs
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-primary transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span> Support
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 w-full md:pl-64 pt-16 md:pt-0 min-h-screen flex flex-col">
+<!-- Top App Bar (Desktop) -->
+<div class="hidden md:flex sticky top-0 right-0 z-30 h-16 bg-surface/80 backdrop-blur-xl px-margin-lg flex justify-between items-center border-b border-surface-subtle">
+<div class="flex items-center gap-4 bg-surface-base rounded-full px-4 py-2 w-96 focus-within:ring-2 ring-primary/20 transition-all">
+<span class="material-symbols-outlined text-text-secondary">search</span>
+<input class="bg-transparent border-none outline-none w-full text-body-md font-body-md text-text-primary placeholder:text-text-secondary" placeholder="Search workflows..." type="text"/>
+</div>
+<div class="flex items-center gap-margin-sm text-text-secondary">
+<button class="hover:bg-surface-subtle p-2 rounded-full transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="hover:bg-surface-subtle p-2 rounded-full transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<img class="w-8 h-8 rounded-full object-cover ml-2 cursor-pointer" data-alt="A small circular profile picture of the Chief Product Officer, professionally lit, corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAg9njD3dV5fH-XKWGEKi5oMLu5USmu6L_KlIuRYl23m-3YwmKuXlt7TsToFoPLnIqyasVxwdYPD4lqwBvqReyzfLhcHAi4jtrEOKARNCp2RSMnuML-AEGZVmt2kVQSCfcYGdSsvoaAXsTmd9Kype3i6li0Qd7VwCwMhCAIBuUNePWn5bB04vuy4sOhh3AYu8hkP3aCOtXUzolz_KhVVIP5TCY-6qRZ3hH_OYLTTwDdXOszwVVAaDXN"/>
+</div>
+</div>
+<!-- Canvas -->
+<div class="p-margin-sm md:p-margin-lg flex-1 overflow-y-auto pb-32 md:pb-margin-lg max-w-[1600px] mx-auto w-full flex flex-col gap-margin-lg">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-text-primary">Workflows &amp; Automation</h2>
+<p class="font-body-md text-body-md text-text-secondary mt-1">Manage autonomous graphs and agent collaborations.</p>
+</div>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-lg text-label-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm">
+<span class="material-symbols-outlined">add</span> Design New Workflow
+                </button>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-margin-md">
+<!-- Central Hero: Live Graph Visualization (Takes up 2 cols on XL) -->
+<div class="xl:col-span-2 bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex flex-col">
+<div class="flex justify-between items-center mb-margin-md">
+<h3 class="font-headline-md text-headline-md text-text-primary">Active Incident Investigation Loop</h3>
+<span class="bg-accent-success/10 text-accent-success px-3 py-1 rounded-full font-label-caps text-label-caps flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-accent-success animate-pulse"></span> Running
+                        </span>
+</div>
+<!-- Graph Canvas Placeholder -->
+<div class="flex-1 min-h-[400px] bg-surface-base rounded-lg border border-surface-subtle relative overflow-hidden flex items-center justify-center">
+<div class="absolute inset-0 bg-cover bg-center opacity-50" data-alt="A stylized, modern node-based flowchart graphic representing an autonomous AI agent workflow. The nodes are clean white cards with subtle shadows, connected by smooth blue lines on a light gray background. Some nodes feature small, human-like avatar icons to represent specific AI agents. The overall style is clean, corporate modern, and high-tech." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA_xc76fqgLDXijB7emgcN4E3Sp05hQjGKNBWCk_RMLLuxg2sYYSxHeMrGJqKXVQc7q30rGNd9xF06PnnVWCLWfGX5-Z8aQofPLyeXQ4WVsCa8VWQiKiJXlubmWLC82OnBpKvOgAVaVt7iddnB3VzyYVbM1YXzPZIQpx5r9wX8M_gp_7w1YuFIoqdex3tQ-fQdFF9masmZ32fwNrL9tB1R9BG8mh64fIbxhL3n_tb9pixrW_y4peuVD')"></div>
+<!-- Simulated Graph Elements on top of background -->
+<div class="relative z-10 flex flex-col items-center gap-8 w-full max-w-2xl">
+<!-- Node 1 -->
+<div class="bg-white p-4 rounded-xl shadow-lg border border-surface-subtle flex items-center gap-4 w-64">
+<img class="w-10 h-10 rounded-full border-2 border-surface-subtle" data-alt="A friendly, professional headshot avatar representing an AI 'Signal Agent'." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHezBZk94WTQD3TJVSNVbyz90vleZ01LuLDbfmBQS_xwn9x2Eu14oqBxaIbaHYr2uYGqV-NtHypnVSclyV4n7VOJKub0EilibKFT-CfPSlylOyJ0yLRhYpMbY3J_qh3WfGaxxsJTKTHHP6-Qds09InygccA-T7E0GPHy6EDA3O3mR1n84KPufEpg2zajB-nJh14NdF8hndiCDKljVJs-JcR7bcZ3_KFWZpW_KgddEf21RxrvqyAYzB"/>
+<div>
+<div class="font-label-lg text-label-lg text-text-primary">Signal Agent</div>
+<div class="font-body-sm text-body-sm text-accent-success">Completed</div>
+</div>
+</div>
+<div class="w-0.5 h-8 bg-outline-variant relative">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant">arrow_downward</div>
+</div>
+<!-- Node 2 -->
+<div class="bg-white p-4 rounded-xl shadow-lg border-2 border-primary flex items-center gap-4 w-64 relative">
+<div class="absolute -right-2 -top-2 w-4 h-4 bg-primary rounded-full animate-ping"></div>
+<img class="w-10 h-10 rounded-full border-2 border-surface-subtle" data-alt="A friendly, professional headshot avatar representing an AI 'Investigation Team'." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3sJHM99yjqVsWd0o-XB5YmlxLMH1nvUpxV7RF3XITvLyUvzVcdgAP1_Om3PcKrqDjOwTr3wnqVYyP-vX6q-i2men4oKJtX0RfmjIofyBTzmp-zWxTRjg8bvufrj6lI-DCJHddFCslgW0JLVGktk3tkRBHRUEr5qmwpd7RT408fehESskHOhROTNQ3F0A07M994iMQ0Drx_Rd1Tn29NKvA9H7HTJ2Y0CgJ0J64AqPZGctDqHOetxGb"/>
+<div>
+<div class="font-label-lg text-label-lg text-text-primary">Investigation Team</div>
+<div class="font-body-sm text-body-sm text-primary">Gathering Context...</div>
+</div>
+</div>
+<div class="w-0.5 h-8 bg-surface-subtle border-l-2 border-dashed border-outline-variant relative">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant">arrow_downward</div>
+</div>
+<!-- Node 3 -->
+<div class="bg-white/50 p-4 rounded-xl border border-surface-subtle flex items-center gap-4 w-64 opacity-70">
+<img class="w-10 h-10 rounded-full grayscale" data-alt="A friendly, professional headshot avatar representing an AI 'Root Cause Agent'." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA43ZtiAJW1HQmU55jTczaEf1phxNXY7slO0UimCaSktKI5H9qXlcHgmuEfMOiimBPF0jceXo9x68lwE9EnKdEHkBjSk1n0kbTxZx8Mb13Tk1lp_RJIumNQe5tgf0ZoCYqInwejddu0dPyBTwVatmsRi4OGKh3VPvc8BFKW9GD_7oPq4HAXn9uDnvEX1ZjqnIpQ6vqm8ppvxs4OCsqj7I5yLUpLDMVe7_D-NbeFdUzUJr2rJTk1TKVZ"/>
+<div>
+<div class="font-label-lg text-label-lg text-text-secondary">Root Cause Agent</div>
+<div class="font-body-sm text-body-sm text-text-secondary">Waiting</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Metrics & Executions -->
+<div class="flex flex-col gap-margin-md">
+<!-- Workflow Performance Metrics -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<h3 class="font-label-lg text-label-lg text-text-secondary mb-4 uppercase tracking-wider">Overall Performance</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-base p-4 rounded-lg">
+<div class="font-body-sm text-body-sm text-text-secondary mb-1">Avg. Completion Time</div>
+<div class="font-headline-md text-headline-md text-text-primary">4m 12s</div>
+</div>
+<div class="bg-surface-base p-4 rounded-lg">
+<div class="font-body-sm text-body-sm text-text-secondary mb-1">Autonomy Rate</div>
+<div class="font-headline-md text-headline-md text-text-primary">94.2%</div>
+</div>
+<div class="bg-surface-base p-4 rounded-lg col-span-2 flex items-center justify-between">
+<div>
+<div class="font-body-sm text-body-sm text-text-secondary mb-1">Success Rate</div>
+<div class="font-headline-md text-headline-md text-text-primary text-accent-success">98.5%</div>
+</div>
+<div class="w-16 h-16 rounded-full border-4 border-surface-subtle border-t-accent-success flex items-center justify-center">
+<span class="material-symbols-outlined text-accent-success">trending_up</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Executions -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] flex-1 overflow-hidden flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-label-lg text-label-lg text-text-secondary uppercase tracking-wider">Recent Executions</h3>
+<button class="text-primary font-label-caps text-label-caps hover:underline">View All</button>
+</div>
+<div class="flex-1 overflow-y-auto pr-2 flex flex-col gap-3">
+<!-- Log Item 1 -->
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-subtle transition-colors cursor-pointer border border-transparent hover:border-surface-subtle">
+<span class="material-symbols-outlined text-accent-success mt-0.5">check_circle</span>
+<div>
+<div class="font-label-lg text-label-lg text-text-primary">Security Patrol</div>
+<div class="font-body-sm text-body-sm text-text-secondary">Triggered by schedule • 12 mins ago</div>
+</div>
+</div>
+<!-- Log Item 2 -->
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-subtle transition-colors cursor-pointer border border-transparent hover:border-surface-subtle">
+<span class="material-symbols-outlined text-accent-warning mt-0.5">warning</span>
+<div>
+<div class="font-label-lg text-label-lg text-text-primary">Customer Feedback Synthesis</div>
+<div class="font-body-sm text-body-sm text-text-secondary">Required human input • 1 hr ago</div>
+</div>
+</div>
+<!-- Log Item 3 -->
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-subtle transition-colors cursor-pointer border border-transparent hover:border-surface-subtle">
+<span class="material-symbols-outlined text-accent-success mt-0.5">check_circle</span>
+<div>
+<div class="font-label-lg text-label-lg text-text-primary">Incident Investigation Loop</div>
+<div class="font-body-sm text-body-sm text-text-secondary">Triggered by PagerDuty • 3 hrs ago</div>
+</div>
+</div>
+<!-- Log Item 4 -->
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-subtle transition-colors cursor-pointer border border-transparent hover:border-surface-subtle">
+<span class="material-symbols-outlined text-text-secondary mt-0.5">cancel</span>
+<div>
+<div class="font-label-lg text-label-lg text-text-primary text-text-secondary">Product Opportunity Discovery</div>
+<div class="font-body-sm text-body-sm text-text-secondary">Cancelled by user • Yesterday</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Workflow Library Grid -->
+<div>
+<h3 class="font-headline-md text-headline-md text-text-primary mb-margin-sm">Workflow Library</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-margin-md">
+<!-- Card 1 -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow border border-surface-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg text-primary"><span class="material-symbols-outlined">troubleshoot</span></div>
+<span class="w-2 h-2 rounded-full bg-accent-success"></span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-2">Incident Investigation Loop</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 flex-1">Automatically analyzes alerts, gathers logs, and proposes initial root causes.</p>
+<div class="flex items-center justify-between border-t border-surface-subtle pt-3 mt-auto">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of an AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGhpxZRAc-wzTOQTQ2TLF2r4I01u9K_cumq3du7QQkQ-T5RK1dsyUjWM83Bz9jtTM-qyOZk38zVqxPjvlkq3Y2iyZLWh_Q38ELF5I3_b3o4gbKG2AXgbhxsCilbail5CFJXXoskmDQTjU6_EyJOev6CtLIpyPAzPq6tad9hFzGV77mS5P-8sOqNPUd5T1EdxTISXru21_SFJuzGJPmOJl00KTFBql0qq9-IPocmH-2jMNJ36p0tSw-"/>
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of another AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw7molRebE9PnzwKeWy7jnPwMqhikiWaxFdp_wCPabLURVaXXQXBlQwEmRN6yxSJoHRgWEIoFTS97ybtvYYbrI3_qsDiFbrLt_0zgXJfZUEwSuPHrTJz-fgWlMC9XGCCzTGRN3U1aCBjzNmA_1c8vtxpoQwcLCl5iGrKtEkY-LPuEeY7mlBZNlqhd9ifv-rcvf4IGimr7V9vHS1dn1uPa5jNwo9P4dFVuDC0rdNCjy9l89BoMAVBFK"/>
+<div class="w-6 h-6 rounded-full bg-surface-subtle border-2 border-white flex items-center justify-center text-[10px] text-text-secondary font-bold">+2</div>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary">4 Agents</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow border border-surface-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary/10 rounded-lg text-secondary"><span class="material-symbols-outlined">lightbulb</span></div>
+<span class="w-2 h-2 rounded-full bg-surface-dim"></span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-2">Product Opportunity Discovery</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 flex-1">Scans market trends and user feedback to identify new feature ideas.</p>
+<div class="flex items-center justify-between border-t border-surface-subtle pt-3 mt-auto">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of an AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_j53pHj1Uk2RU0TCSsTVbc38OP0ynGh1C9kK0gug6JF0PNuZp2K1NTaegyv3C1SocbGr98HnKX69KpvdIYdP2Zen-gfo84kMgYjIinTmUZVsmfLy_NdYI2ieQzJugQcknpvCqqJPf3X5eSv1NjE99FTJ07HFnnh3zizX7BBCOx137xb0jN7p6389arXHA2AalCKE_4Wx29xXvIcWYexf6DAhaHPd7HsNA8emcDofomXZn4RaoDSQP"/>
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of another AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjvL1WM_huR_DA_clu4QsiwhY6xmzR3yKNNDdfSro0UUTEEc4rctEuDurShqG5BlBcFpx-MjRgC3QXgfXWnAReZyBqLhJXP3xHK3DsDj4pN8P_5fU3a1B5bYg5OVDE_McL7inZ4qcfZyv7oE56TKzeTnPKUDtkKkbTtNJPyxd7u4kBBoUWvlWtM2pBgLlMUlORxCAtYTx8Q3InXrihMa3_3A5Pb5TC9TKv5aREdfmMxY3KV2N7FTJq"/>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary">2 Agents</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow border border-surface-subtle cursor-pointer flex flex-col h-full">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-accent-warning/10 rounded-lg text-accent-warning"><span class="material-symbols-outlined">security</span></div>
+<span class="w-2 h-2 rounded-full bg-accent-success"></span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-2">Security Patrol</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 flex-1">Continuous monitoring of access logs and anomalous network behavior.</p>
+<div class="flex items-center justify-between border-t border-surface-subtle pt-3 mt-auto">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of an AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAf7TJa1BM9RjCJPCpya-BgSzVR5Y0Oh6BZFEBepGA5e30GmzPlCZMP7JpXmur9Y56IIpCKHrtK4xPqLdbtwOyfL3HiTYEI1mbzHfp6yjlYD0fB-BmrVerbbOeZy2A4Bd1D_ou34sItDEKAGP_K92odU-PqTQ56pwSdfrO3ULy38-lZVBO9TGy1kZBK7IhCT-yebDC38Y0CqZlkicopPCjleP5Xr3wkX9FKumA49NndgjVQLzvfHI3H"/>
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of another AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGgwRLhgkrdRMriwtu4unrmwTEcw-YsRhJ846ndZkTlrVJ9U_EgInTWQifQdRwsj0i15TI_Ap-wW2vA-SbAyocKlYsr4iUhNiP2MqBWa0-DyC3ptF_3d49EClQ-oiohrJNvYZ4LIEbiHdfaLHkBYINDRdFTdUOiS53KhSZKaljnUDd2AHcAvsnou1bvtNN4NTW-uqnvD9ISZp_Krl-PqfS6oV1Tqtb8mBTdLD7zYaNv74L-NTfuthp"/>
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of a third AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBg7djzRZchk8-0lI88CEPxwW46XpXe1FJBPrjFnpzJWkdXLkcth2kG6bX3167-Azxvn01-2800WxfFoU57fFDtQgsEBRzh9fv4-DMl7Kp160TxoFIfXyFl0M8hoSjg2bEDMHDwn7ecQ_CxXaWBTjMIH5A1bcUWEI3cPJFDtCg5BjQwz8SH1rBm0tBV-N2Y8mKr0LxZ6BvtaHTAphIXhYqs3Q8RcWwIqMxrWRMFqcdxY-J-_VAycwE"/>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary">3 Agents</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow border border-surface-subtle cursor-pointer flex flex-col h-full opacity-70">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary-container/10 rounded-lg text-tertiary-container"><span class="material-symbols-outlined">forum</span></div>
+<span class="w-2 h-2 rounded-full bg-surface-dim"></span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-2">Customer Feedback Synthesis</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 flex-1">Aggregates and summarizes support tickets weekly.</p>
+<div class="flex items-center justify-between border-t border-surface-subtle pt-3 mt-auto">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-white" data-alt="Small avatar of an AI agent." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBw7eVBLyZHOljjgDXtudyKsdxSlarVvftR_fjii7_97R6lO17725RJaL4No-MPieFh7esjasVMGOjfV5usmUWor_ZhdItGblfLXpOAujVarCPWKpSi-taeypxE9d35FFaPnqaY-QLHpqhNF52HKh3Gbc20raoGQqTYhR9StkjYCR_LtF8rvoBVRSWCQs6X-k0ZD-38sVR1SwxoDyFtmbFFAg6Ph5kxd1PpCCrJckYU9pS-Hw2BFxcs"/>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary">1 Agent</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

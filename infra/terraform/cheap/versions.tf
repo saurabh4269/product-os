@@ -27,3 +27,8 @@ variable "billing_account" {
   type    = string
   default = ""
 }
+
+variable "loop_public_url" {
+  type    = string
+  default = "https://productos.heisenbug.in"
+}

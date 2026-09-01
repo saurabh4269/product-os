@@ -32,7 +32,7 @@ export function SystemHubDiagram({ className }: { className?: string }) {
         <span className={cn(hotConsole && "rounded bg-[#0071e3]/15 px-1 text-[#0071e3]")}>
           {"  ┌─ Console (Next.js) ─────────────────────┐"}
         </span>
-        {"\n  │  DemoRunner · PipelineBoard · Rooms    │\n  └──────────────┬──────────────────────────┘\n                 │ REST + "}
+        {"\n  │  PipelineBoard · Rooms · Connect        │\n  └──────────────┬──────────────────────────┘\n                 │ REST + "}
         <span className={cn(hotWs && "text-[#0071e3] font-semibold")}>WebSocket /ws</span>
         {"\n                 ▼\n  ┌─ Cloud Run "}
         <code>loop</code>
@@ -79,7 +79,7 @@ export function EventPathsDiagram({
   const stage = usePipelineHighlight();
   const rows = [
     { id: "cove", label: "Cove checkout hang", path: "POST /api/t/acme/signals", hot: stage === "signal", detail: "Tenant webhook posts a signal; Signal agent opens or joins an investigation room." },
-    { id: "demo", label: "Demo run", path: "POST /api/demo/run", hot: stage === "signal", detail: "Demo signal. Same pipeline as production." },
+    { id: "demo", label: "Fixture run", path: "POST /api/demo/run", hot: stage === "signal", detail: "Eval fixture signal. Same pipeline as production." },
     { id: "callback", label: "Agent callback → UI", path: "POST /api/agent_callback → WS", hot: stage === "investigate", detail: "Worker posts progress; console WS pushes agent_presence and messages without refresh." },
     { id: "bq", label: "GA4 → BQ → warehouse", path: "pull · warehouse_mode: auto", hot: stage === "investigate", detail: "Scheduled pull reads facts tables; investigators query via warehouse.read." },
     { id: "hitl", label: "HIGH approval", path: "WS approval_required → modal", hot: stage === "approve", detail: "Risk tier HIGH blocks execute until operator approves in modal." },

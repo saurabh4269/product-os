@@ -39,3 +39,11 @@ def test_send_without_oauth_skips(monkeypatch):
     monkeypatch.setattr(mail, "connected_email", lambda: "")
     out = mail.send_to_self("Subject", "Hello")
     assert out.status == "skipped"
+
+
+def test_draft_rejects_invalid_to(monkeypatch):
+    monkeypatch.setattr(mail, "access_token", lambda: "tok")
+    monkeypatch.setattr(mail, "connected_email", lambda: "")
+    out = mail.draft("reviewers", "Subject", "Hello")
+    assert out.status == "skipped"
+    assert "Invalid To" in out.detail

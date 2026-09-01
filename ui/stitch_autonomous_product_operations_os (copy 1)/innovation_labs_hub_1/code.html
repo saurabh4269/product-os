@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Labs Hub - ProductOps</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Guidelines -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#d8e2ff",
+                        "tertiary": "#9e3d00",
+                        "accent-warning": "#FF9500",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-base": "#F5F5F7",
+                        "surface": "#f9f9ff",
+                        "on-primary-container": "#fefcff",
+                        "surface-high": "#FFFFFF",
+                        "outline": "#717786",
+                        "primary": "#0058bc",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f1f3fe",
+                        "on-surface": "#181c23",
+                        "on-tertiary-fixed": "#351000",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#adc6ff",
+                        "background": "#f9f9ff",
+                        "secondary-fixed": "#e2dfff",
+                        "inverse-on-surface": "#eef0fc",
+                        "surface-container-highest": "#e0e2ed",
+                        "surface-container": "#ecedf9",
+                        "inverse-primary": "#adc6ff",
+                        "error": "#ba1a1a",
+                        "on-background": "#181c23",
+                        "surface-bright": "#f9f9ff",
+                        "on-primary-fixed": "#001a41",
+                        "accent-error": "#FF3B30",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#fffbff",
+                        "outline-variant": "#c1c6d7",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#c64f00",
+                        "accent-success": "#34C759",
+                        "on-secondary-fixed": "#0c006b",
+                        "text-primary": "#1D1D1F",
+                        "inverse-surface": "#2d3039",
+                        "secondary": "#4a47d2",
+                        "surface-subtle": "#E5E5EA",
+                        "surface-dim": "#d8d9e5",
+                        "surface-container-high": "#e6e8f3",
+                        "on-primary-fixed-variant": "#004493",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#6462ec",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "text-secondary": "#86868B",
+                        "surface-variant": "#e0e2ed",
+                        "primary-container": "#0070eb",
+                        "surface-tint": "#005bc1",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#414755"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-sm": "16px",
+                        "container-max": "1440px",
+                        "margin-md": "24px",
+                        "margin-lg": "40px",
+                        "unit": "8px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-surface-base text-on-surface flex min-h-screen">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full hidden lg:flex flex-col border-r border-surface-subtle w-64 bg-surface-container-lowest shadow-[4px_0px_20px_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out z-40">
+<!-- Header -->
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-surface-variant">
+<img alt="Lab Identity" class="w-full h-full object-cover" data-alt="A minimalist, abstract geometric logo representing a highly advanced, automated research facility. Clean lines, soft blue and white hues, high-key lighting, modern corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBz5U5DzRd40e3yJ6vvpq_n_i8kSd4WI4n1Ye5c2uRYB1rsXNOZe2nmyRLUOT6e2j1WDrQCdRSTC7I6El6qmVeI3NNN9Xr3BqvyG5QOMGomETBPVMfj37x0y9ZlVLg9U4OfywN8adqmCTMgM1SvzSDPcQ1ZKxD6vEwwZy0da2tuMPtM6D90wH0vTlXjus_fIT9EYM4xK7FOH2Rf5khYRQI9RjuYwIfxUPadto2pVKdg4CJlq_THeyFS"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-extrabold text-primary">Reliability Hub</h2>
+<p class="font-body-sm text-body-sm text-text-secondary">Autonomous Labs</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-1 px-4 space-y-1 overflow-y-auto">
+<!-- Active Tab: Overview -->
+<a class="flex items-center gap-3 px-3 py-2 bg-primary-container text-on-primary-container font-bold rounded-lg font-body-md text-body-md transition-all duration-300 ease-in-out" href="#">
+<span class="material-symbols-outlined icon-fill text-lg">dashboard</span>
+                Overview
+            </a>
+<!-- Inactive Tabs -->
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+                Architecture
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">analytics</span>
+                Evaluation
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">science</span>
+                Simulations
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-lg">biotech</span>
+                Prototypes
+            </a>
+</nav>
+<!-- CTA & Footer -->
+<div class="p-4 space-y-4">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2.5 px-4 rounded-lg font-label-lg text-label-lg hover:bg-on-primary-fixed-variant transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Experiment
+            </button>
+<div class="pt-4 border-t border-surface-variant space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">description</span>
+                    Documentation
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-subtle transition-all duration-300 ease-in-out rounded-lg font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+                    Support
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 lg:ml-64 flex flex-col min-h-screen">
+<!-- TopNavBar (Shared Component) -->
+<header class="sticky top-0 z-50 flex justify-between items-center px-margin-lg h-16 w-full max-w-container-max mx-auto bg-surface/80 backdrop-blur-xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<div class="flex items-center gap-6">
+<!-- Brand Logo / Title -->
+<h1 class="font-headline-md text-headline-md font-bold text-primary flex items-center gap-2">
+<span class="text-text-secondary font-medium font-body-md text-body-md">Product OS</span>
+<span class="material-symbols-outlined text-text-secondary text-sm">chevron_right</span>
+                    Labs
+                </h1>
+<!-- Navigation Links -->
+<nav class="hidden md:flex gap-6 font-label-lg text-label-lg">
+<!-- Active Link -->
+<a class="text-primary font-bold border-b-2 border-primary pb-1 hover:text-primary transition-colors duration-200 active:scale-95" href="#">Dashboard</a>
+<!-- Inactive Links -->
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 active:scale-95" href="#">Experiments</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-200 active:scale-95" href="#">Modules</a>
+</nav>
+</div>
+<!-- Trailing Actions & Search -->
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-subtle border-none rounded-full font-body-sm text-body-sm focus:ring-2 focus:ring-primary w-64 transition-all" placeholder="Search experiments..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden ml-2 border border-surface-variant">
+<img alt="Researcher Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a female lead researcher in her late 30s, warm expression, bright modern office setting, shallow depth of field, corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSQT-XXrZ4CqKHe2PXaNJeiLRsWV5y9b04l8xYjCDq78dvh0kAQYN-OphjvZol3BlSewJKeTO_HaOEq3i6s2paP873efh-swQo3i39ijKAi8tDz0wvC_c1aYRRwMBivTCvClhofJioUNmU5i70JFx4t3rJuunjdH72JUwNVzsaT4RshIjMdU5Tuvq747AIoC8PCpI7YYlDcTectyQw4_Mq-ik3qyAEYSvYV0G1f7RCmw-UhVY8mh2P"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-margin-md lg:p-margin-lg max-w-container-max mx-auto w-full">
+<!-- Hero Header -->
+<div class="mb-margin-lg max-w-3xl">
+<h1 class="font-display-lg text-display-lg text-text-primary mb-2 tracking-tight">Innovation Lab</h1>
+<p class="font-body-lg text-body-lg text-text-secondary leading-relaxed">
+                    Experimental workspace for autonomous systems and agentic research. Monitor active evaluations, simulate complex negotiation loops, and review architectural integrity.
+                </p>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Main Features (col-span-8) -->
+<div class="lg:col-span-8 flex flex-col gap-gutter">
+<!-- Architecture Visualization Card (Key Feature) -->
+<div class="bg-surface-high rounded-xl p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.04)] border border-surface-variant/50 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-text-primary mb-1">Architecture Visualization</h3>
+<p class="font-body-md text-body-md text-text-secondary">The 'Five Planes' structural model</p>
+</div>
+<button class="text-primary font-label-lg text-label-lg hover:underline flex items-center gap-1">
+                                View details <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+<!-- Visual Graphic Area -->
+<div class="w-full h-64 md:h-80 bg-surface-container-low rounded-lg overflow-hidden border border-surface-subtle relative">
+<img alt="Architecture Graphic" class="w-full h-full object-cover mix-blend-multiply opacity-90 transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWmfVn9emMJF5AXRbAdGvHJgOlPh-9vwr_4k2RzYAxdi3iXZzCV7F2AWvl0xtMrqRdzf5__6VYzKPg3Brxf9wMKKmlvpp8HyopMoBEfy3qszSBQNQZf4GfiYomvoKYa2x89gukzeo-KONnmNrFU12YrRiIPN0VP8HK5gGZ-XqZf4sig6ltzxdPBjBsAM16U0d26MB9VlviDTFb17ezbGxj9WQyNvqXpRanj-AWeJVsDpGIWUDvvzlJj4l_qsqEH79IsQ"/>
+<!-- Overlay Labels for context -->
+<div class="absolute inset-0 p-4 flex flex-col justify-end gap-2 pointer-events-none">
+<div class="flex gap-2 flex-wrap">
+<span class="bg-surface-high/90 backdrop-blur text-text-primary font-label-caps text-label-caps px-3 py-1.5 rounded-full shadow-sm border border-surface-variant/50">SIGNAL</span>
+<span class="bg-surface-high/90 backdrop-blur text-text-primary font-label-caps text-label-caps px-3 py-1.5 rounded-full shadow-sm border border-surface-variant/50">AGENT</span>
+<span class="bg-surface-high/90 backdrop-blur text-text-primary font-label-caps text-label-caps px-3 py-1.5 rounded-full shadow-sm border border-surface-variant/50">SECURITY</span>
+<span class="bg-surface-high/90 backdrop-blur text-text-primary font-label-caps text-label-caps px-3 py-1.5 rounded-full shadow-sm border border-surface-variant/50">TOOL</span>
+<span class="bg-surface-high/90 backdrop-blur text-text-primary font-label-caps text-label-caps px-3 py-1.5 rounded-full shadow-sm border border-surface-variant/50">MEMORY</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Experiments Section -->
+<div>
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-md text-headline-md font-semibold text-text-primary">Active Experiments</h3>
+<button class="text-text-secondary font-label-lg text-label-lg hover:text-primary transition-colors flex items-center gap-1">
+                                Filter <span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- Card 1 -->
+<div class="bg-surface-high rounded-lg p-5 shadow-[0px_4px_20px_rgba(0,0,0,0.02)] border border-surface-subtle hover:shadow-[0px_10px_30px_rgba(0,0,0,0.06)] transition-all flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]">psychology</span>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-caps text-label-caps px-2 py-0.5 rounded-full tracking-wide">BETA</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-1">LLM Evaluation Suite</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 flex-1">Testing Gemini 2.0 reasoning capabilities against edge-case logic puzzles.</p>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-subtle">
+<div class="flex items-center gap-1.5 text-accent-success font-label-lg text-[12px]">
+<span class="w-2 h-2 rounded-full bg-accent-success animate-pulse"></span>
+                                        Running
+                                    </div>
+<button class="text-primary font-label-lg text-label-lg hover:underline">View details</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-high rounded-lg p-5 shadow-[0px_4px_20px_rgba(0,0,0,0.02)] border border-surface-subtle hover:shadow-[0px_10px_30px_rgba(0,0,0,0.06)] transition-all flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[20px]">forum</span>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-caps text-label-caps px-2 py-0.5 rounded-full tracking-wide">BETA</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-1">A2A Simulation</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 flex-1">Modeling multi-turn agent-to-agent negotiation loops for resource allocation.</p>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-subtle">
+<div class="flex items-center gap-1.5 text-accent-success font-label-lg text-[12px]">
+<span class="w-2 h-2 rounded-full bg-accent-success animate-pulse"></span>
+                                        Running
+                                    </div>
+<button class="text-primary font-label-lg text-label-lg hover:underline">View details</button>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-high rounded-lg p-5 shadow-[0px_4px_20px_rgba(0,0,0,0.02)] border border-surface-subtle hover:shadow-[0px_10px_30px_rgba(0,0,0,0.06)] transition-all flex flex-col h-full">
+<div class="flex justify-between items-start mb-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-outline shrink-0">
+<span class="material-symbols-outlined text-[20px]">call</span>
+</div>
+<span class="bg-surface-container-highest text-on-surface-variant font-label-caps text-label-caps px-2 py-0.5 rounded-full tracking-wide">V1.2</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-1">Telephony Stress Test</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 flex-1">Automated customer research calls simulating high-latency environments.</p>
+<div class="flex items-center justify-between mt-auto pt-4 border-t border-surface-subtle">
+<div class="flex items-center gap-1.5 text-text-secondary font-label-lg text-[12px]">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                                        Idle
+                                    </div>
+<button class="text-primary font-label-lg text-label-lg hover:underline">View details</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Sidebar Insights (col-span-4) -->
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<div class="bg-surface-high rounded-xl p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.04)] border border-surface-variant/50">
+<h3 class="font-headline-md text-headline-md font-semibold text-text-primary mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[24px]">insights</span>
+                            Lab Insights
+                        </h3>
+<!-- Metric -->
+<div class="mb-8">
+<p class="font-label-lg text-label-lg text-text-secondary mb-1">Global Success Rate</p>
+<div class="flex items-end gap-3">
+<span class="font-display-lg text-display-lg text-text-primary leading-none">94.2%</span>
+<span class="flex items-center text-accent-success font-label-lg text-label-lg mb-1">
+<span class="material-symbols-outlined text-[16px]">arrow_upward</span> 1.4%
+                                </span>
+</div>
+<!-- Mini Sparkline placeholder (CSS driven) -->
+<div class="h-1.5 w-full bg-surface-container-high rounded-full mt-4 overflow-hidden flex">
+<div class="h-full bg-primary w-[94%] rounded-full"></div>
+</div>
+</div>
+<!-- Narrative Card -->
+<div class="bg-primary-fixed/30 rounded-lg p-5 border border-primary-fixed">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-full overflow-hidden shrink-0">
+<img alt="Sarah" class="w-full h-full object-cover" data-alt="A small, friendly avatar portrait of a female researcher with glasses, warm smiling expression, bright lighting, modern corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjIO_b9tSv9px9BX9Pfv-eVvbHBtCCYdpvnqW91dBfwPDzXXkaIwlfZ_bdJwfb6GfGP-BclIK-qxWNDcJf3GsUTwcFKS9k-wK34aapmyhaal3JR0D0O1PKOE-Ou5umqp1eqreY0JVhFg9ClhK6WLNdGmgjQPT-PVxA1XzuvmfYyHcfSHfsCPiYkMa3U2KTe89-AKSuZ_lIp4yxETkaDuNr5DleNLfbLR9wD-ow_co0y4HvOwEXmKvf"/>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary">Sarah's Research Highlights</h4>
+</div>
+<p class="font-body-md text-body-md text-text-primary mb-3">
+                                "What I found in the recent A2A negotiation logs indicates a 15% reduction in multi-turn hallucinations when applying the new context-window constraints."
+                            </p>
+<a class="text-primary font-label-lg text-label-lg hover:underline inline-flex items-center gap-1" href="#">
+                                Read full diagnostic <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+</div>
+<!-- Quick Links -->
+<div class="mt-8 space-y-3">
+<h4 class="font-label-caps text-label-caps text-text-secondary mb-2">QUICK ACTIONS</h4>
+<button class="w-full flex items-center justify-between p-3 rounded-lg hover:bg-surface-subtle transition-colors text-left group">
+<span class="font-body-md text-body-md text-text-primary">Review Approval Queue</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-3 rounded-lg hover:bg-surface-subtle transition-colors text-left group">
+<span class="font-body-md text-body-md text-text-primary">Manage API Keys</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-surface" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProductOps Agent - Verify Impact</title>
+<!-- Fonts & Icons -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface-variant": "#414755",
+                      "surface-tint": "#005bc1",
+                      "on-tertiary": "#ffffff",
+                      "on-primary-fixed-variant": "#004493",
+                      "secondary-fixed-dim": "#c2c1ff",
+                      "on-tertiary-fixed-variant": "#7c2e00",
+                      "on-secondary-fixed-variant": "#332dbc",
+                      "on-error-container": "#93000a",
+                      "primary": "#0058bc",
+                      "outline": "#717786",
+                      "on-background": "#181c23",
+                      "surface-container": "#ecedf9",
+                      "text-secondary": "#86868B",
+                      "accent-error": "#FF3B30",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-fixed": "#ffdbcc",
+                      "surface-container-low": "#f1f3fe",
+                      "surface-high": "#FFFFFF",
+                      "on-secondary-container": "#fffbff",
+                      "accent-success": "#34C759",
+                      "surface-base": "#F5F5F7",
+                      "on-tertiary-container": "#fffbff",
+                      "surface-container-highest": "#e0e2ed",
+                      "surface-bright": "#f9f9ff",
+                      "tertiary": "#9e3d00",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-fixed": "#351000",
+                      "background": "#f9f9ff",
+                      "error-container": "#ffdad6",
+                      "secondary-fixed": "#e2dfff",
+                      "outline-variant": "#c1c6d7",
+                      "on-primary-fixed": "#001a41",
+                      "error": "#ba1a1a",
+                      "accent-warning": "#FF9500",
+                      "text-primary": "#1D1D1F",
+                      "primary-container": "#0070eb",
+                      "on-secondary-fixed": "#0c006b",
+                      "on-error": "#ffffff",
+                      "surface": "#f9f9ff",
+                      "surface-container-high": "#e6e8f3",
+                      "tertiary-fixed-dim": "#ffb595",
+                      "inverse-on-surface": "#eef0fc",
+                      "surface-variant": "#e0e2ed",
+                      "secondary": "#4a47d2",
+                      "on-primary-container": "#fefcff",
+                      "on-surface": "#181c23",
+                      "primary-fixed": "#d8e2ff",
+                      "inverse-primary": "#adc6ff",
+                      "secondary-container": "#6462ec",
+                      "on-primary": "#ffffff",
+                      "primary-fixed-dim": "#adc6ff",
+                      "surface-dim": "#d8d9e5",
+                      "inverse-surface": "#2d3039",
+                      "surface-subtle": "#E5E5EA",
+                      "tertiary-container": "#c64f00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1440px",
+                      "margin-sm": "16px",
+                      "gutter": "24px",
+                      "margin-lg": "40px",
+                      "unit": "8px",
+                      "margin-md": "24px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "label-caps": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "headline-lg-mobile": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400"}],
+                      "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700"}],
+                      "body-lg": ["17px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-md": ["15px", {"lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        }
+        .soft-shadow {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+<body class="h-full flex overflow-hidden font-body-md text-on-surface bg-surface-base">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full border-r border-outline-variant bg-surface w-[240px] fixed left-0 top-0 z-40 transition-transform duration-200 ease-in-out">
+<!-- Header -->
+<div class="p-gutter flex flex-col items-center border-b border-outline-variant">
+<div class="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center mb-4 text-on-primary-container font-headline-md font-bold">
+                PO
+            </div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary text-center">ProductOps Agent</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Reliability &amp; Growth</p>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 0;">sensors</span>
+<span class="font-label-lg text-label-lg">Signal</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-label-lg text-label-lg">Understand</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 0;">psychology</span>
+<span class="font-label-lg text-label-lg">Ask</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 0;">biotech</span>
+<span class="font-label-lg text-label-lg">Diagnose</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 0;">build</span>
+<span class="font-label-lg text-label-lg">Fix</span>
+</a>
+<!-- Active Tab: Verify -->
+<a class="flex items-center px-4 py-3 rounded-lg bg-secondary-fixed text-secondary font-bold hover:bg-secondary-fixed transition-colors transform scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-lg text-label-lg">Verify</span>
+</a>
+</div>
+<!-- Footer Actions -->
+<div class="p-4 border-t border-outline-variant space-y-1">
+<a class="flex items-center px-4 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-lg text-label-lg">Settings</span>
+</a>
+<a class="flex items-center px-4 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 0;">help</span>
+<span class="font-label-lg text-label-lg">Support</span>
+</a>
+<button class="w-full mt-4 bg-primary text-on-primary font-label-lg text-label-lg py-3 rounded-lg hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm">
+                New Mission
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-[240px] w-full md:w-[calc(100%-240px)] min-h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 sticky z-30 bg-surface-container-lowest/80 backdrop-blur-md shadow-sm transition-all duration-200 ease-in-out">
+<div class="flex justify-between items-center w-full px-gutter h-16">
+<!-- Search (Left) -->
+<div class="flex items-center flex-1">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-subtle border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-colors font-body-sm text-body-sm text-on-surface placeholder-on-surface-variant" placeholder="Search insights..." type="text"/>
+</div>
+</div>
+<!-- Brand (Center Mobile) -->
+<div class="md:hidden flex-1 flex justify-center">
+<span class="font-display-lg text-display-lg font-black text-primary text-xl">PO</span>
+</div>
+<!-- Actions (Right) -->
+<div class="flex items-center space-x-4 flex-1 justify-end">
+<span class="hidden md:inline-block font-label-lg text-label-lg text-primary bg-primary-fixed px-3 py-1 rounded-full">
+                        Active Agents: 12
+                    </span>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">smart_toy</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-4 md:p-gutter lg:p-margin-lg space-y-margin-lg bg-surface-base">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg md:font-display-lg md:text-display-lg font-bold text-on-surface">Impact &amp; Learning Lab</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">Verification complete for intervention: <span class="font-medium text-primary">Safari Payment Gateway Regression Fix (PR-8924)</span></p>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full border border-surface-variant">
+<div class="w-3 h-3 rounded-full bg-accent-success shadow-[0_0_8px_rgba(52,199,89,0.6)]"></div>
+<span class="font-label-lg text-label-lg text-on-surface">Verification Concluded</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Primary Metric: Before vs After (Spans 8 cols) -->
+<div class="md:col-span-8 glass-panel rounded-xl p-6 flex flex-col relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary-fixed/30 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+<div class="flex justify-between items-start mb-6 z-10">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Conversion Recovery</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Safari iOS Payment Success Rate (72hr window)</p>
+</div>
+<div class="flex items-center bg-surface-container px-3 py-1 rounded-lg">
+<span class="material-symbols-outlined text-accent-success mr-1 text-sm">trending_up</span>
+<span class="font-label-caps text-label-caps text-accent-success">+25% Lift</span>
+</div>
+</div>
+<div class="flex-1 flex items-center justify-center gap-8 md:gap-16 z-10 py-8">
+<!-- Before -->
+<div class="flex flex-col items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-2 tracking-widest uppercase">During Outage</span>
+<div class="w-32 h-32 rounded-full border-4 border-error-container flex items-center justify-center relative">
+<span class="font-display-lg text-display-lg font-bold text-on-surface">71<span class="text-2xl">%</span></span>
+</div>
+</div>
+<!-- Arrow -->
+<div class="flex flex-col items-center text-primary/40">
+<span class="material-symbols-outlined text-4xl">arrow_forward</span>
+<div class="h-1 w-16 bg-gradient-to-r from-transparent via-primary/30 to-transparent mt-2 rounded-full"></div>
+</div>
+<!-- After -->
+<div class="flex flex-col items-center">
+<span class="font-label-caps text-label-caps text-primary mb-2 tracking-widest uppercase">Post-Intervention</span>
+<div class="w-40 h-40 rounded-full bg-primary-fixed-dim/20 border-4 border-primary flex items-center justify-center relative shadow-[0_0_30px_rgba(0,88,188,0.2)]">
+<span class="font-display-lg text-display-lg font-bold text-primary text-5xl">96<span class="text-3xl">%</span></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Financial Impact (Spans 4 cols) -->
+<div class="md:col-span-4 bg-surface-high rounded-xl p-6 soft-shadow flex flex-col justify-between relative overflow-hidden border border-surface-variant">
+<div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-accent-success/10 to-transparent pointer-events-none"></div>
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-accent-success">payments</span>
+<h3 class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-wide">Recovered Revenue Run-Rate</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6">Estimated daily impact based on restored funnel volume.</p>
+</div>
+<div class="mb-4">
+<div class="flex items-baseline">
+<span class="font-headline-md text-headline-md text-on-surface mr-1">$</span>
+<span class="font-display-lg text-display-lg font-bold text-on-surface text-5xl tracking-tighter">31,400</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">/ day saved</p>
+</div>
+<div class="mt-auto">
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-accent-success w-[85%] rounded-full"></div>
+</div>
+<div class="flex justify-between mt-2 font-label-caps text-label-caps text-on-surface-variant">
+<span>Target: $35k</span>
+<span>85% Reached</span>
+</div>
+</div>
+</div>
+<!-- Customer Sentiment Shift (Spans 6 cols) -->
+<div class="md:col-span-6 glass-panel rounded-xl p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Support Ticket Volume</h3>
+<span class="font-label-caps text-label-caps text-accent-success bg-accent-success/10 px-2 py-1 rounded">-78% Complaints</span>
+</div>
+<div class="flex-1 relative min-h-[200px] flex items-end gap-2 pt-10">
+<!-- Simulated Bar Chart -->
+<div class="w-1/5 flex flex-col items-center gap-2">
+<div class="w-full bg-error-container/60 rounded-t-sm h-[80%] relative group">
+<div class="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded">142</div>
+</div>
+<span class="text-[10px] text-on-surface-variant">T-48h</span>
+</div>
+<div class="w-1/5 flex flex-col items-center gap-2">
+<div class="w-full bg-error-container/80 rounded-t-sm h-[95%] relative group">
+<div class="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded">185</div>
+</div>
+<span class="text-[10px] text-on-surface-variant">T-24h</span>
+</div>
+<!-- Intervention Line -->
+<div class="w-px h-full bg-primary relative flex flex-col items-center justify-end z-10 border-dashed border-l border-primary">
+<div class="absolute top-0 transform -translate-y-full bg-primary text-on-primary text-[10px] py-1 px-2 rounded whitespace-nowrap mb-1 font-bold">Fix Deployed</div>
+</div>
+<div class="w-1/5 flex flex-col items-center gap-2">
+<div class="w-full bg-primary-fixed rounded-t-sm h-[40%] relative group">
+<div class="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded">65</div>
+</div>
+<span class="text-[10px] text-on-surface-variant">T+24h</span>
+</div>
+<div class="w-1/5 flex flex-col items-center gap-2">
+<div class="w-full bg-primary-fixed rounded-t-sm h-[15%] relative group">
+<div class="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-inverse-surface text-inverse-on-surface text-xs py-1 px-2 rounded">28</div>
+</div>
+<span class="text-[10px] text-on-surface-variant">T+48h</span>
+</div>
+</div>
+</div>
+<!-- Persistent Memory (Spans 6 cols) -->
+<div class="md:col-span-6 bg-surface-container-low rounded-xl p-1 soft-shadow border border-surface-variant">
+<div class="bg-surface-high rounded-lg h-full p-6 flex flex-col">
+<div class="flex items-center gap-3 mb-4 border-b border-surface-variant pb-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">memory</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Agent Memory Update</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Knowledge synthesized for future autonomous operations.</p>
+</div>
+</div>
+<div class="flex-1 bg-surface-container rounded-lg p-4 font-mono text-sm text-on-surface flex flex-col gap-2 overflow-hidden border border-outline-variant/30">
+<div class="flex items-start gap-2">
+<span class="text-secondary select-none">1</span>
+<span class="text-on-surface-variant">/* Verified Root Cause */</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-secondary select-none">2</span>
+<span><span class="text-primary font-semibold">pattern_match:</span> "SDK v4.x WebKit incompatibility"</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-secondary select-none">3</span>
+<span><span class="text-primary font-semibold">resolution_strategy:</span> "Rollback checkout-core to v3.8.1"</span>
+</div>
+<div class="flex items-start gap-2 mt-2">
+<span class="text-secondary select-none">4</span>
+<span class="text-accent-success font-semibold">&gt;&gt; NEW RULE COMMITTED:</span>
+</div>
+<div class="flex items-start gap-2 pl-4">
+<span class="text-secondary select-none">5</span>
+<span class="text-on-surface bg-surface-high px-2 py-1 rounded border border-surface-variant w-full">"All future SDK v4.x updates <span class="font-bold underline decoration-accent-warning">require</span> mandatory Safari regression test suite prior to merge."</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

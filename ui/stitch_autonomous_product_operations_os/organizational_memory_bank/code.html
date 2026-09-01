@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Memory Bank - ProductOps Agent</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-primary": "#adc6ff",
+                      "secondary-fixed-dim": "#c2c1ff",
+                      "inverse-surface": "#2d3039",
+                      "on-tertiary-fixed-variant": "#7c2e00",
+                      "accent-success": "#34C759",
+                      "surface-container-highest": "#e0e2ed",
+                      "primary-fixed": "#d8e2ff",
+                      "surface-container-low": "#f1f3fe",
+                      "secondary": "#4a47d2",
+                      "on-error": "#ffffff",
+                      "surface-high": "#FFFFFF",
+                      "primary-fixed-dim": "#adc6ff",
+                      "surface-bright": "#f9f9ff",
+                      "primary-container": "#0070eb",
+                      "outline": "#717786",
+                      "tertiary-fixed": "#ffdbcc",
+                      "text-secondary": "#86868B",
+                      "on-surface-variant": "#414755",
+                      "secondary-fixed": "#e2dfff",
+                      "on-secondary-container": "#fffbff",
+                      "tertiary-container": "#c64f00",
+                      "accent-warning": "#FF9500",
+                      "on-error-container": "#93000a",
+                      "error-container": "#ffdad6",
+                      "on-secondary-fixed": "#0c006b",
+                      "surface-container": "#ecedf9",
+                      "outline-variant": "#c1c6d7",
+                      "on-primary-container": "#fefcff",
+                      "surface-subtle": "#E5E5EA",
+                      "surface-tint": "#005bc1",
+                      "error": "#ba1a1a",
+                      "primary": "#0058bc",
+                      "on-background": "#181c23",
+                      "on-tertiary-container": "#fffbff",
+                      "surface-dim": "#d8d9e5",
+                      "secondary-container": "#6462ec",
+                      "on-secondary-fixed-variant": "#332dbc",
+                      "on-secondary": "#ffffff",
+                      "accent-error": "#FF3B30",
+                      "surface-base": "#F5F5F7",
+                      "on-primary-fixed": "#001a41",
+                      "on-tertiary-fixed": "#351000",
+                      "surface": "#f9f9ff",
+                      "background": "#f9f9ff",
+                      "tertiary-fixed-dim": "#ffb595",
+                      "surface-container-high": "#e6e8f3",
+                      "on-surface": "#181c23",
+                      "inverse-on-surface": "#eef0fc",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#9e3d00",
+                      "surface-variant": "#e0e2ed",
+                      "on-primary-fixed-variant": "#004493",
+                      "text-primary": "#1D1D1F",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "8px",
+                      "margin-sm": "16px",
+                      "gutter": "24px",
+                      "margin-md": "24px",
+                      "margin-lg": "40px",
+                      "container-max": "1440px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "15px",
+                              {
+                                      "lineHeight": "22px",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "17px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.06em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        
+        .ambient-shadow-base {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        }
+
+        .ambient-shadow-hover:hover {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            background-color: #F5F5F7;
+        }
+
+        .hide-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scroll {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased font-body-md bg-surface-base h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[240px] bg-surface dark:bg-surface-dim flex flex-col border-r border-outline-variant dark:border-outline z-40 hidden md:flex">
+<div class="p-gutter flex flex-col gap-unit">
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-on-primary-fixed">ProductOps Agent</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Reliability &amp; Growth</div>
+</div>
+<div class="px-margin-sm py-unit">
+<button class="w-full bg-primary text-on-primary rounded-lg py-2 font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Mission
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto hide-scroll px-margin-sm py-unit flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">sensors</span>
+                Signal
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-secondary dark:text-secondary-fixed-dim font-bold bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+                Understand
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">psychology</span>
+                Ask
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">biotech</span>
+                Diagnose
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">build</span>
+                Fix
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">verified</span>
+                Verify
+            </a>
+</div>
+<div class="p-margin-sm flex flex-col gap-1 border-t border-outline-variant dark:border-outline">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">help</span>
+                Support
+            </a>
+<div class="mt-4 flex items-center gap-3 px-3">
+<img alt="User Profile" class="w-8 h-8 rounded-full bg-surface-variant object-cover" data-alt="A small circular avatar placeholder image showing a subtle, professional grey silhouette on a light grey background, ideal for a generic user profile icon in a corporate modern UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdOyw4IZQiZj_DyMWSEtT5qlvLxt4PuT8F_ZmC1hidfyi1tWjjl88CK9C60F4GGWxBTKmoilpiLsJC_TZSdoLXearyXkmSJKq5XEwqvoz9ZTjWG1we5MZDPZFSrY0Q0xr7qYz2TR7INh0zbYRhVm_8e5V6lLyRPgmSxQxPmwyJvWa5c0cnOOBB1Nij9so35C8CkxFje7nFpLLWuguI3cB9s69HgUiedEoLqsTPzHPANj1_0xU3judb"/>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-[240px] relative w-full md:w-[calc(100%-240px)] overflow-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-gutter h-16 bg-surface-container-lowest dark:bg-surface-container-high docked full-width top-0 sticky z-50 shadow-sm glass-panel transition-all duration-200 ease-in-out border-b border-outline-variant">
+<div class="flex-1 max-w-xl hidden md:block">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-surface-subtle border-none rounded-full py-2 pl-10 pr-4 font-body-md text-body-md focus:ring-2 focus:ring-primary focus:bg-white transition-all text-on-surface placeholder-on-surface-variant" placeholder="Query Memory Bank (e.g., 'Safari payment regressions')" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-gutter ml-auto">
+<div class="text-on-surface font-headline-sm text-headline-sm flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+<div class="font-label-lg text-label-lg text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-full">
+                    Active Agents: 12
+                </div>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<div class="flex-1 overflow-y-auto hide-scroll p-gutter lg:p-margin-lg space-y-margin-lg pb-32">
+<!-- Header Section -->
+<div class="max-w-container-max mx-auto space-y-2">
+<h1 class="font-display-lg text-display-lg font-bold text-on-surface">Memory Bank</h1>
+<p class="font-body-lg text-body-lg text-text-secondary max-w-3xl">Persistent organizational intelligence. Browse categorized insights, recent learnings, and operational graphs synthesized by active agents.</p>
+</div>
+<div class="max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Left/Main Column: Memory Clusters & Recent Lessons -->
+<div class="lg:col-span-2 space-y-margin-lg">
+<!-- Memory Clusters (Bento Grid) -->
+<section class="space-y-4">
+<h2 class="font-headline-md text-headline-md font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">category</span>
+                            Knowledge Clusters
+                        </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Customer Memory -->
+<div class="bg-surface-high rounded-xl p-margin-md ambient-shadow-base ambient-shadow-hover cursor-pointer group">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined">groups</span>
+</div>
+<span class="font-label-caps text-label-caps text-text-secondary bg-surface-base px-2 py-1 rounded">24k ENTRIES</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm font-semibold mb-2">Customer Memory</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Preferences, past feedback patterns, and user journey friction points.</p>
+</div>
+<!-- Product Memory -->
+<div class="bg-surface-high rounded-xl p-margin-md ambient-shadow-base ambient-shadow-hover cursor-pointer group">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<span class="font-label-caps text-label-caps text-text-secondary bg-surface-base px-2 py-1 rounded">18k ENTRIES</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm font-semibold mb-2">Product Memory</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Feature requests, known UX issues, and historical product decisions.</p>
+</div>
+<!-- Engineering Memory -->
+<div class="bg-surface-high rounded-xl p-margin-md ambient-shadow-base ambient-shadow-hover cursor-pointer group">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<span class="font-label-caps text-label-caps text-text-secondary bg-surface-base px-2 py-1 rounded">42k ENTRIES</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm font-semibold mb-2">Engineering Memory</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Bug fixes, recurring regressions, and deployment incident post-mortems.</p>
+</div>
+<!-- Organizational Memory -->
+<div class="bg-surface-high rounded-xl p-margin-md ambient-shadow-base ambient-shadow-hover cursor-pointer group">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined">corporate_fare</span>
+</div>
+<span class="font-label-caps text-label-caps text-text-secondary bg-surface-base px-2 py-1 rounded">9k ENTRIES</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm font-semibold mb-2">Organizational Memory</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Standard operating procedures, routing rules, and 'how we resolve' guides.</p>
+</div>
+</div>
+</section>
+<!-- Recent Lessons Learned -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h2 class="font-headline-md text-headline-md font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-accent-warning">lightbulb</span>
+                                Recent Agent Learnings
+                            </h2>
+<button class="font-label-lg text-label-lg text-primary hover:text-primary-fixed-variant transition-colors">View All</button>
+</div>
+<div class="space-y-3">
+<!-- Lesson Item 1 -->
+<div class="bg-surface-high rounded-xl p-4 ambient-shadow-base border-l-4 border-accent-success flex gap-4 items-start">
+<div class="bg-[#e6f4ea] text-accent-success p-2 rounded-lg">
+<span class="material-symbols-outlined">library_add_check</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-caps text-label-caps px-2 py-0.5 rounded bg-surface-container-low text-on-surface-variant">NEW RULE COMMITTED</span>
+<span class="font-body-sm text-body-sm text-text-secondary">2 hours ago by Agent Alpha</span>
+</div>
+<h4 class="font-body-lg text-body-lg font-semibold text-on-surface mb-1">Safari Payment Timeout Mitigation</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Added SOP for handling Safari WebKit timeout errors during stripe checkout. Route to Tier 2 if user agent matches specific regex.</p>
+</div>
+</div>
+<!-- Lesson Item 2 -->
+<div class="bg-surface-high rounded-xl p-4 ambient-shadow-base border-l-4 border-secondary flex gap-4 items-start">
+<div class="bg-surface-container-low text-secondary p-2 rounded-lg">
+<span class="material-symbols-outlined">join_inner</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-caps text-label-caps px-2 py-0.5 rounded bg-surface-container-low text-on-surface-variant">PATTERN MATCH</span>
+<span class="font-body-sm text-body-sm text-text-secondary">5 hours ago by Agent Beta</span>
+</div>
+<h4 class="font-body-lg text-body-lg font-semibold text-on-surface mb-1">Recurring API Rate Limit Spikes</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Linked 14 recent support tickets regarding 'slow load times' to the downstream inventory API rate limit constraints established last week.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Graphs & Logs -->
+<div class="space-y-margin-lg">
+<!-- Knowledge Graph Visual -->
+<section class="bg-surface-high rounded-xl p-margin-md ambient-shadow-base">
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">hub</span>
+                            Entity Relationships
+                        </h2>
+<div class="relative w-full h-48 rounded-lg overflow-hidden bg-surface-base border border-surface-subtle">
+<!-- Placeholder for actual Graph Visualization (e.g. D3.js or Three.js) -->
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="font-body-sm text-body-sm text-text-secondary text-center px-4">Interactive Knowledge Graph<br/>(Connected incidents, PRs, Agents)</span>
+</div>
+<!-- Simulate graph nodes with simple CSS -->
+<div class="absolute top-1/2 left-1/2 w-3 h-3 bg-primary rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_10px_rgba(0,88,188,0.5)]"></div>
+<div class="absolute top-1/4 left-1/4 w-2 h-2 bg-secondary rounded-full"></div>
+<div class="absolute top-3/4 left-3/4 w-2 h-2 bg-accent-warning rounded-full"></div>
+<!-- Lines connecting them would go here in a real implementation -->
+</div>
+<div class="mt-4 pt-4 border-t border-surface-subtle">
+<p class="font-body-sm text-body-sm text-on-surface-variant">Showing active topology for current sprint anomalies.</p>
+<button class="mt-2 w-full font-label-lg text-label-lg text-primary bg-surface-container-low hover:bg-surface-container-highest transition-colors py-2 rounded-lg">Expand Graph</button>
+</div>
+</section>
+<!-- Activity Log -->
+<section class="bg-surface-high rounded-xl p-margin-md ambient-shadow-base">
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary">history</span>
+                            Access Log
+                        </h2>
+<div class="space-y-4">
+<!-- Log Item -->
+<div class="flex gap-3">
+<div class="w-2 h-2 rounded-full bg-surface-variant mt-2"></div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface">Agent Gamma retrieved 'Login Flow SOP'</p>
+<p class="font-label-caps text-label-caps text-text-secondary mt-1">10 MINS AGO</p>
+</div>
+</div>
+<!-- Log Item -->
+<div class="flex gap-3">
+<div class="w-2 h-2 rounded-full bg-surface-variant mt-2"></div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface">Agent Delta indexed 45 new JIRA tickets into Engineering Memory</p>
+<p class="font-label-caps text-label-caps text-text-secondary mt-1">1 HOUR AGO</p>
+</div>
+</div>
+<!-- Log Item -->
+<div class="flex gap-3">
+<div class="w-2 h-2 rounded-full bg-surface-variant mt-2"></div>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface">User Jane Doe queried 'Refund policy updates'</p>
+<p class="font-label-caps text-label-caps text-text-secondary mt-1">3 HOURS AGO</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+</body></html>

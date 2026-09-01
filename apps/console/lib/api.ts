@@ -4,12 +4,71 @@ const BASE =
   process.env.NEXT_PUBLIC_API_URL ??
   (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8080");
 
-const ADMIN_TOKEN = process.env.NEXT_PUBLIC_LOOP_ADMIN_TOKEN ?? "";
+const ADMIN_TOKEN_ENV = process.env.NEXT_PUBLIC_LOOP_ADMIN_TOKEN ?? "";
+const ADMIN_STORAGE_KEY = "loop_admin_token";
+const ADMIN_REMEMBER_KEY = "loop_admin_token_remember";
+
+function readStoredAdminToken(): string {
+  if (typeof window === "undefined") return "";
+  const session = window.sessionStorage.getItem(ADMIN_STORAGE_KEY);
+  if (session) return session;
+  if (window.localStorage.getItem(ADMIN_REMEMBER_KEY) === "1") {
+    return window.localStorage.getItem(ADMIN_STORAGE_KEY) || "";
+  }
+  return "";
+}
+
+export function adminRememberEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(ADMIN_REMEMBER_KEY) === "1";
+}
+
+function adminToken(): string {
+  const stored = readStoredAdminToken();
+  if (stored) return stored;
+  return ADMIN_TOKEN_ENV;
+}
+
+export function hasAdminToken(): boolean {
+  return Boolean(adminToken());
+}
 
 function adminHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (ADMIN_TOKEN) headers.Authorization = `Bearer ${ADMIN_TOKEN}`;
+  const token = adminToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
+}
+
+export function setAdminToken(token: string, remember = false) {
+  if (typeof window === "undefined") return;
+  const trimmed = token.trim();
+  window.sessionStorage.setItem(ADMIN_STORAGE_KEY, trimmed);
+  if (remember) {
+    window.localStorage.setItem(ADMIN_STORAGE_KEY, trimmed);
+    window.localStorage.setItem(ADMIN_REMEMBER_KEY, "1");
+  } else {
+    window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+    window.localStorage.removeItem(ADMIN_REMEMBER_KEY);
+  }
+}
+
+export function clearAdminToken() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(ADMIN_STORAGE_KEY);
+  window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+  window.localStorage.removeItem(ADMIN_REMEMBER_KEY);
+}
+
+export async function verifyAdminToken(token: string, remember = false): Promise<boolean> {
+  const res = await fetch(`${BASE}/api/admin/verify`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token.trim()}`, "Content-Type": "application/json" },
+    credentials: "same-origin",
+  });
+  if (!res.ok) return false;
+  setAdminToken(token, remember);
+  return true;
 }
 
 async function get<T>(path: string, opts?: { admin?: boolean }): Promise<T> {
@@ -22,6 +81,33 @@ async function get<T>(path: string, opts?: { admin?: boolean }): Promise<T> {
   return res.json();
 }
 
+async function recoverApproval(path: string): Promise<Record<string, unknown> | null> {
+  const m = path.match(/^\/api\/approvals\/([^/]+)$/);
+  if (!m) return null;
+  const actionId = m[1];
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => window.setTimeout(r, 500));
+    try {
+      const st = await get<{
+        status: string;
+        execution: Record<string, unknown>;
+        pr_url?: string;
+      }>(`/api/approvals/${actionId}/status`);
+      if (st.status === "executed" || st.status === "denied" || st.status === "approved") {
+        return {
+          approval: st.status === "denied" ? "deny" : "approve",
+          execution: st.execution,
+          pr_url: st.pr_url,
+          recovered: true,
+        };
+      }
+    } catch {
+      /* keep polling */
+    }
+  }
+  return null;
+}
+
 async function post<T>(path: string, body?: unknown, opts?: { admin?: boolean }): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
@@ -31,7 +117,9 @@ async function post<T>(path: string, body?: unknown, opts?: { admin?: boolean })
   });
   if (!res.ok) {
     if (res.status === 401 && path.includes("/api/approvals/")) {
-      throw new Error("Approval blocked — hosted eval should allow console approve (check LOOP_EVAL on API)");
+      throw new Error(
+        "Admin token required — open Connect, paste LOOP_ADMIN_TOKEN, click Authorize, then try again."
+      );
     }
     let detail = `${path} ${res.status}`;
     try {
@@ -42,7 +130,15 @@ async function post<T>(path: string, body?: unknown, opts?: { admin?: boolean })
     }
     throw new Error(detail);
   }
-  return res.json();
+  try {
+    return (await res.json()) as T;
+  } catch {
+    const recovered = await recoverApproval(path);
+    if (recovered) return recovered as T;
+    throw new Error(
+      "Connection dropped while approving. The change may still have applied — refresh the room or Approvals."
+    );
+  }
 }
 
 export type Investigation = {
@@ -351,14 +447,18 @@ export const api = {
         code_fix?: string | { status?: string; job_id?: string };
       };
       pr_url?: string;
-    }>(`/api/approvals/${actionId}`, {
-      decision,
-      approver: "you@product-os",
-      rationale:
-        decision === "approve"
-          ? "Evidence pack and risk gate reviewed in-room."
-          : "Need more evidence before this change ships.",
-    }),
+    }>(
+      `/api/approvals/${actionId}`,
+      {
+        decision,
+        approver: "you@product-os",
+        rationale:
+          decision === "approve"
+            ? "Evidence pack and risk gate reviewed in-room."
+            : "Need more evidence before this change ships.",
+      },
+      { admin: true }
+    ),
   approvalStatus: (actionId: string) =>
     get<{
       action_id: string;
@@ -374,8 +474,8 @@ export const api = {
       verdicts: Array<Record<string, unknown>>;
       failOpen: boolean;
     }>("/api/governance"),
-  tenants: () => get<{ tenants: Tenant[]; gate?: { mode: string; tenant_repo: string; label: string } }>("/api/tenants"),
-  tenant: (id: string) => get<{ tenant: Tenant; flags: Record<string, string> }>(`/api/tenants/${id}`),
+  tenants: () => get<{ tenants: Tenant[]; gate?: { mode: string; tenant_repo: string; label: string } }>("/api/tenants", { admin: true }),
+  tenant: (id: string) => get<{ tenant: Tenant; flags: Record<string, string> }>(`/api/tenants/${id}`, { admin: true }),
   onboardServices: (opts?: { project?: string; region?: string }) => {
     const q = new URLSearchParams();
     if (opts?.project) q.set("project", opts.project);
@@ -422,6 +522,44 @@ export const api = {
       ready?: boolean;
       ready_for_demo?: boolean;
     }>(`/api/tenants/${id}/verify`, {}, { admin: true }),
+  incidentLifecycle: (id: string, metric = "checkout_conversion") =>
+    get<{
+      status: string;
+      tenant_id: string;
+      checkout_url?: string | null;
+      deploy_url?: string | null;
+      room_id?: string | null;
+      investigation_id?: string | null;
+      investigation_state?: string | null;
+      pending_action_id?: string | null;
+      execution?: { pr_url?: string; flag?: string } | null;
+      steps: Array<{
+        id: string;
+        label: string;
+        detail?: string;
+        done: boolean;
+        active?: boolean;
+        href?: string | null;
+        room_id?: string | null;
+        action_id?: string | null;
+      }>;
+      progress: { done: number; total: number };
+      ready_for_checkout?: boolean;
+      pay_sdk_active?: string;
+      regression_active?: boolean;
+      phase?: string;
+      headline?: string;
+      subtitle?: string;
+      product_status?: string;
+      last_ingest_at?: string | null;
+      flags?: Record<string, string>;
+    }>(`/api/tenants/${id}/incident-lifecycle?metric=${encodeURIComponent(metric)}`, { admin: true }),
+  armIncident: (id: string) =>
+    post<{ status: string; tenant_id?: string; flag?: string; value?: string; lifecycle: Record<string, unknown> }>(
+      `/api/tenants/${id}/incident-lifecycle/arm`,
+      {},
+      { admin: true }
+    ),
   upsertTenant: (body: {
     id: string;
     name: string;

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Signal - Lumina Command</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error": "#ba1a1a",
+                      "on-background": "#181c23",
+                      "text-secondary": "#86868B",
+                      "tertiary-fixed-dim": "#ffb595",
+                      "inverse-surface": "#2d3039",
+                      "accent-warning": "#FF9500",
+                      "surface-container-highest": "#e0e2ed",
+                      "surface-bright": "#f9f9ff",
+                      "on-secondary-container": "#fffbff",
+                      "on-secondary-fixed": "#0c006b",
+                      "primary-fixed": "#d8e2ff",
+                      "secondary-fixed": "#e2dfff",
+                      "inverse-primary": "#adc6ff",
+                      "surface-dim": "#d8d9e5",
+                      "on-secondary": "#ffffff",
+                      "surface-container": "#ecedf9",
+                      "primary-container": "#0070eb",
+                      "on-primary-fixed-variant": "#004493",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-fixed": "#351000",
+                      "on-primary-container": "#fefcff",
+                      "surface-container-low": "#f1f3fe",
+                      "surface-high": "#FFFFFF",
+                      "surface-base": "#F5F5F7",
+                      "on-error": "#ffffff",
+                      "secondary-container": "#6462ec",
+                      "surface-tint": "#005bc1",
+                      "outline-variant": "#c1c6d7",
+                      "surface-variant": "#e0e2ed",
+                      "on-surface": "#181c23",
+                      "accent-success": "#34C759",
+                      "surface": "#f9f9ff",
+                      "on-tertiary-container": "#fffbff",
+                      "secondary": "#4a47d2",
+                      "error-container": "#ffdad6",
+                      "text-primary": "#1D1D1F",
+                      "primary": "#0058bc",
+                      "outline": "#717786",
+                      "on-surface-variant": "#414755",
+                      "on-primary-fixed": "#001a41",
+                      "accent-error": "#FF3B30",
+                      "on-secondary-fixed-variant": "#332dbc",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#9e3d00",
+                      "inverse-on-surface": "#eef0fc",
+                      "surface-container-high": "#e6e8f3",
+                      "primary-fixed-dim": "#adc6ff",
+                      "on-tertiary-fixed-variant": "#7c2e00",
+                      "secondary-fixed-dim": "#c2c1ff",
+                      "tertiary-container": "#c64f00",
+                      "background": "#f9f9ff",
+                      "tertiary-fixed": "#ffdbcc",
+                      "on-primary": "#ffffff",
+                      "surface-subtle": "#E5E5EA",
+                      "on-error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-md": "24px",
+                      "container-max": "1440px",
+                      "unit": "8px",
+                      "margin-lg": "40px",
+                      "margin-sm": "16px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "15px",
+                              {
+                                      "lineHeight": "22px",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.06em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "17px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Subtle pulse for active anomalies */
+        @keyframes subtlePulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+        }
+        .animate-subtle-pulse {
+            animation: subtlePulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-surface-base text-on-surface font-body-md min-h-screen flex">
+<!-- SideNavBar (hidden on mobile, flex on md+) -->
+<nav class="hidden md:flex flex-col p-margin-sm border-r border-surface-subtle bg-surface-base fixed left-0 top-0 h-screen w-64 z-40">
+<!-- Header -->
+<div class="mb-margin-lg px-unit flex items-center gap-3">
+<img alt="Agent Command Central" class="w-10 h-10 rounded-full object-cover shadow-[0_4px_20px_rgba(0,0,0,0.04)]" data-alt="A modern corporate profile avatar of a chief product officer, clean white background, professional lighting, conveying authoritative yet approachable technical presence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcNyfOjsU62NNRcxqr-YM8jS3csZPqbG_J0ybgMj0SAdWn0fpDcpUtRU-yKk56puOI40T9qFTPIHIAMQJjZUvfbqtixqLFohn-kbjn0psqX-MpZyjwhi_obiHabDdUGFK3M5SavCEbR1ZS2CD6zSgbYSXw6D9OXRMw_UEpXIyJQ6rm3TVqJNyqaau74YFsLtKAUY9t0WBmX-McL3DCZOoGinkOmqRtgbqL5TxyzUlqLQDjAvH1gasc"/>
+<div>
+<h1 class="font-headline-md text-headline-md text-on-surface">Research Lab</h1>
+<p class="font-body-sm text-body-sm text-text-secondary">Autonomous Ops</p>
+</div>
+</div>
+<!-- CTA -->
+<button class="mb-margin-lg bg-primary text-on-primary font-label-lg text-label-lg rounded-lg py-3 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:bg-primary-container hover:text-on-primary-container transition-colors duration-200 flex justify-center items-center gap-2">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            New Investigation
+        </button>
+<!-- Main Tabs -->
+<div class="flex flex-col gap-1 flex-grow">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary bg-white shadow-sm font-bold cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sensors" data-weight="fill">sensors</span>
+                Signal
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+                Understand
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+                Ask
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+                Diagnose
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="build_circle">build_circle</span>
+                Fix
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="verified">verified</span>
+                Verify
+            </a>
+</div>
+<!-- Footer Tabs -->
+<div class="flex flex-col gap-1 mt-auto pt-4 border-t border-surface-subtle">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                Docs
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- TopNavBar (visible on mobile, hidden on md+) -->
+<header class="md:hidden fixed top-0 right-0 left-0 z-50 flex justify-between items-center px-margin-lg h-16 bg-surface/80 backdrop-blur-xl bg-surface-bright/80 shadow-sm shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<div class="flex items-center gap-3">
+<span class="font-headline-md text-headline-md font-bold text-primary">Lumina Command</span>
+</div>
+<div class="flex items-center gap-4 text-primary">
+<button class="hover:bg-surface-subtle/50 transition-colors duration-200 p-2 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:bg-surface-subtle/50 transition-colors duration-200 p-2 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="Chief Product Officer Profile" class="w-8 h-8 rounded-full object-cover" data-alt="A small circular profile icon representing the Chief Product Officer, minimal corporate style, clean bright lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7LLVtPGOO80Qi5lqkuP7buRLxgbflyse9l5-Zwf_qm5oDtDhRg3IKwmtL1_526Xe6YrBjz4R3Pda0mfIHUolPv_Mwhr9G4IDKhO64ftvtasfVCgRtLi83KgRPRp8rUVj06Rn0KW9VtWKYakIvEnytUdpnjirOw2m7FXU6In7zE_FXkw3Ir07TDCCoGtdWDZrTTs-rjL5czfZ41WtOmbuFOyryItcoGgVTUjtthDPDcTPVVi3j8R7h"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-16 md:pt-0 md:ml-64 p-margin-sm md:p-margin-lg max-w-container-max mx-auto w-full">
+<!-- Page Header -->
+<div class="mb-margin-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface">Signal</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mt-1">Real-time telemetry and anomaly detection.</p>
+</div>
+<div class="flex items-center gap-3 bg-surface-high px-4 py-2 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<div class="w-3 h-3 rounded-full bg-accent-success"></div>
+<span class="font-label-lg text-label-lg text-on-surface">Campus Watch: Active</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-margin-md">
+<!-- Main Telemetry Stream (Spans 8 columns on desktop) -->
+<div class="col-span-1 md:col-span-8 bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-margin-md flex flex-col h-full min-h-[400px]">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Telemetry Stream</h3>
+<div class="flex gap-2">
+<span class="px-3 py-1 rounded-full bg-surface-subtle text-on-surface font-label-caps text-label-caps">GA4</span>
+<span class="px-3 py-1 rounded-full bg-surface-subtle text-on-surface font-label-caps text-label-caps">Ads</span>
+<span class="px-3 py-1 rounded-full bg-surface-subtle text-on-surface font-label-caps text-label-caps">Logs</span>
+</div>
+</div>
+<!-- Chart Area Placeholder (Stylized with gradients and layout) -->
+<div class="flex-grow relative rounded-lg border border-surface-subtle overflow-hidden bg-surface-base">
+<!-- Faux Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between opacity-10 pointer-events-none p-4">
+<div class="border-b border-on-surface w-full h-1/4"></div>
+<div class="border-b border-on-surface w-full h-1/4"></div>
+<div class="border-b border-on-surface w-full h-1/4"></div>
+<div class="border-b border-on-surface w-full h-1/4"></div>
+</div>
+<!-- Faux Data Line & Spike -->
+<div class="absolute bottom-0 left-0 w-full h-full flex items-end px-4 pb-4">
+<svg class="w-full h-full text-primary opacity-50" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M0,90 Q10,85 20,88 T40,85 T60,89 L70,30 L75,80 T90,85 L100,88 L100,100 L0,100 Z" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+</svg>
+</div>
+<!-- Anomaly Indicator -->
+<div class="absolute left-[70%] top-[25%] flex flex-col items-center transform -translate-x-1/2">
+<div class="w-4 h-4 rounded-full bg-accent-error animate-subtle-pulse border-2 border-surface-high"></div>
+<div class="mt-2 bg-surface-high shadow-[0_10px_30px_rgba(0,0,0,0.08)] rounded-lg p-2 text-center border border-surface-subtle relative">
+<div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-surface-subtle"></div>
+<span class="block font-label-caps text-label-caps text-accent-error">Spike Detected</span>
+<span class="block font-body-sm text-body-sm text-on-surface">+400% Latency</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Cards (Spans 4 columns on desktop) -->
+<div class="col-span-1 md:col-span-4 flex flex-col gap-margin-md">
+<!-- Anomalies Detected Card -->
+<div class="bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-margin-md flex-grow">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-accent-warning" data-icon="warning">warning</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Anomalies</h3>
+</div>
+<ul class="flex flex-col gap-3">
+<li class="p-3 rounded-lg bg-error-container/30 border border-error-container hover:bg-error-container/50 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-error-container">Checkout API Timeout</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Severity: High • 2 mins ago</p>
+</div>
+<span class="material-symbols-outlined text-text-secondary group-hover:text-primary transition-colors" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</li>
+<li class="p-3 rounded-lg bg-surface-subtle hover:bg-surface-variant transition-colors cursor-pointer group">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Ad Spend Drop</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Severity: Med • 15 mins ago</p>
+</div>
+<span class="material-symbols-outlined text-text-secondary group-hover:text-primary transition-colors" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</li>
+</ul>
+</div>
+<!-- Pending Investigations Card -->
+<div class="bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-margin-md flex-grow">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="search">search</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Investigations</h3>
+</div>
+<span class="bg-surface-subtle text-on-surface font-label-caps text-label-caps px-2 py-1 rounded-md">2 Pending</span>
+</div>
+<div class="flex flex-col gap-4">
+<div class="border-b border-surface-subtle pb-4 last:border-0 last:pb-0">
+<h4 class="font-body-lg text-body-lg text-on-surface mb-1">Root cause for US-East latency</h4>
+<div class="flex items-center gap-2">
+<div class="w-full bg-surface-subtle rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 65%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary">65%</span>
+</div>
+</div>
+<div class="border-b border-surface-subtle pb-4 last:border-0 last:pb-0">
+<h4 class="font-body-lg text-body-lg text-on-surface mb-1">Analyze Q3 drop in engagement</h4>
+<div class="flex items-center gap-2">
+<div class="w-full bg-surface-subtle rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 15%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary">15%</span>
+</div>
+</div>
+</div>
+<button class="w-full mt-4 py-2 font-label-lg text-label-lg text-primary hover:bg-surface-subtle rounded-lg transition-colors">View All</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

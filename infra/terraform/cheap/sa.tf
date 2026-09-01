@@ -5,7 +5,7 @@ variable "create_runtime_sa" {
 
 variable "grant_project_iam" {
   type    = bool
-  default = false
+  default = true
 }
 
 resource "google_service_account" "runtime" {
@@ -38,5 +38,19 @@ resource "google_project_iam_member" "runtime_armor_callout" {
   count   = var.grant_project_iam ? 1 : 0
   project = var.project_id
   role    = "roles/modelarmor.calloutUser"
+  member  = local.runtime_member
+}
+
+resource "google_project_iam_member" "runtime_firestore" {
+  count   = var.grant_project_iam ? 1 : 0
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = local.runtime_member
+}
+
+resource "google_project_iam_member" "runtime_tasks_enqueuer" {
+  count   = var.grant_project_iam ? 1 : 0
+  project = var.project_id
+  role    = "roles/cloudtasks.enqueuer"
   member  = local.runtime_member
 }

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina Command - Fix Proposal</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "on-background": "#181c23",
+                        "text-secondary": "#86868B",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "inverse-surface": "#2d3039",
+                        "accent-warning": "#FF9500",
+                        "surface-container-highest": "#e0e2ed",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary-container": "#fffbff",
+                        "on-secondary-fixed": "#0c006b",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-fixed": "#e2dfff",
+                        "inverse-primary": "#adc6ff",
+                        "surface-dim": "#d8d9e5",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ecedf9",
+                        "primary-container": "#0070eb",
+                        "on-primary-fixed-variant": "#004493",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-primary-container": "#fefcff",
+                        "surface-container-low": "#f1f3fe",
+                        "surface-high": "#FFFFFF",
+                        "surface-base": "#F5F5F7",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#6462ec",
+                        "surface-tint": "#005bc1",
+                        "outline-variant": "#c1c6d7",
+                        "surface-variant": "#e0e2ed",
+                        "on-surface": "#181c23",
+                        "accent-success": "#34C759",
+                        "surface": "#f9f9ff",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary": "#4a47d2",
+                        "error-container": "#ffdad6",
+                        "text-primary": "#1D1D1F",
+                        "primary": "#0058bc",
+                        "outline": "#717786",
+                        "on-surface-variant": "#414755",
+                        "on-primary-fixed": "#001a41",
+                        "accent-error": "#FF3B30",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#9e3d00",
+                        "inverse-on-surface": "#eef0fc",
+                        "surface-container-high": "#e6e8f3",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "tertiary-container": "#c64f00",
+                        "background": "#f9f9ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-primary": "#ffffff",
+                        "surface-subtle": "#E5E5EA",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-md": "24px",
+                        "container-max": "1440px",
+                        "unit": "8px",
+                        "margin-lg": "40px",
+                        "margin-sm": "16px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+        
+        /* Custom Scrollbar for diff view */
+        .diff-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+        .diff-scroll::-webkit-scrollbar-track { background: transparent; }
+        .diff-scroll::-webkit-scrollbar-thumb { background: #E5E5EA; border-radius: 4px; }
+        .diff-scroll:hover::-webkit-scrollbar-thumb { background: #c1c6d7; }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary h-screen w-full overflow-hidden flex">
+<!-- TopNavBar Component -->
+<nav class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl bg-surface-bright/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)] fixed top-0 right-0 left-0 z-50 flex justify-between items-center px-margin-lg h-16 pl-[296px]">
+<div class="flex items-center gap-unit">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Lumina Command</span>
+</div>
+<!-- Search (on_left contextually shifted right due to nav structure) -->
+<div class="flex-1 max-w-md mx-margin-md">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full bg-surface-subtle border-none rounded-full py-2 pl-10 pr-4 font-body-md text-body-md focus:ring-2 focus:ring-primary/20 focus:bg-surface-high transition-all duration-200" placeholder="Search operations..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-margin-sm">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="Chief Product Officer Profile" class="w-8 h-8 rounded-full ml-2 object-cover border border-surface-subtle" data-alt="A professional headshot of a Chief Product Officer in a modern corporate setting, light mode aesthetic, well-lit, shallow depth of field, confident posture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCatDV91Oc4_Ce5sWcBFVbl5_13VVaM1JYoMVKSJgIfoDKrvAiS7bpd8LcsHamiCDA_timg2AqR8xacsO4j7JbuKBZBihGQXV6tAexTQrQ2f4tZHPArwsaXCBnMYY8YjwaGgcrEtDxKQmBXCM2YkIQs5ZsHuRlNwm26yrnjfVNksHQpNdmyc1QaOQebSGKPueCY1-Qo8nA6M-Ar3dHEiN6X6BrOftxepB60tgKLpIs5l_g_wSZlmqmF"/>
+</div>
+</nav>
+<!-- SideNavBar Component -->
+<aside class="bg-surface-base dark:bg-on-background fixed left-0 top-0 h-screen w-64 flex flex-col p-margin-sm border-r border-surface-subtle z-40 pt-20">
+<div class="flex items-center gap-3 px-3 mb-margin-lg">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined icon-fill">memory</span>
+</div>
+<div>
+<h2 class="font-label-lg text-label-lg font-bold text-on-surface">Research Lab</h2>
+<p class="font-body-sm text-body-sm text-text-secondary">Autonomous Ops</p>
+</div>
+</div>
+<button class="mb-margin-lg w-full bg-primary text-on-primary font-label-lg text-label-lg py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm active:scale-95 duration-200">
+<span class="material-symbols-outlined text-[18px]">add</span>
+            New Investigation
+        </button>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span>
+<span class="font-label-lg text-label-lg">Signal</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-label-lg text-label-lg">Understand</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-lg text-label-lg">Ask</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+<span class="font-label-lg text-label-lg">Diagnose</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-primary bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)] rounded-lg font-bold cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined icon-fill" data-icon="build_circle">build_circle</span>
+<span class="font-label-lg text-label-lg">Fix</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="verified">verified</span>
+<span class="font-label-lg text-label-lg">Verify</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-1 border-t border-surface-subtle pt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-primary hover:bg-surface-subtle transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
+<span class="font-body-sm text-body-sm font-medium">Docs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary hover:text-primary hover:bg-surface-subtle transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="help">help</span>
+<span class="font-body-sm text-body-sm font-medium">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 p-margin-lg h-full overflow-y-auto flex-1 bg-background">
+<div class="max-w-[1200px] mx-auto">
+<!-- Page Header -->
+<header class="mb-margin-lg flex justify-between items-end">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="w-2 h-2 rounded-full bg-accent-warning animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider">Code Agent Proposal</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">PR #482: Resolve Connection Timeout</h1>
+<p class="font-body-lg text-body-lg text-text-secondary mt-1">Proposed fix for the intermittent latency spikes in the authentication service.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg font-label-lg text-label-lg bg-surface-subtle text-on-surface hover:bg-outline-variant/30 transition-colors">
+                        View Context
+                    </button>
+<button class="px-6 py-2 rounded-lg font-label-lg text-label-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm">
+                        Merge Fix
+                    </button>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Diff Viewer Card (Spans 8 cols) -->
+<div class="col-span-1 lg:col-span-8 bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-[500px]">
+<div class="px-6 py-4 border-b border-surface-subtle flex justify-between items-center bg-surface-high">
+<h3 class="font-label-lg text-label-lg text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-[20px]">difference</span>
+                            What I changed and why
+                        </h3>
+<div class="flex gap-2">
+<span class="font-body-sm text-body-sm bg-error-container/50 text-error px-2 py-0.5 rounded text-[12px]">- 3 lines</span>
+<span class="font-body-sm text-body-sm bg-accent-success/10 text-accent-success px-2 py-0.5 rounded text-[12px]">+ 5 lines</span>
+</div>
+</div>
+<div class="p-6 bg-surface-base border-b border-surface-subtle">
+<p class="font-body-md text-body-md text-text-secondary">
+                            I updated the <code class="font-mono bg-surface-subtle px-1 rounded text-sm text-on-surface">pool.connect()</code> method to include explicit timeout handling and retry jitter to prevent the thundering herd problem during brief network blips.
+                        </p>
+</div>
+<!-- The Code Diff -->
+<div class="flex-1 bg-[#1e1e1e] overflow-y-auto diff-scroll p-4 font-mono text-sm font-[13px] leading-relaxed text-gray-300">
+<div class="flex px-2 hover:bg-white/5 rounded">
+<span class="w-10 text-gray-500 select-none text-right pr-4">112</span>
+<span class="text-gray-300">  async function getConnection() {</span>
+</div>
+<div class="flex px-2 hover:bg-white/5 rounded">
+<span class="w-10 text-gray-500 select-none text-right pr-4">113</span>
+<span class="text-gray-300">    try {</span>
+</div>
+<div class="flex px-2 bg-error-container/20 text-[#ffb4ab] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#ffb4ab]/20 mr-4">-</span>
+<span>      return await pool.connect();</span>
+</div>
+<div class="flex px-2 bg-accent-success/20 text-[#8fdf92] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#8fdf92]/20 mr-4">+</span>
+<span>      return await pool.connect({</span>
+</div>
+<div class="flex px-2 bg-accent-success/20 text-[#8fdf92] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#8fdf92]/20 mr-4">+</span>
+<span>        timeoutMs: 5000,</span>
+</div>
+<div class="flex px-2 bg-accent-success/20 text-[#8fdf92] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#8fdf92]/20 mr-4">+</span>
+<span>        retryJitter: true</span>
+</div>
+<div class="flex px-2 bg-accent-success/20 text-[#8fdf92] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#8fdf92]/20 mr-4">+</span>
+<span>      });</span>
+</div>
+<div class="flex px-2 hover:bg-white/5 rounded">
+<span class="w-10 text-gray-500 select-none text-right pr-4">118</span>
+<span class="text-gray-300">    } catch (error) {</span>
+</div>
+<div class="flex px-2 bg-error-container/20 text-[#ffb4ab] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#ffb4ab]/20 mr-4">-</span>
+<span>      logger.error('Connection failed');</span>
+</div>
+<div class="flex px-2 bg-error-container/20 text-[#ffb4ab] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#ffb4ab]/20 mr-4">-</span>
+<span>      throw error;</span>
+</div>
+<div class="flex px-2 bg-accent-success/20 text-[#8fdf92] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#8fdf92]/20 mr-4">+</span>
+<span>      logger.error({ err: error }, 'DB Connection failed after retries');</span>
+</div>
+<div class="flex px-2 bg-accent-success/20 text-[#8fdf92] rounded my-0.5">
+<span class="w-10 text-gray-500 select-none text-right pr-4 border-r border-[#8fdf92]/20 mr-4">+</span>
+<span>      throw new ConnectionError('Failed to acquire connection', { cause: error });</span>
+</div>
+<div class="flex px-2 hover:bg-white/5 rounded">
+<span class="w-10 text-gray-500 select-none text-right pr-4">123</span>
+<span class="text-gray-300">    }</span>
+</div>
+</div>
+</div>
+<!-- Right Column (Spans 4 cols) -->
+<div class="col-span-1 lg:col-span-4 flex flex-col gap-gutter">
+<!-- Risk Assessment Card -->
+<div class="bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-[20px]">security</span>
+                            Impact &amp; Risk Analysis
+                        </h3>
+<div class="flex items-center gap-4 mb-6">
+<div class="w-12 h-12 rounded-full border-4 border-accent-success/20 flex items-center justify-center">
+<div class="w-8 h-8 rounded-full bg-accent-success/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-accent-success text-[18px]">check</span>
+</div>
+</div>
+<div>
+<span class="font-label-caps text-label-caps text-text-secondary uppercase">Calculated Risk</span>
+<div class="font-headline-md text-headline-md text-on-surface mt-0.5">Low Risk</div>
+</div>
+</div>
+<div class="space-y-3 border-t border-surface-subtle pt-4">
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-text-secondary">Affected Services</span>
+<span class="font-body-sm text-body-sm text-on-surface bg-surface-subtle px-2 py-0.5 rounded">auth-service</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-text-secondary">Downtime Expected</span>
+<span class="font-body-sm text-body-sm text-on-surface">None</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-text-secondary">Rollback Confidence</span>
+<span class="font-body-sm text-body-sm text-accent-success">High (Automated)</span>
+</div>
+</div>
+</div>
+<!-- Review Scheduler Card -->
+<div class="bg-surface-high rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-6 flex-1">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-1 flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-[20px]">event_available</span>
+                            Review Scheduler
+                        </h3>
+<p class="font-body-sm text-body-sm text-text-secondary mb-5">Checking availability for lead engineers.</p>
+<div class="space-y-3">
+<!-- Slot 1 -->
+<div class="border border-outline-variant/30 rounded-lg p-3 hover:border-primary/50 hover:bg-surface-subtle/30 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div class="font-label-lg text-label-lg text-on-surface group-hover:text-primary transition-colors">Today, 2:30 PM</div>
+<span class="bg-primary-container text-on-primary-container font-label-caps text-[10px] px-1.5 py-0.5 rounded">Suggested</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex -space-x-2">
+<img alt="Reviewer" class="w-6 h-6 rounded-full border-2 border-surface-high object-cover" data-alt="A portrait of a male senior software engineer with glasses, looking focused, corporate light mode style, clean background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrcjZrkUy1H3uVFWPJK0Xj09V77OaoqBpgp8fPOB7S6Rfmc2iydY83xs7eDZfHidEJlGHBgc2cxjltR0EYzO9ihALu8iv-mOdsF3gjetQHetrPcjOPTNJnSXVpRdl0XAko2FazfY3XKmYUtPautKc8z75VU0UpyK-HiuYZ40CHXg4fQJjodrXqrXM14NqoNZz1zmZbouAZuiuA6FRc9FeNSi1WtkJ4ZdXPIY_BAgZEne0Ic8bMRWxa"/>
+<img alt="Reviewer" class="w-6 h-6 rounded-full border-2 border-surface-high object-cover" data-alt="A portrait of a female lead developer, smiling slightly, modern tech office environment, soft light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAe4NbO2Erxsc6J-GaQFTVzQdJgW160GOS3FH-Zl2Uv8oihMZQyjla0EPKYC2UPNP3yR0p-fUSh5gC_8x8QgCdIhiO-AVkVyofLOGaMnuo5LH8f5g0Wv-YIHzrxk-RB2wtk-W8H80wBh3R1axWXdfWhjZtTLzZF2wCL0bZJ0rnRdD-BiFpf1R5adyYA2E6RoAAPWH7quKpgscErBjyQG-japArongEMSTBj4oAQbrT8o_9sI-mjS_tL"/>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary">Sarah &amp; David available</span>
+</div>
+</div>
+<!-- Slot 2 -->
+<div class="border border-surface-subtle rounded-lg p-3 hover:border-primary/50 hover:bg-surface-subtle/30 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div class="font-label-lg text-label-lg text-on-surface group-hover:text-primary transition-colors">Today, 4:00 PM</div>
+</div>
+<div class="flex items-center gap-2">
+<img alt="Reviewer" class="w-6 h-6 rounded-full object-cover" data-alt="A portrait of a male senior software engineer with glasses, looking focused, corporate light mode style, clean background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCQfk69UmeKwdgt_xxCkIyBH56k8ew-ZJsej2UHsRBV6y-oLoMc-2WKVye9aCLUxrpfXMsayWED5eIpyx_6XdBSC5lFYEYfoo3MEkHNXIdeRT4T72BYPRocR6XkPoEF2oDBtwQyUNEXpvIdMkKb_KxXc6A_3EZsimAEk2HKDKOQtAHPbJC_7Iy9BWK-lM_PEpmcTqpkPXpuh76wvt0G4HCmxM_BRR29Oc6zEn0HmAq74SomRXFvGLG"/>
+<span class="font-body-sm text-body-sm text-text-secondary">David available</span>
+</div>
+</div>
+</div>
+<button class="w-full mt-4 py-2 rounded-lg font-label-lg text-label-lg text-primary border border-primary/20 hover:bg-primary/5 transition-colors">
+                            Schedule Custom Time
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

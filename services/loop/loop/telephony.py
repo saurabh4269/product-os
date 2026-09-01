@@ -23,8 +23,41 @@ import httpx
 from loop.classify import classify_call_outcome
 from loop.tenant import ConnectorReport
 
-# In-memory active call sessions (Cloud Run instance-local; fine for demo + min-instances 1).
+# In-memory active call sessions — mirrored to LOOP_DATA_DIR for min-instances>1 recovery.
 _SESSIONS: dict[str, dict[str, Any]] = {}
+
+
+def _sessions_path() -> str:
+    base = (os.environ.get("LOOP_DATA_DIR") or "/tmp").rstrip("/")
+    return f"{base}/call_sessions.json"
+
+
+def _load_sessions() -> None:
+    global _SESSIONS
+    path = _sessions_path()
+    if not os.path.isfile(path):
+        return
+    try:
+        import json
+
+        raw = json.loads(open(path, encoding="utf-8").read())
+        if isinstance(raw, dict):
+            _SESSIONS.update(raw)
+    except (OSError, json.JSONDecodeError, ValueError):
+        pass
+
+
+def _persist_sessions() -> None:
+    try:
+        import json
+
+        with open(_sessions_path(), "w", encoding="utf-8") as fh:
+            json.dump(_SESSIONS, fh)
+    except OSError:
+        pass
+
+
+_load_sessions()
 
 
 def twilio_configured() -> bool:
@@ -62,6 +95,7 @@ def get_session(call_sid: str) -> dict[str, Any] | None:
 
 def put_session(call_sid: str, data: dict[str, Any]) -> None:
     _SESSIONS[call_sid] = data
+    _persist_sessions()
 
 
 def _gemini_reply(system: str, user: str, history: list[dict[str, str]]) -> str:

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Understand &amp; Diagnose - Investigation Lab</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error": "#ba1a1a",
+                      "on-background": "#181c23",
+                      "text-secondary": "#86868B",
+                      "tertiary-fixed-dim": "#ffb595",
+                      "inverse-surface": "#2d3039",
+                      "accent-warning": "#FF9500",
+                      "surface-container-highest": "#e0e2ed",
+                      "surface-bright": "#f9f9ff",
+                      "on-secondary-container": "#fffbff",
+                      "on-secondary-fixed": "#0c006b",
+                      "primary-fixed": "#d8e2ff",
+                      "secondary-fixed": "#e2dfff",
+                      "inverse-primary": "#adc6ff",
+                      "surface-dim": "#d8d9e5",
+                      "on-secondary": "#ffffff",
+                      "surface-container": "#ecedf9",
+                      "primary-container": "#0070eb",
+                      "on-primary-fixed-variant": "#004493",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-fixed": "#351000",
+                      "on-primary-container": "#fefcff",
+                      "surface-container-low": "#f1f3fe",
+                      "surface-high": "#FFFFFF",
+                      "surface-base": "#F5F5F7",
+                      "on-error": "#ffffff",
+                      "secondary-container": "#6462ec",
+                      "surface-tint": "#005bc1",
+                      "outline-variant": "#c1c6d7",
+                      "surface-variant": "#e0e2ed",
+                      "on-surface": "#181c23",
+                      "accent-success": "#34C759",
+                      "surface": "#f9f9ff",
+                      "on-tertiary-container": "#fffbff",
+                      "secondary": "#4a47d2",
+                      "error-container": "#ffdad6",
+                      "text-primary": "#1D1D1F",
+                      "primary": "#0058bc",
+                      "outline": "#717786",
+                      "on-surface-variant": "#414755",
+                      "on-primary-fixed": "#001a41",
+                      "accent-error": "#FF3B30",
+                      "on-secondary-fixed-variant": "#332dbc",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#9e3d00",
+                      "inverse-on-surface": "#eef0fc",
+                      "surface-container-high": "#e6e8f3",
+                      "primary-fixed-dim": "#adc6ff",
+                      "on-tertiary-fixed-variant": "#7c2e00",
+                      "secondary-fixed-dim": "#c2c1ff",
+                      "tertiary-container": "#c64f00",
+                      "background": "#f9f9ff",
+                      "tertiary-fixed": "#ffdbcc",
+                      "on-primary": "#ffffff",
+                      "surface-subtle": "#E5E5EA",
+                      "on-error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-md": "24px",
+                      "container-max": "1440px",
+                      "unit": "8px",
+                      "margin-lg": "40px",
+                      "margin-sm": "16px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "15px",
+                              {
+                                      "lineHeight": "22px",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.06em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "17px",
+                              {
+                                      "lineHeight": "24px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-surface-base text-on-surface font-body-md min-h-screen flex selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (Shared Component) -->
+<nav class="hidden md:flex flex-col bg-surface-base dark:bg-on-background fixed left-0 top-0 h-screen w-64 p-margin-sm border-r border-surface-subtle z-40">
+<div class="mb-margin-lg px-unit">
+<h1 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">science</span>
+                Research Lab
+            </h1>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Autonomous Ops</p>
+</div>
+<div class="flex-1 overflow-y-auto space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">sensors</span>
+<span>Signal</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-primary bg-white shadow-sm rounded-lg font-bold font-label-lg text-label-lg transition-all duration-200 cursor-pointer" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<span>Understand</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">chat_bubble</span>
+<span>Ask</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">biotech</span>
+<span>Diagnose</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">build_circle</span>
+<span>Fix</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">verified</span>
+<span>Verify</span>
+</a>
+</div>
+<div class="mt-auto space-y-2 pt-margin-md border-t border-surface-subtle">
+<button class="w-full bg-primary text-white rounded-lg py-2 px-4 font-label-lg text-label-lg hover:bg-surface-tint transition-colors shadow-sm flex justify-center items-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                New Investigation
+            </button>
+<div class="flex gap-1">
+<a class="flex-1 flex justify-center items-center gap-2 py-2 text-text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm rounded hover:bg-surface-subtle" href="#">
+<span class="material-symbols-outlined text-[18px]">description</span> Docs
+                </a>
+<a class="flex-1 flex justify-center items-center gap-2 py-2 text-text-secondary hover:text-on-surface transition-colors font-body-sm text-body-sm rounded hover:bg-surface-subtle" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span> Support
+                </a>
+</div>
+<div class="mt-4 flex items-center gap-3 px-2">
+<img class="w-8 h-8 rounded-full object-cover border border-surface-subtle bg-white" data-alt="A small circular profile picture of an AI Agent avatar. It is a modern, sleek digital rendering of a friendly glowing node. Light mode aesthetic, bright and clean." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuAo6IQTMAlnAGd2Z5_uLcC86cYEkwhWjLCCtdkFkz0aXOjI6c-k1L5NK1UW2l6kAZAgWduKjUZq3AOJT_7IOSilsvUq5K9Mfht4_SV1AlDYV9JWU3Xeod3yVfyiazXjsEebR15dt-DqB8kKb5xr1M2Ll6C6__nQ-0zvHfjpRYyqydIVP3j6XSrwbx2oUQHNHE89Rj4ct1Q4cai85DUtG01Ln3t5pIPV8WmfuTrE0bZMGPT47T344g"/>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg text-on-surface truncate">Agent Command Central</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- TopNavBar (Mobile only for layout separation, but keeping generic structure as requested, adapting for responsive) -->
+<header class="md:hidden fixed top-0 right-0 left-0 z-50 flex justify-between items-center px-margin-lg h-16 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl border-b border-surface-bright/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<div class="flex items-center gap-3">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Lumina Command</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-text-secondary hover:text-primary hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 p-2 rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-text-secondary hover:text-primary hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 p-2 rounded-full">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A profile picture of a Chief Product Officer. A professional headshot in a modern corporate setting. Light and airy atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBT0Bw9xWZsWOQDR_4IVoDRPLBFtMH68GJ-StEcB0DPX49RUpvOXlI-Svc775jTjBE4t934OZVM42J9gFjU-ULMtuHK1KTnio2wC8Cb3Y8D62YeT-effvawq2WUlVS4y9sEolKNLFtJZM8wzTFfTRnENM8t5mGXZ56EvUdv6EdbutbfB3SEaunfamS_gvjfx2E7f3TSQct9RgOpvAKO46xoFBzdWeV6FeortsOnUlulpMsR6zlEHlyA"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 pt-16 md:pt-0 p-margin-sm md:p-margin-lg max-w-container-max mx-auto w-full">
+<!-- Header Section -->
+<div class="mb-margin-lg">
+<div class="flex items-center gap-2 text-text-secondary font-body-sm text-body-sm mb-2">
+<span>Incident #492-B</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span>Active Investigation</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-2">Understand &amp; Diagnose</h1>
+<p class="font-body-lg text-body-lg text-text-secondary max-w-2xl">
+                Aggregating evidence from deployment, database, and log vectors to isolate the source of elevated latency in the US-East cluster.
+            </p>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Hypothesis Section (Spans 8 cols on large screens) -->
+<section class="lg:col-span-8 bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-variant flex flex-col relative overflow-hidden">
+<!-- Decorative subtle gradient bg -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary-fixed/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+<div class="flex justify-between items-start mb-6 relative z-10">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">psychology_alt</span>
+                            Root Cause Hypothesis
+                        </h2>
+<p class="font-body-md text-body-md text-text-secondary mt-1">AI-generated primary diagnosis based on combined evidence.</p>
+</div>
+<div class="flex flex-col items-end">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container-low rounded-full border border-surface-variant shadow-sm">
+<span class="w-2 h-2 rounded-full bg-accent-success animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-on-surface uppercase tracking-wider">Confidence</span>
+</div>
+<span class="font-display-lg text-display-lg text-accent-success mt-1">91%</span>
+</div>
+</div>
+<div class="bg-surface-base rounded-lg p-margin-md border border-surface-subtle mb-6 relative z-10">
+<p class="font-body-lg text-body-lg text-on-surface leading-relaxed">
+                        The sudden spike in API latency is strongly correlated with a <strong>database index fragmentation</strong> on the <code>transactions_v2</code> table, introduced after the massive batch processing job at 03:00 UTC. The deployment Agent confirms no code changes affect this path, and the Analytics Agent shows a direct mapping of the latency exclusively to read queries hitting this specific table.
+                    </p>
+</div>
+<div class="mt-auto border-t border-surface-subtle pt-4 flex gap-3 relative z-10">
+<button class="bg-primary hover:bg-surface-tint text-white px-6 py-2.5 rounded-lg font-label-lg text-label-lg transition-all duration-200 shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined">auto_fix_high</span>
+                        Generate Fix Protocol
+                    </button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface px-6 py-2.5 rounded-lg font-label-lg text-label-lg transition-all duration-200 flex items-center gap-2">
+<span class="material-symbols-outlined">explore</span>
+                        Explore Alternatives
+                    </button>
+</div>
+</section>
+<!-- Agent Status/Summary (Spans 4 cols) -->
+<section class="lg:col-span-4 bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-variant flex flex-col">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Agent Swarm</h3>
+<p class="font-body-sm text-body-sm text-text-secondary mb-6">Real-time status of investigative sub-agents.</p>
+<div class="space-y-4 flex-1">
+<!-- Agent Item -->
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-base transition-colors border border-transparent hover:border-surface-subtle cursor-pointer group">
+<div class="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary shrink-0 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[20px]">database</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-lg text-label-lg text-on-surface">DB Analyst</span>
+<span class="text-[10px] uppercase font-bold text-accent-success flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-accent-success"></span> Completed</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary truncate">Identified fragmentation in transactions_v2</p>
+</div>
+</div>
+<!-- Agent Item -->
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-base transition-colors border border-transparent hover:border-surface-subtle cursor-pointer group">
+<div class="w-10 h-10 rounded-full bg-accent-warning/10 flex items-center justify-center text-accent-warning shrink-0 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-lg text-label-lg text-on-surface">Traffic Metrics</span>
+<span class="text-[10px] uppercase font-bold text-accent-success flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-accent-success"></span> Completed</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary truncate">Correlated latency with read operations</p>
+</div>
+</div>
+<!-- Agent Item -->
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-surface-base transition-colors border border-transparent hover:border-surface-subtle cursor-pointer group">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-text-secondary shrink-0 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[20px]">cloud_upload</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-lg text-label-lg text-on-surface">Deployment Vet</span>
+<span class="text-[10px] uppercase font-bold text-text-secondary flex items-center gap-1"> Idle</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary truncate">No recent changes detected in path</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Evidence Aggregation (Spans full 12 cols below) -->
+<section class="lg:col-span-12 mt-margin-md">
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-6">Evidence Aggregation</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Evidence Card 1 -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-variant flex flex-col h-full hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+<div class="flex items-center gap-2 mb-4 text-primary">
+<span class="material-symbols-outlined">data_usage</span>
+<h4 class="font-label-lg text-label-lg text-on-surface uppercase tracking-wider">Log Vector Analysis</h4>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-text-secondary mb-4">Semantic search across 5M log entries indicates anomalous patterns matching previous "slow query" incidents.</p>
+<div class="bg-inverse-surface rounded-md p-3 font-mono text-sm text-on-secondary mb-4 overflow-x-auto whitespace-nowrap">
+<span class="text-accent-warning">[WARN]</span> 03:15:22 Execution time exceeded 5000ms for query hash 8f9a2b...<br/>
+<span class="text-accent-warning">[WARN]</span> 03:15:24 Execution time exceeded 5000ms for query hash 8f9a2b...
+                            </div>
+</div>
+<div class="pt-4 border-t border-surface-subtle text-right">
+<a class="text-primary font-label-lg text-label-lg hover:underline inline-flex items-center gap-1" href="#">View Full Context <span class="material-symbols-outlined text-[16px]">arrow_forward</span></a>
+</div>
+</div>
+<!-- Evidence Card 2 -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-variant flex flex-col h-full hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+<div class="flex items-center gap-2 mb-4 text-accent-warning">
+<span class="material-symbols-outlined">insights</span>
+<h4 class="font-label-lg text-label-lg text-on-surface uppercase tracking-wider">Metrics Trace</h4>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-text-secondary mb-4">P99 latency spiked exactly correlating with a 300% increase in IOPS on the primary database cluster.</p>
+<!-- Placeholder for a mini chart/visualization -->
+<div class="h-24 bg-surface-base rounded-md border border-surface-subtle flex items-end px-2 pb-2 gap-1 overflow-hidden relative">
+<div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:10px_10px]"></div>
+<!-- Mock bars -->
+<div class="w-full bg-surface-container-highest rounded-t-sm" style="height: 20%"></div>
+<div class="w-full bg-surface-container-highest rounded-t-sm" style="height: 25%"></div>
+<div class="w-full bg-surface-container-highest rounded-t-sm" style="height: 22%"></div>
+<div class="w-full bg-accent-warning/80 rounded-t-sm" style="height: 85%"></div>
+<div class="w-full bg-accent-warning/80 rounded-t-sm" style="height: 95%"></div>
+<div class="w-full bg-accent-warning/80 rounded-t-sm" style="height: 90%"></div>
+</div>
+</div>
+<div class="pt-4 border-t border-surface-subtle text-right mt-4">
+<a class="text-primary font-label-lg text-label-lg hover:underline inline-flex items-center gap-1" href="#">Open in Grafana <span class="material-symbols-outlined text-[16px]">open_in_new</span></a>
+</div>
+</div>
+<!-- Evidence Card 3 -->
+<div class="bg-surface-high rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-surface-variant flex flex-col h-full hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+<div class="flex items-center gap-2 mb-4 text-text-secondary">
+<span class="material-symbols-outlined">stethoscope_arrow</span>
+<h4 class="font-label-lg text-label-lg text-on-surface uppercase tracking-wider">Deployment Context</h4>
+</div>
+<div class="flex-1 flex flex-col justify-center items-center text-center p-4">
+<div class="w-16 h-16 rounded-full bg-surface-base flex items-center justify-center mb-4 text-text-secondary">
+<span class="material-symbols-outlined text-[32px]">check_circle</span>
+</div>
+<h5 class="font-label-lg text-label-lg text-on-surface mb-2">No Recent Changes</h5>
+<p class="font-body-sm text-body-sm text-text-secondary">The last deployment touching this service path was 4 days ago. This is highly likely an environmental or data-state issue, not code-driven.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

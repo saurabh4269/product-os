@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Approvals &amp; Governance - Lumina Command</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "outline-variant": "#c1c6d7",
+                        "tertiary-container": "#c64f00",
+                        "secondary-container": "#6462ec",
+                        "inverse-on-surface": "#eef0fc",
+                        "surface-container-high": "#e6e8f3",
+                        "tertiary": "#9e3d00",
+                        "on-background": "#181c23",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#414755",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary": "#4a47d2",
+                        "text-secondary": "#86868B",
+                        "inverse-primary": "#adc6ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "text-primary": "#1D1D1F",
+                        "primary": "#0058bc",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "surface-variant": "#e0e2ed",
+                        "background": "#f9f9ff",
+                        "surface-base": "#F5F5F7",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "on-secondary-fixed": "#0c006b",
+                        "accent-warning": "#FF9500",
+                        "surface-container-low": "#f1f3fe",
+                        "surface-subtle": "#E5E5EA",
+                        "on-tertiary-fixed": "#351000",
+                        "on-primary-fixed-variant": "#004493",
+                        "on-primary-fixed": "#001a41",
+                        "primary-fixed-dim": "#adc6ff",
+                        "accent-success": "#34C759",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#f9f9ff",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "inverse-surface": "#2d3039",
+                        "on-primary-container": "#fefcff",
+                        "outline": "#717786",
+                        "on-surface": "#181c23",
+                        "secondary-fixed": "#e2dfff",
+                        "on-secondary-container": "#fffbff",
+                        "primary-container": "#0070eb",
+                        "accent-error": "#FF3B30",
+                        "surface-tint": "#005bc1",
+                        "surface-high": "#FFFFFF",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f9f9ff",
+                        "surface-container": "#ecedf9",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "surface-dim": "#d8d9e5",
+                        "surface-container-highest": "#e0e2ed",
+                        "on-tertiary-container": "#fffbff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-lg": "40px",
+                        "margin-sm": "16px",
+                        "margin-md": "24px",
+                        "container-max": "1440px",
+                        "unit": "8px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #F5F5F7; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .fill-icon { font-variation-settings: 'FILL' 1; }
+        
+        /* Ambient shadows */
+        .shadow-ambient-lg { box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .shadow-ambient-xl { box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        
+        /* Custom scrollbar for detail panel */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #E5E5EA; border-radius: 20px; }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary antialiased h-screen overflow-hidden flex flex-col md:flex-row">
+<!-- TopNavBar (Mobile Only) -->
+<header class="md:hidden fixed top-0 right-0 left-0 z-50 flex justify-between items-center px-margin-lg h-16 bg-surface/80 backdrop-blur-xl bg-surface-bright/80 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<div class="flex items-center gap-3">
+<span class="font-headline-md text-headline-md font-bold text-primary">Lumina Command</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-text-secondary font-medium hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 transition-transform p-2 rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-text-secondary font-medium hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 transition-transform p-2 rounded-full">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<img alt="Chief Product Officer Profile" class="w-8 h-8 rounded-full object-cover" data-alt="A professional headshot of a Chief Product Officer, late 30s, female, with dark hair tied back, wearing a modern light grey blazer over a white top. The background is a brightly lit, out-of-focus modern office setting with glass walls and subtle hints of blue accent lighting. The overall mood is confident and approachable, captured with a shallow depth of field in a high-key, corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3MwBeGhCf2L2N7lcVl2UKj5jE1tpi55RQ_FO-tPCDspKwFI0UGAahUTmn1l3u3lSB01tnZcuOym-WhnpC9FGGQPw6TYqd1iJJsfmsT_J9COGlewWyzkaYXdgFU4x7bWwBEFXymVlGRQrpH0M_Mn3wAaIZxe9gEDsjzildzAIF3jgCr0b954a9FBEq648ENKYY2Ah37Ab9LbdeCDuDcDM1vWWxezRk7H9WUfb16YVNi4ZfZvhD3kHC"/>
+</div>
+</header>
+<!-- SideNavBar (Desktop Only) -->
+<nav class="hidden md:flex fixed left-0 top-0 h-screen w-64 flex-col p-margin-sm border-r border-surface-subtle bg-surface-base">
+<!-- Header -->
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-primary-container">science</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface text-[18px] leading-tight font-bold">Research Lab</h2>
+<p class="font-body-sm text-body-sm text-text-secondary">Autonomous Ops</p>
+</div>
+</div>
+<!-- CTA -->
+<button class="mb-6 w-full py-3 px-4 rounded-lg bg-primary text-white font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+            New Investigation
+        </button>
+<!-- Navigation Links -->
+<div class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">sensors</span>
+                Signal
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">psychology</span>
+                Understand
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+                Ask
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">biotech</span>
+                Diagnose
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary bg-white shadow-sm font-bold transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined fill-icon">build_circle</span>
+                Fix
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined">verified</span>
+                Verify
+            </a>
+</div>
+<!-- Footer Links -->
+<div class="mt-auto space-y-1 pt-4 border-t border-surface-subtle">
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined text-[20px]">description</span>
+                Docs
+            </a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer font-label-lg text-label-lg" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col pt-16 md:pt-0 md:ml-64 h-screen overflow-hidden bg-surface-base">
+<!-- Header Section -->
+<header class="px-margin-lg pt-margin-lg pb-margin-md flex-shrink-0 flex justify-between items-end">
+<div>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-2">Pending Approvals</h1>
+<p class="font-body-lg text-body-lg text-text-secondary">Review and authorize high-risk autonomous actions.</p>
+</div>
+<!-- Desktop Top Actions (replaces mobile TopNavBar) -->
+<div class="hidden md:flex items-center gap-4">
+<button class="w-10 h-10 rounded-full bg-white shadow-ambient-lg flex items-center justify-center text-text-secondary hover:text-primary hover:bg-surface-subtle transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-white shadow-ambient-lg flex items-center justify-center text-text-secondary hover:text-primary hover:bg-surface-subtle transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-10 w-[1px] bg-outline-variant mx-2"></div>
+<img alt="Profile" class="w-10 h-10 rounded-full object-cover shadow-ambient-lg cursor-pointer border-2 border-white" data-alt="A professional headshot of a Chief Product Officer, late 30s, female, with dark hair tied back, wearing a modern light grey blazer over a white top. The background is a brightly lit, out-of-focus modern office setting with glass walls and subtle hints of blue accent lighting. The overall mood is confident and approachable, captured with a shallow depth of field in a high-key, corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCV7R9O-RwBXXLBnH-gWqj-GBiV4hO_Q2pAMUE_mfqBw3Xx0q6deIxHosDSeBEoWjffYUjcZHDKXYfxjZk08Ahsn-BHwa2Hc4zLhRDRGMUnZ60IaH53PsgE6gNjPo2ytbN5i8FJckmiw6LjfSBs90brC7AGOC0n3VNhmXnXBAZGfXymQ22jfyBVVy-UMJ6A3Vxgyl26dgFOR9VwL-9rTiCi5IiSEYmaVLgi_dp7RSvljkgPAi_j7pvk"/>
+</div>
+</header>
+<!-- Stats Overview -->
+<section class="px-margin-lg pb-margin-lg flex-shrink-0">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Stat Card 1 -->
+<div class="bg-white rounded-xl p-6 shadow-ambient-lg border border-surface-subtle flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary-container text-[28px]">pending_actions</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider mb-1">Pending Reviews</p>
+<p class="font-display-lg text-display-lg text-on-surface">3</p>
+</div>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-white rounded-xl p-6 shadow-ambient-lg border border-surface-subtle flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-accent-success/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-accent-success text-[28px]">policy</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider mb-1">Average Risk</p>
+<p class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+                            Low
+                            <span class="w-2 h-2 rounded-full bg-accent-success inline-block"></span>
+</p>
+</div>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-white rounded-xl p-6 shadow-ambient-lg border border-surface-subtle flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[28px]">savings</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-text-secondary uppercase tracking-wider mb-1">Automated Savings</p>
+<p class="font-headline-md text-headline-md text-on-surface">$12k</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Workspace (Split View) -->
+<section class="flex-1 flex overflow-hidden px-margin-lg pb-margin-lg gap-6">
+<!-- Approval Queue (Left List) -->
+<div class="w-full lg:w-[45%] flex flex-col bg-white rounded-xl shadow-ambient-lg border border-surface-subtle overflow-hidden">
+<div class="p-4 border-b border-surface-subtle flex justify-between items-center bg-surface-bright">
+<h3 class="font-label-lg text-label-lg text-on-surface">Action Queue</h3>
+<button class="text-text-secondary hover:text-primary transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-2">
+<!-- Selected Card -->
+<div class="p-4 rounded-lg bg-surface-container-low border border-primary-fixed mb-2 cursor-pointer relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-lg"></div>
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">merge</span>
+<h4 class="font-label-lg text-label-lg text-on-surface">Merge PR #482</h4>
+</div>
+<span class="px-2 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-[10px] uppercase tracking-wider">High Risk</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mb-3 line-clamp-2">"This PR refactors the core authentication middleware. While tests pass, human review is required due to security implications."</p>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-secondary-container text-white flex items-center justify-center font-label-caps text-[10px]">CA</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Code Agent</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary text-[11px]">2m ago</span>
+</div>
+</div>
+<!-- Unselected Card 1 -->
+<div class="p-4 rounded-lg bg-white border border-transparent hover:border-surface-subtle hover:bg-surface-bright transition-all mb-2 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">database</span>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary transition-colors">Database Index Cleanup</h4>
+</div>
+<span class="px-2 py-1 rounded-full bg-surface-container text-on-surface-variant font-label-caps text-[10px] uppercase tracking-wider">Low Risk</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mb-3 line-clamp-2">"Identified 4 unused indexes in the production cluster. Removing them will free up 12GB of space and improve write performance."</p>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary-container text-white flex items-center justify-center font-label-caps text-[10px]">DA</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Database Agent</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary text-[11px]">15m ago</span>
+</div>
+</div>
+<!-- Unselected Card 2 -->
+<div class="p-4 rounded-lg bg-white border border-transparent hover:border-surface-subtle hover:bg-surface-bright transition-all mb-2 cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">mail</span>
+<h4 class="font-label-lg text-label-lg text-on-surface group-hover:text-primary transition-colors">Customer Email Blast</h4>
+</div>
+<span class="px-2 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-[10px] uppercase tracking-wider">Med Risk</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary mb-3 line-clamp-2">"Drafted communication regarding the upcoming API deprecation. Needs final tone check before sending to 5,000 active users."</p>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<img alt="Sarah" class="w-6 h-6 rounded-full object-cover" data-alt="A small, circular avatar image showing a young female professional named Sarah. She has blonde shoulder-length hair, wearing a casual navy blue top. The background is a plain soft grey. The lighting is even and flat, typical of a standard corporate directory headshot." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJOje8y1m63HELRSIaZ4s5yR4HMsbiqv3uWMz1oQKydSagDEoycDPpLQSrOGkkfb4Ozd9BBQcsOVkPv0cdrQ7S5t_d7DgWfSO-QybxCOEe6pLovRy9Kic83_xGSwrzb6jkRHjK8e6WsIRQqIWSrgT5_qTujpNQSldXybxosv6J-Hwi0ulfBuYpQ3lmUVEXv-Y0ZfcKREcxcZmZhzQWcdldbHLi92j7mawZtSHw00evsx-hzU4gwojj"/>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Sarah (Research)</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-secondary text-[11px]">1h ago</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Selected Detail Panel (Right Side) -->
+<div class="hidden lg:flex flex-1 flex-col bg-white rounded-xl shadow-ambient-lg border border-surface-subtle overflow-hidden">
+<!-- Panel Header -->
+<div class="p-6 border-b border-surface-subtle bg-surface-bright flex justify-between items-start">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary text-[24px]">merge</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Merge PR #482</h2>
+<span class="px-2 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-[10px] uppercase tracking-wider ml-2">High Risk</span>
+</div>
+<p class="font-body-md text-body-md text-text-secondary">Proposed by Code Agent for repository 'core-auth-service'</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg bg-surface-subtle text-on-surface font-label-lg text-label-lg hover:bg-surface-variant transition-colors border border-transparent">
+                            Deny
+                        </button>
+<button class="px-6 py-2 rounded-lg bg-primary text-white font-label-lg text-label-lg hover:bg-primary/90 shadow-sm transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+                            Approve Merge
+                        </button>
+</div>
+</div>
+<!-- Panel Content Scrollable -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+<!-- Rationale Section -->
+<section>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-[18px]">psychology</span>
+                            Agent Rationale
+                        </h3>
+<div class="bg-surface-base rounded-lg p-4 border border-surface-subtle">
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                                "I have refactored the `verifyToken` middleware in `auth.js` to patch the vulnerability reported in CVE-2023-XXXX. I replaced the custom decoding logic with the standard `jsonwebtoken` library verified method. All 45 unit tests pass, and performance metrics show no degradation. However, because this touches the primary authentication path, organizational policy requires human sign-off."
+                            </p>
+</div>
+</section>
+<!-- Security Scan (Model Armor) -->
+<section>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-[18px]">shield</span>
+                            Model Armor Scan
+                        </h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="p-4 rounded-lg bg-surface-base border border-surface-subtle flex items-start gap-3">
+<span class="material-symbols-outlined text-accent-success mt-0.5">verified</span>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Code Quality</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Passes linting and complexity checks. No hardcoded secrets found.</p>
+</div>
+</div>
+<div class="p-4 rounded-lg bg-surface-base border border-surface-subtle flex items-start gap-3">
+<span class="material-symbols-outlined text-accent-success mt-0.5">verified</span>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Data Privacy (PII)</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">No exposure of Personal Identifiable Information detected in diff.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Code Diff View (Simulated) -->
+<section>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-[18px]">code</span>
+                            Changes to core-auth-service/src/auth.js
+                        </h3>
+<div class="bg-inverse-surface rounded-lg overflow-hidden border border-outline font-mono text-[13px] leading-snug">
+<div class="flex text-on-surface-variant bg-surface-container-low px-4 py-2 border-b border-surface-variant">
+<span>@@ -12,8 +12,7 @@</span>
+</div>
+<div class="px-4 py-2 bg-error-container/10 text-error flex">
+<span class="w-8 text-right pr-4 select-none opacity-50">-</span>
+<span>  const decoded = customBase64Decode(token.split('.')[1]);</span>
+</div>
+<div class="px-4 py-1 bg-error-container/10 text-error flex">
+<span class="w-8 text-right pr-4 select-none opacity-50">-</span>
+<span>  if (!verifySignature(token, secretKey)) throw new Error('Invalid');</span>
+</div>
+<div class="px-4 py-2 bg-accent-success/10 text-accent-success flex border-l-2 border-accent-success">
+<span class="w-8 text-right pr-4 select-none opacity-50">+</span>
+<span>  const decoded = jwt.verify(token, secretKey, { algorithms: ['HS256'] });</span>
+</div>
+<div class="px-4 py-1 text-on-surface-variant flex">
+<span class="w-8 text-right pr-4 select-none opacity-50"> </span>
+<span>  req.user = decoded;</span>
+</div>
+<div class="px-4 py-1 text-on-surface-variant flex">
+<span class="w-8 text-right pr-4 select-none opacity-50"> </span>
+<span>  next();</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</section>
+</main>
+</body></html>

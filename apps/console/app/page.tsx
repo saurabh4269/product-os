@@ -136,7 +136,6 @@ function HomeContent() {
       <section className="relative border-b border-border">
         <CityMap
           hero
-          compactHero
           showTapHint={showHint && !picked && !pulse?.campusLine}
           campusLine={pulse?.campusLine}
           campusHot={pulse?.campusHot}
@@ -149,7 +148,11 @@ function HomeContent() {
           liveMotion={Boolean(demo?.active)}
         />
         <HomeBrief pulse={pulse} onDismiss={() => setShowHint(false)} />
-        <HomeCommandBar pulse={pulse} className="absolute bottom-4 left-4 right-4 z-30 mx-auto max-w-4xl sm:bottom-6" />
+        <HomeCommandBar
+          pulse={pulse}
+          evalMode={evalMode}
+          className="absolute bottom-4 left-4 right-4 z-30 mx-auto max-w-4xl sm:bottom-6"
+        />
       </section>
 
       {/* Manager desk — live work, not architecture */}

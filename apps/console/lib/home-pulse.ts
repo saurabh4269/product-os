@@ -32,9 +32,8 @@ export type PulseInput = {
 
 const QUIET_TITLES = ["Quiet", "Ready", "Idle"] as const;
 
-export function demoToastMessage(demoCount: number) {
-  if (demoCount <= 1) return "Demo running";
-  return "Demo running";
+export function demoToastMessage(_demoCount: number) {
+  return "Investigation started";
 }
 
 export function buildHomePulse(input: PulseInput): HomePulse {
@@ -56,15 +55,15 @@ export function buildHomePulse(input: PulseInput): HomePulse {
   if (first) {
     return {
       campusLine: "",
-      commandLine: "Live demo",
-      commandAction: "demo",
+      commandLine: "Get started",
+      commandAction: "connect",
       pipelineSubtitle: "",
       exploreHint: "",
       brief: {
         kicker: "Welcome",
         title: "Product OS",
         body: "",
-        primary: { label: "Demo", action: "demo" },
+        primary: { label: "Connect Product Y", action: "connect" },
         secondary: { label: "Explore", href: "#explore" },
         steps: [
           { n: "1", label: "Watch", hint: "Signal agent polls telemetry" },
@@ -122,15 +121,15 @@ export function buildHomePulse(input: PulseInput): HomePulse {
 
   return {
     campusLine: workingAgents > 0 ? `${workingAgents} active` : "",
-    commandLine: wired ? "Demo" : "Connect",
-    commandAction: demoCount > 2 && !wired ? "connect" : "demo",
+    commandLine: wired ? "Open pipeline" : "Connect",
+    commandAction: demoCount > 2 && !wired ? "connect" : wired ? "pipeline" : "connect",
     pipelineSubtitle: countSubtitle,
     exploreHint: "",
     brief: {
       kicker: hoursAway !== null && hoursAway >= 2 ? "Back" : "Today",
       title: quietTitle,
       body: "",
-      primary: { label: demoCount > 0 ? "Demo" : "Demo", action: "demo" },
+      primary: { label: wired ? "Pipeline" : "Connect", action: wired ? "pipeline" : "connect" },
       secondary: wired ? { label: "Labs", href: "/labs" } : { label: "Connect", href: "/connect" },
     },
   };

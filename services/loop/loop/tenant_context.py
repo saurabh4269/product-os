@@ -93,7 +93,9 @@ def merge_proposed_artifacts(
     tenant: Tenant | None,
     passed: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    if inv.scenario_id == "safari_3ds":
+    from .runtime_mode import is_eval_mode
+
+    if inv.scenario_id == "safari_3ds" and is_eval_mode() and not inv.tenant_id:
         base = safari_action_artifacts(inv, hyp)
         if passed:
             base.update(passed)

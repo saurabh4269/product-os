@@ -1,0 +1,120 @@
+%% Product OS (LOOP) — full system architecture for submissions
+%% Render: npx @mermaid-js/mermaid-cli -c docs/mermaid-config.json -i docs/architecture-full.mmd -o docs/architecture-full.png
+
+flowchart TB
+  subgraph tenant["Product Y — tenant app (separate Cloud Run · Cove)"]
+    COVE["Cove storefront"]
+    WIRE["Loop wire · flags · ingest client"]
+    COVE --> WIRE
+  end
+
+  subgraph console["Product OS console · Next.js 15"]
+    UI["Campus + multi-room chat"]
+    WS["WebSocket /ws live receipts"]
+    UI --- WS
+  end
+
+  subgraph gcp_host["Google Cloud · project us-central1"]
+    LOOP["Cloud Run · loop\nFastAPI + static console"]
+    ADK["Cloud Run · loop-adk\nADK 2 worker optional"]
+    GCS["Cloud Storage · host bundle"]
+    GCS -.->|deploy| LOOP
+    LOOP -.->|when creds| ADK
+  end
+
+  subgraph signals["1 · Signal plane"]
+    GA4["GA4 · Ads · PostHog"]
+    LOGS["Cloud Logging"]
+    CRM["Voice · Reviews · CRM"]
+    INGEST["Ingest API · POST /api/t/.../signals"]
+    BQ[("BigQuery facts\nloop_raw · loop_metrics")]
+    GA4 --> BQ
+    LOGS --> BQ
+    CRM --> BQ
+    WIRE -->|push| INGEST
+    INGEST --> BQ
+  end
+
+  subgraph pubsub["Event bus"]
+    PS["Pub/Sub · loop.signals · loop.verification"]
+  end
+
+  subgraph agents["2 · Agent plane · Google ADK 2 + Gemini 3.5 Flash"]
+    SIG["Signal agent"]
+    INV["Investigator"]
+    FAN["Specialists fan-out\nAnalytics · Logs · Deploy · Voice"]
+    JOIN["JoinNode · evidence merge"]
+    RCA["Root cause"]
+    PATH{"BUG vs FEATURE"}
+    CODE["Code + Test · PR"]
+    PROD["Product + Experiment"]
+    RISK["Risk agent"]
+    HITL{"HIGH HITL gate"}
+    APR["Approve · human"]
+    VER["Verify metric"]
+    LEARN["Learning → lesson"]
+    SIG --> INV --> FAN --> JOIN --> RCA --> PATH
+    PATH -->|Type A| CODE --> RISK
+    PATH -->|Type B| PROD --> RISK
+    RISK --> HITL
+    HITL -->|yes| APR --> VER --> LEARN
+    HITL -->|LOW/MED| VER --> LEARN
+  end
+
+  subgraph security["3 · Security plane"]
+    ID["Per-agent identity"]
+    GW["Gateway · IAM allow/deny"]
+    MA["Model Armor · fail_open=false"]
+    SDP["Sensitive Data Protection"]
+    DENY{"Exfil DENY?"}
+    REV["Reviews · blocked"]
+    ID --> GW --> MA --> SDP
+    GW --> DENY
+    DENY -->|yes| REV
+  end
+
+  subgraph tools["4 · Tool plane"]
+    GH["GitHub · clone test PR"]
+    BQT["BigQuery read"]
+    WS2["Workspace MCP · Gmail draft Calendar"]
+    FLAG["Flags · CI"]
+    TEL["Voice media-bridge · Gemini Live optional"]
+  end
+
+  subgraph memory["5 · Memory / control"]
+    RT["Cloud Run runtime · SQLite sessions"]
+    MB[("Memory Bank\n4 kinds · recall")]
+    REG["Agent Registry · A2A discovery"]
+    OTEL["OpenTelemetry traces"]
+    RT --> MB
+    RT --> REG
+    RT --> OTEL
+  end
+
+  WIRE --> INGEST
+  BQ --> SIG
+  PS --> SIG
+  WS --> LOOP
+  UI -->|REST| LOOP
+  LOOP --> SIG
+  ADK --> INV
+  LEARN --> MB
+  MB --> SIG
+  REG --> INV
+  GW --> CODE
+  GW --> PROD
+  CODE --> GH
+  PROD --> WS2
+  FAN --> BQT
+  FAN --> TEL
+  RISK --> FLAG
+  MA --> LOOP
+
+  classDef gcp fill:#e8f4fd,stroke:#0071e3,color:#1d1d1f
+  classDef agent fill:#f0f7ff,stroke:#0071e3,color:#1d1d1f
+  classDef sec fill:#fef2f2,stroke:#c93400,color:#1d1d1f
+  classDef store fill:#eef2ee,stroke:#248a3d,color:#1d1d1f
+  class LOOP,ADK,GCS,BQ,PS gcp
+  class SIG,INV,FAN,JOIN,RCA,CODE,PROD,RISK,APR,VER,LEARN agent
+  class ID,GW,MA,SDP,REV sec
+  class MB,RT store

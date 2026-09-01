@@ -189,7 +189,15 @@ export function CityMap({
       : [];
 
   return (
-    <section className={cn("relative flex h-full min-h-[inherit] flex-col bg-[#eef2ee]", hero && (compactHero ? "min-h-[min(52vh,480px)] pb-24 sm:pb-28" : "min-h-[min(78vh,680px)] pb-28 sm:pb-32"))}>
+    <section
+      className={cn(
+        "relative flex flex-col bg-[#eef2ee]",
+        hero &&
+          (compactHero
+            ? "min-h-[min(52vh,480px)] pb-24 sm:pb-28"
+            : "min-h-[min(78vh,680px)] pb-28 sm:pb-32")
+      )}
+    >
       {!hero ? (
         <header className="relative z-20 px-5 pb-1 pt-4 text-[#1d1d1f] sm:px-8 lg:pointer-events-none lg:absolute lg:left-8 lg:top-7 lg:max-w-md lg:px-0 lg:pt-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#86868b]">Campus</p>
@@ -209,10 +217,17 @@ export function CityMap({
         </div>
       )}
 
-      <div className="relative mx-auto w-full max-w-[1100px] lg:absolute lg:inset-0 lg:max-w-none">
+      <div className="relative mx-auto w-full max-w-[1100px] flex-1">
         <div
           ref={setFrameEl}
-          className="relative mx-auto aspect-[3/2] w-full max-h-[min(62vh,480px)] sm:max-h-[min(68vh,560px)] md:max-h-[min(72vh,640px)] lg:absolute lg:inset-0 lg:mx-0 lg:aspect-auto lg:h-full lg:max-h-none"
+          className={cn(
+            "relative mx-auto aspect-[3/2] w-full",
+            hero
+              ? compactHero
+                ? "max-h-[min(52vh,480px)]"
+                : "max-h-[min(72vh,640px)] sm:max-h-[min(76vh,680px)]"
+              : "max-h-[min(62vh,480px)] sm:max-h-[min(68vh,560px)]"
+          )}
         >
           <picture>
             <source srcSet="/city/campus.webp" type="image/webp" />

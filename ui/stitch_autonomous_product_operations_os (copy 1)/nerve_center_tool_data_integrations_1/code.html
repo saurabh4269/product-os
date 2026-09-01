@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina - Connect</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom scrollbar for inner containers */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #E5E5EA; /* surface-subtle */
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#181c23",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "surface-variant": "#e0e2ed",
+                        "surface-tint": "#005bc1",
+                        "on-error": "#ffffff",
+                        "primary-container": "#0070eb",
+                        "surface-bright": "#f9f9ff",
+                        "accent-warning": "#FF9500",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-on-surface": "#eef0fc",
+                        "tertiary": "#9e3d00",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#0c006b",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d8d9e5",
+                        "error": "#ba1a1a",
+                        "text-primary": "#1D1D1F",
+                        "outline": "#717786",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "secondary-container": "#6462ec",
+                        "tertiary-fixed": "#ffdbcc",
+                        "secondary": "#4a47d2",
+                        "on-surface-variant": "#414755",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "inverse-primary": "#adc6ff",
+                        "on-primary-container": "#fefcff",
+                        "background": "#f9f9ff",
+                        "surface-container-low": "#f1f3fe",
+                        "accent-error": "#FF3B30",
+                        "text-secondary": "#86868B",
+                        "surface-high": "#FFFFFF",
+                        "surface-base": "#F5F5F7",
+                        "inverse-surface": "#2d3039",
+                        "surface-container-high": "#e6e8f3",
+                        "surface-container": "#ecedf9",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "outline-variant": "#c1c6d7",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e0e2ed",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "on-primary-fixed": "#001a41",
+                        "accent-success": "#34C759",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#fffbff",
+                        "surface": "#f9f9ff",
+                        "secondary-fixed": "#e2dfff",
+                        "surface-subtle": "#E5E5EA",
+                        "primary-fixed": "#d8e2ff",
+                        "on-surface": "#181c23",
+                        "primary": "#0058bc",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed-variant": "#004493",
+                        "tertiary-container": "#c64f00",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem"
+                    },
+                    "spacing": {
+                        "margin-md": "24px",
+                        "unit": "8px",
+                        "gutter": "24px",
+                        "margin-lg": "40px",
+                        "container-max": "1440px",
+                        "margin-sm": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["17px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700"}],
+                        "body-md": ["15px", {"lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400"}]
+                    },
+                    boxShadow: {
+                        'level-1': '0 4px 20px 0 rgba(0, 0, 0, 0.04)',
+                        'level-2': '0 10px 30px 0 rgba(0, 0, 0, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-base text-text-primary font-body-md antialiased h-screen overflow-hidden flex selection:bg-primary/20 selection:text-primary">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 z-40 bg-surface-base border-r border-surface-subtle py-margin-md px-margin-sm">
+<!-- Header -->
+<div class="flex items-center gap-3 px-4 mb-8">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-sm">
+<span class="material-symbols-outlined filled">insights</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary leading-none">Lumina</h1>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">ProductOps Nerve Center</p>
+</div>
+</div>
+<!-- Primary CTA -->
+<button class="mb-8 w-full bg-surface-high hover:bg-surface-container transition-colors border border-surface-subtle rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 text-primary font-label-lg shadow-sm group">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">add</span>
+            New Integration
+        </button>
+<!-- Main Navigation -->
+<div class="flex-1 flex flex-col gap-1">
+<!-- Dashboard (Inactive) -->
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-subtle transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-lg text-label-lg">Dashboard</span>
+</a>
+<!-- Integrations (Active) -->
+<a class="flex items-center gap-3 bg-primary-container text-on-primary-container rounded-lg px-4 py-3 scale-95 transition-transform duration-150 shadow-sm relative overflow-hidden" href="#">
+<div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent"></div>
+<span class="material-symbols-outlined filled relative z-10">hub</span>
+<span class="font-label-lg text-label-lg relative z-10">Integrations</span>
+</a>
+<!-- Governance (Inactive) -->
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-subtle transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">gavel</span>
+<span class="font-label-lg text-label-lg">Governance</span>
+</a>
+<!-- Agents (Inactive) -->
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-subtle transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span class="font-label-lg text-label-lg">Agents</span>
+</a>
+<!-- Security (Inactive) -->
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-subtle transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">shield_lock</span>
+<span class="font-label-lg text-label-lg">Security</span>
+</a>
+</div>
+<!-- Footer Navigation -->
+<div class="mt-auto flex flex-col gap-1 pt-4 border-t border-surface-subtle">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-subtle transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-lg text-label-lg">Help</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-subtle transition-all rounded-lg group" href="#">
+<span class="material-symbols-outlined text-accent-success group-hover:animate-pulse">cloud_done</span>
+<span class="font-label-lg text-label-lg">Status</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-0 md:ml-64 h-full relative">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-30 bg-surface-base/80 backdrop-blur-xl flex justify-between items-center px-margin-lg h-16 shadow-sm border-b border-surface-subtle/50">
+<div class="flex items-center">
+<!-- Mobile Menu Button (hidden on md) -->
+<button class="md:hidden mr-4 text-text-secondary hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-md text-headline-md font-bold text-text-primary hidden sm:block">Nerve Center</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-subtle border-none rounded-full font-body-sm text-body-sm w-64 focus:bg-surface-high focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search connections..." type="text"/>
+</div>
+<button class="p-2 text-text-secondary hover:text-primary transition-colors relative rounded-full hover:bg-surface-subtle">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-error rounded-full border border-surface-high"></span>
+</button>
+<button class="p-2 text-text-secondary hover:text-primary transition-colors rounded-full hover:bg-surface-subtle">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-gradient-to-tr from-primary to-secondary-container border-2 border-surface-high shadow-sm ml-2 overflow-hidden cursor-pointer">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A small, professional headshot of a person with a warm smile, against a light blue background. Corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJpwbv4lSls0cg6J7CV4yhXFbWXwx9mtWbqNras_CiQZ7XZz_4uNd2SSaDVCGra18txSRISfQUUTtyoyN6zLfkmsZNX5M65fnvWAqhtW8lusZtnmO6toxXegMFBl0lywwSK5rAWdmqFC6lFOrF0gcgqXFIX6eaXGlA9Ts816DEPuNx-MfbllLHvzHvAdxadaf21pRiiPI2iXGOCIcomnxZtjymr2fZeqw4d6RyivlP3FxfNtnNSRMl"/>
+</div>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<main class="flex-1 overflow-y-auto custom-scrollbar pt-24 pb-margin-lg px-4 md:px-margin-lg">
+<div class="max-w-container-max mx-auto space-y-margin-lg">
+<!-- 1. Global Connection Status Banner -->
+<section class="relative w-full h-[280px] rounded-3xl overflow-hidden shadow-level-1 bg-surface-high flex items-center group">
+<div class="absolute inset-0 z-0">
+<div class="bg-cover bg-center w-full h-full opacity-40 group-hover:opacity-50 transition-opacity duration-700" data-alt="A bright, high-key isometric 3D illustration of a modern, eco-friendly corporate campus. The campus features clean white buildings, lush green parks, and interconnected glowing blue data streams resembling roads. The style is premium, minimalist, and welcoming, evoking a sense of calm operational control and technological harmony. Soft ambient lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCFv7ftpPIVsb2s6miH0WiazSTocE3-JOFGU4Kx0uAyv6r7Ypq2g8i0z-QkVZ7K9crZRe7DyYuW7ftT0GVq6O0TdHBtL5OI0wseiIeqFeiy_DmqDPwwljeb9oP0UvWz13y4-R2yq9DwHTIQX_3HlOuSJzYCkAxjK48SDFtjPQZ99FeUnXP1Z3-N75GmG0aWXPL4cJm3d2LZlbxkEDvHcm93eo7qu6R65VngduxEBiu0e6Zc1Bec5G1q')"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-surface-high via-surface-high/80 to-transparent"></div>
+</div>
+<div class="relative z-10 p-10 flex flex-col justify-center max-w-2xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 bg-accent-success/10 text-accent-success rounded-full font-label-caps uppercase tracking-wider mb-4 border border-accent-success/20">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-success opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-accent-success"></span>
+</span>
+                            System Operational
+                        </div>
+<h2 class="font-display-lg text-display-lg text-text-primary mb-2 tracking-tight">Platform Nerve Center</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mb-8 leading-relaxed">Your ecosystem is connected and flowing. Team members are securely interacting with core tools and data planes.</p>
+<div class="flex gap-8">
+<div class="flex flex-col">
+<span class="font-display-lg text-[32px] font-bold text-primary leading-none">12</span>
+<span class="font-label-lg text-text-secondary mt-1">Active Pipelines</span>
+</div>
+<div class="w-px h-12 bg-surface-subtle"></div>
+<div class="flex flex-col">
+<span class="font-display-lg text-[32px] font-bold text-secondary-container leading-none">4</span>
+<span class="font-label-lg text-text-secondary mt-1">Secure Gateways</span>
+</div>
+<div class="w-px h-12 bg-surface-subtle"></div>
+<div class="flex flex-col">
+<span class="font-display-lg text-[32px] font-bold text-text-primary leading-none">99.9%</span>
+<span class="font-label-lg text-text-secondary mt-1">Sync Reliability</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-margin-md">
+<!-- Left Column: Core Tools (Spans 8) -->
+<div class="xl:col-span-8 flex flex-col gap-margin-md">
+<div class="flex items-center justify-between mb-2">
+<h3 class="font-headline-md text-text-primary">Core Tool Integrations</h3>
+<button class="text-primary font-label-lg hover:underline decoration-primary/30 underline-offset-4">Manage All</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-margin-md">
+<!-- Google Workspace -->
+<div class="bg-surface-high rounded-2xl p-6 shadow-level-1 border border-surface-subtle/50 hover:shadow-level-2 transition-shadow duration-300 flex flex-col relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-xl bg-surface-base flex items-center justify-center text-[#4285F4] border border-surface-subtle">
+<span class="material-symbols-outlined text-[28px]">work</span>
+</div>
+<span class="px-2.5 py-1 bg-surface-base text-text-secondary text-xs rounded-full font-medium flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-accent-success"></div> Active
+                                    </span>
+</div>
+<h4 class="font-headline-md text-[20px] mb-2">Google Workspace</h4>
+<p class="font-body-md text-text-secondary mb-4 flex-1">Team members utilize Gmail for notifications, Calendar for review scheduling, and Meet for human-in-the-loop approvals.</p>
+<div class="flex -space-x-2 mb-4">
+<div class="w-8 h-8 rounded-full bg-surface-subtle border-2 border-surface-high flex items-center justify-center text-xs text-text-secondary" title="Gmail"><span class="material-symbols-outlined text-[16px]">mail</span></div>
+<div class="w-8 h-8 rounded-full bg-surface-subtle border-2 border-surface-high flex items-center justify-center text-xs text-text-secondary" title="Calendar"><span class="material-symbols-outlined text-[16px]">calendar_today</span></div>
+<div class="w-8 h-8 rounded-full bg-surface-subtle border-2 border-surface-high flex items-center justify-center text-xs text-text-secondary" title="Meet"><span class="material-symbols-outlined text-[16px]">videocam</span></div>
+</div>
+<div class="pt-4 border-t border-surface-subtle mt-auto flex justify-between items-center">
+<span class="text-sm text-text-secondary">Last sync: 2 mins ago</span>
+<button class="text-primary hover:text-primary-fixed-dim transition-colors"><span class="material-symbols-outlined">settings</span></button>
+</div>
+</div>
+<!-- Engineering Stack -->
+<div class="bg-surface-high rounded-2xl p-6 shadow-level-1 border border-surface-subtle/50 hover:shadow-level-2 transition-shadow duration-300 flex flex-col relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-xl bg-surface-base flex items-center justify-center text-text-primary border border-surface-subtle">
+<span class="material-symbols-outlined text-[28px]">code</span>
+</div>
+<span class="px-2.5 py-1 bg-surface-base text-text-secondary text-xs rounded-full font-medium flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-accent-success"></div> Active
+                                    </span>
+</div>
+<h4 class="font-headline-md text-[20px] mb-2">Engineering Stack</h4>
+<p class="font-body-md text-text-secondary mb-4 flex-1">Connected to GitHub repositories for code context and Cloud Run for service health monitoring.</p>
+<div class="flex items-center gap-3 mb-4">
+<div class="px-2 py-1 bg-surface-base rounded text-xs text-text-secondary border border-surface-subtle flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">commit</span> 14 repos</div>
+<div class="px-2 py-1 bg-surface-base rounded text-xs text-text-secondary border border-surface-subtle flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">cloud</span> 8 services</div>
+</div>
+<div class="pt-4 border-t border-surface-subtle mt-auto flex justify-between items-center">
+<span class="text-sm text-text-secondary">Webhook active</span>
+<button class="text-primary hover:text-primary-fixed-dim transition-colors"><span class="material-symbols-outlined">settings</span></button>
+</div>
+</div>
+<!-- Data Plane -->
+<div class="bg-surface-high rounded-2xl p-6 shadow-level-1 border border-surface-subtle/50 hover:shadow-level-2 transition-shadow duration-300 flex flex-col relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-xl bg-surface-base flex items-center justify-center text-primary-container border border-surface-subtle">
+<span class="material-symbols-outlined text-[28px]">database</span>
+</div>
+<span class="px-2.5 py-1 bg-surface-base text-text-secondary text-xs rounded-full font-medium flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-accent-success"></div> Active
+                                    </span>
+</div>
+<h4 class="font-headline-md text-[20px] mb-2">Data Plane (BigQuery)</h4>
+<p class="font-body-md text-text-secondary mb-4 flex-1">High-volume analytics and event ingestion. Agents query this plane to ground insights in factual product usage.</p>
+<div class="w-full bg-surface-base rounded-full h-1.5 mb-2 mt-4">
+<div class="bg-primary h-1.5 rounded-full" style="width: 45%"></div>
+</div>
+<span class="text-xs text-text-secondary block mb-2">Query Quota: 45% used</span>
+<div class="pt-4 border-t border-surface-subtle mt-auto flex justify-between items-center">
+<span class="text-sm text-text-secondary">Streaming OK</span>
+<button class="text-primary hover:text-primary-fixed-dim transition-colors"><span class="material-symbols-outlined">settings</span></button>
+</div>
+</div>
+<!-- Telephony -->
+<div class="bg-surface-high rounded-2xl p-6 shadow-level-1 border border-surface-subtle/50 hover:shadow-level-2 transition-shadow duration-300 flex flex-col relative overflow-hidden group opacity-80 hover:opacity-100">
+<div class="absolute top-0 right-0 w-32 h-32 bg-orange-50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-xl bg-surface-base flex items-center justify-center text-accent-warning border border-surface-subtle">
+<span class="material-symbols-outlined text-[28px]">record_voice_over</span>
+</div>
+<span class="px-2.5 py-1 bg-surface-base text-text-secondary text-xs rounded-full font-medium flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-accent-warning"></div> Standby
+                                    </span>
+</div>
+<h4 class="font-headline-md text-[20px] mb-2">Customer Voice Agent</h4>
+<p class="font-body-md text-text-secondary mb-4 flex-1">Google Cloud Telephony integration for automated customer interviews and sentiment analysis routing.</p>
+<button class="w-full py-2 bg-surface-base hover:bg-surface-subtle text-text-primary rounded-lg font-label-lg transition-colors border border-surface-subtle mb-2">
+                                    Configure Routing
+                                </button>
+</div>
+</div>
+<!-- 4. Integration Wizard Form -->
+<div class="mt-4 bg-surface-high rounded-2xl p-8 shadow-level-1 border border-surface-subtle/50 relative overflow-hidden">
+<!-- Subtle geometric background accent -->
+<div class="absolute -right-20 -bottom-20 w-64 h-64 border-[1px] border-surface-subtle rounded-full opacity-50"></div>
+<div class="absolute -right-10 -bottom-10 w-48 h-48 border-[1px] border-surface-subtle rounded-full opacity-50"></div>
+<div class="flex items-center gap-3 mb-6 relative z-10">
+<div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined">add_link</span>
+</div>
+<div>
+<h3 class="font-headline-md text-text-primary text-[22px]">Wire New Product (GCP)</h3>
+<p class="text-sm text-text-secondary">Mint a tenant token and push LOOP_* env vars automatically.</p>
+</div>
+</div>
+<form class="space-y-6 relative z-10 max-w-xl">
+<div>
+<label class="block font-label-lg text-text-primary mb-2 ml-1">Cloud Run Service</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">cloud</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-base border border-surface-subtle rounded-xl font-body-md focus:bg-surface-high focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all placeholder:text-text-secondary/60" placeholder="e.g., product-cove-api" type="text"/>
+</div>
+</div>
+<div>
+<label class="block font-label-lg text-text-primary mb-2 ml-1">GitHub Repository</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">folder_copy</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-base border border-surface-subtle rounded-xl font-body-md focus:bg-surface-high focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all placeholder:text-text-secondary/60" placeholder="org/product-y" type="text"/>
+</div>
+</div>
+<div>
+<label class="block font-label-lg text-text-primary mb-2 ml-1">Display Name (Internal)</label>
+<input class="w-full px-4 py-3 bg-surface-base border border-surface-subtle rounded-xl font-body-md focus:bg-surface-high focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all placeholder:text-text-secondary/60" placeholder="Product Y" type="text"/>
+</div>
+<div class="pt-4 flex items-center justify-between border-t border-surface-subtle">
+<div class="flex items-center gap-2 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-[16px]">info</span>
+                                        Requires Admin Token
+                                    </div>
+<button class="bg-primary hover:bg-primary-fixed-variant text-on-primary font-label-lg py-3 px-6 rounded-xl shadow-sm transition-colors flex items-center gap-2" type="button">
+                                        Start Wiring <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</form>
+</div>
+</div>
+<!-- Right Column: Governance & Live Feed (Spans 4) -->
+<div class="xl:col-span-4 flex flex-col gap-margin-md">
+<!-- 3. Governance & Security Plane -->
+<div class="bg-surface-high rounded-2xl p-6 shadow-level-1 border border-surface-subtle/50">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-md text-[18px] text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-container text-[22px]">policy</span>
+                                    Agent Gateway
+                                </h3>
+<button class="text-text-secondary hover:text-primary transition-colors"><span class="material-symbols-outlined text-[20px]">more_vert</span></button>
+</div>
+<p class="text-sm text-text-secondary mb-6">Current access policies for active team members (agents) across integrations.</p>
+<div class="space-y-4">
+<!-- Policy Item 1 -->
+<div class="flex items-start gap-4 p-3 rounded-lg hover:bg-surface-base transition-colors border border-transparent hover:border-surface-subtle">
+<div class="w-8 h-8 rounded-full bg-secondary-container/10 text-secondary-container flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">person</span>
+</div>
+<div>
+<p class="font-body-md text-text-primary"><span class="font-semibold">Sarah (Research)</span> has <span class="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs font-medium">Read</span> access to Google Drive.</p>
+<p class="text-xs text-text-secondary mt-1">Granted via Model Armor policy.</p>
+</div>
+</div>
+<!-- Policy Item 2 -->
+<div class="flex items-start gap-4 p-3 rounded-lg hover:bg-surface-base transition-colors border border-transparent hover:border-surface-subtle">
+<div class="w-8 h-8 rounded-full bg-accent-warning/10 text-accent-warning flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">bug_report</span>
+</div>
+<div>
+<p class="font-body-md text-text-primary"><span class="font-semibold">Investigator Agent</span> has <span class="text-accent-error bg-accent-error/10 px-1.5 py-0.5 rounded text-xs font-medium">Write</span> access to GitHub issues.</p>
+<p class="text-xs text-text-secondary mt-1">Restricted to /org/product-cove.</p>
+</div>
+</div>
+<!-- Policy Item 3 -->
+<div class="flex items-start gap-4 p-3 rounded-lg hover:bg-surface-base transition-colors border border-transparent hover:border-surface-subtle opacity-70">
+<div class="w-8 h-8 rounded-full bg-surface-subtle text-text-secondary flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">block</span>
+</div>
+<div>
+<p class="font-body-md text-text-primary"><span class="font-semibold">Data Analyst</span> is <span class="text-text-secondary bg-surface-subtle px-1.5 py-0.5 rounded text-xs font-medium">Denied</span> access to Telephony.</p>
+<p class="text-xs text-text-secondary mt-1">Lacks required clearance level.</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-4 py-2 text-sm font-medium text-primary hover:bg-surface-base rounded-lg transition-colors border border-transparent hover:border-surface-subtle">
+                                Review All Policies
+                            </button>
+</div>
+<!-- 5. Live Connection Feed -->
+<div class="bg-surface-high rounded-2xl p-0 shadow-level-1 border border-surface-subtle/50 flex flex-col flex-1 min-h-[300px] overflow-hidden">
+<div class="p-4 border-b border-surface-subtle bg-surface-high/90 backdrop-blur z-10 sticky top-0 flex items-center justify-between">
+<h3 class="font-headline-md text-[16px] text-text-primary flex items-center gap-2">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                                    Live Ping Feed
+                                </h3>
+<span class="text-xs text-text-secondary font-mono">TCP/WebSocket</span>
+</div>
+<div class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-3 bg-surface-base/30">
+<!-- Feed Items -->
+<div class="flex gap-3 items-start animate-fade-in-up">
+<div class="w-1.5 h-1.5 rounded-full bg-primary mt-2"></div>
+<div class="font-mono text-xs text-text-secondary flex-1">
+<span class="text-text-primary font-semibold">[09:42:11]</span> Sarah requested <span class="text-primary-container">BigQuery.query()</span>
+<div class="mt-1 text-on-surface-variant bg-surface-high p-1.5 rounded border border-surface-subtle">SELECT * FROM events_raw...</div>
+</div>
+</div>
+<div class="flex gap-3 items-start animate-fade-in-up" style="animation-delay: 0.1s">
+<div class="w-1.5 h-1.5 rounded-full bg-accent-success mt-2"></div>
+<div class="font-mono text-xs text-text-secondary flex-1">
+<span class="text-text-primary font-semibold">[09:42:14]</span> BigQuery responded 200 OK (321ms)
+                                    </div>
+</div>
+<div class="flex gap-3 items-start animate-fade-in-up" style="animation-delay: 0.2s">
+<div class="w-1.5 h-1.5 rounded-full bg-text-primary mt-2"></div>
+<div class="font-mono text-xs text-text-secondary flex-1">
+<span class="text-text-primary font-semibold">[09:43:02]</span> System cron: GitHub sync <span class="text-text-primary">/org/product-y</span>
+</div>
+</div>
+<div class="flex gap-3 items-start animate-fade-in-up opacity-50" style="animation-delay: 0.3s">
+<div class="w-1.5 h-1.5 rounded-full bg-text-secondary mt-2"></div>
+<div class="font-mono text-xs text-text-secondary flex-1">
+<span class="text-text-primary font-semibold">[09:40:15]</span> Investigator accessed Gmail API...
+                                    </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+    </style>
+</body></html>

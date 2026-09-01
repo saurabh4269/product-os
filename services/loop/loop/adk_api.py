@@ -31,7 +31,9 @@ async def lifespan(_app: FastAPI):
     from loop.state_persist import hydrate_db
 
     hydrate_db(cfg.db_path())
-    if not (cfg.warehouse_path() / "meta.json").exists():
+    from loop.runtime_mode import use_file_warehouse
+
+    if use_file_warehouse() and not (cfg.warehouse_path() / "meta.json").exists():
         import sys
 
         sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "data"))

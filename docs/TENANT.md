@@ -21,7 +21,9 @@ Do not put a storefront back on `loop` (`/shop`, `/company`, `public/shop`).
 5. **Google Workspace OAuth** — Connect → Google Auth Platform Web client → `/api/oauth/google/start` (offline consent). Refresh token stored under `LOOP_DATA_DIR`. Gmail draft + Calendar hold call the product APIs. `send_gmail` stays denied. Agent Identity / GEAP token injection is not used (plan-only).
 6. **Investigation / research / improve / coordinate / product-intel** — generic APIs live on hosted `loop` (simulated Calendar/phone until OAuth/Twilio are set).
 
-Hosted SQLite is ephemeral. Cold start re-seeds the tenant from `LOOP_TENANT_REPO`, `LOOP_TENANT_DEPLOY_URL`, and `LOOP_TENANT_BOOTSTRAP_TOKEN`. Re-authorize Workspace after a cold wipe if the refresh token lived only on disk.
+Hosted SQLite hydrates from GCS (`LOOP_STATE_GCS_URI`) on cold start when configured. Tenant flags persist via `LOOP_FLAGS_GCS_URI`. Firestore mirrors Memory Bank lessons when `LOOP_FIRESTORE_MEMORY=1`. Re-authorize Workspace after a cold wipe if the refresh token lived only on disk.
+
+Wire/onboard requires `LOOP_ADMIN_TOKEN` on hosted (`LOOP_EVAL=0`). Paste the token once on Connect — it stays in browser sessionStorage, not in the static bundle.
 
 ## Secrets (names only)
 

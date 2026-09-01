@@ -153,7 +153,7 @@ export default function MemoryPage() {
           hint={
             query.trim()
               ? "Try a different keyword — lesson text, root cause, or provenance."
-              : "Run an investigation or demo; verified lessons land here after recall."
+              : "Run an investigation; verified lessons land here after recall."
           }
           className="mt-12"
         />

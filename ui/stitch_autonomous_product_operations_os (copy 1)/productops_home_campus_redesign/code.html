@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProductOps Agent - Campus Overview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#e2dfff",
+                        "surface-container-highest": "#e0e2ed",
+                        "on-primary-fixed": "#001a41",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "outline": "#717786",
+                        "secondary": "#4a47d2",
+                        "surface-container-high": "#e6e8f3",
+                        "secondary-container": "#6462ec",
+                        "on-secondary-fixed": "#0c006b",
+                        "inverse-primary": "#adc6ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-primary-container": "#fefcff",
+                        "accent-error": "#FF3B30",
+                        "surface-tint": "#005bc1",
+                        "surface-container-low": "#f1f3fe",
+                        "surface-high": "#FFFFFF",
+                        "surface": "#f9f9ff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "surface-bright": "#f9f9ff",
+                        "text-secondary": "#86868B",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "text-primary": "#1D1D1F",
+                        "surface-variant": "#e0e2ed",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c1c6d7",
+                        "on-surface-variant": "#414755",
+                        "inverse-surface": "#2d3039",
+                        "accent-warning": "#FF9500",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eef0fc",
+                        "accent-success": "#34C759",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "on-background": "#181c23",
+                        "background": "#f9f9ff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#004493",
+                        "tertiary-container": "#c64f00",
+                        "surface-base": "#F5F5F7",
+                        "primary-fixed": "#d8e2ff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-surface": "#181c23",
+                        "primary-container": "#0070eb",
+                        "surface-subtle": "#E5E5EA",
+                        "tertiary": "#9e3d00",
+                        "primary": "#0058bc",
+                        "surface-dim": "#d8d9e5",
+                        "surface-container": "#ecedf9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-lg": "40px",
+                        "margin-md": "24px",
+                        "container-max": "1440px",
+                        "margin-sm": "16px",
+                        "unit": "8px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .soft-shadow {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary font-body-md antialiased overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface-container-lowest dark:bg-surface-container-high docked full-width top-0 sticky z-50 border-b border-outline-variant shadow-sm transition-all duration-200 ease-in-out hidden md:flex justify-between items-center w-full px-gutter h-16 ml-[240px] w-[calc(100%-240px)]">
+<div class="flex items-center gap-4">
+<h1 class="font-display-lg text-display-lg font-black text-primary">ProductOps Agent</h1>
+</div>
+<div class="flex-1 flex justify-center max-w-md mx-4">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-surface-subtle border-none rounded-full py-2 pl-10 pr-4 text-body-md focus:ring-2 focus:ring-primary focus:bg-surface-high transition-colors text-on-surface" placeholder="Search insights, agents, or missions..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="font-label-lg text-label-lg text-primary bg-primary-fixed px-3 py-1 rounded-full">
+                Active Agents: 12
+            </div>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-weight="fill">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-weight="fill">smart_toy</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" data-weight="fill">account_circle</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar -->
+<nav class="bg-surface dark:bg-surface-dim font-body-md text-body-md fixed left-0 top-0 h-full w-[240px] border-r border-outline-variant dark:border-outline flat no shadows flex flex-col h-full border-r hidden md:flex z-40">
+<div class="p-6 border-b border-outline-variant/30 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+                PO
+            </div>
+<div>
+<div class="font-label-lg text-label-lg font-semibold text-on-surface">ProductOps Agent</div>
+<div class="font-body-sm text-body-sm text-text-secondary">Reliability &amp; Growth</div>
+</div>
+</div>
+<div class="px-4 py-4">
+<button class="w-full bg-primary text-white font-label-lg text-label-lg py-2.5 rounded-lg flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">add</span>
+                New Mission
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-secondary dark:text-secondary-fixed-dim font-bold bg-secondary-fixed/50" href="#">
+<span class="material-symbols-outlined" data-weight="fill">sensors</span>
+                Signal
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                Understand
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">psychology</span>
+                Ask
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">biotech</span>
+                Diagnose
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">build</span>
+                Fix
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">verified</span>
+                Verify
+            </a>
+</div>
+<div class="p-4 border-t border-outline-variant/30 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-fixed dark:hover:bg-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- Main Canvas -->
+<main class="md:ml-[240px] p-margin-md md:p-margin-lg min-h-screen">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-margin-lg gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg font-semibold text-text-primary tracking-tight">Campus Overview</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mt-1">Monitoring active agents and missions across the ecosystem.</p>
+</div>
+<div class="flex items-center gap-3 glass-panel px-4 py-2 rounded-full">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-accent-success animate-pulse"></div>
+<span class="font-label-lg text-label-lg text-on-surface">System Healthy</span>
+</div>
+<div class="w-px h-4 bg-outline-variant/50"></div>
+<div class="font-label-lg text-label-lg text-text-secondary">
+                    Active Missions: <span class="text-primary font-bold">3</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-margin-md">
+<!-- Main Stage: Isometric Campus -->
+<div class="lg:col-span-8 bg-surface-high rounded-xl soft-shadow overflow-hidden flex flex-col relative min-h-[400px]">
+<div class="absolute inset-0 bg-surface-container-lowest">
+<img class="w-full h-full object-cover object-center opacity-90" data-alt="A clean, vibrant isometric digital illustration of a corporate campus town representing an operating system. Light mode, soft shadows, high-contrast clarity. Deep navy and primary blue accents on buildings, roads, and landscape features. Small animated agent avatars moving between structures, signifying data flow and task handoffs. Professional, technical yet welcoming aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWg47RZeUJoIn77eKEqhzt7UQsgH7WEtBRkgaIKirWaRS7LFjabT7CWOIKNuTsnYyPkq-ZuiUwxClb1hAh6opbEqFNVS5WaD2gXgWVNZsW0aO3DhsMgTsiC2GabCMbnHb0fe2JZtD-85gQsWMEh-Smar03wpsFJ2Xue_eJqmbLIYov9GI8jh4RGKAMeNyfcafQ-vTQQnQfhvsINiF9rbNsi7AiG1I2ZaxJEmZPY0fYfcGOZUfWZFG32Dsadeua18G_fw"/>
+</div>
+<!-- Campus Overlay UI -->
+<div class="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none">
+<div class="glass-panel px-4 py-3 rounded-lg pointer-events-auto">
+<div class="font-label-caps text-label-caps text-text-secondary mb-1">DATA PIPELINE</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">sync</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold">Processing 12k events/s</span>
+</div>
+</div>
+<div class="flex gap-2 pointer-events-auto">
+<button class="w-10 h-10 rounded-full bg-surface-high text-on-surface flex items-center justify-center soft-shadow hover:bg-surface-subtle transition-colors">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-surface-high text-on-surface flex items-center justify-center soft-shadow hover:bg-surface-subtle transition-colors">
+<span class="material-symbols-outlined">my_location</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Team Activity Feed -->
+<div class="lg:col-span-4 bg-surface-high rounded-xl soft-shadow p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-text-primary">Agent Activity</h3>
+<button class="text-primary hover:text-surface-tint font-label-lg text-label-lg">View All</button>
+</div>
+<div class="space-y-6 flex-1 overflow-y-auto pr-2">
+<!-- Feed Item 1 -->
+<div class="flex gap-4 relative">
+<div class="absolute left-4 top-10 bottom-[-24px] w-px bg-outline-variant/30"></div>
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary z-10 shrink-0">
+<span class="material-symbols-outlined text-sm">psychology</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-lg text-label-lg text-text-primary">Diagnose Agent</span>
+<span class="font-body-sm text-body-sm text-text-secondary">2m ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Isolated spike in Safari checkout timeouts to EU-West cluster.</p>
+</div>
+</div>
+<!-- Feed Item 2 -->
+<div class="flex gap-4 relative">
+<div class="absolute left-4 top-10 bottom-[-24px] w-px bg-outline-variant/30"></div>
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-tertiary z-10 shrink-0">
+<span class="material-symbols-outlined text-sm">build</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-lg text-label-lg text-text-primary">Fix Agent</span>
+<span class="font-body-sm text-body-sm text-text-secondary">15m ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Initiated rollback of payment gateway v2.1 in affected region.</p>
+<div class="mt-2 bg-surface-container rounded-md p-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-accent-success text-sm">check_circle</span>
+<span class="font-body-sm text-body-sm">Rollback successful</span>
+</div>
+</div>
+</div>
+<!-- Feed Item 3 -->
+<div class="flex gap-4 relative">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant z-10 shrink-0">
+<span class="material-symbols-outlined text-sm">analytics</span>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-lg text-label-lg text-text-primary">Understand Agent</span>
+<span class="font-body-sm text-body-sm text-text-secondary">1h ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Completed daily summary report for onboarding flow metrics.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Missions Row -->
+<div class="lg:col-span-12 mt-4">
+<h3 class="font-headline-md text-headline-md text-text-primary mb-4">Live Missions</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-margin-md">
+<!-- Mission Card 1 -->
+<div class="bg-surface-high rounded-xl soft-shadow p-5 border border-transparent hover:border-outline-variant/50 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-error-container text-on-error-container flex items-center justify-center">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<span class="bg-surface-subtle text-text-secondary font-label-caps text-label-caps px-2 py-1 rounded-md">P1</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-2">Safari Payment Timeout</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 line-clamp-2">Investigating elevated latency on checkout API for Safari users primarily in Europe.</p>
+<div class="pt-4 border-t border-surface-subtle flex justify-between items-center">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-[10px] ring-2 ring-surface-high z-20">S</div>
+<div class="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-white text-[10px] ring-2 ring-surface-high z-10">U</div>
+<div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant text-[10px] ring-2 ring-surface-high z-0">+1</div>
+</div>
+<span class="font-label-caps text-label-caps text-primary group-hover:underline">VIEW DETAILS</span>
+</div>
+</div>
+<!-- Mission Card 2 -->
+<div class="bg-surface-high rounded-xl soft-shadow p-5 border border-transparent hover:border-outline-variant/50 transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined">speed</span>
+</div>
+<span class="bg-surface-subtle text-text-secondary font-label-caps text-label-caps px-2 py-1 rounded-md">P3</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary mb-2">Onboarding Latency</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mb-4 line-clamp-2">P95 latency jumped after latest release. Isolating root cause in the verify step.</p>
+<div class="pt-4 border-t border-surface-subtle flex justify-between items-center">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-[10px] ring-2 ring-surface-high z-20">S</div>
+<div class="w-6 h-6 rounded-full bg-tertiary flex items-center justify-center text-white text-[10px] ring-2 ring-surface-high z-10">D</div>
+</div>
+<span class="font-label-caps text-label-caps text-primary group-hover:underline">VIEW DETAILS</span>
+</div>
+</div>
+<!-- Mission Card 3 -->
+<div class="bg-surface-high rounded-xl soft-shadow p-5 border border-transparent hover:border-outline-variant/50 transition-all cursor-pointer group flex flex-col justify-center items-center text-center border-dashed border-outline-variant/50 bg-surface-base">
+<div class="w-12 h-12 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center mb-3">
+<span class="material-symbols-outlined">add</span>
+</div>
+<h4 class="font-label-lg text-label-lg text-text-primary">Start Investigation</h4>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Deploy agents to a new issue</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

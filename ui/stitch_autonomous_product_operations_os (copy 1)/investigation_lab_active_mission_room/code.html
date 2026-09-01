@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Investigation Room 86082c2cf3 - Product OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#fffbff",
+                    "on-tertiary-fixed": "#351000",
+                    "on-tertiary": "#ffffff",
+                    "primary-container": "#0070eb",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#332dbc",
+                    "surface-container-highest": "#e0e2ed",
+                    "on-tertiary-fixed-variant": "#7c2e00",
+                    "on-secondary-fixed": "#0c006b",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed": "#ffdbcc",
+                    "background": "#f9f9ff",
+                    "surface-bright": "#f9f9ff",
+                    "tertiary-container": "#c64f00",
+                    "tertiary": "#9e3d00",
+                    "surface-high": "#FFFFFF",
+                    "error": "#ba1a1a",
+                    "on-error": "#ffffff",
+                    "accent-success": "#34C759",
+                    "surface-subtle": "#E5E5EA",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#d8d9e5",
+                    "text-secondary": "#86868B",
+                    "surface-container-low": "#f1f3fe",
+                    "secondary-fixed": "#e2dfff",
+                    "accent-error": "#FF3B30",
+                    "outline-variant": "#c1c6d7",
+                    "primary-fixed-dim": "#adc6ff",
+                    "on-primary-fixed": "#001a41",
+                    "inverse-surface": "#2d3039",
+                    "surface-base": "#F5F5F7",
+                    "surface-container": "#ecedf9",
+                    "accent-warning": "#FF9500",
+                    "on-surface": "#181c23",
+                    "inverse-primary": "#adc6ff",
+                    "on-surface-variant": "#414755",
+                    "on-primary-container": "#fefcff",
+                    "surface-container-high": "#e6e8f3",
+                    "outline": "#717786",
+                    "on-primary-fixed-variant": "#004493",
+                    "surface-variant": "#e0e2ed",
+                    "on-background": "#181c23",
+                    "primary-fixed": "#d8e2ff",
+                    "tertiary-fixed-dim": "#ffb595",
+                    "text-primary": "#1D1D1F",
+                    "surface-tint": "#005bc1",
+                    "inverse-on-surface": "#eef0fc",
+                    "secondary-container": "#6462ec",
+                    "surface": "#f9f9ff",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-container": "#fffbff",
+                    "secondary-fixed-dim": "#c2c1ff",
+                    "primary": "#0058bc",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary": "#4a47d2"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-sm": "16px",
+                    "margin-lg": "40px",
+                    "margin-md": "24px",
+                    "container-max": "1440px",
+                    "unit": "8px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400"}],
+                    "body-md": ["15px", {"lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "body-lg": ["17px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary min-h-screen flex antialiased">
+<!-- TopNavBar -->
+<nav class="fixed top-0 right-0 left-0 z-50 flex justify-between items-center px-margin-lg h-16 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] bg-surface-bright/80 shadow-sm md:flex hidden">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Lumina Command</span>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center text-text-secondary font-medium font-body-sm space-x-2">
+<span class="hover:text-primary cursor-pointer transition-colors">Investigations</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary font-semibold">Room 86082c2cf3</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-subtle border-none rounded-full focus:ring-2 focus:ring-primary focus:bg-white transition-all font-body-md" placeholder="Search..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-primary dark:text-primary-fixed">
+<button class="hover:bg-surface-subtle/50 p-2 rounded-full transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:bg-surface-subtle/50 p-2 rounded-full transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="Chief Product Officer Profile" class="w-8 h-8 rounded-full object-cover shadow-sm border border-outline-variant" data-alt="A professional headshot of a Chief Product Officer, wearing a smart casual blazer, smiling slightly, set against a clean bright studio background, communicating approachability and competence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCkBIdq-N_WICDSx-EShjQevkHlhmOKP44YcrRXp5xJQYh6MIJbLiA0bcMJ7EJeDyz4gAC90MX05wHD4fw06n98S44ZmThTb8pLMWLLEaXueHwsG85_5wcOjECxl9wQm6Du5qpSl-9V4T7Y664EQbWgQKDuEN9vt_AADu5DLv8d0qJSPQTa7DU9No4kC9dpC3qm6_L5tHuVWHmNUsEd6v6ReVw0_bI9G2cmjx6FusQMfwqitH-Pjyd"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 flex flex-col p-margin-sm border-r border-surface-subtle bg-surface-base dark:bg-on-background z-40 pt-20 md:flex hidden">
+<div class="mb-8 px-4">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+                    RC
+                </div>
+<div>
+<h2 class="font-headline-md text-[18px] text-on-surface font-semibold leading-tight">Research Lab</h2>
+<p class="font-body-sm text-text-secondary">Autonomous Ops</p>
+</div>
+</div>
+</div>
+<button class="mx-4 mb-6 bg-primary text-white font-label-lg py-3 px-4 rounded-lg shadow-sm hover:bg-primary/90 transition-all active:scale-95 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+            New Investigation
+        </button>
+<nav class="flex-1 space-y-1 overflow-y-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span> Signal
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary bg-white shadow-sm font-bold transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span> Understand
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span> Ask
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span> Diagnose
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="build_circle">build_circle</span> Fix
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="verified">verified</span> Verify
+            </a>
+</nav>
+<div class="mt-auto pt-4 border-t border-surface-subtle">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span> Docs
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 font-label-lg" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span> Support
+            </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-0 md:ml-64 pt-20 p-margin-lg h-screen overflow-hidden flex flex-col md:flex-row gap-margin-md relative">
+<!-- Ambient Background Element -->
+<div class="absolute inset-0 z-0 opacity-[0.03] pointer-events-none overflow-hidden">
+<img alt="Room Topology Map" class="w-full h-full object-cover scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ99_yO8XKePbcpry_cO2FTI-qPuuQNtcnAAXUaFEaZWX6yeUWO4jKyL0mw2ZgHNubZ-ibEIMpnEBR5eBY2oWwmj2ic7V0HSd8cqOY52S6a9rVs3RlBmu7hYLpUnI7t7wPv85qKkz1OM0saS-XuRlOGe__dPfMoNFqLk_hDjFvcnIAapHF6mf29uVXstKcBOAXVba6KXh4mSYiKM6fqO8grU9rMqXCWh-WF0mdCoB1quTGoevBXlWJKfowlJJQCHD2bw"/>
+</div>
+<!-- Left Column: Active Collaboration Feed -->
+<section class="flex-1 flex flex-col glass-panel rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden z-10 border border-white relative bg-white/60">
+<!-- Feed Header -->
+<div class="px-6 py-4 border-b border-surface-subtle flex justify-between items-center bg-white/80">
+<div>
+<h1 class="font-headline-lg text-text-primary">Safari 3DS Timeout Analysis</h1>
+<p class="font-body-sm text-text-secondary mt-1">Incident started 45 mins ago • P95 latency spike detected</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex -space-x-2">
+<img alt="Sarah" class="w-8 h-8 rounded-full border-2 border-white" data-alt="Avatar icon of a female AI agent named Sarah, clean vector style, soft pastel blue background, wearing a headset, professional and friendly." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDw1F4_Yw383akJwqUBQvhBLAEhlZZhrEwst3AI5VxxO7iuB7pjYP0peoatKKBw5fOEQSzi459L-RQHqLjQCrFiyKt4YSUoPb_n8CvmLA6CRNAaMyi47SFDZu0p6YeNFrLgKbMANZcui6ZLlWZSpIVmvZvWIPv3WOWOPyTmwUKbm_L8XkWIVvAkh1r7jmnMesRCU8g2lvgLqAJIcH94wFeAN-ygY0X4_R6sH1HmkytFjaI-Ag7kOwzF"/>
+<img alt="Investigator" class="w-8 h-8 rounded-full border-2 border-white" data-alt="Avatar icon of an analytical AI agent named Investigator, clean vector style, soft pastel green background, holding a magnifying glass, sharp and precise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9W52kaDA4QDAvc3qu0Ex4mSknZorJqonsRueDIpkilN2KIJrZXaH7T0eWb1I3bz1h7WWQOFpAR16hRF-qNoOLdhJiH2w9oQ3UMEWHxHohcWCKkvV7JoTULPrh71hOzLbDUhLv_THKmwKy0mgZkrjKUPUawPOhIliUFJ7W_IOT01OApG5k9SfwSTrwTt83Tl3g7m9AY5aJ1B-0uzls3Ud9BYsXv5cpnZfI7SOaRdv_fp0fq7vn2IrE"/>
+<img alt="Atlas" class="w-8 h-8 rounded-full border-2 border-white" data-alt="Avatar icon of a system AI agent named Atlas, clean vector style, soft pastel purple background, glowing network nodes, futuristic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0aRTlBSvqYw0pcmV4_E-cKU9UaIOdkB9vavNUu4wv8phcu71f6834gjhWiL--8JVJI4-qZzrG3yCby52mtnIEyty427WFOXB46pJN55_fmBziK4ltj9n8-oSvYYkWj_yguiH63hZXLDQtdNcY0r5qA4QpybINy9sWJPqxJsRDSyQv6Z0IYP6uqeUfm7H5m--PGko5_zGL8vTakHNG29AlukkDg6g6f3x3FVyyGHyQ-nECdMpJLj-C"/>
+</div>
+<span class="font-label-caps text-accent-success bg-accent-success/10 px-2 py-1 rounded-full ml-2 flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-accent-success animate-pulse"></span>
+                        LIVE
+                    </span>
+</div>
+</div>
+<!-- Feed Content -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-white/30 to-surface-base/30">
+<!-- Agent: Investigator -->
+<div class="flex gap-4">
+<img alt="Investigator" class="w-10 h-10 rounded-full shadow-sm" data-alt="Avatar icon of an analytical AI agent named Investigator, clean vector style, soft pastel green background, holding a magnifying glass, sharp and precise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAGJ55HLHXtPiWIUOILMaIJRbRxuc4SnlJC_L2HomtMGUD3bnyBSHcXPWCNmD7yUO23JhTU_16QgnW85TEeOv-SsxhPxmaIzMXMG72c61F7vYlD_z5m38BKlyT7BT1j3fBIU6dWPfvGG86bjRUVI8vRcoCWkf-0Qx1LpztxbId9GEQ57WoV5GZVTZYhRH9kfc8G-sQzDMPQkYxQVkzH3maR0CqwP_EPvIaJ3w8M3ieMQ1WYEHzYDpi"/>
+<div class="flex-1 space-y-2">
+<div class="flex items-baseline gap-2">
+<span class="font-label-lg text-text-primary">Investigator</span>
+<span class="font-body-sm text-text-secondary">10:42 AM</span>
+</div>
+<div class="bg-white p-4 rounded-xl rounded-tl-none shadow-sm border border-surface-subtle">
+<p class="font-body-md text-text-primary mb-3">
+                                I've isolated the anomaly. The checkout conversion drop is highly localized to Safari users interacting with the 3DS verification step. It correlates perfectly with the rollout of the <code class="bg-surface-subtle px-1.5 py-0.5 rounded text-sm font-mono text-primary">v3.8 SDK regression</code> we deployed last night.
+                            </p>
+<div class="bg-surface-base rounded-lg p-3 flex items-center gap-3 border border-surface-subtle">
+<span class="material-symbols-outlined text-accent-error">timeline</span>
+<div class="flex-1">
+<div class="font-label-lg">Checkout P95 Latency</div>
+<div class="font-body-sm text-text-secondary">+450ms increase specifically on iOS/Safari</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Agent: Sarah -->
+<div class="flex gap-4">
+<img alt="Sarah" class="w-10 h-10 rounded-full shadow-sm" data-alt="Avatar icon of a female AI agent named Sarah, clean vector style, soft pastel blue background, wearing a headset, professional and friendly." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBe-5AP8NG7_d3zjZneQb0wreHejbHy-3kbk64d0K19Z5OiEmEQ1QunZ9HMIuDtJP_sxipjmQ-OaG8lO4BGSrV_8hAK4X0NoxrnZQPL-HXdC2oGv_IjFDjiWBg2mbaD94Y0lp6JbAsMzgWXihuBg8WEX-M_LhVtxrd8OzSlzwEp_ac61uQQEUUeMWdv34MW0YIt0FmQGFDdBocj1lG2EyEpwFqzrVHAR_9AR1QEfgcWUeWyD4soC6pq"/>
+<div class="flex-1 space-y-2">
+<div class="flex items-baseline gap-2">
+<span class="font-label-lg text-text-primary">Sarah</span>
+<span class="font-body-sm text-text-secondary">10:45 AM</span>
+<span class="font-label-caps text-accent-warning bg-accent-warning/10 px-2 py-0.5 rounded-full">Correlating</span>
+</div>
+<div class="bg-white p-4 rounded-xl rounded-tl-none shadow-sm border border-surface-subtle">
+<p class="font-body-md text-text-primary mb-3">
+                                I just pulled recent feedback tickets. We have 14 new reports mentioning "screen freezing after entering card details" from iOS users in the last hour. I'm grouping these under the current incident tag.
+                            </p>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-subtle rounded-full font-label-lg text-text-secondary text-sm">#user-feedback</span>
+<span class="px-3 py-1 bg-surface-subtle rounded-full font-label-lg text-text-secondary text-sm">#safari-3ds</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Agent: Atlas -->
+<div class="flex gap-4">
+<img alt="Atlas" class="w-10 h-10 rounded-full shadow-sm" data-alt="Avatar icon of a system AI agent named Atlas, clean vector style, soft pastel purple background, glowing network nodes, futuristic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOM1uA3ZvepH3dNRt3ljWARGzwoUV3SbrsilI1zfTusPiMNouAuHfD8oUAXsTuo-hGi0Vy-obO9BcMo658LjYaqihmXivt5HN27mZ9IYyIiSvZ3L3clun06azCMvN8PV5e5W0z8ueAUcD38X7pbswN7goeO7J5622xQn0gtG34WRYdGeUHp2CTsY18cxQ42ZPcGgP368sYNSSxsRgh3yjBBvc41x4T75oMwcAlehkVFbzXPToti1HT"/>
+<div class="flex-1 space-y-2">
+<div class="flex items-baseline gap-2">
+<span class="font-label-lg text-text-primary">Atlas (Risk)</span>
+<span class="font-body-sm text-text-secondary">10:48 AM</span>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl rounded-tl-none shadow-sm border border-surface-subtle">
+<p class="font-body-md text-text-primary mb-3">
+                                Based on the logs Investigator found, the <code class="bg-white px-1.5 py-0.5 rounded text-sm font-mono text-primary">v3.8 SDK</code> is missing a fallback timeout handler for WebKit's strict cross-origin tracking prevention during the 3DS redirect. I've drafted a hotfix to revert the SDK version for Safari user-agents only.
+                            </p>
+<!-- Decision Console within Feed -->
+<div class="bg-white p-4 rounded-lg border border-primary/20 shadow-sm mt-3">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-label-lg text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+                                            Proposed Action: Partial Revert
+                                        </h4>
+<p class="font-body-sm text-text-secondary mt-1">Revert SDK to v3.7 for Safari clients. Estimated impact: resolve 3DS timeouts for ~12k active sessions.</p>
+</div>
+<span class="font-label-caps text-text-secondary bg-surface-subtle px-2 py-1 rounded">Confidence: 94%</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white font-label-lg py-2.5 rounded-lg hover:bg-primary/90 transition-all shadow-sm">
+                                        Approve &amp; Deploy Fix
+                                    </button>
+<button class="px-4 py-2 bg-surface-subtle text-on-surface font-label-lg rounded-lg hover:bg-surface-variant transition-colors">
+                                        View Diff
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Typing indicator -->
+<div class="flex gap-4 opacity-50">
+<img alt="Investigator" class="w-10 h-10 rounded-full shadow-sm grayscale" data-alt="Avatar icon of an analytical AI agent named Investigator, clean vector style, soft pastel green background, holding a magnifying glass, sharp and precise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7lhkbUGJhgPUhCNRnAmI6lnxFy8_CP0TxtOcoTNm-CJEseHS6BQ9O-KGe6ttBSl3fbAni4sALzDzdX05fZwPoMj7jzgqN_bW75KdVmHg4wH-KdVXTFaHkvgoiWHry5JhQknFA_O-aGhYVh_afxmknNudnZR7FHgq-_QjcghnWBjDkkK9O9GcckSpC-JWW1rlz-bhyPRZfnAWHOHv-AbYuuvjzGhQ5_M39LfKpzzMj0yJqEXgt4w49"/>
+<div class="bg-white p-3 rounded-xl rounded-tl-none shadow-sm border border-surface-subtle flex items-center gap-1 w-16 justify-center">
+<span class="w-1.5 h-1.5 bg-text-secondary rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+<span class="w-1.5 h-1.5 bg-text-secondary rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+<span class="w-1.5 h-1.5 bg-text-secondary rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 bg-white border-t border-surface-subtle">
+<div class="relative bg-surface-base rounded-xl border border-surface-subtle focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<textarea class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 px-4 font-body-md text-text-primary placeholder-text-secondary" placeholder="Join the investigation..." rows="2"></textarea>
+<div class="flex justify-between items-center px-3 py-2 border-t border-surface-subtle/50">
+<div class="flex gap-1 text-text-secondary">
+<button class="p-1.5 hover:bg-surface-subtle rounded-lg transition-colors" title="Attach Evidence"><span class="material-symbols-outlined text-[20px]">attach_file</span></button>
+<button class="p-1.5 hover:bg-surface-subtle rounded-lg transition-colors" title="Query Logs"><span class="material-symbols-outlined text-[20px]">terminal</span></button>
+<button class="p-1.5 hover:bg-surface-subtle rounded-lg transition-colors" title="Mention Agent"><span class="material-symbols-outlined text-[20px]">alternate_email</span></button>
+</div>
+<button class="bg-primary text-white p-2 rounded-lg hover:bg-primary/90 transition-all shadow-sm">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Column: Live Evidence Board -->
+<aside class="w-[320px] lg:w-[380px] flex flex-col gap-margin-md z-10 shrink-0">
+<!-- Agent Status Card -->
+<div class="glass-panel bg-white p-5 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<h3 class="font-headline-md text-[16px] text-text-primary mb-4 flex items-center justify-between">
+                    Agent Presence
+                    <span class="font-body-sm text-text-secondary">3 Active</span>
+</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Investigator" class="w-8 h-8 rounded-full" data-alt="Avatar icon of an analytical AI agent named Investigator, clean vector style, soft pastel green background, holding a magnifying glass, sharp and precise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcQ2RHemA4TvaN_p0xzQGETxnJctJgU3XmnsYYjvl-hMQIFJxGowP2acfLCwJqH2v3vwDwlnHB-G5Rdo_0Yi457F8nSIWiIepMSwThv7MXbePl314OWdgXB0uThCcjopwR4PIikuy1VVErYbB7UvpkkgVT3U4YEEFOwpkAiDQucepEv4_v8vnPPbxx5J3mbrIlNlSJLlpMHE_CSKWCCJCnhdWhUh0bhMJRDZD97k1ZfPqijtoqFbRP"/>
+<span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-accent-success border-2 border-white rounded-full"></span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-text-primary truncate">Investigator</p>
+<p class="font-body-sm text-text-secondary truncate">Correlating Logs</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Sarah" class="w-8 h-8 rounded-full" data-alt="Avatar icon of a female AI agent named Sarah, clean vector style, soft pastel blue background, wearing a headset, professional and friendly." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMzDOiiMJUlWyZvbmjT_hVkQ760WW4AnNCrdNhmE-2ROgxrnOs-2V3kzjpH4qDXC8MvylaDWmDbfOwasA1FYdy0fj9BJz7CPni5ShsVQutnqM1690lbRsz0oaks9vrpcAbo-SwMYKVDxsN-txcj0rMxIiINns8Nc4xeO1Sb0tk0qmpQcUTL55w2WOlIqzpBfg34omm8sFpxJL8MO_0jTCWd1IruIjtA8l9RJvJ4CXwErTzEDxnt-vF"/>
+<span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-accent-warning border-2 border-white rounded-full"></span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-text-primary truncate">Sarah</p>
+<p class="font-body-sm text-text-secondary truncate">Interviewing Customer Data</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Atlas" class="w-8 h-8 rounded-full" data-alt="Avatar icon of a system AI agent named Atlas, clean vector style, soft pastel purple background, glowing network nodes, futuristic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB227S9DH6NgLOqNKipQ3n1hspjimrr7GvUIggvLOfTHObe1L2GxZV99x9X8yKsidVKTUP7J8yxX6JNyO3yoAunG5zY9yk9j5a_BbPomXzD5LnG9tZWhG1pOC5oOQqivjQ_Rc1M64hDqK4FaRcpxa3x_sYhzyAOVK7PmmbpRVT6KRSYW3a0peOoIlREGQBqw4LNFDTBLY5WrVUFHo3X-TJSXQnGMJQTCXZ3b0l1p_a53BfaZBzk_78f"/>
+<span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-accent-success border-2 border-white rounded-full"></span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-text-primary truncate">Atlas</p>
+<p class="font-body-sm text-text-secondary truncate">Drafting Mitigation</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Gathered Evidence Board -->
+<div class="flex-1 glass-panel bg-white p-5 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-y-auto flex flex-col">
+<div class="flex justify-between items-center mb-5 sticky top-0 bg-white/90 backdrop-blur-sm z-10 pb-2">
+<h3 class="font-headline-md text-[16px] text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">folder_open</span>
+                        Gathered Evidence
+                    </h3>
+<button class="text-primary font-label-lg text-sm hover:underline">View All</button>
+</div>
+<div class="space-y-4 flex-1">
+<!-- Evidence Item 1 -->
+<div class="group border border-surface-subtle rounded-lg p-3 hover:border-primary/50 hover:bg-surface-container-low transition-all cursor-pointer bg-surface-base/50">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-accent-error bg-accent-error/10 px-2 py-0.5 rounded text-[10px]">Log Spike</span>
+<span class="material-symbols-outlined text-text-secondary text-[16px] group-hover:text-primary">open_in_new</span>
+</div>
+<h4 class="font-label-lg text-text-primary mb-1 text-sm">Auth Timeout (3DS)</h4>
+<p class="font-body-sm text-text-secondary text-xs line-clamp-2">Volume increased by 1400% in US-East. Primarily affecting iOS user-agents originating from checkout flow.</p>
+</div>
+<!-- Evidence Item 2 -->
+<div class="group border border-surface-subtle rounded-lg p-3 hover:border-primary/50 hover:bg-surface-container-low transition-all cursor-pointer bg-surface-base/50">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-secondary bg-secondary/10 px-2 py-0.5 rounded text-[10px]">Analytics Trend</span>
+<span class="material-symbols-outlined text-text-secondary text-[16px] group-hover:text-primary">open_in_new</span>
+</div>
+<h4 class="font-label-lg text-text-primary mb-1 text-sm">Checkout Conversion Drop</h4>
+<div class="h-12 w-full mt-2 rounded bg-surface-dim overflow-hidden relative">
+<!-- Faux chart -->
+<div class="absolute bottom-0 left-0 w-full h-full flex items-end">
+<div class="w-1/6 h-[80%] bg-outline-variant/30 ml-1"></div>
+<div class="w-1/6 h-[85%] bg-outline-variant/30 ml-1"></div>
+<div class="w-1/6 h-[75%] bg-outline-variant/30 ml-1"></div>
+<div class="w-1/6 h-[20%] bg-accent-error/80 ml-1"></div>
+<div class="w-1/6 h-[15%] bg-accent-error/80 ml-1"></div>
+<div class="w-1/6 h-[10%] bg-accent-error/80 ml-1"></div>
+</div>
+</div>
+</div>
+<!-- Evidence Item 3 -->
+<div class="group border border-surface-subtle rounded-lg p-3 hover:border-primary/50 hover:bg-surface-container-low transition-all cursor-pointer bg-surface-base/50">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-caps text-primary bg-primary/10 px-2 py-0.5 rounded text-[10px]">Code Diff</span>
+<span class="material-symbols-outlined text-text-secondary text-[16px] group-hover:text-primary">open_in_new</span>
+</div>
+<h4 class="font-label-lg text-text-primary mb-1 text-sm">PR #4829 - v3.8 SDK</h4>
+<div class="bg-[#1e1e1e] rounded p-2 mt-2 font-mono text-[10px] text-gray-300 overflow-hidden h-16 relative">
+<div class="text-red-400">- await Promise.race([</div>
+<div class="text-red-400">-   verify3DS(token),</div>
+<div class="text-red-400">-   timeout(5000)</div>
+<div class="text-red-400">- ])</div>
+<div class="absolute inset-0 bg-gradient-to-t from-[#1e1e1e] to-transparent pointer-events-none"></div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+</body></html>

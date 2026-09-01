@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, type Action, type Room } from "@/lib/api";
+import { api, hasAdminToken, type Action, type Room } from "@/lib/api";
 import { Button, Chip, Empty, ErrorState, Loading, PageHeader } from "@/components/ui";
 
 export default function ApprovalsPage() {
@@ -13,6 +13,12 @@ export default function ApprovalsPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [prUrl, setPrUrl] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [jobDetail, setJobDetail] = useState<string | null>(null);
+  const [needsAdmin, setNeedsAdmin] = useState(false);
+
+  useEffect(() => {
+    api.config().then((c) => setNeedsAdmin(Boolean(c.hosted && !c.eval_mode && !hasAdminToken()))).catch(() => undefined);
+  }, []);
 
   async function pollJob(actionId: string, attempts = 0) {
     if (attempts > 40) {
@@ -30,7 +36,9 @@ export default function ApprovalsPage() {
         return;
       }
       if (job?.status === "failed" || job?.status === "dead") {
-        setJobStatus(`Code fix failed: ${job.error || "see room for details"}`);
+        const detail = job.error || (job.result?.detail as string | undefined) || "see room for details";
+        setJobStatus(`Code fix failed: ${detail}`);
+        setJobDetail(JSON.stringify(job.result || {}, null, 2));
         return;
       }
       if (job?.status === "succeeded") {
@@ -107,10 +115,24 @@ export default function ApprovalsPage() {
   return (
     <div className="page-pad fade-in">
       <PageHeader title="Approvals" />
+      {needsAdmin ? (
+        <p className="mt-4 max-w-xl rounded-xl border border-border bg-[#fbfbfd] px-4 py-3 text-[14px] leading-6 text-[var(--dim)]">
+          Hosted production requires an admin token to approve.{" "}
+          <Link href="/connect" className="text-accent hover:underline">
+            Connect → Authorize
+          </Link>{" "}
+          if you have not pasted <code className="text-[12px]">LOOP_ADMIN_TOKEN</code> yet.
+        </p>
+      ) : null}
       {notice ? (
         <p className="mt-4 max-w-xl text-[14px] leading-6 text-foreground">
           {notice}
           {jobStatus ? <span className="mt-1 block text-[var(--dim)]">{jobStatus}</span> : null}
+          {jobDetail ? (
+            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-[#f5f5f7] p-3 text-[11px] text-[var(--dim)]">
+              {jobDetail}
+            </pre>
+          ) : null}
           {prUrl ? (
             <>
               {" "}

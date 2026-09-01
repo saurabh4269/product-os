@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina Command - Campus Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "on-background": "#181c23",
+                        "text-secondary": "#86868B",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "inverse-surface": "#2d3039",
+                        "accent-warning": "#FF9500",
+                        "surface-container-highest": "#e0e2ed",
+                        "surface-bright": "#f9f9ff",
+                        "on-secondary-container": "#fffbff",
+                        "on-secondary-fixed": "#0c006b",
+                        "primary-fixed": "#d8e2ff",
+                        "secondary-fixed": "#e2dfff",
+                        "inverse-primary": "#adc6ff",
+                        "surface-dim": "#d8d9e5",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#ecedf9",
+                        "primary-container": "#0070eb",
+                        "on-primary-fixed-variant": "#004493",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-primary-container": "#fefcff",
+                        "surface-container-low": "#f1f3fe",
+                        "surface-high": "#FFFFFF",
+                        "surface-base": "#F5F5F7",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#6462ec",
+                        "surface-tint": "#005bc1",
+                        "outline-variant": "#c1c6d7",
+                        "surface-variant": "#e0e2ed",
+                        "on-surface": "#181c23",
+                        "accent-success": "#34C759",
+                        "surface": "#f9f9ff",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary": "#4a47d2",
+                        "error-container": "#ffdad6",
+                        "text-primary": "#1D1D1F",
+                        "primary": "#0058bc",
+                        "outline": "#717786",
+                        "on-surface-variant": "#414755",
+                        "on-primary-fixed": "#001a41",
+                        "accent-error": "#FF3B30",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#9e3d00",
+                        "inverse-on-surface": "#eef0fc",
+                        "surface-container-high": "#e6e8f3",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "tertiary-container": "#c64f00",
+                        "background": "#f9f9ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-primary": "#ffffff",
+                        "surface-subtle": "#E5E5EA",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-md": "24px",
+                        "container-max": "1440px",
+                        "unit": "8px",
+                        "margin-lg": "40px",
+                        "margin-sm": "16px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary font-body-md antialiased overflow-x-hidden min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 z-50 flex justify-between items-center px-margin-lg h-16 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl bg-surface-bright/80 shadow-sm shadow-[0_4px_20px_rgba(0,0,0,0.04)] hidden md:flex">
+<div class="flex items-center gap-margin-md">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Lumina Command</span>
+</div>
+<div class="flex items-center gap-margin-sm">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" style="font-variation-settings: 'FILL' 0;">search</span>
+<input class="bg-surface-subtle text-text-primary pl-10 pr-4 py-2 rounded-full focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-body-sm text-body-sm w-64 border-none" placeholder="Search..." type="text"/>
+</div>
+<button class="p-2 rounded-full hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 transition-transform text-text-secondary">
+<span class="material-symbols-outlined" data-icon="notifications" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-subtle/50 transition-colors duration-200 active:scale-95 transition-transform text-text-secondary">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden ml-2 cursor-pointer border-2 border-surface-subtle hover:border-primary transition-colors">
+<img alt="Chief Product Officer Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a person, likely the Chief Product Officer, against a neutral background. The lighting is soft and flattering, suitable for a corporate environment profile picture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD55wsHIxW7kL5DHSGyRH9pL5W1Mbwdt0laSNczSfbB9ScHjt7Sgw8sphdXoCvrZlrvOeu-pdWxfsrpwc9dJTGAzUntU7gka0f-LDl9RnxXSYGPk0ok01MS1CIvdEmZzye0k96ix_idDvUmUDYtrvDLlJIMSEcZDeq98HBAz_QU4giSJDdJdCoXNpEY8IAw0ht2TI6tJlgXXubWb06Sa7MKVxvgWZclJnfyrpbmppVtPxAf4nDxTo3K"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-screen w-64 flex flex-col p-margin-sm border-r border-surface-subtle bg-surface-base dark:bg-on-background docked hidden md:flex z-40 pt-24">
+<div class="mb-margin-md px-2">
+<h2 class="font-headline-md text-headline-md text-on-surface">Research Lab</h2>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Autonomous Ops</p>
+</div>
+<div class="flex-1 overflow-y-auto space-y-2 mt-4">
+<!-- Active state mapped to 'Signal' as it's the home/monitoring view -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary bg-white shadow-sm font-bold cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sensors" style="font-variation-settings: 'FILL' 1;">sensors</span>
+<span class="font-label-lg text-label-lg">Signal</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer transition-all duration-200 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="psychology" style="font-variation-settings: 'FILL' 0;">psychology</span>
+<span class="font-label-lg text-label-lg">Understand</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer transition-all duration-200 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 0;">chat_bubble</span>
+<span class="font-label-lg text-label-lg">Ask</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer transition-all duration-200 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="biotech" style="font-variation-settings: 'FILL' 0;">biotech</span>
+<span class="font-label-lg text-label-lg">Diagnose</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer transition-all duration-200 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="build_circle" style="font-variation-settings: 'FILL' 0;">build_circle</span>
+<span class="font-label-lg text-label-lg">Fix</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-subtle transition-all duration-300 cursor-pointer transition-all duration-200 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="verified" style="font-variation-settings: 'FILL' 0;">verified</span>
+<span class="font-label-lg text-label-lg">Verify</span>
+</a>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-subtle">
+<button class="w-full bg-primary text-on-primary font-label-lg text-label-lg py-3 px-4 rounded-lg hover:bg-surface-tint transition-colors mb-4 flex justify-center items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">add</span>
+                New Investigation
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="description" style="font-variation-settings: 'FILL' 0;">description</span>
+                    Docs
+                </a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-subtle transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="help" style="font-variation-settings: 'FILL' 0;">help</span>
+                    Support
+                </a>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="md:ml-64 pt-20 p-margin-md md:p-margin-lg min-h-screen">
+<!-- Spatial Command Canvas (Map + Overlay) -->
+<div class="relative w-full h-[600px] rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] mb-margin-lg">
+<!-- Background Map Image -->
+<div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDlAXcGakxMBi1lW_UxeWxSR-s0KrJgPQmCDpCSv2LEzMkXi83N8NbjPaSGIxwQ2zspvTwYGZyFfQMBv8SiCuX_mpTpIyxtTT07BuWh6x5AOzbyFRAT_AcMMeIVfU628BfUR7azvq9Z_shzdaykCDNF9zoKuCJ0IrUquzg2ipWtv8_s5LZwABfii5Vdasog_QnzR6SDLWs0K6H7rUJfXCLHfDW7RSLgDfp7DRZVkVlt_OfjgJOnoaoay2OdKRtX1_K8XA');"></div>
+<!-- Map Overlay Gradient for readability -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface-base/80 via-transparent to-transparent"></div>
+<!-- Overlay Content - Top Right -->
+<div class="absolute top-margin-md right-margin-md glass-panel rounded-xl p-6 w-80 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+<h3 class="font-headline-md text-headline-md mb-2">Campus Overview</h3>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Real-time spatial monitoring active.</p>
+<div class="flex items-center justify-between mb-3 bg-white/50 p-3 rounded-lg">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-accent-success animate-pulse"></span>
+<span class="font-label-lg text-label-lg">Active Agents: 12</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5" style="font-variation-settings: 'FILL' 1;">sensors</span>
+<div>
+<p class="font-body-sm text-body-sm font-semibold">Signal agent watching</p>
+<p class="font-body-sm text-body-sm text-text-secondary">North Wing Anomaly Detected</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-accent-warning mt-0.5" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div>
+<p class="font-body-sm text-body-sm font-semibold">Security Alert</p>
+<p class="font-body-sm text-body-sm text-text-secondary">Unauthorized access attempt at Lab B.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Overlay Content - Bottom Left (Contextual Action) -->
+<div class="absolute bottom-margin-md left-margin-md flex gap-4">
+<button class="bg-primary text-white px-6 py-3 rounded-full font-label-lg text-label-lg shadow-lg hover:bg-surface-tint transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">explore</span>
+                    Focus View
+                </button>
+</div>
+</div>
+<!-- Bento Grid Layout for Secondary Info -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Active Missions Card -->
+<div class="bg-white rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] md:col-span-2">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline-md text-headline-md">Active Missions</h2>
+<button class="text-primary font-label-lg text-label-lg hover:underline">View All</button>
+</div>
+<div class="space-y-4">
+<!-- Mission Item -->
+<div class="flex items-center justify-between p-4 rounded-lg border border-surface-subtle hover:border-primary/30 transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">biotech</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg">Lab Calibration Protocol</h4>
+<p class="font-body-sm text-body-sm text-text-secondary">Assigned to Agent Alpha • In Progress</p>
+</div>
+</div>
+<div class="text-right">
+<span class="inline-block px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps mb-1">65% Complete</span>
+<div class="w-32 h-1.5 bg-surface-subtle rounded-full overflow-hidden">
+<div class="w-[65%] h-full bg-primary rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Mission Item -->
+<div class="flex items-center justify-between p-4 rounded-lg border border-surface-subtle hover:border-primary/30 transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-accent-warning/20 flex items-center justify-center text-accent-warning">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg">Security Audit - East Wing</h4>
+<p class="font-body-sm text-body-sm text-text-secondary">Assigned to Drone Squad • Urgent</p>
+</div>
+</div>
+<div class="text-right">
+<span class="inline-block px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps mb-1">Pending Review</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Team Activity Card -->
+<div class="bg-white rounded-xl p-margin-md shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+<h2 class="font-headline-md text-headline-md mb-6">Team Activity</h2>
+<div class="relative pl-6 border-l-2 border-surface-subtle space-y-6">
+<!-- Activity Node -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-primary border-4 border-white shadow-sm"></div>
+<p class="font-body-sm text-body-sm text-text-secondary mb-1">10:45 AM</p>
+<p class="font-body-md text-body-md">Agent Bravo initiated <span class="font-semibold text-text-primary">Diagnostic Scan</span> in Sector 4.</p>
+</div>
+<!-- Activity Node -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-subtle border-4 border-white shadow-sm"></div>
+<p class="font-body-sm text-body-sm text-text-secondary mb-1">09:30 AM</p>
+<p class="font-body-md text-body-md">System updated <span class="font-semibold text-text-primary">Patrol Routes</span> based on new spatial data.</p>
+</div>
+<!-- Activity Node -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-accent-success border-4 border-white shadow-sm"></div>
+<p class="font-body-sm text-body-sm text-text-secondary mb-1">08:15 AM</p>
+<p class="font-body-md text-body-md">Morning brief complete. All agents deployed successfully.</p>
+</div>
+</div>
+<button class="mt-8 w-full py-2 rounded-lg bg-surface-subtle hover:bg-surface-variant transition-colors font-label-lg text-label-lg text-text-primary">
+                    View Full Log
+                </button>
+</div>
+</div>
+</main>
+</body></html>

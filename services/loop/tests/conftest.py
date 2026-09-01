@@ -30,6 +30,13 @@ def _no_background_job_dispatch(monkeypatch):
     monkeypatch.setenv("LOOP_DEMO_ASYNC", "0")
     monkeypatch.setenv("LOOP_DEMO_STAGE_MS", "0")
     monkeypatch.setenv("LOOP_DEMO_STAGED", "0")
+    monkeypatch.setenv("LOOP_AUTO_INVESTIGATE", "0")
+    monkeypatch.setenv("LOOP_VERIFY_DEFER", "0")
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    monkeypatch.setenv("LOOP_EVAL", "1")
+    from loop.signal_watch import reset_watch_state
+
+    reset_watch_state(None)
 
 
 @pytest.fixture()

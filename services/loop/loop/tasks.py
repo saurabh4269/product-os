@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import urllib.error
 import urllib.request
 
@@ -86,17 +87,19 @@ def dispatch_job(job_id: str) -> ConnectorReport:
 
 
 def kick_job(job_id: str) -> None:
-    """Cloud Tasks when available; otherwise background thread."""
+    """Cloud Tasks when available; otherwise background thread with retry bookkeeping."""
     report = dispatch_job(job_id)
     if report.status == "applied":
         return
-    import threading
 
     def worker() -> None:
         from loop.engine import default_engine
-        from loop.jobs import process_job
+        from loop.jobs import fail, process_job
 
         eng = default_engine()
-        process_job(eng.store, eng, job_id)
+        try:
+            process_job(eng.store, eng, job_id)
+        except Exception as exc:
+            fail(eng.store, job_id, str(exc))
 
     threading.Thread(target=worker, name=f"job-{job_id[:8]}", daemon=True).start()

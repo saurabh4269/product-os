@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from .config import settings
+from .memory_recall import blob_hits, re_split_tokens, recall_tokens
 from .models import (
     AgentCall,
     Approval,
@@ -35,14 +37,6 @@ from .store import Store
 from .warehouse import RECOVERY_START, REGRESSION_START, Warehouse
 
 SAFARI = "Safari"
-
-
-def re_split_tokens(raw: str | None) -> list[str]:
-    if not raw:
-        return []
-    import re
-
-    return [t for t in re.split(r"[^a-z0-9]+", str(raw).lower()) if len(t) >= 3]
 
 
 def _log_signature_for(sig: Signal) -> str:
@@ -259,8 +253,10 @@ class LoopEngine:
         return found
 
     def detect_all_signals(self, as_of: date | None = None) -> list[Signal]:
-        """File warehouse detect + tenant BQ detect for every configured tenant."""
-        found = list(self.detect_signals(as_of))
+        """File warehouse detect (eval) + tenant BQ detect for every configured tenant."""
+        from .runtime_mode import use_file_warehouse
+
+        found = list(self.detect_signals(as_of)) if use_file_warehouse() else []
         seen = {s.id for s in found}
         try:
             from .connectors.bigquery import detect_anomalies_for_tenant, has_bq
@@ -291,8 +287,11 @@ class LoopEngine:
                     continue
                 if existing.metric == sig.metric and existing.affected_segments == sig.affected_segments:
                     return True
-        for lesson in self.store.list_lessons():
-            if "maintenance" in lesson.statement.lower():
+        needles = self._recall_needles(sig)
+        recalled = self.recall_lessons(*needles)
+        for stmt in recalled:
+            low = stmt.lower()
+            if "maintenance" in low or "benign" in low or "known issue" in low:
                 return True
         return False
 
@@ -322,42 +321,32 @@ class LoopEngine:
 
     def recall_lessons(self, *needles: str, tenant_id: str | None = None) -> list[str]:
         """Retrieve organizational memory. Facts stay in the warehouse; lessons are knowledge."""
-        import re
-
-        raw = [n for n in needles if n]
-        tokens: set[str] = set()
-        for n in raw:
-            s = str(n).strip().lower()
-            if not s:
-                continue
-            tokens.add(s)
-            tokens.update(re_split_tokens(s))
-        tokens = {t for t in tokens if len(t) >= 3}
-        if not tokens:
-            return []
-
-        def _hits(blob: str) -> bool:
-            for t in tokens:
-                if len(t) >= 5:
-                    if t in blob:
-                        return True
-                elif re.search(rf"(?<![a-z0-9]){re.escape(t)}(?![a-z0-9])", blob):
-                    return True
-            return False
+        from . import firestore_memory
 
         hits: list[str] = []
         seen: set[str] = set()
+
+        if firestore_memory.enabled():
+            for stmt in firestore_memory.recall(*needles, tenant_id=tenant_id):
+                if stmt not in seen:
+                    hits.append(stmt)
+                    seen.add(stmt)
+
+        tokens = recall_tokens(*needles)
+        if not tokens and not hits:
+            return hits
+
         for lesson in self.store.list_lessons():
             if tenant_id and lesson.tenant_id and lesson.tenant_id != tenant_id:
                 continue
             blob = f"{lesson.statement} {lesson.root_cause_family} {' '.join(lesson.applicable_conditions)}".lower()
-            if _hits(blob):
+            if blob_hits(blob, tokens):
                 if lesson.statement not in seen:
                     hits.append(lesson.statement)
                     seen.add(lesson.statement)
         for mem in self.store.list_memory(tenant_id=tenant_id):
             blob = f"{mem.get('statement', '')} {mem.get('body', '')} {mem.get('title', '')}".lower()
-            if _hits(blob):
+            if blob_hits(blob, tokens):
                 stmt = str(mem.get("statement") or mem.get("title") or "")
                 if stmt and stmt not in seen:
                     hits.append(stmt)
@@ -496,48 +485,51 @@ class LoopEngine:
         voice = self._collect_customer_voice(inv)
         items.append(voice)
 
-        # Untrusted GitHub / tool output — screen then ingest as DATA, never as instruction (M-10, M-13)
-        fixtures = Path(__file__).resolve().parents[3] / "data" / "fixtures"
-        poison = fixtures / "poisoned_github_issue.md"
-        injected = fixtures / "prompt_injection_tool.json"
-        raw_bits = []
-        if poison.exists():
-            raw_bits.append(poison.read_text())
-        if injected.exists():
-            raw_bits.append(injected.read_text())
-        blob = "\n".join(raw_bits)
-        hit, needle = screen_tool_output(blob)
-        if hit:
-            log_verdict(
-                self.store,
-                agent="loop-analysis",
-                tool="read_github_issue",
-                args="1847",
-                verdict="BLOCK",
-                rationale=f"Prompt-injection pattern in tool output: {needle}",
-                finding="prompt_injection",
-            )
-            self.timeline(
-                inv.id,
-                "tool_output_armor",
-                "policy",
-                "Blocked injected tool output",
-                f"after_tool_callback screened GitHub/tool payload; needle={needle}. Content not forwarded.",
-                denial=True,
-            )
-        if poison.exists() or injected.exists():
-            items.append(
-                self._evidence(
-                    inv,
-                    source_type="github_issue",
-                    source_reference="github://northstar/pay/issues/1847",
-                    claim="External issue text ingested as untrusted data. Injection screened and blocked. Not used as an instruction.",
-                    independence_group="github_untrusted",
-                    collected_by="code_agent",
-                    confidence=0.4,
-                    trust=TrustLevel.UNTRUSTED,
+        # Untrusted GitHub / tool output — eval fixture + security_exfil only (M-10, M-13)
+        from .runtime_mode import inject_fixture_evidence
+
+        if inject_fixture_evidence() or inv.scenario_id == "security_exfil":
+            fixtures = Path(__file__).resolve().parents[3] / "data" / "fixtures"
+            poison = fixtures / "poisoned_github_issue.md"
+            injected = fixtures / "prompt_injection_tool.json"
+            raw_bits = []
+            if poison.exists():
+                raw_bits.append(poison.read_text())
+            if injected.exists():
+                raw_bits.append(injected.read_text())
+            blob = "\n".join(raw_bits)
+            hit, needle = screen_tool_output(blob)
+            if hit:
+                log_verdict(
+                    self.store,
+                    agent="loop-analysis",
+                    tool="read_github_issue",
+                    args="1847",
+                    verdict="BLOCK",
+                    rationale=f"Prompt-injection pattern in tool output: {needle}",
+                    finding="prompt_injection",
                 )
-            )
+                self.timeline(
+                    inv.id,
+                    "tool_output_armor",
+                    "policy",
+                    "Blocked injected tool output",
+                    f"after_tool_callback screened GitHub/tool payload; needle={needle}. Content not forwarded.",
+                    denial=True,
+                )
+            if poison.exists() or injected.exists():
+                items.append(
+                    self._evidence(
+                        inv,
+                        source_type="github_issue",
+                        source_reference="github://northstar/pay/issues/1847",
+                        claim="External issue text ingested as untrusted data. Injection screened and blocked. Not used as an instruction.",
+                        independence_group="github_untrusted",
+                        collected_by="code_agent",
+                        confidence=0.4,
+                        trust=TrustLevel.UNTRUSTED,
+                    )
+                )
 
         inv.state = InvestigationState.HYPOTHESIS
         self.store.put_investigation(inv)
@@ -737,7 +729,19 @@ class LoopEngine:
             f"{tier.value} tier — approval required" if tier == RiskTier.HIGH else f"{tier.value} tier",
             action.consequence,
         )
+        if tier == RiskTier.LOW:
+            self.auto_execute_low_tier(action)
         return action
+
+    def auto_execute_low_tier(self, action: ProposedAction) -> bool:
+        """LOW-tier actions execute without HITL — surface policy, not model confidence."""
+        if action.risk_tier != RiskTier.LOW:
+            return False
+        if action.status in {"executed", "denied"}:
+            return False
+        self.approve(action.id, "policy_agent", "approve", "LOW tier — auto-approved per surface policy")
+        self.execute_approved(action.id)
+        return True
 
     def approve(
         self, action_id: str, approver: str, decision: str, rationale: str
@@ -782,6 +786,7 @@ class LoopEngine:
         self.store.put_investigation(inv)
 
         from .connectors import calendar_hold, create_issue, mail_draft, open_pr
+        from .gateway import invoke
         from .tenant import flag_key, is_tenant_scenario, resolve_tenant
         from .tenant_context import flag_file_for
 
@@ -842,7 +847,10 @@ class LoopEngine:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.pr",
-                    lambda: open_pr(
+                    lambda: invoke(
+                        "code_agent",
+                        "github.write",
+                        open_pr,
                         tenant,
                         title,
                         body,
@@ -871,16 +879,40 @@ class LoopEngine:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.issue",
-                    lambda: create_issue(tenant, title, body).model_dump(),
+                    lambda: invoke(
+                        "code_agent",
+                        "github.write",
+                        create_issue,
+                        tenant,
+                        title,
+                        body,
+                    ).model_dump(),
                 )
                 reports.append(gh)
                 result["github"] = gh
                 if gh.get("url"):
                     result["github_issue_url"] = gh["url"]
             if action.artifacts.get("gmail"):
-                reports.append(mail_draft(f"oncall@{tenant.id if tenant else 'loop'}", title, body).model_dump())
+                reports.append(
+                    invoke(
+                        "coordination_agent",
+                        "gmail.draft",
+                        mail_draft,
+                        f"oncall@{tenant.id if tenant else 'loop'}",
+                        title,
+                        body,
+                    ).model_dump()
+                )
             if action.artifacts.get("calendar"):
-                reports.append(calendar_hold(title, str(action.artifacts.get("calendar"))).model_dump())
+                reports.append(
+                    invoke(
+                        "coordination_agent",
+                        "calendar.read",
+                        calendar_hold,
+                        title,
+                        str(action.artifacts.get("calendar")),
+                    ).model_dump()
+                )
         result["connectors"] = reports
         action.status = "executed"
         action.artifacts["execution"] = {**result, "reused": reused}
@@ -936,7 +968,50 @@ class LoopEngine:
             "Approved action executed" if not reused else "Idempotent replay — no duplicate side effect",
             str(result),
         )
+        if not reused and inv.room_id:
+            self._post_approve_coordination(inv, action, result)
         return {**result, "reused": reused}
+
+    def _post_approve_coordination(self, inv: Investigation, action: ProposedAction, result: dict) -> None:
+        """After execute: Gmail draft + calendar hold when Workspace OAuth is connected."""
+        from .connectors import calendar_hold as cal_hold
+        from .connectors import google_oauth
+        from .connectors import mail as mail_connector
+        from .gateway import invoke
+
+        if not google_oauth.status().get("connected"):
+            return
+        title = f"Product OS: investigation {inv.id} executed"
+        body = f"Action {action.id} executed. PR: {result.get('pr_url') or 'none'}. Flag: {result.get('flag')} → {result.get('value')}"
+        reports: list[dict] = []
+        try:
+            reports.append(
+                invoke(
+                    "coordination_agent",
+                    "gmail.draft",
+                    mail_connector.send_to_self,
+                    title,
+                    body,
+                ).model_dump()
+            )
+        except PermissionError:
+            pass
+        try:
+            reports.append(
+                invoke(
+                    "coordination_agent",
+                    "calendar.read",
+                    cal_hold,
+                    title,
+                    "next_available",
+                ).model_dump()
+            )
+        except PermissionError:
+            pass
+        if reports and inv.room_id:
+            from .receipts import post_connector_receipts
+
+            post_connector_receipts(self, inv.room_id, flag=None, connectors=reports, pr_url=result.get("pr_url"))
 
     def verify(self, inv_id: str) -> Outcome:
         inv = self.store.get_investigation(inv_id)
@@ -948,7 +1023,10 @@ class LoopEngine:
         return self._verify_generic(inv)
 
     def _verify_segment_conversion(self, inv: Investigation, sig: Signal) -> Outcome:
-        """Measure the signal's own browser/segment — not a scenario_id branch."""
+        """Measure the signal's own browser/segment — tenant BQ when bound, else file warehouse."""
+        from .connectors.warehouse import read_metric_window
+        from .tenant import resolve_tenant
+
         inv.state = InvestigationState.VERIFYING
         self.store.put_investigation(inv)
         self.a2a(inv.id, "orchestrator", "learning_agent", "TB-7", "measure originating metric")
@@ -956,22 +1034,31 @@ class LoopEngine:
         control = next(
             (s.browser for s in sig.affected_segments if s.browser and s.browser != browser),
             None,
-        )
-        w_start = date.fromisoformat(sig.detection_window["start"])
-        w_end = date.fromisoformat(sig.detection_window["end"])
-        by_pre = self.wh.conversion_by_browser(w_start, w_end)
-        by_post = self.wh.conversion_by_browser(
-            RECOVERY_START, RECOVERY_START + timedelta(days=3), include_recovery=True
-        )
-        if browser == "all" and by_pre:
-            browser = max(
-                by_pre.keys(),
-                key=lambda n: abs(float((by_pre.get(n) or {}).get("conversion") or 0)),
+        ) or "control"
+        tenant = resolve_tenant(self.store, investigation=inv)
+        pre = float(sig.baseline or 0)
+        post = pre
+        reading = None
+        if tenant:
+            reading = read_metric_window(self, tenant, sig.metric, baseline=pre)
+            if reading and reading.get("value") is not None:
+                post = float(reading["value"])
+        if reading is None or reading.get("value") is None:
+            w_start = date.fromisoformat(sig.detection_window["start"])
+            w_end = date.fromisoformat(sig.detection_window["end"])
+            by_pre = self.wh.conversion_by_browser(w_start, w_end)
+            by_post = self.wh.conversion_by_browser(
+                RECOVERY_START, RECOVERY_START + timedelta(days=3), include_recovery=True
             )
-        if not control:
-            control = next((n for n in by_pre if n != browser), "control")
-        pre = (by_pre.get(browser) or {}).get("conversion", 0)
-        post = (by_post.get(browser) or {}).get("conversion", 0)
+            if browser == "all" and by_pre:
+                browser = max(
+                    by_pre.keys(),
+                    key=lambda n: abs(float((by_pre.get(n) or {}).get("conversion") or 0)),
+                )
+            if not control:
+                control = next((n for n in by_pre if n != browser), "control")
+            pre = (by_pre.get(browser) or {}).get("conversion", 0)
+            post = (by_post.get(browser) or {}).get("conversion", 0)
         # Any flag flipped off (or companion rollback) counts as recovery attempt
         flags = self.store.list_flags() if hasattr(self.store, "list_flags") else {}
         flag_off = any(str(v).lower() == "off" for v in (flags.values() if isinstance(flags, dict) else []))
@@ -1018,6 +1105,7 @@ class LoopEngine:
             linked_playbook_skill=f"playbooks/{inv.scenario_id}" if inv.scenario_id else None,
             confidence=0.84,
             author_agent="learning_agent",
+            tenant_id=inv.tenant_id,
         )
         self.store.put_lesson(lesson)
         self.store.put_memory(
@@ -1182,7 +1270,7 @@ class LoopEngine:
 
         return seed_world(self)
 
-    def resume_after_approval(self, action_id: str, approver: str, rationale: str = "") -> Outcome:
+    def resume_after_approval(self, action_id: str, approver: str, rationale: str = "") -> Outcome | dict:
         self.approve(
             action_id,
             approver,
@@ -1192,6 +1280,11 @@ class LoopEngine:
         self.execute_approved(action_id)
         action = self.store.get_action(action_id)
         assert action
+        if os.environ.get("LOOP_VERIFY_DEFER", "0") == "1":
+            from .jobs import enqueue_verify
+
+            job = enqueue_verify(self.store, action.investigation_id, delay_hours=int(os.environ.get("LOOP_VERIFY_DELAY_HOURS", "24")))
+            return {"deferred": True, "verify_job_id": job.id, "investigation_id": action.investigation_id}
         return self.verify(action.investigation_id)
 
 

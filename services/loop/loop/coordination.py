@@ -214,7 +214,16 @@ def _notify_gmail_draft(req: CoordinationRequest, owners: list[Owner], slot: dic
     report = send_to_self(subject, text)
     channel = "gmail"
     if report.status != "applied":
-        report = draft(me or owners_line, subject, text)
+        if me:
+            report = draft(me, subject, text)
+        else:
+            from loop.tenant import ConnectorReport
+
+            report = ConnectorReport(
+                status="skipped",
+                connector="mail.draft",
+                detail="no connected inbox — authorize Google Workspace on Connect",
+            )
         channel = "gmail_draft"
 
     out: dict[str, Any] = {

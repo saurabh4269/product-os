@@ -28,10 +28,41 @@ from .registry import gateway_allows
 MEMORY_KINDS = ("customer", "product", "engineering", "organizational")
 
 
+def ensure_standing_world(engine: LoopEngine) -> dict[str, Any]:
+    """Production bootstrap — standing rooms only, no fixture pipeline or demo memory."""
+    from .tenant import seed_placeholder
+
+    seed_placeholder(engine.store)
+    if engine.store.get_flag("world_seeded") == "1":
+        return {
+            "reused": True,
+            "rooms": [r.id for r in engine.store.list_rooms()],
+            "scenarios": [],
+        }
+    _ensure_standing_rooms(engine)
+    engine.store.set_flag("world_seeded", "1", idempotency_key("world", "seed", "v1"))
+    return {
+        "reused": False,
+        "production": True,
+        "rooms": [r.id for r in engine.store.list_rooms()],
+        "scenarios": [],
+    }
+
+
+def ensure_api_ready(engine: LoopEngine) -> None:
+    """Idempotent cold start for API handlers — standing rooms, fixtures only in eval."""
+    if engine.store.list_rooms():
+        return
+    seed_world(engine)
+
+
+def scenario_index(engine: LoopEngine) -> list[dict[str, Any]]:
+    return _scenario_index(engine)
+
+
 def seed_world(engine: LoopEngine) -> dict[str, Any]:
     """Stand up rooms + six fixtures through the same pipeline. Idempotent."""
-    import os
-
+    from .runtime_mode import is_eval_mode
     from .tenant import bind_fixture_tenants, seed_placeholder
 
     seed_placeholder(engine.store)
@@ -41,17 +72,10 @@ def seed_world(engine: LoopEngine) -> dict[str, Any]:
             "rooms": [r.id for r in engine.store.list_rooms()],
             "scenarios": _scenario_index(engine),
         }
+    if not is_eval_mode():
+        return ensure_standing_world(engine)
     _ensure_standing_rooms(engine)
     _plant_organizational_memory(engine)
-    if os.environ.get("LOOP_EVAL", "1") != "1":
-        bind_fixture_tenants(engine.store)
-        engine.store.set_flag("world_seeded", "1", idempotency_key("world", "seed", "v1"))
-        return {
-            "reused": False,
-            "eval_skipped": True,
-            "rooms": [r.id for r in engine.store.list_rooms()],
-            "scenarios": _scenario_index(engine),
-        }
     existing_rooms = {r.scenario_id: r for r in engine.store.list_rooms() if r.scenario_id}
     invs = engine.store.list_investigations()
     if "safari_3ds" in existing_rooms:
@@ -359,10 +383,15 @@ def ingest_tenant_signal(
     baseline: float,
     note: str = "",
     source: str = "tenant.ingest",
-    async_finish: bool = False,
+    async_finish: bool | None = None,
 ) -> dict[str, Any]:
     """Posted tenant events open or join a room; new signals run the investigation pipeline."""
+    import os
+
     from .tenant import Tenant
+
+    if async_finish is None:
+        async_finish = os.environ.get("LOOP_INGEST_ASYNC", "1") == "1"
 
     assert isinstance(tenant, Tenant)
     scenario = f"t:{tenant.id}:{metric}"
@@ -399,7 +428,8 @@ def ingest_tenant_signal(
                     "magnitude": magnitude,
                     "baseline": baseline,
                     "source": source,
-                }
+                },
+                store=engine.store,
             )
             tenant.last_connector = f"{report.connector} ({report.status})"
         except Exception:
@@ -465,7 +495,8 @@ def ingest_tenant_signal(
                 "magnitude": magnitude,
                 "baseline": baseline,
                 "source": source,
-            }
+            },
+            store=engine.store,
         )
         tenant.last_connector = f"{report.connector} ({report.status})"
     except Exception:

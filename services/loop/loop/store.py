@@ -199,6 +199,12 @@ class Store:
 
     def put_lesson(self, lesson: Lesson) -> None:
         self._put("lessons", lesson, {"investigation_id": lesson.investigation_id})
+        try:
+            from loop import firestore_memory
+
+            firestore_memory.upsert_from_lesson(lesson)
+        except Exception:
+            pass
 
     def list_lessons(self) -> list[Lesson]:
         return self._list("lessons", Lesson)
@@ -406,6 +412,12 @@ class Store:
                 (id_, kind, json.dumps(body)),
             )
             self._conn.commit()
+        try:
+            from loop import firestore_memory
+
+            firestore_memory.upsert_from_memory(id_, kind, body)
+        except Exception:
+            pass
 
     def list_memory(self, kind: str | None = None, *, tenant_id: str | None = None) -> list[dict]:
         with self._lock:
@@ -473,22 +485,35 @@ class Store:
         now = _now()
         with self._lock:
             rows = self._conn.execute("SELECT id, json FROM jobs").fetchall()
-        candidates: list[Job] = []
-        for _id, raw in rows:
-            job = Job.model_validate_json(raw)
-            if job.status != "queued" or job.kind not in kinds:
-                continue
-            if job.run_after and job.run_after > now:
-                continue
-            candidates.append(job)
-        if not candidates:
-            return None
-        candidates.sort(key=lambda j: j.created_at)
-        job = candidates[0]
-        job.status = "running"
-        job.updated_at = now
-        self.put_job(job)
-        return job
+            candidates: list[tuple[str, Job]] = []
+            for jid, raw in rows:
+                job = Job.model_validate_json(raw)
+                if job.status != "queued" or job.kind not in kinds:
+                    continue
+                if job.run_after and job.run_after > now:
+                    continue
+                candidates.append((jid, job))
+            if not candidates:
+                return None
+            candidates.sort(key=lambda x: x[1].created_at)
+            job_id, job = candidates[0]
+            self._conn.execute("BEGIN IMMEDIATE")
+            cur = self._conn.execute("SELECT json FROM jobs WHERE id = ?", (job_id,)).fetchone()
+            if not cur:
+                self._conn.rollback()
+                return None
+            current = Job.model_validate_json(cur[0])
+            if current.status != "queued":
+                self._conn.rollback()
+                return None
+            job.status = "running"
+            job.updated_at = now
+            self._conn.execute(
+                "UPDATE jobs SET json = ? WHERE id = ?",
+                (job.model_dump_json(), job_id),
+            )
+            self._conn.commit()
+            return job
 
     def put_audit(self, event: Any) -> None:
         from .audit import AuditEvent

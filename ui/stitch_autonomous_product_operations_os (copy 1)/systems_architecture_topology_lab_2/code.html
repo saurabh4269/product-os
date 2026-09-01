@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProductOps Agent - Architecture &amp; Topology</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#e2dfff",
+                        "surface-container-highest": "#e0e2ed",
+                        "on-primary-fixed": "#001a41",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "outline": "#717786",
+                        "secondary": "#4a47d2",
+                        "surface-container-high": "#e6e8f3",
+                        "secondary-container": "#6462ec",
+                        "on-secondary-fixed": "#0c006b",
+                        "inverse-primary": "#adc6ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-primary-container": "#fefcff",
+                        "accent-error": "#FF3B30",
+                        "surface-tint": "#005bc1",
+                        "surface-container-low": "#f1f3fe",
+                        "surface-high": "#FFFFFF",
+                        "surface": "#f9f9ff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "surface-bright": "#f9f9ff",
+                        "text-secondary": "#86868B",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "text-primary": "#1D1D1F",
+                        "surface-variant": "#e0e2ed",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c1c6d7",
+                        "on-surface-variant": "#414755",
+                        "inverse-surface": "#2d3039",
+                        "accent-warning": "#FF9500",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#eef0fc",
+                        "accent-success": "#34C759",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "on-background": "#181c23",
+                        "background": "#f9f9ff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#004493",
+                        "tertiary-container": "#c64f00",
+                        "surface-base": "#F5F5F7",
+                        "primary-fixed": "#d8e2ff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-surface": "#181c23",
+                        "primary-container": "#0070eb",
+                        "surface-subtle": "#E5E5EA",
+                        "tertiary": "#9e3d00",
+                        "primary": "#0058bc",
+                        "surface-dim": "#d8d9e5",
+                        "surface-container": "#ecedf9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-lg": "40px",
+                        "margin-md": "24px",
+                        "container-max": "1440px",
+                        "margin-sm": "16px",
+                        "unit": "8px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .ambient-shadow-level-1 {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        }
+        .ambient-shadow-level-2 {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+        
+        .topology-node {
+            transition: all 0.3s ease;
+        }
+        .topology-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(52, 199, 89, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+        }
+    </style>
+</head>
+<body class="bg-surface-base text-text-primary font-sans antialiased min-h-screen flex">
+<!-- SideNavBar -->
+<nav aria-label="Main Navigation" class="fixed left-0 top-0 h-full w-[240px] bg-surface border-r border-outline-variant flex flex-col z-40 hidden md:flex">
+<div class="p-6 pb-2">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+                    PO
+                </div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary truncate leading-none">ProductOps Agent</h1>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Reliability &amp; Growth</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-surface-tint text-white rounded-lg py-2.5 px-4 font-label-lg text-label-lg transition-colors flex justify-center items-center gap-2 mb-6 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Mission
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">sensors</span>
+<span class="font-body-md text-body-md">Signal</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="font-body-md text-body-md">Understand</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">psychology</span>
+<span class="font-body-md text-body-md">Ask</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">biotech</span>
+<span class="font-body-md text-body-md">Diagnose</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">build</span>
+<span class="font-body-md text-body-md">Fix</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">verified</span>
+<span class="font-body-md text-body-md">Verify</span>
+</a>
+</li>
+</ul>
+<div class="mt-8 pt-4 border-t border-outline-variant/30">
+<span class="px-3 text-label-caps font-label-caps text-on-surface-variant mb-2 block">ARCHITECTURE</span>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-secondary-fixed text-secondary font-bold transition-transform scale-[0.98]" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">account_tree</span>
+<span class="font-body-md text-body-md">Topology Lab</span>
+</a>
+</li>
+</ul>
+</div>
+</div>
+<div class="p-4 mt-auto border-t border-outline-variant/50">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span class="font-body-sm text-body-sm">Support</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-[240px] min-w-0 transition-all duration-300">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 sticky z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant/50 shadow-sm flex justify-between items-center w-full px-gutter h-16 transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-4">
+<div class="font-headline-sm text-headline-sm text-on-surface">Architecture &amp; Topology</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full mr-2">
+<span class="w-2 h-2 rounded-full bg-accent-success pulse-dot"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Active Agents: 12</span>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors overflow-hidden">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 p-gutter overflow-y-auto">
+<div class="max-w-[1440px] mx-auto space-y-margin-lg">
+<!-- Header Section -->
+<section class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div>
+<h2 class="font-display-lg text-display-lg font-bold text-primary mb-2">Five Planes Topology</h2>
+<p class="font-body-lg text-body-lg text-text-secondary max-w-2xl">
+                            Real-time visualization of the platform's architectural layers. Monitor agent coordination, memory persistence, and tool execution status across the unified ecosystem.
+                        </p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface bg-surface hover:bg-surface-container-high transition-colors font-label-lg text-label-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                            Export State
+                        </button>
+<button class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container transition-colors font-label-lg text-label-lg shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                            Sync Topology
+                        </button>
+</div>
+</section>
+<!-- Visualization Canvas (Bento Layout) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-margin-md">
+<!-- Main Map / 3D Viz Area (Placeholder for actual interactive component) -->
+<div class="lg:col-span-8 bg-surface-high rounded-xl ambient-shadow-level-1 overflow-hidden flex flex-col relative h-[500px]">
+<div class="absolute inset-0 z-0">
+<!-- Placeholder for an actual 3D or SVG visualization -->
+<img alt="Topology Map" class="w-full h-full object-cover opacity-80 mix-blend-multiply" data-alt="A bright, modern isometric 3D illustration of a miniature futuristic campus or city representing digital infrastructure. Clean lines, soft lighting, lots of green space, small tech buildings, interconnected paths. Light gray background, soft shadows, premium corporate modern aesthetic. High contrast clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBe_5CcCggsrRZ1YygIECyeD4Oa29_W0AOoXjHOG_OSKZgo5cieGAImRljPTcfrcY8CrH-U9gtmxC6doJXZQkntwQghbgb0J3Y7DNjbo4x-7zf_MLux94jWI_Xw9L6TtneBeJN_x6meqga9EsyIMN2CoXV5L8pZ8y_SCX0vt20IeYztm-nkOjBzOicAJSs2Gy6GdCHbN23IWWXpiCVdIMvZ4kP6sP8YLt-n3kY7iQZIFQdz1GYcX3YW"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-high via-transparent to-transparent"></div>
+</div>
+<!-- Floating Overlays -->
+<div class="relative z-10 p-6 flex justify-between items-start">
+<div class="glass-panel px-4 py-2 rounded-lg inline-flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-accent-success pulse-dot"></span>
+<span class="font-label-caps text-label-caps text-on-surface">SYSTEM HEALTH: OPTIMAL</span>
+</div>
+<div class="glass-panel p-2 rounded-lg flex flex-col gap-2">
+<button class="w-8 h-8 rounded bg-surface text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors shadow-sm"><span class="material-symbols-outlined text-[18px]">add</span></button>
+<button class="w-8 h-8 rounded bg-surface text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors shadow-sm"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+<button class="w-8 h-8 rounded bg-surface text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors shadow-sm"><span class="material-symbols-outlined text-[18px]">my_location</span></button>
+</div>
+</div>
+<!-- Map Legend / Controls at bottom -->
+<div class="mt-auto relative z-10 p-6">
+<div class="glass-panel rounded-xl p-4 flex flex-wrap gap-4 items-center justify-center w-max mx-auto shadow-sm">
+<div class="flex items-center gap-2 px-3 py-1 bg-surface rounded-full border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-accent-success"></span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Signal Plane (Active)</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface rounded-full border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Agent Plane (Routing)</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface rounded-full border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-accent-warning"></span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Memory (Syncing)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Planes Status Sidebar -->
+<div class="lg:col-span-4 flex flex-col gap-margin-md">
+<!-- Plane 1 -->
+<div class="bg-surface-high rounded-xl p-6 ambient-shadow-level-1 topology-node border border-transparent hover:border-outline-variant/30">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
+<span class="material-symbols-outlined">sensors</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-[18px]">Signal Plane</h3>
+<p class="font-body-sm text-body-sm text-text-secondary">Ingestion &amp; Event Streaming</p>
+</div>
+</div>
+<span class="bg-accent-success/10 text-accent-success font-label-caps px-2.5 py-1 rounded-full border border-accent-success/20">LIVE</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center text-body-sm">
+<span class="text-on-surface-variant">Throughput</span>
+<span class="font-semibold text-on-surface">4.2k eps</span>
+</div>
+<div class="w-full bg-surface-container-highest rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+<!-- Plane 2 -->
+<div class="bg-surface-high rounded-xl p-6 ambient-shadow-level-1 topology-node border border-transparent hover:border-outline-variant/30">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">smart_toy</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-[18px]">Agent Plane</h3>
+<p class="font-body-sm text-body-sm text-text-secondary">Routing &amp; Orchestration</p>
+</div>
+</div>
+<span class="bg-accent-success/10 text-accent-success font-label-caps px-2.5 py-1 rounded-full border border-accent-success/20">LIVE</span>
+</div>
+<div class="flex gap-4 mt-2">
+<div class="flex-1 bg-surface-base rounded-lg p-3 text-center">
+<div class="font-display-lg text-[24px] font-bold text-on-surface leading-tight">12</div>
+<div class="font-label-caps text-label-caps text-text-secondary mt-1">ACTIVE</div>
+</div>
+<div class="flex-1 bg-surface-base rounded-lg p-3 text-center">
+<div class="font-display-lg text-[24px] font-bold text-on-surface leading-tight">3</div>
+<div class="font-label-caps text-label-caps text-text-secondary mt-1">IDLE</div>
+</div>
+</div>
+</div>
+<!-- Plane 3 -->
+<div class="bg-surface-high rounded-xl p-6 ambient-shadow-level-1 topology-node border border-transparent hover:border-outline-variant/30 flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">database</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface text-[18px]">Memory Plane</h3>
+<p class="font-body-sm text-body-sm text-text-secondary">Vector &amp; Relational Storage</p>
+</div>
+</div>
+<span class="bg-accent-warning/10 text-accent-warning font-label-caps px-2.5 py-1 rounded-full border border-accent-warning/20">SYNCING</span>
+</div>
+<div class="mt-auto pt-4 border-t border-outline-variant/20 flex justify-between items-center text-body-sm">
+<span class="text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">sync</span> Last sync</span>
+<span class="text-on-surface">2 mins ago</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Agent Coordination Log (Terminal Style but refined) -->
+<div class="bg-inverse-surface rounded-xl ambient-shadow-level-2 overflow-hidden flex flex-col">
+<div class="bg-inverse-surface px-6 py-4 border-b border-outline/30 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-inverse-primary">terminal</span>
+<h3 class="font-headline-md text-headline-md text-on-tertiary text-[18px]">Agent Coordination Log</h3>
+</div>
+<div class="flex gap-2">
+<button class="text-text-secondary hover:text-white transition-colors"><span class="material-symbols-outlined text-[20px]">filter_list</span></button>
+<button class="text-text-secondary hover:text-white transition-colors"><span class="material-symbols-outlined text-[20px]">more_vert</span></button>
+</div>
+</div>
+<div class="p-6 font-mono text-body-sm h-[250px] overflow-y-auto custom-scrollbar bg-[#1E2128]">
+<div class="space-y-3 text-[#A0AABF]">
+<div class="flex gap-4">
+<span class="text-[#6462ec] w-24 shrink-0">[13:42:01]</span>
+<span class="text-accent-success w-16 shrink-0">INFO</span>
+<span class="text-[#e2dfff] flex-1">signal_agent parsed webhook payload from github_actions</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#6462ec] w-24 shrink-0">[13:42:02]</span>
+<span class="text-accent-success w-16 shrink-0">INFO</span>
+<span class="text-[#e2dfff] flex-1">investigator_agent collected related telemetry from datadog (trace_id: 8f92a1)</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#6462ec] w-24 shrink-0">[13:42:05]</span>
+<span class="text-accent-warning w-16 shrink-0">HANDOFF</span>
+<span class="text-[#e2dfff] flex-1">investigator_agent -&gt; diagnostician_agent: context size 4.2kb</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#6462ec] w-24 shrink-0">[13:42:12]</span>
+<span class="text-accent-success w-16 shrink-0">INFO</span>
+<span class="text-[#e2dfff] flex-1">diagnostician_agent identified root cause: memory leak in auth_service</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#6462ec] w-24 shrink-0">[13:42:15]</span>
+<span class="text-accent-warning w-16 shrink-0">HANDOFF</span>
+<span class="text-[#e2dfff] flex-1">diagnostician_agent -&gt; fix_agent: generating patch</span>
+</div>
+<div class="flex gap-4 opacity-70">
+<span class="text-[#6462ec] w-24 shrink-0">[13:42:18]</span>
+<span class="text-outline w-16 shrink-0">WAIT</span>
+<span class="text-[#e2dfff] flex-1">fix_agent querying memory_plane for similar historical incidents...</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<style>
+        /* Custom Scrollbar for a cleaner look */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: var(--color-surface-dim, #d8d9e5);
+            border-radius: 10px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #414755; /* on-surface-variant */
+        }
+    </style>
+</body></html>

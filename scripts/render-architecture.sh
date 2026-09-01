@@ -1,33 +1,29 @@
 #!/usr/bin/env bash
-# Render Archify HTML from JSON IR (architecture + investigation workflow).
+# Render architecture via excalidraw-skill workflow (build JSON -> export PNG/SVG).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ARCH_DIR="$ROOT/apps/console/public/architecture"
-ARCHIFY_BIN="${ARCHIFY_BIN:-}"
+EXCALIDRAW="$ROOT/docs/architecture-full.excalidraw"
+SVG="$ROOT/docs/architecture-full.svg"
+PNG="$ROOT/docs/architecture-full.png"
+JPG="$ROOT/docs/architecture-full.jpg"
 
-if [[ -z "$ARCHIFY_BIN" ]]; then
-  for candidate in \
-    "$ROOT/../archify/archify/bin/archify.mjs" \
-    "/tmp/archify-check/archify/bin/archify.mjs"; do
-    if [[ -f "$candidate" ]]; then
-      ARCHIFY_BIN="$candidate"
-      break
-    fi
-  done
+python3 "$ROOT/scripts/build-architecture-excalidraw.py"
+
+if command -v excalidraw-brute-export-cli >/dev/null 2>&1; then
+  excalidraw-brute-export-cli -i "$EXCALIDRAW" -o "$PNG" -f png -s 2 -b true
+  excalidraw-brute-export-cli -i "$EXCALIDRAW" -o "$SVG" -f svg -s 1 -b true
+else
+  curl -sf -X POST https://kroki.io/excalidraw/svg \
+    -H "Content-Type: text/plain" \
+    --data-binary "@$EXCALIDRAW" \
+    -o "$SVG"
+  convert -background white -density 220 "$SVG" "$PNG"
 fi
 
-if [[ ! -f "$ARCHIFY_BIN" ]]; then
-  echo "Archify CLI not found. Clone https://github.com/tt-a1i/archify or set ARCHIFY_BIN." >&2
-  exit 1
-fi
-
-render() {
-  local type="$1"
-  local json="$2"
-  local html="$3"
-  node "$ARCHIFY_BIN" deliver "$type" "$json" "$html" --quality standard
-  echo "Wrote $html"
-}
-
-render architecture "$ARCH_DIR/product-os.architecture.json" "$ARCH_DIR/product-os.architecture.html"
-render workflow "$ARCH_DIR/product-os.investigation.workflow.json" "$ARCH_DIR/product-os.investigation.html"
+convert -quality 93 "$PNG" "$JPG"
+cp "$PNG" "$ROOT/docs/architecture.png"
+cp "$JPG" "$ROOT/docs/architecture.jpg"
+cp "$SVG" "$ROOT/docs/architecture.svg"
+cp "$EXCALIDRAW" "$ROOT/docs/architecture.excalidraw"
+identify "$PNG"
+echo "render-architecture: wrote $PNG and $JPG"

@@ -25,8 +25,10 @@ def test_admin_open_locally_without_token():
 def test_admin_not_required_on_hosted_without_token(monkeypatch):
     monkeypatch.setenv("K_SERVICE", "loop")
     monkeypatch.delenv("LOOP_ADMIN_TOKEN", raising=False)
-    assert admin_required() is False
-    assert require_admin(None, actor="dev") == "dev"
+    monkeypatch.delenv("LOOP_DEV_OPEN", raising=False)
+    assert admin_required() is True
+    with pytest.raises(HTTPException):
+        require_admin(None, actor="dev")
 
 
 def test_admin_required_on_hosted(monkeypatch):

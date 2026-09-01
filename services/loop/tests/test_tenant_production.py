@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from loop import api as api_mod
@@ -212,8 +213,10 @@ def test_approval_open_in_eval_mode_with_admin_token(engine, monkeypatch):
 def test_admin_not_required_on_hosted_without_token(monkeypatch):
     monkeypatch.setenv("K_SERVICE", "loop")
     monkeypatch.delenv("LOOP_ADMIN_TOKEN", raising=False)
-    assert admin_required() is False
-    assert require_admin(None, actor="dev") == "dev"
+    monkeypatch.delenv("LOOP_DEV_OPEN", raising=False)
+    assert admin_required() is True
+    with pytest.raises(HTTPException):
+        require_admin(None, actor="dev")
 
 
 def test_visible_flags_tenant_scoped_only(engine):

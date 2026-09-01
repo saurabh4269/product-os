@@ -1400,9 +1400,17 @@ def run_investigation(
                     extra_artifacts=extra_artifacts,
                     live_progress=True,
                 )
-            except Exception as exc:  # pragma: no cover - surfaced via activity
+            except Exception as exc:  # pragma: no cover - surfaced via activity + audit
                 from loop.activity import emit_activity
+                from loop.audit import record
 
+                record(
+                    engine.store,
+                    actor="orchestrator",
+                    action="investigation.bg_failed",
+                    resource=f"room:{room.id}",
+                    detail={"error": str(exc)[:240], "investigation_id": inv.id},
+                )
                 emit_activity(
                     agent_id="orchestrator",
                     message=f"Investigation stalled: {exc}",

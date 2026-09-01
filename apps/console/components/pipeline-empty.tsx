@@ -16,7 +16,7 @@ export function PipelineEmpty() {
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         <Button onClick={() => demo?.triggerDemo?.()} className={!returning ? "cta-pulse gap-2" : "gap-2"}>
           <Play size={14} strokeWidth={2} aria-hidden />
-          Demo
+          See a scenario
         </Button>
         {returning ? (
           <>

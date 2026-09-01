@@ -13,6 +13,7 @@ resource "google_project_service" "cheap" {
     "billingbudgets.googleapis.com",
     "cloudtasks.googleapis.com",
     "aiplatform.googleapis.com",
+    "firestore.googleapis.com",
   ])
   service            = each.key
   disable_on_destroy = false

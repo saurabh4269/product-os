@@ -14,7 +14,15 @@ function actionHref(action: PulseAction) {
 }
 
 /** Floating campus controls — live stats + contextual pulse + demo CTA. */
-export function HomeCommandBar({ pulse, className }: { pulse?: HomePulse | null; className?: string }) {
+export function HomeCommandBar({
+  pulse,
+  className,
+  evalMode = true,
+}: {
+  pulse?: HomePulse | null;
+  className?: string;
+  evalMode?: boolean;
+}) {
   const hot = pulse?.campusHot;
 
   return (
@@ -41,7 +49,7 @@ export function HomeCommandBar({ pulse, className }: { pulse?: HomePulse | null;
           <StatusStrip compact />
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <DemoRunner variant="bar" />
+          {evalMode ? <DemoRunner variant="bar" /> : null}
           <Link
             href="#team"
             className="rounded-full px-3 py-1.5 text-[12px] font-medium text-[var(--dim)] transition hover:bg-[var(--elev)] hover:text-foreground"

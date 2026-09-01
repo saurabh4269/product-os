@@ -24,7 +24,7 @@ def flags_gcs_uri() -> str:
 def _should_persist(name: str) -> bool:
     if name in PERSIST_NAMES:
         return True
-    if name.startswith("t:") and name.split(":")[-1] in PERSIST_NAMES:
+    if name.startswith("t:"):
         return True
     return False
 
@@ -53,4 +53,4 @@ def persist_flags(store: Any) -> None:
     flags = filter_persistable(store.list_flags())
     if not flags:
         return
-    gcs_state.write_json(flags_gcs_uri(), {"flags": flags, "version": 1})
+    gcs_state.write_json(flags_gcs_uri(), {"flags": flags, "version": 2})

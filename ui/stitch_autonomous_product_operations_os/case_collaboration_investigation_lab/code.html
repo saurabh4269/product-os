@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Case Collaboration: Checkout Drop-off Investigation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom scrollbar for reasoning log */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #E5E5EA;
+            border-radius: 4px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #414755;
+        }
+    </style>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-surface": "#181c23",
+                "inverse-surface": "#2d3039",
+                "on-tertiary-fixed": "#351000",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary-container": "#fffbff",
+                "primary-fixed-dim": "#adc6ff",
+                "on-primary-fixed-variant": "#004493",
+                "on-secondary-fixed-variant": "#332dbc",
+                "on-tertiary-fixed-variant": "#7c2e00",
+                "text-secondary": "#86868B",
+                "surface-tint": "#005bc1",
+                "text-primary": "#1D1D1F",
+                "surface-container-high": "#e6e8f3",
+                "on-secondary": "#ffffff",
+                "accent-success": "#34C759",
+                "inverse-primary": "#adc6ff",
+                "background": "#f9f9ff",
+                "tertiary-fixed": "#ffdbcc",
+                "accent-warning": "#FF9500",
+                "surface-variant": "#e0e2ed",
+                "on-tertiary": "#ffffff",
+                "accent-error": "#FF3B30",
+                "on-error-container": "#93000a",
+                "on-primary-container": "#fefcff",
+                "inverse-on-surface": "#eef0fc",
+                "on-primary": "#ffffff",
+                "secondary-fixed-dim": "#c2c1ff",
+                "tertiary": "#9e3d00",
+                "error": "#ba1a1a",
+                "secondary": "#4a47d2",
+                "surface-high": "#FFFFFF",
+                "surface-bright": "#f9f9ff",
+                "on-tertiary-container": "#fffbff",
+                "outline": "#717786",
+                "on-primary-fixed": "#001a41",
+                "error-container": "#ffdad6",
+                "primary-fixed": "#d8e2ff",
+                "tertiary-fixed-dim": "#ffb595",
+                "secondary-fixed": "#e2dfff",
+                "on-background": "#181c23",
+                "surface-subtle": "#E5E5EA",
+                "primary-container": "#0070eb",
+                "surface": "#f9f9ff",
+                "surface-container": "#ecedf9",
+                "on-secondary-fixed": "#0c006b",
+                "primary": "#0058bc",
+                "tertiary-container": "#c64f00",
+                "outline-variant": "#c1c6d7",
+                "surface-container-low": "#f1f3fe",
+                "surface-dim": "#d8d9e5",
+                "on-error": "#ffffff",
+                "on-surface-variant": "#414755",
+                "surface-base": "#F5F5F7",
+                "surface-container-highest": "#e0e2ed",
+                "secondary-container": "#6462ec"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "unit": "8px",
+                "container-max": "1440px",
+                "margin-lg": "40px",
+                "margin-md": "24px",
+                "margin-sm": "16px",
+                "gutter": "24px"
+        },
+        "fontFamily": {
+                "headline-lg-mobile": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "label-lg": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "34px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.06em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "display-lg": [
+                        "40px",
+                        {
+                                "lineHeight": "48px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-md": [
+                        "15px",
+                        {
+                                "lineHeight": "22px",
+                                "letterSpacing": "0em",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "17px",
+                        {
+                                "lineHeight": "24px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-lg": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "letterSpacing": "0.02em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "letterSpacing": "0.01em",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-surface text-on-surface h-full flex overflow-hidden font-body-md">
+<!-- SideNavBar -->
+<nav class="h-screen w-64 fixed left-0 top-0 bg-surface-container-low dark:bg-inverse-surface shadow-sm z-40 flex flex-col p-margin-md">
+<!-- Header -->
+<div class="flex flex-col gap-unit mb-margin-md">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-primary-fixed">Ops Central</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Empathetic Intelligence</p>
+<button class="mt-margin-sm w-full py-2 px-4 bg-primary text-on-primary rounded-lg font-label-lg text-label-lg hover:opacity-90 transition-opacity flex justify-center items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Case
+            </button>
+</div>
+<!-- Main Nav -->
+<ul class="flex-1 overflow-y-auto flex flex-col gap-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-subtle dark:hover:bg-on-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span>
+                    Signal
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-high dark:bg-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined fill" data-icon="psychology">psychology</span>
+                    Understand
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-subtle dark:hover:bg-on-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+                    Ask
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-subtle dark:hover:bg-on-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="healing">healing</span>
+                    Diagnose
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-subtle dark:hover:bg-on-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="build">build</span>
+                    Fix
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-subtle dark:hover:bg-on-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+                    Verify
+                </a>
+</li>
+</ul>
+<!-- Footer Nav -->
+<div class="mt-auto pt-margin-md border-t border-outline-variant/30">
+<ul class="flex flex-col gap-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-subtle dark:hover:bg-on-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                        Settings
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant hover:bg-surface-subtle dark:hover:bg-on-surface-variant rounded-lg transition-colors duration-200 active:scale-95 transition-transform duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                        Help
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Canvas Area -->
+<div class="flex-1 flex flex-col ml-64 h-full overflow-hidden bg-background">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 sticky z-50 bg-surface/80 dark:bg-on-surface/80 backdrop-blur-xl text-primary dark:text-primary-fixed-dim shadow-sm flex justify-between items-center h-16 px-margin-lg">
+<div class="flex items-center gap-margin-md">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-[20px]">search</span>
+<input class="pl-10 pr-4 py-2 border-none rounded-full bg-surface-container-high/50 dark:bg-inverse-surface focus:bg-surface-container-highest focus:ring-2 focus:ring-primary/20 font-body-sm text-body-sm w-72 placeholder-text-secondary text-on-surface transition-all" placeholder="Search logs, agents, or PRs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-margin-md">
+<div class="flex gap-2 text-on-surface-variant dark:text-outline-variant hover:text-on-surface">
+<button class="p-2 rounded-full hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors hover:opacity-80 transition-opacity active:scale-98 transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-highest dark:hover:bg-on-surface-variant transition-colors hover:opacity-80 transition-opacity active:scale-98 transition-all">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+</button>
+</div>
+<img alt="Current User Avatar" class="w-8 h-8 rounded-full border border-outline-variant/30 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQx2heeW17rP3nJF2ekr2biWWxeYB7eUGcevJi0zpUe7pS0_vJZXNUT_GirWT_V9-x_VlkQ-Zfqr59JxoKAFe_HennJjhqNZRGDO0_HlICXO_NgVHo7PsK5t5xwCfC0NNM5kMJLq_fUOrE0OsPQofXbu6-YVSXETk__OKY3I9airxYBfUtUt6qy9FV1tEzA6YA0KB9LGt6_gRQfQUMXdUq3LMNFQYPnLyIQINYgtDgschzu7cwBAZG"/>
+</div>
+</header>
+<!-- Content Scroll Area -->
+<main class="flex-1 overflow-y-auto px-margin-lg py-margin-md custom-scrollbar max-w-container-max mx-auto w-full">
+<!-- Mission Header -->
+<div class="mb-margin-lg">
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2.5 py-1 bg-accent-error/10 text-accent-error rounded-full font-label-caps text-[11px] uppercase tracking-wider flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-[14px]">priority_high</span> Critical
+                    </span>
+<span class="font-mono text-[13px] text-text-secondary">Case ID: INV-8924</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-text-primary mb-2">Checkout Drop-off Investigation</h1>
+<p class="font-body-lg text-body-lg text-text-secondary max-w-3xl">Collaboration initiated to diagnose 14% conversion drop in EU-West payment gateway over the last 4 hours.</p>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Col 1: Signal & Understand (Left 8 cols) -->
+<div class="col-span-12 lg:col-span-8 flex flex-col gap-margin-md">
+<!-- Signal Card -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-margin-md shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div>
+<h2 class="font-headline-md text-headline-md flex items-center gap-2 text-text-primary">
+<span class="material-symbols-outlined text-text-secondary text-[22px]">sensors</span>
+                                    Signal: Drop-off Detected
+                                </h2>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1 flex items-center gap-1.5">
+                                    Source: Google Analytics - Checkout Funnel
+                                </p>
+</div>
+<span class="font-mono text-[13px] text-accent-error font-medium">-14.2% (Anomaly)</span>
+</div>
+<!-- Simplified Chart Area -->
+<div class="h-40 w-full mt-4 bg-transparent border-b border-outline-variant/30 relative flex items-end px-2 pb-0 gap-2 z-10">
+<!-- Bars -->
+<div class="flex-1 bg-primary/10 h-[80%] rounded-t"></div>
+<div class="flex-1 bg-primary/10 h-[85%] rounded-t"></div>
+<div class="flex-1 bg-primary/10 h-[82%] rounded-t"></div>
+<div class="flex-1 bg-primary/10 h-[90%] rounded-t"></div>
+<div class="flex-1 bg-primary/10 h-[88%] rounded-t relative">
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 font-mono text-[11px] text-text-secondary">12:00</div>
+</div>
+<div class="flex-1 bg-accent-error/60 h-[60%] rounded-t relative">
+<div class="absolute -top-7 left-1/2 -translate-x-1/2 bg-accent-error text-white font-mono text-[10px] px-1.5 py-0.5 rounded font-bold shadow-sm">12:15</div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 font-mono text-[11px] text-text-secondary">12:15</div>
+</div>
+<div class="flex-1 bg-accent-error/40 h-[45%] rounded-t"></div>
+<div class="flex-1 bg-accent-error/30 h-[40%] rounded-t"></div>
+<div class="flex-1 bg-accent-error/20 h-[38%] rounded-t"></div>
+<div class="flex-1 bg-accent-error/20 h-[35%] rounded-t"></div>
+<!-- Clean Trendline -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" preserveaspectratio="none">
+<path d="M 0,35 L 100,25 L 200,40 L 300,15 L 400,25 L 500,110 L 600,140 L 700,150 L 800,155" fill="none" stroke="#FF3B30" stroke-width="2"></path>
+</svg>
+</div>
+<div class="h-6"></div> <!-- Spacer for x-axis labels -->
+</div>
+<!-- Connective Tissue (Visual flow) -->
+<div class="flex justify-center -my-3 z-0 relative">
+<div class="w-px h-10 bg-outline-variant/50"></div>
+</div>
+<!-- Understand Card -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-margin-md shadow-sm relative">
+<div class="flex justify-between items-start mb-margin-sm">
+<div>
+<h2 class="font-headline-md text-headline-md flex items-center gap-2 text-text-primary">
+<span class="material-symbols-outlined text-text-secondary text-[22px]">analytics</span>
+                                    Understand: Affected Cohort
+                                </h2>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1 flex items-center gap-1.5">
+                                    Source: BigQuery - events_intraday
+                                </p>
+</div>
+<button class="font-body-sm text-body-sm text-primary hover:underline flex items-center gap-1 font-medium">
+                                View Query <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<!-- Simplified Data Table -->
+<div class="overflow-hidden mt-2">
+<table class="w-full text-left border-collapse">
+<thead class="border-b border-outline-variant/50">
+<tr>
+<th class="py-3 px-2 font-label-lg text-label-lg text-text-secondary font-medium">User ID</th>
+<th class="py-3 px-2 font-label-lg text-label-lg text-text-secondary font-medium">Region</th>
+<th class="py-3 px-2 font-label-lg text-label-lg text-text-secondary font-medium">Device</th>
+<th class="py-3 px-2 font-label-lg text-label-lg text-text-secondary font-medium">Error Code</th>
+</tr>
+</thead>
+<tbody class="font-mono text-[13px] text-text-primary">
+<tr class="border-b border-outline-variant/20 hover:bg-surface-base/50 transition-colors">
+<td class="py-3 px-2">USR-992-A</td>
+<td class="py-3 px-2">EU-West</td>
+<td class="py-3 px-2 text-text-secondary">iOS / Mobile</td>
+<td class="py-3 px-2 text-accent-error">ERR_PAY_TIMEOUT</td>
+</tr>
+<tr class="border-b border-outline-variant/20 hover:bg-surface-base/50 transition-colors">
+<td class="py-3 px-2">USR-104-B</td>
+<td class="py-3 px-2">EU-West</td>
+<td class="py-3 px-2 text-text-secondary">Win / Desktop</td>
+<td class="py-3 px-2 text-accent-error">ERR_PAY_TIMEOUT</td>
+</tr>
+<tr class="hover:bg-surface-base/50 transition-colors">
+<td class="py-3 px-2">USR-844-C</td>
+<td class="py-3 px-2">EU-Central</td>
+<td class="py-3 px-2 text-text-secondary">Android / Mobile</td>
+<td class="py-3 px-2 text-accent-error">ERR_PAY_TIMEOUT</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/30 flex justify-between items-center text-text-secondary">
+<span class="font-body-sm text-body-sm">Showing 3 of 412 affected sessions</span>
+<span class="font-label-caps text-[11px] px-2.5 py-1 bg-surface-container-high/50 rounded-full text-text-primary font-medium">
+                                98% Confidence
+                            </span>
+</div>
+</div>
+<!-- Connective Tissue -->
+<div class="flex justify-center -my-3 z-0 relative">
+<div class="w-px h-10 bg-outline-variant/50"></div>
+</div>
+<!-- Fix Proposed Card -->
+<div class="bg-surface-container-lowest border-2 border-primary/20 rounded-xl p-margin-md shadow-sm relative">
+<div class="flex justify-between items-start mb-margin-sm">
+<div>
+<h2 class="font-headline-md text-headline-md flex items-center gap-2 text-text-primary">
+<span class="material-symbols-outlined text-primary text-[22px]">build</span>
+                                    Fix Proposed
+                                </h2>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1 flex items-center gap-1.5">
+                                    Source: GitHub PR #4421 (Generated by Mike from Eng)
+                                </p>
+</div>
+<span class="bg-accent-success/10 text-accent-success border border-accent-success/20 font-label-caps text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1.5 font-semibold">
+<div class="w-1.5 h-1.5 rounded-full bg-accent-success"></div> Ready for Review
+                            </span>
+</div>
+<!-- Clean Code Diff -->
+<div class="bg-inverse-surface text-[#f8f8f2] rounded-lg border border-outline-variant/30 overflow-hidden font-mono text-[13px] mb-margin-md shadow-inner">
+<div class="bg-[#1e1e24] px-4 py-2 flex items-center gap-2 border-b border-outline-variant/20 text-[#a9b1d6]">
+<span class="material-symbols-outlined text-[16px]">description</span>
+                                services/payment-gateway/eu_client.go
+                            </div>
+<div class="p-4 overflow-x-auto">
+<div class="text-[#7a88cf] select-none mb-2">@@ -142,6 +142,6 @@ func ProcessTransaction(...) {</div>
+<div class="flex hover:bg-white/5"><span class="w-8 text-right text-[#565f89] select-none mr-4">142</span><span>    client := http.Client{</span></div>
+<div class="flex bg-[#f7768e]/10 text-[#f7768e]"><span class="w-8 text-right select-none mr-4">-</span><span>        Timeout: time.Millisecond * 500, <span class="text-[#f7768e]/70">// Reduced in recent PR</span></span></div>
+<div class="flex bg-[#9ece6a]/10 text-[#9ece6a]"><span class="w-8 text-right select-none mr-4">+</span><span>        Timeout: time.Second * 5, <span class="text-[#9ece6a]/70">// Reverted to handle external API latency spikes</span></span></div>
+<div class="flex hover:bg-white/5"><span class="w-8 text-right text-[#565f89] select-none mr-4">144</span><span>    }</span></div>
+</div>
+</div>
+<div class="flex justify-end gap-3">
+<button class="px-5 py-2.5 border border-outline-variant text-text-primary font-label-lg text-label-lg rounded-lg hover:bg-surface-base transition-colors">
+                                Request Changes
+                            </button>
+<button class="px-5 py-2.5 bg-primary text-white font-label-lg text-label-lg rounded-lg hover:bg-primary-container hover:text-primary-fixed transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+                                Approve &amp; Deploy
+                            </button>
+</div>
+</div>
+</div>
+<!-- Col 2: Agent Reasoning & Comm (Right 4 cols) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-margin-md">
+<!-- How we're solving this (Reasoning Log) -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl flex flex-col h-[480px] shadow-sm">
+<div class="p-4 border-b border-outline-variant/30">
+<h3 class="font-headline-sm text-headline-sm flex items-center gap-2 text-text-primary font-semibold">
+<span class="material-symbols-outlined text-text-secondary">lightbulb</span>
+                                How we're solving this
+                            </h3>
+</div>
+<div class="flex-1 overflow-y-auto p-5 custom-scrollbar font-body-sm text-body-sm flex flex-col gap-6">
+<!-- Step 1 -->
+<div class="flex gap-4 relative">
+<div class="absolute left-3 top-6 bottom-[-24px] w-px bg-outline-variant/30"></div>
+<div class="flex flex-col items-center relative z-10 shrink-0">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant text-text-secondary flex items-center justify-center font-mono text-[11px] font-medium shadow-sm">1</div>
+</div>
+<div class="pb-1">
+<div class="text-text-primary font-medium">Querying Log Anomalies</div>
+<div class="text-text-secondary mt-1.5 leading-relaxed">Found high incidence of `ERR_PAY_TIMEOUT` in `eu-west` region starting at 12:15 UTC.</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex gap-4 relative">
+<div class="absolute left-3 top-6 bottom-[-24px] w-px bg-outline-variant/30"></div>
+<div class="flex flex-col items-center relative z-10 shrink-0">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant text-text-secondary flex items-center justify-center font-mono text-[11px] font-medium shadow-sm">2</div>
+</div>
+<div class="pb-1">
+<div class="text-text-primary font-medium">Cross-referencing Deployments</div>
+<div class="text-text-secondary mt-1.5 leading-relaxed">Correlated anomaly start time (12:15) with PR #4418 merged at 12:10 UTC by `infra-bot`.</div>
+</div>
+</div>
+<!-- Step 3 (Expanded) -->
+<div class="flex gap-4 relative">
+<div class="flex flex-col items-center relative z-10 shrink-0">
+<div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center font-mono text-[11px] font-medium shadow-sm">3</div>
+</div>
+<div class="pb-1 w-full">
+<div class="text-primary font-medium flex justify-between items-center cursor-pointer">
+                                        Analyzing Code Changes
+                                        <span class="material-symbols-outlined text-[18px]">expand_less</span>
+</div>
+<div class="bg-surface-base p-3.5 rounded-lg mt-3 border border-outline-variant/30">
+<div class="text-text-secondary">PR #4418 modified `services/payment-gateway/eu_client.go` line 143.</div>
+<div class="mt-3 text-text-primary font-medium text-[12px] uppercase tracking-wider mb-1">Conclusion</div>
+<div class="text-text-secondary leading-relaxed">Timeout reduction from 5s to 500ms is too aggressive for legacy EU payment provider, causing connections to drop before processing.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Multi-Agent Comm Area -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl flex flex-col flex-1 shadow-sm overflow-hidden">
+<div class="p-4 border-b border-outline-variant/30">
+<h3 class="font-headline-sm text-headline-sm flex items-center gap-2 text-text-primary font-semibold">
+<span class="material-symbols-outlined text-text-secondary">forum</span>
+                                Case Discussion
+                            </h3>
+</div>
+<div class="flex-1 p-4 bg-surface-base/30 overflow-y-auto custom-scrollbar flex flex-col gap-4 font-body-sm text-body-sm">
+<!-- Msg 1 -->
+<div class="flex gap-3 items-start">
+<img alt="Sarah Avatar" class="w-8 h-8 rounded-full border border-outline-variant/30 object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXBAX_JRiaskKUPPnpebsSSS3p7ciE9tlgAjvsYlU-zLwNAr5EU7eX2T0Zd_65GMznVT9eJlvIXaOUy36tmIA6PSvdKFViPnKtPArOIuTltgLOzVDavIanXGwvLPvFpRjMdDFY26wAkDWYXdxLjQIZbdO1yo6zPCY3YvlZkykDzg39zQbGx7HmFMjIgC90MLO74wcHgxf8WVLlAslB2S6POrcpZvSzIO4X80GP6k2vINVKQkwmkD9d"/>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-medium text-text-primary">Sarah from Research</span>
+<span class="text-[11px] text-text-secondary">12:18</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl rounded-tl-sm p-3 text-text-secondary leading-relaxed shadow-sm">
+                                        Isolated root cause to timeout config in `eu_client.go`. Requesting Devops verification on load impact if reverted.
+                                    </div>
+</div>
+</div>
+<!-- Msg 2 -->
+<div class="flex gap-3 items-start flex-row-reverse">
+<img alt="Dave Avatar" class="w-8 h-8 rounded-full border border-outline-variant/30 object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjeRNqV5F71HOGLY2CwRmjMqjjmiH7uJfHe966qt1Qdsi1sl0Mo2OHjGA1e_q6ZTYAsiae_cBpvIQ9_6T6wwzlhltZLSCuDoq-7sdqw6cgvmQIWgKmBJ4WtqYgdJ7qCkMNm7g6N_rsAmRtlF1iuNMdCwuw4mY9ub0VHUoUSeyymvzNIQcrai2XsKn92jE48OUYAopta28HnL-6zlWyhyLEtTpTzxTzX0O_mPUWQ7FDpUYDk3PpK_cZ"/>
+<div class="text-right">
+<div class="flex items-center gap-2 justify-end mb-1">
+<span class="text-[11px] text-text-secondary">12:19</span>
+<span class="font-medium text-text-primary">Dave from Devops</span>
+</div>
+<div class="bg-primary/5 border border-primary/10 rounded-2xl rounded-tr-sm p-3 text-text-secondary text-left leading-relaxed shadow-sm">
+                                        Simulating 5s timeout under current load (4k RPS). <br/>
+                                        Status: <span class="text-accent-success font-mono font-medium">OK</span>. Connection pool can handle the sustained connections without resource exhaustion. Proceed with revert.
+                                    </div>
+</div>
+</div>
+</div>
+<div class="p-3 border-t border-outline-variant/30 bg-surface-container-lowest">
+<div class="flex items-center border border-outline-variant/50 rounded-full bg-surface-base px-4 py-2 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 transition-all">
+<input class="flex-1 bg-transparent border-none focus:ring-0 font-body-sm text-body-sm p-0 text-text-primary placeholder-text-secondary" placeholder="Message the team..." type="text"/>
+<button class="text-primary hover:text-primary-fixed-dim transition-colors ml-2">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Verification Plan -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-4 shadow-sm relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-text-primary"></div>
+<h3 class="font-headline-sm text-headline-sm flex items-center gap-2 mb-3 text-text-primary font-semibold pl-2">
+<span class="material-symbols-outlined text-[20px]">fact_check</span>
+                            Post-Deploy Verification
+                        </h3>
+<ul class="font-body-sm text-body-sm text-text-secondary space-y-3 pl-2">
+<li class="flex items-start gap-3">
+<div class="mt-1 w-4 h-4 rounded border border-outline-variant flex items-center justify-center shrink-0"></div>
+<span class="leading-relaxed">Monitor `ERR_PAY_TIMEOUT` rate in `eu-west` for 15m. Target: &lt; 0.1%</span>
+</li>
+<li class="flex items-start gap-3">
+<div class="mt-1 w-4 h-4 rounded border border-outline-variant flex items-center justify-center shrink-0"></div>
+<span class="leading-relaxed">Observe connection pool utilization on `payment-svc`. Target: &lt; 70%</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

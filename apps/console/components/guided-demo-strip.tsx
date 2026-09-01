@@ -45,7 +45,7 @@ export function GuidedDemoStrip({ className }: { className?: string }) {
   return (
     <div className={cn("rounded-2xl border border-accent/25 bg-[color-mix(in_srgb,var(--accent)_6%,white)] px-4 py-3", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-accent">Guided demo · live</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-accent">Live walkthrough</p>
         {demo.roomId ? (
           <button
             type="button"

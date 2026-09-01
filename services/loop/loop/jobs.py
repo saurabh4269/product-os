@@ -38,7 +38,7 @@ def _id(prefix: str = "job") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
-def enqueue(store: Any, kind: JobKind, payload: dict[str, Any], *, max_attempts: int = 3) -> Job:
+def enqueue(store: Any, kind: JobKind, payload: dict[str, Any], *, max_attempts: int = 3, run_after: datetime | None = None) -> Job:
     now = _iso()
     job = Job(
         id=_id(),
@@ -49,12 +49,22 @@ def enqueue(store: Any, kind: JobKind, payload: dict[str, Any], *, max_attempts:
         max_attempts=max_attempts,
         created_at=now,
         updated_at=now,
-        run_after=now,
+        run_after=_iso(run_after) if run_after else now,
     )
     store.put_job(job)
     _schedule_persist(store)
     dispatch(job, store)
     return job
+
+
+def enqueue_verify(store: Any, investigation_id: str, *, delay_hours: int = 24) -> Job:
+    run_after = _now() if delay_hours <= 0 else _now() + timedelta(hours=delay_hours)
+    return enqueue(
+        store,
+        "verify",
+        {"investigation_id": investigation_id},
+        run_after=run_after,
+    )
 
 
 def claim_next(store: Any, kinds: list[JobKind] | None = None) -> Job | None:
@@ -124,6 +134,18 @@ def enqueue_code_fix(
     )
 
 
+def run_verify_job(engine: Any, job: Job) -> dict[str, Any]:
+    inv_id = str(job.payload.get("investigation_id") or "")
+    if not inv_id:
+        return {"status": "failed", "detail": "missing investigation_id"}
+    outcome = engine.verify(inv_id)
+    return {
+        "status": "succeeded",
+        "investigation_id": inv_id,
+        "verdict": outcome.verdict.value,
+    }
+
+
 def process_job(store: Any, engine: Any, job_id: str) -> dict[str, Any] | None:
     job = store.get_job(job_id)
     if not job or job.status not in {"queued", "running"}:
@@ -134,6 +156,12 @@ def process_job(store: Any, engine: Any, job_id: str) -> dict[str, Any] | None:
             from loop.code_fix import run_code_fix_job
 
             result = run_code_fix_job(engine, job)
+            if result.get("status") in {"applied", "succeeded", "skipped"}:
+                delay = int(__import__("os").environ.get("LOOP_VERIFY_DELAY_HOURS", "24"))
+                verify_job = enqueue_verify(store, str(job.payload.get("investigation_id") or ""), delay_hours=delay)
+                result["verify_job_id"] = verify_job.id
+        elif job.kind == "verify":
+            result = run_verify_job(engine, job)
         else:
             result = {"status": "skipped", "detail": f"unknown kind {job.kind}"}
         if result.get("status") in {"applied", "succeeded", "skipped"}:
@@ -163,6 +191,27 @@ def _schedule_persist(store: Any) -> None:
     try:
         from loop.state_persist import schedule_snapshot
 
-        schedule_snapshot(store.path)
-    except Exception:
-        pass
+        ok = schedule_snapshot(store.path)
+        if ok is False:
+            from loop.audit import record
+
+            record(
+                store,
+                actor="jobs",
+                action="persist.failed",
+                resource="state_persist",
+                detail={"path": str(store.path)},
+            )
+    except Exception as exc:
+        try:
+            from loop.audit import record
+
+            record(
+                store,
+                actor="jobs",
+                action="persist.error",
+                resource="state_persist",
+                detail={"error": str(exc)[:200]},
+            )
+        except Exception:
+            pass

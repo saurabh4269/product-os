@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProductOps Agent - Campus Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "text-secondary": "#86868B",
+                      "on-secondary-fixed-variant": "#332dbc",
+                      "accent-error": "#FF3B30",
+                      "tertiary-fixed-dim": "#ffb595",
+                      "on-secondary-fixed": "#0c006b",
+                      "secondary-fixed-dim": "#c2c1ff",
+                      "surface-container-high": "#e6e8f3",
+                      "inverse-on-surface": "#eef0fc",
+                      "on-tertiary-container": "#fffbff",
+                      "secondary-fixed": "#e2dfff",
+                      "text-primary": "#1D1D1F",
+                      "primary-fixed": "#d8e2ff",
+                      "tertiary": "#9e3d00",
+                      "inverse-surface": "#2d3039",
+                      "secondary": "#4a47d2",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#717786",
+                      "on-primary-fixed-variant": "#004493",
+                      "surface-container-highest": "#e0e2ed",
+                      "on-surface": "#181c23",
+                      "on-secondary-container": "#fffbff",
+                      "accent-success": "#34C759",
+                      "on-error": "#ffffff",
+                      "surface-container-low": "#f1f3fe",
+                      "outline-variant": "#c1c6d7",
+                      "surface-subtle": "#E5E5EA",
+                      "surface-container": "#ecedf9",
+                      "on-surface-variant": "#414755",
+                      "surface-dim": "#d8d9e5",
+                      "surface-tint": "#005bc1",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#fefcff",
+                      "surface-bright": "#f9f9ff",
+                      "accent-warning": "#FF9500",
+                      "secondary-container": "#6462ec",
+                      "on-tertiary-fixed": "#351000",
+                      "inverse-primary": "#adc6ff",
+                      "on-background": "#181c23",
+                      "on-primary-fixed": "#001a41",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e0e2ed",
+                      "primary-container": "#0070eb",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed": "#ffdbcc",
+                      "on-error-container": "#93000a",
+                      "tertiary-container": "#c64f00",
+                      "surface": "#f9f9ff",
+                      "error": "#ba1a1a",
+                      "background": "#f9f9ff",
+                      "primary": "#0058bc",
+                      "primary-fixed-dim": "#adc6ff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#7c2e00",
+                      "surface-high": "#FFFFFF",
+                      "surface-base": "#F5F5F7"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "margin-lg": "40px",
+                      "margin-sm": "16px",
+                      "unit": "8px",
+                      "container-max": "1440px",
+                      "margin-md": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "label-caps": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                      "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                      "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                      "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                      "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                      "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                      "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                      "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                      "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }]
+              }
+            },
+          },
+        }
+      </script>
+</head>
+<body class="bg-surface-base text-text-primary font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full border-r border-outline-variant bg-surface w-[240px] fixed left-0 top-0 z-40">
+<div class="p-gutter flex flex-col gap-unit">
+<div class="flex items-center gap-3 mb-6">
+<img class="w-10 h-10 rounded-full object-cover shadow-sm bg-surface-subtle" data-alt="A small, friendly 3D rendered avatar of a robotic assistant with soft lighting, matching the premium minimal style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZUOTwhP1OCqcP65CLWQgSuXYKbWAEgOG2i4Caw4YKvFyWl1AKHV0OQ2G2gftO36OqOq5OqZGiHPCDy2gtv8WXKaJzPRh32Y96yqRKL4JveVmrtJiOWdLcbzkDVvfCWXt0gaj35TSVBSCkwHpGxYKxq_5tUcgOZr0O_gGkKaqfe8hTCZQSuy3omC-nxiLNRv2vdlHv47rmM6Fn8jLHlOICtKAbUMwFgosTnkRtklmForCvEMlFY7Z6"/>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">ProductOps</h1>
+<p class="font-body-sm text-body-sm text-text-secondary">Reliability &amp; Growth</p>
+</div>
+</div>
+<button class="bg-primary text-on-primary font-label-lg text-label-lg rounded-full py-3 px-6 hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm mb-4">
+                New Mission
+            </button>
+</div>
+<ul class="flex-1 overflow-y-auto px-unit space-y-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container-high text-secondary font-bold hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">sensors</span>
+<span>Signal</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>Understand</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span>Ask</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">biotech</span>
+<span>Diagnose</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">build</span>
+<span>Fix</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">verified</span>
+<span>Verify</span>
+</a>
+</li>
+</ul>
+<div class="p-unit border-t border-outline-variant mt-auto">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-secondary-fixed transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Support</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-[240px] min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-gutter h-16 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant shadow-sm transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">search</span>
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Campus Overview</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-label-lg text-label-lg text-text-secondary hidden sm:inline-block">Active Agents: 12</span>
+<div class="flex gap-2">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="p-margin-md md:p-margin-lg flex-1 flex flex-col gap-margin-lg max-w-container-max mx-auto w-full">
+<!-- Hero Section: Campus Command Center -->
+<section class="relative bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden border border-surface-subtle">
+<div class="absolute inset-0 w-full h-full opacity-10 pointer-events-none">
+<div class="w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary-fixed to-transparent"></div>
+</div>
+<div class="relative z-10 p-gutter md:p-margin-lg flex flex-col items-center">
+<!-- Floating Stats Panel -->
+<div class="bg-surface-container-lowest/90 backdrop-blur-md p-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] border border-surface-subtle flex flex-wrap gap-6 items-center justify-center mb-8 w-full max-w-3xl">
+<div class="flex flex-col items-center px-4">
+<span class="font-label-caps text-label-caps text-text-secondary uppercase tracking-widest">Phase 1</span>
+<div class="flex items-center gap-2 mt-1">
+<div class="w-2 h-2 rounded-full bg-accent-warning"></div>
+<span class="font-headline-md text-headline-md font-bold">Watch</span>
+</div>
+</div>
+<div class="h-8 w-px bg-outline-variant hidden sm:block"></div>
+<div class="flex flex-col items-center px-4">
+<span class="font-label-caps text-label-caps text-text-secondary uppercase tracking-widest">Phase 2</span>
+<div class="flex items-center gap-2 mt-1">
+<div class="w-2 h-2 rounded-full bg-accent-success"></div>
+<span class="font-headline-md text-headline-md font-bold">Work</span>
+</div>
+</div>
+<div class="h-8 w-px bg-outline-variant hidden sm:block"></div>
+<div class="flex flex-col items-center px-4">
+<span class="font-label-caps text-label-caps text-text-secondary uppercase tracking-widest">Phase 3</span>
+<div class="flex items-center gap-2 mt-1">
+<div class="w-2 h-2 rounded-full bg-surface-variant"></div>
+<span class="font-headline-md text-headline-md font-bold text-on-surface-variant">Gate</span>
+</div>
+</div>
+<div class="ml-auto pl-4">
+<button class="bg-primary text-on-primary font-label-lg text-label-lg rounded-full py-2 px-6 hover:bg-primary-container transition-colors shadow-sm whitespace-nowrap">
+                                See it work
+                            </button>
+</div>
+</div>
+<!-- Isometric Map Container -->
+<div class="w-full max-w-5xl rounded-xl overflow-hidden relative">
+<img class="w-full h-auto object-cover rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkwOHR6usGjHg-28Oyv0MofXbkxYrp45YLdZXOqgU3hLStH07v_fqjDstK87tD8_s_c0X8OA9H6U_9D1hOPkWDYXcCV7KvADXas7wWUZ0T5qaueOqDpqO7uGWmovib9fazELSm9fmQSEYUkIZeUMzyTGywgKIYlVX0NyuuKCje_cgvgcdICsHBA2HlmZibY_VSRkTZT6fOnLsAQClBuLtjAVqFzLaWvX6eJAH5-ZkpfYCNkN-vsCHhTxQQSySqKenGOA"/>
+</div>
+</div>
+</section>
+<!-- Bottom Panels Grid -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-margin-md">
+<!-- Active Missions (Replacing Incidents) -->
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-gutter border border-surface-subtle flex flex-col gap-6">
+<div class="flex justify-between items-center pb-4 border-b border-surface-subtle">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold">What we're working on</h2>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Active missions prioritized by impact.</p>
+</div>
+<button class="text-primary hover:text-primary-container font-label-lg text-label-lg flex items-center gap-1 transition-colors">
+                            Explore <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+<div class="space-y-4">
+<!-- Mission Card 1 -->
+<div class="p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors border border-transparent hover:border-surface-subtle cursor-pointer flex gap-4 items-start">
+<div class="w-10 h-10 rounded-full bg-error-container text-on-error-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg font-semibold">Checkout P95 latency jumped</h3>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Signal agent opened a case on onboarding_completion. Fan-out to independent arms initiated.</p>
+<div class="flex gap-2 mt-3">
+<span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-subtle text-on-surface-variant font-label-caps text-[10px] uppercase">Investigating</span>
+<span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-subtle text-on-surface-variant font-label-caps text-[10px] uppercase">Cove: checkout_conversion</span>
+</div>
+</div>
+</div>
+<!-- Mission Card 2 -->
+<div class="p-4 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors border border-transparent hover:border-surface-subtle cursor-pointer flex gap-4 items-start">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined">trending_down</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-lg text-label-lg font-semibold">Weekly newsletter CTR collapsed</h3>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Investigator agent collected specialist claims. Evidence agent merging independence groups.</p>
+<div class="flex gap-2 mt-3">
+<span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-subtle text-on-surface-variant font-label-caps text-[10px] uppercase">Diagnosing</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Team Activity / Signals -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-gutter border border-surface-subtle flex flex-col gap-6">
+<div class="pb-4 border-b border-surface-subtle">
+<h2 class="font-headline-md text-headline-md font-bold">Team Activity</h2>
+<p class="font-body-sm text-body-sm text-text-secondary mt-1">Live feed of agent operations.</p>
+</div>
+<div class="flex-1 flex flex-col justify-center items-center text-center p-6 bg-surface-container-low rounded-lg border border-dashed border-outline-variant">
+<div class="w-12 h-12 rounded-full bg-surface-subtle flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-text-secondary">radar</span>
+</div>
+<h3 class="font-label-lg text-label-lg font-semibold mb-2">Signal agent watching</h3>
+<p class="font-body-sm text-body-sm text-text-secondary">Polling warehouse and product telemetry. When telemetry moves, the next agents appear here.</p>
+</div>
+<div class="mt-auto">
+<h4 class="font-label-caps text-label-caps text-text-secondary uppercase mb-3">Data Sources</h4>
+<ul class="space-y-2">
+<li class="flex items-center gap-2 font-body-sm text-body-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-success"></span>
+                                BigQuery (GA4, Ads, loop_raw)
+                            </li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-success"></span>
+                                IngestSignals from Product Y
+                            </li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-variant"></span>
+                                GatewayExfil (blocked by default)
+                            </li>
+</ul>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

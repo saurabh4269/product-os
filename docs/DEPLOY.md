@@ -50,7 +50,9 @@ Then push to `main`; watch **Actions → deploy-gcp**.
 
 Manual deploy anytime: **Actions → deploy-gcp → Run workflow**.
 
-SQLite is ephemeral on Cloud Run. Cold start re-runs the seeded Safari loop.
+SQLite on Cloud Run is backed by `LOOP_STATE_GCS_URI` (full DB snapshot) and `LOOP_FLAGS_GCS_URI` (tenant flags). Cold start hydrates from GCS when the blob is newer than local disk. Without GCS URIs, cold start re-seeds fixtures.
+
+Production profile (when `LOOP_ADMIN_TOKEN` is set on deploy): `LOOP_EVAL=0`, `LOOP_VERIFY_DEFER=1`, `LOOP_INLINE_WORKER=1`, `LOOP_AUTO_INVESTIGATE=1`, `LOOP_FIRESTORE_MEMORY=1`. Cloud Scheduler should POST `/api/internal/worker/tick` every 10–15 minutes (see `infra/terraform/cheap/scheduler.tf`).
 
 ## Cloud Run (image build — optional, needs extra IAM)
 

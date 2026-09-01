@@ -10,6 +10,16 @@ import urllib.request
 from typing import Any
 
 PROJECT = os.environ.get("GOOGLE_CLOUD_PROJECT", "mystical-timing-442601-q8")
+_last_error: str = ""
+
+
+def last_error() -> str:
+    return _last_error
+
+
+def _set_error(msg: str) -> None:
+    global _last_error
+    _last_error = msg[:400]
 
 
 def gcs_uri(env_key: str, default_object: str) -> str:
@@ -48,10 +58,12 @@ def read_json(uri: str) -> dict[str, Any]:
         return {}
     try:
         bucket, obj = parse_gs_uri(uri)
-    except ValueError:
+    except ValueError as exc:
+        _set_error(str(exc))
         return {}
     token = metadata_access_token()
     if not token:
+        _set_error("no metadata token for GCS read")
         return {}
     quoted = urllib.parse.quote(obj, safe="")
     url = f"https://storage.googleapis.com/storage/v1/b/{bucket}/o/{quoted}?alt=media"
@@ -62,21 +74,45 @@ def read_json(uri: str) -> dict[str, Any]:
     except urllib.error.HTTPError as e:
         if e.code == 404:
             return {}
+        _set_error(f"GCS read {e.code}: {e.read().decode()[:120]}")
         return {}
-    except (OSError, urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+    except (OSError, urllib.error.URLError, json.JSONDecodeError, TimeoutError) as exc:
+        _set_error(f"GCS read failed: {exc}")
         return {}
 
 
-def write_json(uri: str, data: dict[str, Any]) -> None:
-    if not uri or not data:
-        return
+def object_metadata(uri: str) -> dict[str, Any]:
+    if not uri:
+        return {}
     try:
         bucket, obj = parse_gs_uri(uri)
     except ValueError:
-        return
+        return {}
     token = metadata_access_token()
     if not token:
-        return
+        return {}
+    quoted = urllib.parse.quote(obj, safe="")
+    url = f"https://storage.googleapis.com/storage/v1/b/{bucket}/o/{quoted}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode())
+    except (OSError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, TimeoutError):
+        return {}
+
+
+def write_json(uri: str, data: dict[str, Any]) -> bool:
+    if not uri or not data:
+        return False
+    try:
+        bucket, obj = parse_gs_uri(uri)
+    except ValueError as exc:
+        _set_error(str(exc))
+        return False
+    token = metadata_access_token()
+    if not token:
+        _set_error("no metadata token for GCS write")
+        return False
     payload = json.dumps(data, indent=2).encode()
     quoted = urllib.parse.quote(obj, safe="")
     url = (
@@ -94,8 +130,11 @@ def write_json(uri: str, data: dict[str, Any]) -> None:
     )
     try:
         urllib.request.urlopen(req, timeout=15)
-    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
-        return
+        _set_error("")
+        return True
+    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:
+        _set_error(f"GCS write failed: {exc}")
+        return False
 
 
 def read_bytes(uri: str) -> bytes:
@@ -148,6 +187,8 @@ def write_bytes(uri: str, payload: bytes, *, content_type: str = "application/oc
     )
     try:
         urllib.request.urlopen(req, timeout=60)
+        _set_error("")
         return True
-    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
+    except (OSError, urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:
+        _set_error(f"GCS write_bytes failed: {exc}")
         return False

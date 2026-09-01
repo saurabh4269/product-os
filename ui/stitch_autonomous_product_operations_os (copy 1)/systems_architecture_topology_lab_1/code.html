@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina Labs - Architecture</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f1f3fe",
+                        "on-primary-fixed-variant": "#004493",
+                        "accent-warning": "#FF9500",
+                        "on-surface": "#181c23",
+                        "surface-variant": "#e0e2ed",
+                        "error": "#ba1a1a",
+                        "accent-error": "#FF3B30",
+                        "outline": "#717786",
+                        "on-tertiary": "#ffffff",
+                        "surface-high": "#FFFFFF",
+                        "surface-bright": "#f9f9ff",
+                        "text-primary": "#1D1D1F",
+                        "tertiary": "#9e3d00",
+                        "primary-fixed": "#d8e2ff",
+                        "inverse-surface": "#2d3039",
+                        "inverse-on-surface": "#eef0fc",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#fefcff",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "surface-base": "#F5F5F7",
+                        "outline-variant": "#c1c6d7",
+                        "background": "#f9f9ff",
+                        "secondary-fixed-dim": "#c2c1ff",
+                        "surface-container": "#ecedf9",
+                        "surface-dim": "#d8d9e5",
+                        "on-error": "#ffffff",
+                        "secondary": "#4a47d2",
+                        "on-surface-variant": "#414755",
+                        "on-secondary-fixed-variant": "#332dbc",
+                        "tertiary-container": "#c64f00",
+                        "secondary-container": "#6462ec",
+                        "on-primary": "#ffffff",
+                        "surface": "#f9f9ff",
+                        "surface-container-highest": "#e0e2ed",
+                        "accent-success": "#34C759",
+                        "primary-container": "#0070eb",
+                        "tertiary-fixed": "#ffdbcc",
+                        "surface-subtle": "#E5E5EA",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-secondary-fixed": "#0c006b",
+                        "primary": "#0058bc",
+                        "text-secondary": "#86868B",
+                        "on-background": "#181c23",
+                        "on-primary-fixed": "#001a41",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#351000",
+                        "surface-tint": "#005bc1",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "secondary-fixed": "#e2dfff",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "inverse-primary": "#adc6ff",
+                        "surface-container-high": "#e6e8f3",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1440px",
+                        "margin-md": "24px",
+                        "unit": "8px",
+                        "margin-lg": "40px",
+                        "gutter": "24px",
+                        "margin-sm": "16px"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "headline-lg-mobile": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"],
+                        "display-lg": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface-base text-on-surface h-screen overflow-hidden flex flex-col md:flex-row font-body-md">
+<!-- SideNavBar -->
+<nav aria-label="Main Navigation" class="hidden md:flex flex-col h-full border-r border-surface-subtle bg-surface-container-low docked left-0 w-64 flex-shrink-0 z-20 shadow-sm transition-all duration-200">
+<div class="p-margin-md flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">science</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary truncate leading-tight">Lumina Labs</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">Autonomous R&amp;D</p>
+</div>
+</div>
+<div class="px-margin-md mb-6">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2 px-4 rounded-lg font-label-lg hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">add</span>
+                Launch New Sim
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-3 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-lg group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-label-lg text-label-lg">Overview</span>
+</a>
+<!-- Active State -->
+<a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-lg text-primary font-bold bg-surface-container border-r-4 border-primary transition-all duration-200 opacity-80" href="#">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">architecture</span>
+<span class="font-label-lg text-label-lg">Architecture</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-lg group-hover:text-primary transition-colors">analytics</span>
+<span class="font-label-lg text-label-lg">Evaluation</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-lg group-hover:text-primary transition-colors">precision_manufacturing</span>
+<span class="font-label-lg text-label-lg">Simulations</span>
+</a>
+</div>
+<div class="p-3 border-t border-surface-subtle space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-lg group-hover:text-primary transition-colors">settings</span>
+<span class="font-label-lg text-label-lg">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-lg group-hover:text-primary transition-colors">help</span>
+<span class="font-label-lg text-label-lg">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col h-full w-full bg-background overflow-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-lg h-16 w-full flex-shrink-0 z-10 bg-surface-bright/80 backdrop-blur-xl shadow-sm sticky top-0 border-b-0">
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant font-body-sm flex items-center gap-1 hover:text-primary cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-sm">arrow_back</span> Labs
+                </span>
+<span class="text-on-surface-variant mx-2">/</span>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface tracking-tight">Architecture</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-variant/50">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-variant/50 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full border border-surface-bright"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 rounded-full border border-surface-subtle overflow-hidden w-8 h-8 flex items-center justify-center bg-surface-container-high">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<main class="flex-1 overflow-y-auto p-margin-md md:p-margin-lg space-y-margin-lg">
+<div class="max-w-container-max mx-auto space-y-6">
+<!-- Page Header -->
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">Architecture</p>
+<h1 class="font-display-lg text-display-lg font-bold text-on-surface mb-6 md:mb-8 tracking-tight">How it fits together</h1>
+<div class="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 hide-scrollbar">
+<button class="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-lg whitespace-nowrap shadow-sm hover:bg-primary-container transition-colors">Overview</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-lg whitespace-nowrap hover:bg-surface-variant transition-colors border border-transparent">Loop</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-lg whitespace-nowrap hover:bg-surface-variant transition-colors border border-transparent">Fleet</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-lg whitespace-nowrap hover:bg-surface-variant transition-colors border border-transparent">Deep dive</button>
+</div>
+</div>
+<!-- Main Diagram Area -->
+<section class="bg-surface-high rounded-xl p-6 shadow-sm border border-surface-subtle relative overflow-hidden flex flex-col h-full min-h-[500px]">
+<div class="flex justify-between items-start mb-6 z-10 relative">
+<h2 class="font-headline-md text-headline-md font-semibold text-on-surface flex items-center gap-2">
+                            Product OS topology
+                            <span class="px-2 py-0.5 rounded-md bg-surface-container-low text-primary font-label-caps text-xs border border-primary/20">LIVE</span>
+</h2>
+<div class="flex gap-2 bg-surface-container-low p-1 rounded-lg">
+<button class="px-3 py-1 rounded-md bg-surface-high text-on-surface font-label-lg text-sm shadow-sm">System</button>
+<button class="px-3 py-1 rounded-md text-on-surface-variant font-label-lg text-sm hover:bg-surface-variant/50 transition-colors">Investigation</button>
+</div>
+</div>
+<!-- Simplified Diagram Placeholder (Would ideally be an interactive SVG/Canvas) -->
+<div class="flex-1 rounded-lg bg-surface-container-low/50 border border-surface-subtle p-6 flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Abstract representation of the diagram -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(#0058bc 1px, transparent 1px); background-size: 24px 24px;"></div>
+<!-- Central Node -->
+<div class="relative z-10 flex flex-col items-center gap-8">
+<div class="bg-surface-high p-4 rounded-xl shadow-md border border-primary/30 flex items-center gap-3 w-64">
+<div class="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">hub</span>
+</div>
+<div>
+<p class="font-label-lg text-on-surface">Signal Plane</p>
+<p class="font-body-sm text-on-surface-variant">Tenant signals &amp; routing</p>
+</div>
+</div>
+<div class="flex gap-16">
+<div class="bg-surface-high p-4 rounded-xl shadow-md border border-surface-subtle flex items-center gap-3 w-56 opacity-80">
+<div class="w-8 h-8 rounded-lg bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">smart_toy</span>
+</div>
+<div>
+<p class="font-label-lg text-on-surface">Agent Fleet</p>
+<p class="font-body-sm text-on-surface-variant">Execution &amp; Logic</p>
+</div>
+</div>
+<div class="bg-surface-high p-4 rounded-xl shadow-md border border-surface-subtle flex items-center gap-3 w-56 opacity-80">
+<div class="w-8 h-8 rounded-lg bg-tertiary-container/20 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">memory</span>
+</div>
+<div>
+<p class="font-label-lg text-on-surface">Memory</p>
+<p class="font-body-sm text-on-surface-variant">Context &amp; Vector DB</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Details Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Detail Card 1 -->
+<div class="bg-surface-high rounded-xl p-6 shadow-sm border border-surface-subtle hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">security</span>
+<h3 class="font-label-lg text-on-surface">Security Plane</h3>
+</div>
+<span class="flex h-2 w-2 relative">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-success opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-accent-success"></span>
+</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-4 min-h-[44px]">Model Armor v2.1 active. Inspecting inbound payloads for injection patterns.</p>
+<div class="mt-auto pt-4 border-t border-surface-subtle flex justify-between items-center">
+<span class="font-label-caps text-on-surface-variant">THROUGHPUT</span>
+<span class="font-label-lg text-on-surface">1.2k/s</span>
+</div>
+</div>
+<!-- Detail Card 2 -->
+<div class="bg-surface-high rounded-xl p-6 shadow-sm border border-surface-subtle hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">build</span>
+<h3 class="font-label-lg text-on-surface">Tool Plane</h3>
+</div>
+<span class="flex h-2 w-2 relative">
+<span class="relative inline-flex rounded-full h-2 w-2 bg-surface-dim"></span>
+</span>
+</div>
+<p class="font-body-md text-on-surface-variant mb-4 min-h-[44px]">A2A Gateway idle. Waiting for fleet requisition requests.</p>
+<div class="mt-auto pt-4 border-t border-surface-subtle flex justify-between items-center">
+<span class="font-label-caps text-on-surface-variant">ACTIVE TOOLS</span>
+<span class="font-label-lg text-on-surface">14</span>
+</div>
+</div>
+<!-- Interactive Terminal Placeholder -->
+<div class="bg-inverse-surface rounded-xl p-4 shadow-sm flex flex-col font-mono text-sm h-full md:col-span-2 lg:col-span-1">
+<div class="flex items-center justify-between border-b border-outline/30 pb-2 mb-2">
+<span class="text-inverse-on-surface font-semibold text-xs tracking-wider">AGENT_COORDINATION_LOG</span>
+<span class="material-symbols-outlined text-outline text-sm">terminal</span>
+</div>
+<div class="flex-1 overflow-y-auto space-y-1 text-outline-variant opacity-80">
+<p><span class="text-accent-success">[OK]</span> Signal routed to Node-A</p>
+<p><span class="text-primary-fixed-dim">[INFO]</span> Context retrieval initiated</p>
+<p><span class="text-accent-warning">[WAIT]</span> Pending approval gate</p>
+<p class="text-inverse-on-surface animate-pulse">_</p>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

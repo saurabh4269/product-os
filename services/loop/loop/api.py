@@ -7,7 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
@@ -39,7 +39,9 @@ async def lifespan(_app: FastAPI):
     from loop.state_persist import hydrate_db
 
     hydrate_db(cfg.db_path())
-    if not (cfg.warehouse_path() / "meta.json").exists():
+    from loop.runtime_mode import is_eval_mode, use_file_warehouse
+
+    if use_file_warehouse() and not (cfg.warehouse_path() / "meta.json").exists():
         import sys
 
         sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "data"))
@@ -52,11 +54,18 @@ async def lifespan(_app: FastAPI):
     hydrate_flags(eng.store)
     if not eng.store.list_rooms():
         eng.seed_world()
-    elif not eng.store.list_investigations():
+    elif is_eval_mode() and not eng.store.list_investigations():
         eng.run_until_approval()
     from .tenant import seed_placeholder
 
     seed_placeholder(eng.store)
+
+    try:
+        from loop import firestore_memory
+
+        firestore_memory.backfill_from_store(eng.store)
+    except Exception:
+        pass
 
     if os.environ.get("LOOP_SIGNAL_WATCH", "1") == "1":
         from .signal_watch import start_signal_watch
@@ -374,6 +383,16 @@ def _status_payload(eng) -> dict:
         }:
             verified += 1
     oauth = google_oauth.status()
+    from loop import firestore_memory, gcs_state
+    from loop.signal_watch import last_tick_summary
+    from loop.state_persist import last_upload_ts
+    from loop.worker_heartbeat import last_tick as worker_last_tick
+
+    jobs_queued = len(eng.store.list_jobs(status="queued"))
+    jobs_dead = len(eng.store.list_jobs(status="dead"))
+    last_tick = last_tick_summary()
+    worker_tick = worker_last_tick()
+
     return {
         "ok": True,
         "running": True,
@@ -388,6 +407,24 @@ def _status_payload(eng) -> dict:
             "learn": len(eng.store.list_lessons()),
         },
         "workspace": {"connected": bool(oauth.get("connected")), "email": oauth.get("email") or ""},
+        "memory": firestore_memory.status(),
+        "worker": {
+            "inline": os.environ.get("LOOP_INLINE_WORKER") == "1",
+            "tasks_disabled": os.environ.get("LOOP_TASKS_DISABLE") == "1",
+            "last_signal_tick": last_tick.get("at"),
+            "last_worker_tick": worker_tick.get("at"),
+            "auto_investigated": last_tick.get("auto_investigated", 0),
+            "jobs_queued": jobs_queued,
+            "jobs_dead": jobs_dead,
+            "state_upload_ts": last_upload_ts(),
+            "last_tick_detected": worker_tick.get("detected"),
+            "last_tick_processed": worker_tick.get("count"),
+        },
+        "gcs": {"last_error": gcs_state.last_error() or None},
+        "auth": {
+            "admin_required": __import__("loop.auth", fromlist=["admin_required"]).admin_required(),
+            "eval_open": __import__("loop.auth", fromlist=["eval_mode_open"]).eval_mode_open(),
+        },
         "patterns": ["parallel_fanout", "review_critique", "skip_if_done", "agent_callback"],
     }
 
@@ -492,9 +529,11 @@ def _action_row(eng, action) -> dict:
 
 
 @app.get("/api/tenants")
-def tenants():
+def tenants(authorization: str | None = Header(default=None)):
+    from .auth import require_admin
     from .tenant import seed_placeholder
 
+    require_admin(authorization, actor="tenant.list")
     eng = get_engine()
     seed_placeholder(eng.store)
     return {"tenants": [_public_tenant(t) for t in eng.store.list_tenants()], "gate": _gate(eng)}
@@ -568,12 +607,25 @@ def rotate_token(tenant_id: str, body: TokenRotateBody, authorization: str | Non
     return {"rotated": True, "tenant": _public_tenant(t)}
 
 
+@app.post("/api/admin/verify")
+def admin_verify(authorization: str | None = Header(default=None)):
+    """Validate admin bearer — console stores in sessionStorage, not build-time env."""
+    from .auth import require_admin
+
+    actor = require_admin(authorization)
+    return {"ok": True, "actor": actor}
+
+
 @app.get("/api/tenants/{tenant_id}")
-def tenant_detail(tenant_id: str):
-    t = get_engine().store.get_tenant(tenant_id)
+def tenant_detail(tenant_id: str, authorization: str | None = Header(default=None)):
+    from .auth import require_admin_or_tenant
+
+    eng = get_engine()
+    require_admin_or_tenant(authorization, tenant_id=tenant_id, store=eng.store)
+    t = eng.store.get_tenant(tenant_id)
     if not t:
         raise HTTPException(404, "tenant not found")
-    return {"tenant": _public_tenant(t), "flags": _visible_flags(get_engine(), tenant_id), "gate": _gate(get_engine(), tenant_id)}
+    return {"tenant": _public_tenant(t), "flags": _visible_flags(eng, tenant_id), "gate": _gate(eng, tenant_id)}
 
 
 @app.get("/api/onboard/services")
@@ -653,6 +705,48 @@ def tenant_verify(tenant_id: str, authorization: str | None = Header(default=Non
     return out
 
 
+@app.get("/api/tenants/{tenant_id}/incident-lifecycle")
+def tenant_incident_lifecycle(
+    tenant_id: str,
+    authorization: str | None = Header(default=None),
+    metric: str = Query(default="checkout_conversion"),
+):
+    """Poll checkout-regression progress for Connect walkthrough (Cove → room → approve → verify)."""
+    from .auth import require_admin_or_tenant
+
+    eng = get_engine()
+    if not eng.store.get_tenant(tenant_id):
+        raise HTTPException(404, "tenant not found")
+    require_admin_or_tenant(authorization, tenant_id=tenant_id, store=eng.store, actor="lifecycle")
+    from .incident_lifecycle import incident_lifecycle
+
+    return incident_lifecycle(eng, tenant_id, metric=metric)
+
+
+@app.post("/api/tenants/{tenant_id}/incident-lifecycle/arm")
+def tenant_incident_arm(tenant_id: str, authorization: str | None = Header(default=None)):
+    """Admin reset — re-enable pay-sdk 4.3 on Product Y for another checkout repro."""
+    from .audit import record
+    from .auth import require_admin
+    from .incident_lifecycle import arm_checkout_regression
+
+    actor = require_admin(authorization, actor=f"incident.arm:{tenant_id}")
+    eng = get_engine()
+    if not eng.store.get_tenant(tenant_id):
+        raise HTTPException(404, "tenant not found")
+    out = arm_checkout_regression(eng, tenant_id)
+    record(
+        eng.store,
+        actor=actor,
+        action="incident.arm",
+        resource=f"tenant:{tenant_id}",
+        detail={"flag": out.get("flag"), "value": out.get("value")},
+    )
+    from .incident_lifecycle import incident_lifecycle
+
+    return {**out, "lifecycle": incident_lifecycle(eng, tenant_id)}
+
+
 @app.get("/api/t/{tenant_id}/flags")
 def tenant_flags(tenant_id: str, authorization: str | None = Header(default=None)):
     _require_tenant(tenant_id, authorization)
@@ -664,6 +758,8 @@ def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | N
     from .world import ingest_tenant_signal
 
     t = _require_tenant(tenant_id, authorization)
+    import os
+
     out = ingest_tenant_signal(
         get_engine(),
         t,
@@ -672,6 +768,7 @@ def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | N
         baseline=body.baseline,
         note=body.note,
         source=body.source,
+        async_finish=os.environ.get("LOOP_INGEST_ASYNC", "1") == "1",
     )
     return {
         "signal": out["signal"].model_dump(mode="json"),
@@ -864,7 +961,9 @@ def research_event(body: ResearchEventBody):
     from .models import LoopType, PathKind, RoomKind
 
     eng = get_engine()
-    eng.seed_world()
+    from loop.world import ensure_api_ready
+
+    ensure_api_ready(eng)
     lt = LoopType.TYPE_A if body.loop_type.lower() in {"type_a", "a", "bug"} else LoopType.TYPE_B
     path = PathKind.BUG if body.path.lower() in {"bug", "a"} else PathKind.FEATURE
     try:
@@ -910,7 +1009,9 @@ def improve_event(body: ImproveEventBody):
     from .product_improvement import ProductSignalEvent, run_product_loop
 
     eng = get_engine()
-    eng.seed_world()
+    from loop.world import ensure_api_ready
+
+    ensure_api_ready(eng)
     lt = None
     if body.loop_type:
         lt = LoopType.TYPE_A if body.loop_type.lower() in {"type_a", "a", "bug"} else LoopType.TYPE_B
@@ -1051,7 +1152,9 @@ def investigate(body: InvestigateBody):
     from .investigation import AnomalyEvent, run_investigation
 
     eng = get_engine()
-    eng.seed_world()
+    from loop.world import ensure_api_ready
+
+    ensure_api_ready(eng)
     family = body.family if body.family in {"funnel", "technical", "business", "customer"} else "business"
     polarity = body.polarity if body.polarity in {"negative", "positive"} else None
     event = AnomalyEvent(
@@ -1087,7 +1190,9 @@ def product_intel(body: ProductIntelBody):
     from .investigation import FeatureMention, run_product_intelligence
 
     eng = get_engine()
-    eng.seed_world()
+    from loop.world import ensure_api_ready
+
+    ensure_api_ready(eng)
     mentions = [
         FeatureMention(
             text=str(m.get("text") or ""),
@@ -1396,6 +1501,9 @@ def detect():
 
 @app.post("/api/loop/run")
 def run_until_approval():
+    from loop.runtime_mode import require_eval
+
+    require_eval("synthetic Safari regression")
     eng = get_engine()
     inv = eng.run_until_approval()
     return _bundle(eng, inv.id)
@@ -1403,6 +1511,9 @@ def run_until_approval():
 
 @app.post("/api/world/seed")
 def world_seed():
+    from loop.runtime_mode import require_eval
+
+    require_eval("fixture seed")
     return get_engine().seed_world()
 
 
@@ -1763,12 +1874,14 @@ def activity_feed(limit: int = Query(default=60, ge=1, le=200)):
 @app.post("/api/demo/run")
 def demo_run():
     """One-click tenant signal demo — real pipeline, paced so you can watch it."""
-    from .tenant import seed_placeholder
-    from .world import ingest_tenant_signal
+    from loop.runtime_mode import require_eval
 
+    from .tenant import seed_placeholder
+    from .world import ensure_api_ready, ingest_tenant_signal
+
+    require_eval("guided demo")
     eng = get_engine()
-    if not eng.store.list_rooms():
-        eng.seed_world()
+    ensure_api_ready(eng)
     tenant = seed_placeholder(eng.store)
     import os
 
@@ -1820,19 +1933,12 @@ def demo_run():
 
 @app.get("/api/config")
 def public_config():
-    import os
+    from loop.runtime_mode import FIXTURE_SCENARIOS, is_eval_mode
 
     return {
-        "eval_mode": os.environ.get("LOOP_EVAL", "1") == "1",
+        "eval_mode": is_eval_mode(),
         "hosted": bool(os.environ.get("K_SERVICE")),
-        "fixture_scenarios": [
-            "safari_3ds",
-            "android_sdk",
-            "onboarding_activation",
-            "apple_pay",
-            "shipping_ux",
-            "security_exfil",
-        ],
+        "fixture_scenarios": list(FIXTURE_SCENARIOS),
     }
 
 
@@ -1944,8 +2050,12 @@ def memory_remember(body: MemoryInBody):
 
 @app.get("/api/scenarios")
 def scenarios():
-    rows = list(get_engine().seed_world().get("scenarios") or [])
-    if not any(str(r.get("id")) == "checkout_abandon" for r in rows):
+    from loop.runtime_mode import is_eval_mode
+    from loop.world import scenario_index
+
+    eng = get_engine()
+    rows = list(scenario_index(eng))
+    if is_eval_mode() and not any(str(r.get("id")) == "checkout_abandon" for r in rows):
         rows.append(
             {
                 "id": "checkout_abandon",
@@ -2051,7 +2161,9 @@ def post_signal(body: SignalInBody):
     from .unified_runner import run_signal_pipeline
 
     eng = get_engine()
-    eng.seed_world()
+    from loop.world import ensure_api_ready
+
+    ensure_api_ready(eng)
     fork = (body.fork or ("FEATURE" if body.polarity == "positive" else "BUG")).upper()
     scenario = body.scenario or f"signal:{body.metric}"
     sig = {
@@ -2155,7 +2267,12 @@ def approvals():
 
 
 @app.post("/api/approvals/{action_id}")
-def decide(action_id: str, body: ApproveBody, authorization: str | None = Header(default=None)):
+def decide(
+    action_id: str,
+    body: ApproveBody,
+    background_tasks: BackgroundTasks,
+    authorization: str | None = Header(default=None),
+):
     from .audit import record
     from .auth import require_approval
 
@@ -2173,18 +2290,54 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
         if not has_outcome:
             outcome = eng.verify(inv_id)
             outcome_payload = outcome.model_dump(mode="json")
-        return {
-            "approval": "approve",
-            "reused": True,
-            "outcome": outcome_payload,
-            "execution": execution,
-            "pr_url": execution.get("pr_url"),
-            **_bundle(eng, inv_id),
-        }
+        return _approve_payload(
+            eng,
+            action_id,
+            inv_id,
+            execution=execution,
+            outcome=outcome_payload,
+            approval="approve",
+            reused=True,
+        )
     if body.decision == "approve":
         outcome = eng.resume_after_approval(action_id, body.approver, body.rationale)
         fresh = eng.store.get_action(action_id)
         execution = ((fresh.artifacts or {}).get("execution") if fresh else None) or {}
+        if isinstance(outcome, dict) and outcome.get("deferred"):
+            from .live import room_id_for_investigation
+
+            rid = room_id_for_investigation(eng.store, action.investigation_id)
+            if rid:
+                HUB.publish(
+                    rid,
+                    {
+                        "type": "approval_resolved",
+                        "approval": {"id": action_id, "status": "approved", "deferred_verify": True},
+                    },
+                )
+                HUB.publish_global(
+                    {
+                        "type": "approval_resolved",
+                        "approval": {"action_id": action_id, "room_id": rid, "status": "approved"},
+                    }
+                )
+                background_tasks.add_task(_publish_human_input_after_approve, eng, fresh or action, rid)
+            record(
+                eng.store,
+                actor=body.approver,
+                action="approval.approve",
+                resource=f"action:{action_id}",
+                detail={"rationale": body.rationale, "execution": execution, "deferred_verify": True},
+            )
+            return _approve_payload(
+                eng,
+                action_id,
+                action.investigation_id,
+                execution=execution,
+                approval="approve",
+                deferred_verify=True,
+                verify_job_id=outcome.get("verify_job_id"),
+            )
         from .live import room_id_for_investigation
 
         rid = room_id_for_investigation(eng.store, action.investigation_id)
@@ -2238,7 +2391,7 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
                         "proof": proof,
                     },
                 )
-            _publish_human_input_after_approve(eng, fresh or action, rid)
+            background_tasks.add_task(_publish_human_input_after_approve, eng, fresh or action, rid)
         record(
             eng.store,
             actor=body.approver,
@@ -2246,13 +2399,15 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
             resource=f"action:{action_id}",
             detail={"rationale": body.rationale, "execution": execution},
         )
-        return {
-            "approval": "approve",
-            "outcome": outcome.model_dump(mode="json"),
-            "execution": execution,
-            "pr_url": execution.get("pr_url"),
-            **_bundle(eng, action.investigation_id),
-        }
+        outcome_payload = outcome.model_dump(mode="json") if hasattr(outcome, "model_dump") else outcome
+        return _approve_payload(
+            eng,
+            action_id,
+            action.investigation_id,
+            execution=execution,
+            outcome=outcome_payload,
+            approval="approve",
+        )
     approval = eng.approve(action_id, body.approver, "deny", body.rationale)
     record(
         eng.store,
@@ -2261,7 +2416,12 @@ def decide(action_id: str, body: ApproveBody, authorization: str | None = Header
         resource=f"action:{action_id}",
         detail={"rationale": body.rationale},
     )
-    return {"approval": approval.model_dump(mode="json"), **_bundle(eng, action.investigation_id)}
+    return _approve_payload(
+        eng,
+        action_id,
+        action.investigation_id,
+        approval=approval.model_dump(mode="json"),
+    )
 
 
 @app.get("/api/jobs")
@@ -2318,13 +2478,51 @@ def worker_tick(
     require_admin_or_internal(authorization, internal_header=x_loop_worker)
     eng = get_engine()
     detected = eng.detect_all_signals()
+    investigated: list[dict] = []
+    if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
+        from .auto_investigate import auto_investigate_new_signals
+
+        open_ids = [
+            s.id
+            for s in detected
+            if getattr(s, "status", None) != "suppressed"
+            and s.id not in {sid for inv in eng.store.list_investigations() for sid in inv.originating_signal_ids}
+        ]
+        if open_ids:
+            investigated = auto_investigate_new_signals(eng, open_ids)
     processed: list[dict] = []
     for _ in range(limit):
         result = process_one(eng.store, eng)
         if not result:
             break
         processed.append(result)
-    return {"processed": processed, "count": len(processed), "detected": len(detected)}
+    payload = {
+        "processed": processed,
+        "count": len(processed),
+        "detected": len(detected),
+        "investigated": investigated,
+    }
+    from .worker_heartbeat import record_tick
+
+    record_tick(payload)
+    return payload
+
+
+@app.post("/api/internal/pubsub/signals")
+def pubsub_signals_push(
+    body: dict,
+    authorization: str | None = Header(default=None),
+    x_loop_worker: str | None = Header(default=None, alias="X-Loop-Worker"),
+):
+    from .auth import require_admin_or_internal
+    from .pubsub_consumer import decode_push, handle_signal_push
+
+    require_admin_or_internal(authorization, internal_header=x_loop_worker)
+    payload = decode_push(body) or body
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "invalid pubsub payload")
+    result = handle_signal_push(get_engine(), payload)
+    return {"result": result}
 
 
 @app.get("/api/approvals/{action_id}/status")
@@ -2359,8 +2557,11 @@ def audit_log(authorization: str | None = Header(default=None), limit: int = Que
 @app.post("/api/scenarios/{slug}/run")
 def scenario_run(slug: str, request: Request):
     """Eval fixture runner — live fleet walk into the scenario room."""
+    from loop.runtime_mode import require_eval
+
     from .unified_runner import run_signal_pipeline
 
+    require_eval("fixture scenario runner")
     eng = get_engine()
     eng.seed_world()
 
@@ -2662,6 +2863,45 @@ def _summary(eng: LoopEngine, inv_id: str) -> dict:
     }
 
 
+def _investigation_verdicts(eng: LoopEngine, inv_id: str) -> list[dict]:
+    agents = {
+        name
+        for call in eng.store.list_agent_calls(inv_id)
+        for name in (call.from_agent, call.to_agent)
+        if name
+    }
+    return [
+        v.model_dump(mode="json")
+        for v in eng.store.list_verdicts()
+        if v.agent_identity in agents
+    ]
+
+
+def _approve_payload(
+    eng: LoopEngine,
+    action_id: str,
+    inv_id: str,
+    *,
+    execution: dict | None = None,
+    outcome: dict | None = None,
+    **extra,
+) -> dict:
+    """Small approve response — avoid shipping full investigation bundles over slow links."""
+    inv = eng.store.get_investigation(inv_id)
+    exec_blob = dict(execution or {})
+    payload: dict = {
+        "action_id": action_id,
+        "investigation_id": inv_id,
+        "room_id": inv.room_id if inv else None,
+        "execution": exec_blob,
+        "pr_url": exec_blob.get("pr_url"),
+    }
+    if outcome is not None:
+        payload["outcome"] = outcome
+    payload.update(extra)
+    return payload
+
+
 def _bundle(eng: LoopEngine, inv_id: str) -> dict:
     inv = eng.store.get_investigation(inv_id)
     assert inv
@@ -2684,7 +2924,7 @@ def _bundle(eng: LoopEngine, inv_id: str) -> dict:
         "agent_calls": [c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv_id)],
         "outcomes": [o.model_dump(mode="json") for o in eng.store.list_outcomes() if o.investigation_id == inv_id],
         "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons() if lesson.investigation_id == inv_id],
-        "verdicts": [v.model_dump(mode="json") for v in eng.store.list_verdicts()],
+        "verdicts": _investigation_verdicts(eng, inv_id),
         "state": inv.state.value if isinstance(inv.state, InvestigationState) else inv.state,
     }
 
