@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from loop.models import Hypothesis, Investigation
-from loop.tenant import Tenant
+from loop.tenant import Tenant, resolve_tenant
 
 
 def github_token_for(tenant: Tenant | None) -> str:
@@ -140,6 +140,30 @@ def tenant_action_artifacts(
         arts["from"] = "on"
         arts["to"] = "off"
     return arts
+
+
+def effective_action_artifacts(
+    store: Any,
+    action: Any,
+    *,
+    inv: Any | None = None,
+    tenant: Tenant | None = None,
+) -> dict[str, Any]:
+    """Re-merge stored artifacts with hydrated tenant config (gate + execute repair)."""
+    arts = dict(getattr(action, "artifacts", None) or {})
+    inv = inv or store.get_investigation(getattr(action, "investigation_id", ""))
+    if not inv:
+        return arts
+    tenant = tenant or resolve_tenant(store, investigation=inv)
+    if not tenant or not tenant.repo:
+        return arts
+    hyp: Hypothesis | None = None
+    hyps = store.list_hypotheses(inv.id)
+    if hyps:
+        hyp = hyps[0]
+    if not hyp:
+        return arts
+    return merge_proposed_artifacts(inv, hyp, tenant, arts)
 
 
 def merge_proposed_artifacts(

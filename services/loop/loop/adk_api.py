@@ -44,10 +44,11 @@ async def lifespan(_app: FastAPI):
     from loop.flags_persist import hydrate_flags
 
     hydrate_flags(eng.store)
+    from loop.tenant import hydrate_all_tenants, seed_placeholder
+
+    hydrate_all_tenants(eng.store)
     if not eng.store.list_rooms():
         eng.seed_world()
-    from loop.tenant import seed_placeholder
-
     seed_placeholder(eng.store)
     yield
 

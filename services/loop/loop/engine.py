@@ -863,7 +863,7 @@ class LoopEngine:
 
         from .connectors import calendar_hold, create_issue, mail_draft, open_pr
         from .tenant import flag_key, hydrate_tenant_config, is_tenant_scenario, resolve_tenant
-        from .tenant_context import flag_file_for, github_pr_eligible
+        from .tenant_context import effective_action_artifacts, flag_file_for
 
         tenant_bound = is_tenant_scenario(inv.scenario_id)
         tenant = resolve_tenant(self.store, investigation=inv)
@@ -871,11 +871,15 @@ class LoopEngine:
             raw = self.store.get_tenant(inv.tenant_id)
             tenant = hydrate_tenant_config(raw, self.store) if raw else tenant
 
+        arts = effective_action_artifacts(self.store, action, inv=inv, tenant=tenant)
+        if arts != (action.artifacts or {}):
+            action.artifacts = arts
+            self.store.put_action(action)
+
         reports = []
         result: dict = {"merged": False, "pr_opened": False}
         reused = False
         code_fix_job: dict | None = None
-        arts = action.artifacts or {}
         if "flag" in arts:
             import json as json_lib
 
@@ -951,39 +955,13 @@ class LoopEngine:
                     self.store.put_tenant(tenant)
             elif code_fix and brief:
                 result["pr_note"] = "Code fix PR opening in background (multi-file)"
-        elif github_pr_eligible(arts, tenant) and tenant:
-            from .code_fix import resolve_brief
-
-            pr_meta = arts.get("pr") if isinstance(arts.get("pr"), dict) else {}
-            code_fix = arts.get("code_fix", True) is not False
-            brief = resolve_brief(action, inv, self.store) if code_fix else None
-            if not brief and code_fix:
-                brief_data = arts.get("code_brief") if isinstance(arts.get("code_brief"), dict) else {}
-                likely = list(brief_data.get("likely_files") or pr_meta.get("files") or tenant.code_paths or [])
-                if likely:
-                    brief = {
-                        "issue": brief_data.get("issue") or inv.title or "product regression",
-                        "likely_files": likely,
-                        "hypothesis": brief_data.get("hypothesis") or "",
-                        "surface": brief_data.get("surface") or tenant.default_surface,
-                    }
-            if brief:
-                code_fix_job = {
-                    "action_id": action_id,
-                    "tenant": tenant,
-                    "inv": inv,
-                    "brief": brief,
-                    "flag_patch": None,
-                    "pr_title": str(pr_meta.get("title") or f"Fix: {inv.title or 'product'}"),
-                    "pr_body": str(pr_meta.get("body") or f"Investigation {inv.id}."),
-                }
-                result["code_fix"] = "queued"
-                result["pr_note"] = "Code fix PR opening in background (multi-file)"
         else:
-            issue = arts.get("github_issue") if isinstance(arts.get("github_issue"), dict) else {}
-            title = issue.get("title") or "Product OS follow-up"
-            body = issue.get("body") or f"Investigation {inv.id}"
-            if tenant:
+            issue = arts.get("github_issue") if isinstance(arts.get("github_issue"), dict) else None
+            title = (issue or {}).get("title") or "Product OS follow-up"
+            body = (issue or {}).get("body") or f"Investigation {inv.id}"
+            if tenant and tenant.repo and action.type in {"code_change", "flag_rollback"} and not issue:
+                result["skipped_git"] = "repo-bound code action missing flag artifact"
+            elif tenant and issue:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.issue",

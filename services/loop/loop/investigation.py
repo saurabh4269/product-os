@@ -1169,7 +1169,9 @@ def run_investigation(
     bound_tenant = tenant_id or str((event.dimensions.get("tenant_id") or "")) or None
     if bound_tenant == "":
         bound_tenant = None
-    tenant = engine.store.get_tenant(bound_tenant) if bound_tenant else None
+    from loop.tenant import resolve_tenant
+
+    tenant = resolve_tenant(engine.store, tenant_id=bound_tenant) if bound_tenant else None
     warehouse_receipt: dict[str, Any] | None = None
     if bound_tenant and tenant:
         from loop.connectors.bigquery import enrich_anomaly_dimensions, read_metric_window

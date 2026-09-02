@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from fastapi.testclient import TestClient
+
 from loop import api as api_mod
 from loop.models import Classification, Hypothesis, Investigation, InvestigationState, RiskTier
-from loop.tenant import Tenant, hydrate_tenant_config
-from loop.tenant_context import github_pr_eligible, merge_proposed_artifacts
+from loop.tenant import Tenant, hydrate_all_tenants, hydrate_tenant_config
+from loop.tenant_context import (
+    effective_action_artifacts,
+    github_pr_eligible,
+    merge_proposed_artifacts,
+)
 
 
 def _tenant_inv(tenant_id: str = "acme", scenario: str = "t:acme:purchase_conversion") -> tuple[Investigation, Hypothesis]:
@@ -44,6 +50,18 @@ def test_hydrate_tenant_fills_empty_flag_names_from_bootstrap(engine, monkeypatc
     assert stored and stored.flag_names == ["pay_sdk_4_3"]
 
 
+def test_hydrate_all_tenants_persists_on_cold_start(engine, monkeypatch):
+    monkeypatch.delenv("LOOP_TENANT_FLAG_NAMES", raising=False)
+    engine.store.put_tenant(
+        Tenant(id="acme", name="Cove", product="Cove", repo="saurabh4269/cove", deploy_url="https://cove.test")
+    )
+    assert engine.store.get_tenant("acme").flag_names == []
+    assert hydrate_all_tenants(engine.store) == 1
+    stored = engine.store.get_tenant("acme")
+    assert stored.flag_names == ["pay_sdk_4_3"]
+    assert stored.code_paths
+
+
 def test_hydrate_tenant_fills_flag_names_from_store(engine):
     engine.store.set_flag("t:acme:checkout_v2", "on", "seed")
     tenant = Tenant(id="acme", name="Cove", product="Cove", repo="org/shop", stack="rails")
@@ -79,11 +97,117 @@ def test_merge_proposed_artifacts_attaches_flag_for_repo_tenant(engine):
     assert github_pr_eligible(merged, tenant)
 
 
-def test_action_gate_github_pr_for_hydrated_tenant_action(engine, monkeypatch):
+def test_action_gate_github_pr_for_stored_action_without_flag(engine, monkeypatch):
     monkeypatch.setattr(api_mod, "_engine", engine)
     monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
     engine.store.put_tenant(
         Tenant(id="acme", name="Cove", product="Cove", repo="org/shop", connected=True)
+    )
+    hydrate_tenant_config(engine.store.get_tenant("acme"), engine.store)
+    inv, hyp = _tenant_inv()
+    engine.store.put_investigation(inv)
+    engine.store.put_hypothesis(hyp)
+    inv.linked_hypothesis_ids = [hyp.id]
+    engine.store.put_investigation(inv)
+    action = engine.propose_action(
+        inv,
+        hyp,
+        action_type="code_change",
+        artifacts={
+            "code_brief": {"issue": "checkout hang"},
+            "pr": {"title": "Fix: tenant_signal", "body": hyp.statement, "files": []},
+            "code_fix": False,
+        },
+    )
+    action.artifacts.pop("flag", None)
+    action.artifacts["code_fix"] = False
+    engine.store.put_action(action)
+    gate = api_mod._action_gate(engine, action)
+    assert gate["mode"] == "github_pr"
+    effective = effective_action_artifacts(engine.store, action)
+    assert effective.get("flag") == "pay_sdk_4_3"
+    assert effective.get("code_fix") is True
+
+
+def test_get_tenants_lists_hydrated_flag_names(engine, monkeypatch):
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    engine.store.put_tenant(
+        Tenant(id="acme", name="Cove", product="Cove", repo="saurabh4269/cove", deploy_url="https://cove.test")
+    )
+    with TestClient(api_mod.app) as client:
+        rows = client.get("/api/tenants").json()["tenants"]
+    acme = next(t for t in rows if t["id"] == "acme")
+    assert acme["flag_names"] == ["pay_sdk_4_3"]
+    assert acme["code_paths"]
+
+
+def test_execute_repairs_flag_and_does_not_open_issue(engine, monkeypatch):
+    monkeypatch.setattr("loop.connectors.github._token", lambda: "tok")
+    monkeypatch.setattr("loop.code_fix.resolve_brief", lambda *a, **k: None)
+    calls: list[str] = []
+
+    def fake_open_pr(*args, **kwargs):
+        calls.append("pr")
+        from loop.tenant import ConnectorReport
+
+        return ConnectorReport(status="applied", connector="github.pr", detail="ok", url="https://github.com/org/shop/pull/2")
+
+    def fake_issue(*args, **kwargs):
+        calls.append("issue")
+        from loop.tenant import ConnectorReport
+
+        return ConnectorReport(status="applied", connector="github.issue", detail="no", url="https://github.com/org/shop/issues/99")
+
+    monkeypatch.setattr("loop.connectors.open_pr", fake_open_pr)
+    monkeypatch.setattr("loop.connectors.create_issue", fake_issue)
+    monkeypatch.setattr(
+        "loop.connectors.github._request",
+        lambda method, url, token, body=None: (
+            (200, {"default_branch": "main"})
+            if method == "GET" and url.endswith("/repos/org/shop")
+            else (200, {"object": {"sha": "abc"}})
+            if "git/ref" in url
+            else (201, {})
+            if url.endswith("/git/refs") or "/contents/" in url or url.endswith("/pulls")
+            else (404, {})
+        ),
+    )
+
+    engine.store.put_tenant(
+        Tenant(id="acme", name="Cove", product="Cove", repo="org/shop", connected=True, stack="nextjs")
+    )
+    hydrate_tenant_config(engine.store.get_tenant("acme"), engine.store)
+    inv, hyp = _tenant_inv()
+    engine.store.put_investigation(inv)
+    engine.store.put_hypothesis(hyp)
+    inv.linked_hypothesis_ids = [hyp.id]
+    engine.store.put_investigation(inv)
+    action = engine.propose_action(
+        inv,
+        hyp,
+        action_type="code_change",
+        artifacts={
+            "code_brief": {"issue": "checkout hang"},
+            "pr": {"title": "Fix: tenant_signal", "body": hyp.statement, "files": []},
+            "code_fix": False,
+        },
+    )
+    action.artifacts.pop("flag", None)
+    action.artifacts["code_fix"] = False
+    engine.store.put_action(action)
+    engine.approve(action.id, "oncall", "approve", "ship it")
+    out = engine.execute_approved(action.id)
+    assert "issue" not in calls
+    assert calls == ["pr"]
+    assert out.get("pr_opened") is True
+    assert out.get("flag") == "pay_sdk_4_3"
+    assert engine.store.get_action(action.id).artifacts.get("flag") == "pay_sdk_4_3"
+
+
+def test_propose_action_high_attaches_flag(engine):
+    engine.store.put_tenant(
+        Tenant(id="acme", name="Cove", product="Cove", repo="org/shop", stack="nextjs")
     )
     tenant = hydrate_tenant_config(engine.store.get_tenant("acme"), engine.store)
     inv, hyp = _tenant_inv()
@@ -98,74 +222,7 @@ def test_action_gate_github_pr_for_hydrated_tenant_action(engine, monkeypatch):
             "code_fix": False,
         },
     )
-    gate = api_mod._action_gate(engine, action)
-    assert gate["mode"] == "github_pr"
-    assert gate["tenant_repo"] == tenant.repo
     assert action.artifacts.get("flag") == "pay_sdk_4_3"
     assert action.artifacts.get("code_fix") is True
     assert action.risk_tier == RiskTier.HIGH
-
-
-def test_execute_code_change_without_flag_still_queues_pr(engine, monkeypatch):
-    pr_url = "https://github.com/org/shop/pull/9"
-
-    def sync_enqueue(engine, **kwargs):
-        from loop.code_fix import run_code_fix_job
-        from loop.jobs import enqueue_code_fix
-
-        job = enqueue_code_fix(
-            engine.store,
-            action_id=kwargs["action_id"],
-            investigation_id=kwargs["inv"].id,
-            tenant_id=kwargs["tenant"].id,
-            brief=kwargs["brief"],
-            flag_patch=kwargs["flag_patch"],
-            pr_title=kwargs["pr_title"],
-            pr_body=kwargs["pr_body"],
-        )
-        run_code_fix_job(engine, job)
-
-    monkeypatch.setattr(
-        "loop.code_fix.run_code_fix",
-        lambda **k: __import__("loop.tenant", fromlist=["ConnectorReport"]).ConnectorReport(
-            status="applied",
-            connector="github.pr",
-            detail="pull request opened",
-            url=pr_url,
-        ),
-    )
-    monkeypatch.setattr("loop.code_fix.enqueue_code_fix_job", sync_enqueue)
-
-    tenant = Tenant(
-        id="brandx",
-        name="Brand X",
-        product="Brand X",
-        repo="org/shop",
-        connected=True,
-        code_paths=["src/checkout.ts"],
-        flag_names=[],
-    )
-    engine.store.put_tenant(tenant)
-    inv, hyp = _tenant_inv(tenant_id="brandx", scenario="t:brandx:checkout_drop")
-    inv.tenant_id = "brandx"
-    engine.store.put_investigation(inv)
-    action = engine.propose_action(
-        inv,
-        hyp,
-        action_type="code_change",
-        artifacts={
-            "code_brief": {"issue": "checkout timeout", "likely_files": ["src/checkout.ts"]},
-            "pr": {"title": "Fix checkout timeout", "body": hyp.statement, "files": ["src/checkout.ts"]},
-            "code_fix": True,
-        },
-    )
-    # Simulate a tenant with no flags but explicit code paths.
-    action.artifacts.pop("flag", None)
-    engine.store.put_action(action)
-    engine.approve(action.id, "oncall", "approve", "ship it")
-    out = engine.execute_approved(action.id)
-    assert out.get("code_fix") == "queued" or out.get("pr_opened") is True
-    exe = engine.store.get_action(action.id).artifacts["execution"]
-    assert exe.get("pr_opened") is True
-    assert exe["pr_url"] == pr_url
-    assert exe.get("merged") is False
+    assert tenant.repo

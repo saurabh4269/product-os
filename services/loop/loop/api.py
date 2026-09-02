@@ -63,12 +63,13 @@ async def lifespan(_app: FastAPI):
     from loop.flags_persist import hydrate_flags
 
     hydrate_flags(eng.store)
+    from .tenant import hydrate_all_tenants, seed_placeholder
+
+    hydrate_all_tenants(eng.store)
     if not eng.store.list_rooms():
         eng.seed_world()
     elif is_eval_mode() and not eng.store.list_investigations():
         eng.run_until_approval()
-    from .tenant import seed_placeholder
-
     seed_placeholder(eng.store)
 
     try:
@@ -486,7 +487,9 @@ def _public_tenant(t) -> dict:
 
 def _connect_tenants(store) -> list:
     """Hide duplicate tenant rows that share the same product repo (e.g. acme vs cove)."""
-    rows = store.list_tenants()
+    from .tenant import hydrate_tenant_config
+
+    rows = [hydrate_tenant_config(t, store) for t in store.list_tenants()]
     canonical = (os.environ.get("LOOP_TENANT_ID") or "acme").strip() or "acme"
     by_repo: dict[str, list] = {}
     for t in rows:
@@ -546,12 +549,12 @@ def _gate(eng, tenant_id: str | None = None) -> dict:
 
 def _action_gate(eng, action) -> dict:
     from .tenant import resolve_tenant
-    from .tenant_context import github_pr_eligible
+    from .tenant_context import effective_action_artifacts, github_pr_eligible
 
     inv = eng.store.get_investigation(action.investigation_id)
     t = resolve_tenant(eng.store, investigation=inv)
     repo = (t.repo if t else "") or ""
-    arts = action.artifacts or {}
+    arts = effective_action_artifacts(eng.store, action, inv=inv, tenant=t)
     if github_pr_eligible(arts, t):
         return {
             "mode": "github_pr",

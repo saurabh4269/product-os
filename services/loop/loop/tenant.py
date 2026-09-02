@@ -65,13 +65,25 @@ def token_ok(tenant: Tenant, raw: str | None) -> bool:
     return hash_token(raw) == tenant.token_hash
 
 
+def hydrate_all_tenants(store: Any) -> int:
+    """Persist bootstrap defaults for every connected tenant (cold start / GCS restore)."""
+    updated = 0
+    for row in store.list_tenants():
+        before = (tuple(row.flag_names), tuple(row.code_paths), row.stack)
+        hydrate_tenant_config(row, store)
+        after = (tuple(row.flag_names), tuple(row.code_paths), row.stack)
+        if after != before:
+            updated += 1
+    return updated
+
+
 def resolve_tenant_by_token(store: Any, raw: str | None) -> Tenant | None:
     """Find tenant row matching a bearer token — Cove wire ingest."""
     if not raw:
         return None
     for tenant in store.list_tenants():
         if token_ok(tenant, raw):
-            return tenant
+            return hydrate_tenant_config(tenant, store)
     return None
 
 
