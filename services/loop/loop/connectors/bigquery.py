@@ -35,16 +35,18 @@ def resolve_bq_config(tenant: Tenant | None) -> BqConfig | None:
         return None
     env_key = f"LOOP_BQ_DATASET_{tenant.id.upper().replace('-', '_')}"
     raw = (tenant.bq_raw_dataset or os.environ.get(env_key) or os.environ.get("LOOP_BQ_DATASET") or "").strip()
-    metrics = (
-        tenant.bq_metrics_dataset or os.environ.get("LOOP_BQ_METRICS_DATASET") or "loop_metrics"
+    metrics_explicit = (
+        tenant.bq_metrics_dataset or os.environ.get("LOOP_BQ_METRICS_DATASET") or ""
     ).strip()
+    metrics = metrics_explicit or "loop_metrics"
     ga4 = (tenant.ga4_dataset or "").strip()
     ads = (tenant.ads_dataset or "").strip()
     if mode == "ga4" and not ga4:
         return None
     if mode == "bq_raw" and not raw:
         return None
-    if mode == "auto" and not any([raw, ga4, metrics]):
+    # Auto without GA4/raw/explicit metrics is not BQ-backed investigation — file warehouse still applies.
+    if mode == "auto" and not any([raw, ga4, metrics_explicit]):
         return None
     funnel = tuple(tenant.funnel_events or ("begin_checkout", "purchase"))
     primary = (tenant.primary_metric or "purchase_conversion").strip() or "purchase_conversion"
@@ -544,7 +546,11 @@ def enrich_anomaly_dimensions(store: Any, tenant: Tenant, dims: dict[str, Any]) 
     if logs.get("claim"):
         out.setdefault("logs_claim", logs["claim"])
         out.setdefault("logs", logs.get("counts") or {})
-    out.setdefault("warehouse_source", "bigquery")
+    if any(
+        k in out
+        for k in ("analytics_claim", "logs_claim", "deploy_claim", "ads_claim")
+    ):
+        out.setdefault("warehouse_source", "bigquery")
     return out
 
 

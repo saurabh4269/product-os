@@ -79,7 +79,8 @@ def enrich_file_dimensions(engine: Any, dims: dict[str, Any], *, metric: str = "
     from loop.warehouse import RECOVERY_START, REGRESSION_START
 
     out = dict(dims)
-    if out.get("warehouse_source") == "bigquery":
+    # BQ may be configured but return no rows — still fill missing arms from file warehouse.
+    if out.get("warehouse_source") == "bigquery" and out.get("logs_claim") and out.get("deploy_claim"):
         return out
     wh = getattr(engine, "wh", None)
     if wh is None:
