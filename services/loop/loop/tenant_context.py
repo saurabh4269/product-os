@@ -56,6 +56,61 @@ def safari_action_artifacts(inv: Investigation, hyp: Hypothesis) -> dict[str, An
     }
 
 
+def github_pr_eligible(artifacts: dict[str, Any], tenant: Tenant | None) -> bool:
+    if not tenant or not tenant.repo:
+        return False
+    if artifacts.get("flag"):
+        return True
+    pr = artifacts.get("pr") if isinstance(artifacts.get("pr"), dict) else {}
+    brief = artifacts.get("code_brief") if isinstance(artifacts.get("code_brief"), dict) else {}
+    files = list(brief.get("likely_files") or pr.get("files") or [])
+    if files:
+        return True
+    return artifacts.get("code_fix") is True
+
+
+def enrich_github_pr_artifacts(
+    merged: dict[str, Any],
+    inv: Investigation,
+    hyp: Hypothesis,
+    tenant: Tenant | None,
+) -> None:
+    if not tenant or not tenant.repo:
+        return
+    brief = merged.get("code_brief")
+    if not isinstance(brief, dict):
+        brief = {}
+        merged["code_brief"] = brief
+    pr = merged.get("pr")
+    if not isinstance(pr, dict):
+        pr = {}
+        merged["pr"] = pr
+
+    pr_files = list(pr.get("files") or []) if isinstance(pr.get("files"), list) else []
+    if not brief.get("likely_files"):
+        if pr_files:
+            brief["likely_files"] = pr_files
+        elif tenant.code_paths:
+            brief["likely_files"] = list(tenant.code_paths)
+
+    if not merged.get("flag") and tenant.flag_names:
+        merged["flag"] = tenant.flag_names[0]
+        merged.setdefault("from", "on")
+        merged.setdefault("to", "off")
+
+    files = list(brief.get("likely_files") or pr_files)
+    wants_pr = bool(merged.get("flag") or files)
+    if wants_pr:
+        merged["code_fix"] = True
+        if files:
+            pr.setdefault("files", files)
+        issue = brief.get("issue") or inv.title or hyp.statement[:120]
+        title = str(pr.get("title") or "")
+        generic_titles = {"Fix: tenant_signal", f"Fix: {inv.scenario_id or ''}"}
+        if not title or title in generic_titles:
+            pr["title"] = f"Fix: {str(issue)[:80]}"
+
+
 def tenant_action_artifacts(
     inv: Investigation,
     hyp: Hypothesis,
@@ -107,16 +162,15 @@ def merge_proposed_artifacts(
         for k, v in passed.items():
             if k == "code_brief" and isinstance(v, dict):
                 merged["code_brief"] = {**merged.get("code_brief", {}), **v}
+            elif k in {"code_fix", "flag"} and v in (False, "", None):
+                continue
             else:
                 merged[k] = v
-        if "flag" not in merged and tenant and tenant.flag_names:
-            merged["flag"] = tenant.flag_names[0]
-            merged.setdefault("from", "on")
-            merged.setdefault("to", "off")
-        if "code_fix" not in merged and merged.get("code_brief", {}).get("likely_files"):
-            merged["code_fix"] = True
+        enrich_github_pr_artifacts(merged, inv, hyp, tenant)
         return merged
-    return tenant_action_artifacts(inv, hyp, tenant)
+    merged = tenant_action_artifacts(inv, hyp, tenant)
+    enrich_github_pr_artifacts(merged, inv, hyp, tenant)
+    return merged
 
 
 def consequence_for(tenant: Tenant | None, inv: Investigation, hyp: Hypothesis, *, has_flag: bool) -> str:

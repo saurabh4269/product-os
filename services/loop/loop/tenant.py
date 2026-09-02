@@ -90,6 +90,68 @@ def is_tenant_scenario(scenario_id: str | None) -> bool:
     return tenant_id_from_scenario(scenario_id) is not None
 
 
+def _bootstrap_stack(tenant: Tenant) -> str:
+    if tenant.stack:
+        return tenant.stack
+    env = (os.environ.get("LOOP_TENANT_STACK") or "").strip()
+    if env:
+        return env
+    return "nextjs" if tenant.repo else ""
+
+
+def _bootstrap_flag_names(repo: str, stack: str) -> list[str]:
+    raw = (os.environ.get("LOOP_TENANT_FLAG_NAMES") or "").strip()
+    if raw:
+        return [x.strip() for x in raw.split(",") if x.strip()]
+    if repo and stack == "nextjs":
+        return ["pay_sdk_4_3"]
+    return []
+
+
+def _bootstrap_code_paths(repo: str, stack: str) -> list[str]:
+    raw = (os.environ.get("LOOP_TENANT_CODE_PATHS") or "").strip()
+    if raw:
+        return [x.strip() for x in raw.split(",") if x.strip()]
+    if repo and stack == "nextjs":
+        return ["src/app/(store)/checkout/page.tsx", "src/lib/loop.ts"]
+    return []
+
+
+def _flag_names_from_store(store: Any, tenant_id: str) -> list[str]:
+    prefix = f"t:{tenant_id}:"
+    names: list[str] = []
+    for key in store.list_flags():
+        if key.startswith(prefix):
+            names.append(key[len(prefix) :])
+    return sorted(set(names))
+
+
+def hydrate_tenant_config(tenant: Tenant, store: Any | None = None, *, persist: bool = True) -> Tenant:
+    """Fill empty flag_names / code_paths when a repo is connected."""
+    if not tenant.repo:
+        return tenant
+    changed = False
+    stack = _bootstrap_stack(tenant)
+    if not tenant.stack and stack:
+        tenant.stack = stack
+        changed = True
+    if not tenant.flag_names:
+        names = _bootstrap_flag_names(tenant.repo, stack)
+        if not names and store is not None:
+            names = _flag_names_from_store(store, tenant.id)
+        if names:
+            tenant.flag_names = names
+            changed = True
+    if not tenant.code_paths:
+        paths = _bootstrap_code_paths(tenant.repo, stack)
+        if paths:
+            tenant.code_paths = paths
+            changed = True
+    if changed and persist and store is not None:
+        store.put_tenant(tenant)
+    return tenant
+
+
 def resolve_tenant(
     store: Any,
     *,
@@ -108,7 +170,10 @@ def resolve_tenant(
         tid = tenant_id_from_scenario(scenario_id)
     if not tid:
         return None
-    return store.get_tenant(tid)
+    tenant = store.get_tenant(tid)
+    if not tenant:
+        return None
+    return hydrate_tenant_config(tenant, store)
 
 
 def product_for_room(store: Any, room_id: str, *, fallback: str = "your product") -> str:
@@ -124,7 +189,7 @@ def seed_placeholder(store: Any) -> Tenant:
     tid = (os.environ.get("LOOP_TENANT_ID") or "acme").strip() or "acme"
     existing = store.get_tenant(tid)
     if existing:
-        return existing
+        return hydrate_tenant_config(existing, store)
     token = os.environ.get("LOOP_TENANT_BOOTSTRAP_TOKEN", "")
     repo = os.environ.get("LOOP_TENANT_REPO", "")
     name = (os.environ.get("LOOP_TENANT_NAME") or os.environ.get("LOOP_TENANT_PRODUCT") or tid).strip()

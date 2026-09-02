@@ -546,12 +546,13 @@ def _gate(eng, tenant_id: str | None = None) -> dict:
 
 def _action_gate(eng, action) -> dict:
     from .tenant import resolve_tenant
+    from .tenant_context import github_pr_eligible
 
     inv = eng.store.get_investigation(action.investigation_id)
     t = resolve_tenant(eng.store, investigation=inv)
     repo = (t.repo if t else "") or ""
     arts = action.artifacts or {}
-    if "flag" in arts and repo:
+    if github_pr_eligible(arts, t):
         return {
             "mode": "github_pr",
             "tenant_repo": repo,
@@ -635,6 +636,9 @@ def upsert_tenant(_actor: AdminUnlessEval, body: TenantBody):
         primary_metric=body.primary_metric or (prev.primary_metric if prev else "purchase_conversion"),
         funnel_events=body.funnel_events or (prev.funnel_events if prev else []),
     )
+    from .tenant import hydrate_tenant_config
+
+    t = hydrate_tenant_config(t, eng.store)
     eng.store.put_tenant(t)
     from .tenant import bind_fixture_tenants
 
