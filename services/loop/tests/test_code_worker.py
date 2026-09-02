@@ -93,7 +93,7 @@ def test_run_tests_hosted_fails_when_test_script_but_no_node(tmp_path, monkeypat
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / "package.json").write_text('{"scripts":{"test":"vitest run"}}')
-    monkeypatch.delenv("PATH", raising=False)
+    monkeypatch.setattr("loop.code_worker.node_toolchain_available", lambda: False)
     monkeypatch.setenv("K_SERVICE", "loop")
     monkeypatch.setenv("LOOP_CODE_REQUIRE_TESTS", "1")
     ok, msg = run_tests(repo)
