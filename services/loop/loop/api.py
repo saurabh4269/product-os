@@ -96,19 +96,12 @@ async def lifespan(_app: FastAPI):
                     detected = eng.detect_all_signals()
                     investigated: list[dict] = []
                     if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
-                        from .auto_investigate import auto_investigate_new_signals
+                        from .auto_investigate import (
+                            auto_investigate_new_signals,
+                            open_signal_ids_for_auto_investigate,
+                        )
 
-                        open_ids = [
-                            s.id
-                            for s in detected
-                            if getattr(s, "status", None) != "suppressed"
-                            and s.id
-                            not in {
-                                sid
-                                for inv in eng.store.list_investigations()
-                                for sid in inv.originating_signal_ids
-                            }
-                        ]
+                        open_ids = open_signal_ids_for_auto_investigate(eng, detected)
                         if open_ids:
                             investigated = auto_investigate_new_signals(eng, open_ids)
                     processed: list[dict] = []
@@ -2557,18 +2550,14 @@ def worker_tick(
     require_admin_or_internal(authorization, internal_header=x_loop_worker)
     eng = get_engine()
     detected = eng.detect_all_signals()
+    from .auto_investigate import open_signal_ids_for_auto_investigate
+
+    open_ids = open_signal_ids_for_auto_investigate(eng, detected)
     investigated: list[dict] = []
-    if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
+    if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1" and open_ids:
         from .auto_investigate import auto_investigate_new_signals
 
-        open_ids = [
-            s.id
-            for s in detected
-            if getattr(s, "status", None) != "suppressed"
-            and s.id not in {sid for inv in eng.store.list_investigations() for sid in inv.originating_signal_ids}
-        ]
-        if open_ids:
-            investigated = auto_investigate_new_signals(eng, open_ids)
+        investigated = auto_investigate_new_signals(eng, open_ids)
     processed: list[dict] = []
     for _ in range(limit):
         result = process_one(eng.store, eng)

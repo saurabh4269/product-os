@@ -139,10 +139,13 @@ def run_verify_job(engine: Any, job: Job) -> dict[str, Any]:
     if not inv_id:
         return {"status": "failed", "detail": "missing investigation_id"}
     outcome = engine.verify(inv_id)
+    verdict = outcome.verdict.value
+    # Job ran; investigation outcome is separate from queue status.
+    status = "inconclusive" if verdict == "INCONCLUSIVE" else "succeeded"
     return {
-        "status": "succeeded",
+        "status": status,
         "investigation_id": inv_id,
-        "verdict": outcome.verdict.value,
+        "verdict": verdict,
     }
 
 
@@ -164,7 +167,7 @@ def process_job(store: Any, engine: Any, job_id: str) -> dict[str, Any] | None:
             result = run_verify_job(engine, job)
         else:
             result = {"status": "skipped", "detail": f"unknown kind {job.kind}"}
-        if result.get("status") in {"applied", "succeeded", "skipped"}:
+        if result.get("status") in {"applied", "succeeded", "skipped", "inconclusive"}:
             complete(store, job.id, result)
         else:
             fail(store, job.id, str(result.get("detail") or result.get("error") or "job failed"))

@@ -103,6 +103,34 @@ def auto_investigate_signal(engine: Any, signal_id: str) -> dict[str, Any]:
     }
 
 
+def open_signal_ids_for_auto_investigate(engine: Any, detected: list[Any] | None = None) -> list[str]:
+    """Signals that need the deterministic pipeline — warehouse detect + tenant ingest."""
+    if detected is None:
+        detected = engine.detect_all_signals()
+    investigated_ids = {
+        sid for inv in engine.store.list_investigations() for sid in inv.originating_signal_ids
+    }
+    open_ids: list[str] = []
+    seen: set[str] = set()
+    for s in detected:
+        if getattr(s, "status", None) == "suppressed":
+            continue
+        if s.id in investigated_ids or s.id in seen:
+            continue
+        open_ids.append(s.id)
+        seen.add(s.id)
+    for s in engine.store.list_signals():
+        if getattr(s, "status", None) == "suppressed":
+            continue
+        if s.id in investigated_ids or s.id in seen:
+            continue
+        src = str(getattr(s, "source", "") or "")
+        if src.startswith("tenant.") or src.startswith("onboard."):
+            open_ids.append(s.id)
+            seen.add(s.id)
+    return open_ids
+
+
 def auto_investigate_new_signals(engine: Any, signal_ids: list[str]) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for sid in sorted(signal_ids):
