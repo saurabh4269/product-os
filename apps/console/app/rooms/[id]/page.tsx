@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { RoomView } from "@/components/room-view";
 
 export function generateStaticParams() {
@@ -5,5 +6,9 @@ export function generateStaticParams() {
 }
 
 export default function RoomPage() {
-  return <RoomView />;
+  return (
+    <Suspense fallback={<div className="page-pad text-[14px] text-[var(--dim)]">Loading room…</div>}>
+      <RoomView />
+    </Suspense>
+  );
 }
