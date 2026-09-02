@@ -4,7 +4,6 @@ const BASE =
   process.env.NEXT_PUBLIC_API_URL ??
   (process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8080");
 
-const ADMIN_TOKEN_ENV = process.env.NEXT_PUBLIC_LOOP_ADMIN_TOKEN ?? "";
 const ADMIN_STORAGE_KEY = "loop_admin_token";
 const ADMIN_REMEMBER_KEY = "loop_admin_token_remember";
 
@@ -24,9 +23,7 @@ export function adminRememberEnabled(): boolean {
 }
 
 function adminToken(): string {
-  const stored = readStoredAdminToken();
-  if (stored) return stored;
-  return ADMIN_TOKEN_ENV;
+  return readStoredAdminToken();
 }
 
 export function hasAdminToken(): boolean {
@@ -375,6 +372,15 @@ export const api = {
     get<{
       memory: Record<string, Array<Record<string, unknown>>>;
       lessons: Array<Record<string, unknown>>;
+      mirror?: {
+        configured?: boolean;
+        enabled?: boolean;
+        operational?: boolean;
+        skipped?: boolean;
+        skipped_reason?: string | null;
+        last_error?: string | null;
+      };
+      source?: string;
     }>("/api/memory"),
   traces: () =>
     get<{

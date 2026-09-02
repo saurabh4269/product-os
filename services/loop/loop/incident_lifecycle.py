@@ -10,6 +10,40 @@ from .tenant import Tenant, flag_key
 CHECKOUT_METRIC = "checkout_conversion"
 REGRESSION_FLAG = "pay_sdk_4_3"
 
+_TERMINAL_INVESTIGATION = {
+    InvestigationState.RESOLVED,
+    InvestigationState.NOT_RESOLVED,
+    InvestigationState.INCONCLUSIVE,
+    InvestigationState.PARTIALLY_RESOLVED,
+}
+
+
+def publish_incident_lifecycle(
+    engine: Any,
+    tenant_id: str,
+    *,
+    metric: str = CHECKOUT_METRIC,
+) -> dict[str, Any] | None:
+    """Push lifecycle snapshot to the campus WebSocket (Connect incident panel)."""
+    store = engine.store
+    if not store.get_tenant(tenant_id):
+        return None
+    payload = incident_lifecycle(engine, tenant_id, metric=metric)
+    try:
+        from .live import HUB
+
+        HUB.publish_global(
+            {
+                "type": "incident_lifecycle",
+                "tenant_id": tenant_id,
+                "metric": metric,
+                "lifecycle": payload,
+            }
+        )
+    except Exception:
+        pass
+    return payload
+
 
 def _scenario(tenant_id: str, metric: str = CHECKOUT_METRIC) -> str:
     return f"t:{tenant_id}:{metric}"
@@ -154,7 +188,6 @@ def _incident_phase(
             "degraded",
         )
     if investigating and inv:
-        state = str(getattr(inv.state, "value", inv.state))
         return (
             "diagnosing",
             "Product OS is diagnosing",
@@ -302,7 +335,7 @@ def incident_lifecycle(
     ]
 
     done_count = sum(1 for s in steps if s["done"])
-    return {
+    out = {
         "status": "ok",
         "tenant_id": tenant_id,
         "metric": metric,
@@ -327,3 +360,4 @@ def incident_lifecycle(
         "product_status": product_status,
         "last_ingest_at": tenant.last_ingest_at or None,
     }
+    return out

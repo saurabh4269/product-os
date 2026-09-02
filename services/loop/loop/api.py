@@ -6,8 +6,18 @@ import contextlib
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
@@ -82,7 +92,41 @@ async def lifespan(_app: FastAPI):
             while True:
                 await asyncio.sleep(interval)
                 try:
-                    process_one(eng.store, eng)
+                    detected = eng.detect_all_signals()
+                    investigated: list[dict] = []
+                    if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
+                        from .auto_investigate import auto_investigate_new_signals
+
+                        open_ids = [
+                            s.id
+                            for s in detected
+                            if getattr(s, "status", None) != "suppressed"
+                            and s.id
+                            not in {
+                                sid
+                                for inv in eng.store.list_investigations()
+                                for sid in inv.originating_signal_ids
+                            }
+                        ]
+                        if open_ids:
+                            investigated = auto_investigate_new_signals(eng, open_ids)
+                    processed: list[dict] = []
+                    limit = max(1, int(os.environ.get("LOOP_WORKER_JOB_BATCH", "3")))
+                    for _ in range(limit):
+                        result = process_one(eng.store, eng)
+                        if not result:
+                            break
+                        processed.append(result)
+                    from .worker_heartbeat import record_tick
+
+                    record_tick(
+                        {
+                            "processed": processed,
+                            "count": len(processed),
+                            "detected": len(detected),
+                            "investigated": investigated,
+                        }
+                    )
                 except Exception:
                     pass
 
@@ -116,7 +160,7 @@ app.add_middleware(
 
 class ApproveBody(BaseModel):
     approver: str = "oncall@northstar"
-    decision: str = "approve"
+    decision: Literal["approve", "deny"]
     rationale: str = "Reviewed the evidence pack and risk gate."
 
 
@@ -742,9 +786,10 @@ def tenant_incident_arm(tenant_id: str, authorization: str | None = Header(defau
         resource=f"tenant:{tenant_id}",
         detail={"flag": out.get("flag"), "value": out.get("value")},
     )
-    from .incident_lifecycle import incident_lifecycle
+    from .incident_lifecycle import incident_lifecycle, publish_incident_lifecycle
 
-    return {**out, "lifecycle": incident_lifecycle(eng, tenant_id)}
+    lifecycle = publish_incident_lifecycle(eng, tenant_id) or incident_lifecycle(eng, tenant_id)
+    return {**out, "lifecycle": lifecycle}
 
 
 @app.get("/api/t/{tenant_id}/flags")
@@ -2009,7 +2054,10 @@ def registry():
 
 @app.get("/api/memory")
 def memory(q: str = "", type: str | None = None, tenant_id: str | None = None):
+    from loop import firestore_memory
+
     eng = get_engine()
+    mirror = firestore_memory.status()
     by_kind: dict[str, list] = {"customer": [], "product": [], "engineering": [], "organizational": []}
     items = eng.store.list_memory(type, tenant_id=tenant_id) if type else eng.store.list_memory(tenant_id=tenant_id)
     if q:
@@ -2025,7 +2073,12 @@ def memory(q: str = "", type: str | None = None, tenant_id: str | None = None):
     for item in items:
         kind = item.get("kind") or item.get("type") or "organizational"
         by_kind.setdefault(kind, []).append(item)
-    return {"memory": by_kind, "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons()]}
+    return {
+        "memory": by_kind,
+        "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons()],
+        "mirror": mirror,
+        "source": "sqlite" if not mirror.get("operational") else "sqlite+firestore",
+    }
 
 
 @app.post("/api/memory")
@@ -2156,10 +2209,14 @@ def signals():
 
 
 @app.post("/api/signals")
-def post_signal(body: SignalInBody):
-    """Ingest a signal → investigation pipeline with live WS events."""
+def post_signal(body: SignalInBody, authorization: str | None = Header(default=None)):
+    """Ingest a signal → investigation pipeline with live WS events (eval/admin only when hosted)."""
+    from .auth import require_admin
+    from .runtime_mode import is_eval_mode
     from .unified_runner import run_signal_pipeline
 
+    if not is_eval_mode():
+        require_admin(authorization, actor="signals")
     eng = get_engine()
     from loop.world import ensure_api_ready
 
@@ -2218,6 +2275,17 @@ def investigation(inv_id: str):
     if not eng.store.get_investigation(inv_id):
         raise HTTPException(404, "investigation not found")
     return _bundle(eng, inv_id)
+
+
+def _publish_incident_for_investigation(eng, inv_id: str) -> None:
+    inv = eng.store.get_investigation(inv_id)
+    if inv and inv.tenant_id:
+        try:
+            from .incident_lifecycle import publish_incident_lifecycle
+
+            publish_incident_lifecycle(eng, inv.tenant_id)
+        except Exception:
+            pass
 
 
 def _publish_human_input_after_approve(eng, action, rid: str | None) -> None:
@@ -2322,6 +2390,7 @@ def decide(
                     }
                 )
                 background_tasks.add_task(_publish_human_input_after_approve, eng, fresh or action, rid)
+            background_tasks.add_task(_publish_incident_for_investigation, eng, action.investigation_id)
             record(
                 eng.store,
                 actor=body.approver,
@@ -2392,6 +2461,7 @@ def decide(
                     },
                 )
             background_tasks.add_task(_publish_human_input_after_approve, eng, fresh or action, rid)
+        background_tasks.add_task(_publish_incident_for_investigation, eng, action.investigation_id)
         record(
             eng.store,
             actor=body.approver,
@@ -2711,6 +2781,25 @@ def agent_callback(body: AgentCallbackBody):
     return {"ok": True, "room_id": rid, "presence": HUB.agents_in(rid)}
 
 
+@app.get("/ws", include_in_schema=False)
+def ws_http_probe() -> None:
+    """Plain HTTP GET must not fall through to the SPA — browsers upgrade via WebSocket."""
+    raise HTTPException(
+        405,
+        "WebSocket upgrade required — connect with wss://",
+        headers={"Upgrade": "websocket"},
+    )
+
+
+@app.get("/ws/rooms/{room_id}", include_in_schema=False)
+def ws_room_http_probe(room_id: str) -> None:
+    raise HTTPException(
+        405,
+        "WebSocket upgrade required — connect with wss://",
+        headers={"Upgrade": "websocket"},
+    )
+
+
 @app.websocket("/ws")
 async def ws_global(ws: WebSocket):
     import json
@@ -2951,6 +3040,8 @@ def _spa_file(path: str) -> FileResponse | None:
     if path.startswith("api/"):
         return None
     rel = path.strip("/")
+    if rel in {"ws"} or rel.startswith("ws/"):
+        return None
     if rel.split("/", 1)[0] in {"shop", "company"}:
         return None
     if not rel:

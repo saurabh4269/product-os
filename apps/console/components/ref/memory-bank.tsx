@@ -313,6 +313,16 @@ export function MemoryBank() {
         </PageStatPill>
       </PageHeader>
 
+      {data.mirror?.configured && !data.mirror.operational ? (
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-body-sm text-amber-950">
+          <p className="font-medium">Cloud Firestore mirror is off</p>
+          <p className="mt-1 text-[13px] leading-5 text-amber-900/90">
+            Lessons stay in hosted SQLite for this deploy. Firestore is not mirroring (
+            {data.mirror.skipped_reason || data.mirror.last_error || "API unavailable"}).
+          </p>
+        </div>
+      ) : null}
+
       <div className="relative max-w-md">
         <MIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
         <input

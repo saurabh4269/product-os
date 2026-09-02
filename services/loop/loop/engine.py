@@ -790,8 +790,10 @@ class LoopEngine:
         from .tenant import flag_key, is_tenant_scenario, resolve_tenant
         from .tenant_context import flag_file_for
 
-        tenant = resolve_tenant(self.store, investigation=inv)
         tenant_bound = is_tenant_scenario(inv.scenario_id)
+        tenant = resolve_tenant(self.store, investigation=inv)
+        if tenant_bound and inv.tenant_id:
+            tenant = self.store.get_tenant(inv.tenant_id) or tenant
 
         reports = []
         result: dict = {"merged": False, "pr_opened": False}

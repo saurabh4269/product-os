@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field
 from loop.models import (
     Classification,
     Direction,
+    InvestigationState,
     LoopType,
     PathKind,
     RiskTier,
@@ -38,6 +39,15 @@ from loop.models import (
     Signal,
     SignalFamily,
     SignalStatus,
+)
+
+_TERMINAL_INVESTIGATION = frozenset(
+    {
+        InvestigationState.RESOLVED,
+        InvestigationState.NOT_RESOLVED,
+        InvestigationState.INCONCLUSIVE,
+        InvestigationState.PARTIALLY_RESOLVED,
+    }
 )
 
 
@@ -682,7 +692,10 @@ def run_product_intelligence(
     proposal = build_product_proposal(top)
 
     scenario = scenario_id or f"product:{_normalize_theme(top.theme).replace(' ', '_')}"
-    existing = next((r for r in engine.store.list_rooms() if r.scenario_id == scenario), None)
+    existing = next(
+        (r for r in engine.store.list_rooms() if r.scenario_id == scenario and r.status == "open"),
+        None,
+    )
     if existing:
         return {
             "scenario": scenario,
@@ -1182,10 +1195,17 @@ def run_investigation(
         (event.dimensions.get("hypothesis") or {}).get("statement") or pack.correlation_summary
     )
 
-    existing = next((r for r in engine.store.list_rooms() if r.scenario_id == scenario), None)
+    existing = next(
+        (r for r in engine.store.list_rooms() if r.scenario_id == scenario and r.status == "open"),
+        None,
+    )
     if existing and existing.investigation_id:
         inv = engine.store.get_investigation(existing.investigation_id)
-        if inv and inv.linked_hypothesis_ids:
+        if (
+            inv
+            and inv.linked_hypothesis_ids
+            and inv.state not in _TERMINAL_INVESTIGATION
+        ):
             return {
                 "scenario": scenario,
                 "room_id": existing.id,
