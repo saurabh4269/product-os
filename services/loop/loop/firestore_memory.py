@@ -59,6 +59,19 @@ def _note_error(exc: Exception) -> None:
     _last_error = str(exc)[:400]
 
 
+def reset_client() -> None:
+    global _client, _client_tried, _last_error
+    _client = None
+    _client_tried = False
+    _last_error = ""
+
+
+def warm_client() -> bool:
+    """Eager Firestore init — use after API enablement or on cold start."""
+    reset_client()
+    return _get_client() is not None
+
+
 def _get_client() -> Any | None:
     global _client, _client_tried
     if _client_tried:
@@ -69,7 +82,11 @@ def _get_client() -> Any | None:
     try:
         from google.cloud import firestore
 
-        client = firestore.Client(project=os.environ.get("GOOGLE_CLOUD_PROJECT"))
+        database = (os.environ.get("LOOP_FIRESTORE_DATABASE") or "(default)").strip() or "(default)"
+        client = firestore.Client(
+            project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
+            database=database,
+        )
         # Probe once — fail closed when API is disabled (SERVICE_DISABLED).
         try:
             next(iter(client.collection(_COLLECTION).limit(1).stream()), None)

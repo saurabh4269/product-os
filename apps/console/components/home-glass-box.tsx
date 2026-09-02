@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { api, ApiAuthError, hasAdminToken } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { ProofEmbed, ProofGrid, type ProofPayload } from "@/components/proof-embed";
 import { LiveWorkBoard, type LiveWorkCard } from "@/components/live-work-board";
@@ -54,8 +54,10 @@ export function HomeGlassBox({ className }: { className?: string }) {
   const [skips, setSkips] = useState<string[]>([]);
   const [featured, setFeatured] = useState<LiveWorkCard | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [needsAuth, setNeedsAuth] = useState(false);
 
-  useEffect(() => {
+  const loadGlass = useCallback(() => {
+    setNeedsAuth(false);
     Promise.all([api.proof(), api.liveWork()])
       .then(([pf, lw]) => {
         const cards = ((pf.cards || []) as ProofPayload[]).filter((c) => c?.kind);
@@ -82,15 +84,44 @@ export function HomeGlassBox({ className }: { className?: string }) {
         setFeatured(withProof || lw.cards?.[0] || null);
         setLoaded(true);
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err instanceof ApiAuthError && (err.status === 401 || err.status === 403)) {
+          setNeedsAuth(true);
+        }
         setProofs([]);
         setFeatured(null);
         setLoaded(true);
       });
-  }, [tick]);
+  }, []);
+
+  useEffect(() => {
+    loadGlass();
+  }, [tick, loadGlass]);
 
   const live = connection === "live";
-  const empty = loaded && !proofs.length && !featured;
+  const empty = loaded && !needsAuth && !proofs.length && !featured;
+
+  const authHint = useMemo(
+    () =>
+      needsAuth ? (
+        <div className="rounded-2xl border border-dashed border-accent/40 bg-white px-4 py-6 text-center">
+          <p className="text-[14px] font-medium text-foreground">Admin token required for live receipts</p>
+          <p className="mt-1 text-[13px] text-[var(--dim)]">
+            {hasAdminToken()
+              ? "Token was rejected — re-authorize on Connect."
+              : "Paste LOOP_ADMIN_TOKEN on Connect to load proof and live-work cards."}
+          </p>
+          <Link
+            href="/connect"
+            className="mt-3 inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline"
+          >
+            Authorize on Connect
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
+      ) : null,
+    [needsAuth]
+  );
 
   return (
     <section className={cn("flex flex-col gap-4", className)} id="glass-box">
@@ -109,6 +140,8 @@ export function HomeGlassBox({ className }: { className?: string }) {
           {live ? "Live" : connection === "connecting" ? "Connecting" : "Offline"}
         </span>
       </div>
+
+      {authHint}
 
       {featured ? <FeaturedCard card={featured} /> : null}
 

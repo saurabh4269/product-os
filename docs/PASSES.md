@@ -132,6 +132,28 @@ Home stacked CityMap + ops dashboard (collapsed pipeline, activity log, demo str
 
 ---
 
+## Pass 4 — production live path (this PR)
+
+**Branch:** `cursor/pass4-production-gaps-53bd`  
+**Goal:** Close remaining DESIGN_INTENT gaps on the live investigation path (`LOOP_EVAL=0`).
+
+### Changes
+
+1. **Customer Voice** — `customer_voice_live.maybe_emit_live_customer_voice` posts diagnostic chat turns + `call_evidence` structured JSON during `run_investigation`; tenant ingest sets `needs_call` + investigator arms (payment surface for checkout metrics).
+2. **Four memories** — `_plant_production_memory` on production bootstrap; Firestore `warm_client()` + `LOOP_FIRESTORE_DATABASE` on startup (no silent 404 skip when API is live).
+3. **Gateway deny** — `_gateway_invoke` posts `risk_decision` DENY to room on identity block.
+4. **Learning outcomes** — `_post_verify_outcome` posts honest before/after or inconclusive `outcome` artifact to room chat.
+5. **Glass box auth** — `/api/proof` + `/api/live-work` gated `AdminUnlessEval`; console shows Connect prompt on 401.
+6. **Auto-investigate** — unified `run_investigation` path for worker/signal-watch; `finish_stalled_investigations` completes async ingest; `auto_investigated` counts stalled + applied in status.
+7. **Tests** — `tests/test_pass4_production.py` (12 tests): checkout hang HIGH gate, async stall recovery, live pipeline e2e.
+
+### Verified locally
+
+- `python3 -m pytest -q` — 295 passed
+- `apps/console` `tsc --noEmit` + `npm run build` green
+
+---
+
 ## Pass 1 — stub
 
 **Goal:** _(superseded by section above)_

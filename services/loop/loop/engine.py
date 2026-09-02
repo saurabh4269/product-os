@@ -771,6 +771,82 @@ class LoopEngine:
         self.timeline(inv.id, approver, "approval", f"Action {approval.decision}", rationale)
         return approval
 
+    def _gateway_invoke(
+        self,
+        inv: Investigation,
+        agent_id: str,
+        tool: str,
+        fn: Any,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Invoke through gateway; post identity DENY to the room when blocked."""
+        from .gateway import invoke
+        from .world import post
+
+        try:
+            return invoke(agent_id, tool, fn, *args, **kwargs)
+        except PermissionError as exc:
+            log_verdict(
+                self.store,
+                agent=agent_id,
+                tool=tool,
+                args=str(args)[:240],
+                verdict="DENY",
+                rationale=str(exc),
+                finding="gateway_identity",
+            )
+            if inv.room_id:
+                post(
+                    self,
+                    inv.room_id,
+                    author="security_policy_agent",
+                    author_kind="agent",
+                    kind="artifact",
+                    text=f"DENY · gateway identity. {agent_id} cannot {tool}.",
+                    artifact_type="risk_decision",
+                    artifact={
+                        "verdict": "DENY",
+                        "agent": agent_id,
+                        "tool": tool,
+                        "reason": str(exc),
+                        "finding": "gateway_identity",
+                    },
+                )
+            raise
+
+    def _post_verify_outcome(self, inv: Investigation, outcome: Outcome) -> None:
+        """Surface before/after or honest inconclusive in the room thread."""
+        if not inv.room_id:
+            return
+        from .world import post
+
+        verdict = outcome.verdict.value
+        inconclusive = verdict == OutcomeVerdict.INCONCLUSIVE.value
+        text = (
+            f"Learning · inconclusive — no live re-read for {outcome.metric}."
+            if inconclusive
+            else f"Learning · {verdict}: {outcome.metric} {outcome.pre_value:.4g} → {outcome.post_value:.4g}"
+        )
+        post(
+            self,
+            inv.room_id,
+            author="learning_agent",
+            author_kind="agent",
+            kind="artifact",
+            text=text,
+            artifact_type="outcome",
+            artifact={
+                "metric": outcome.metric,
+                "pre_value": outcome.pre_value,
+                "post_value": outcome.post_value,
+                "delta": outcome.delta,
+                "verdict": verdict,
+                "inconclusive": inconclusive,
+                "control_comparison": outcome.control_comparison,
+            },
+        )
+
     def execute_approved(self, action_id: str) -> dict:
         action = self.store.get_action(action_id)
         if not action:
@@ -786,7 +862,6 @@ class LoopEngine:
         self.store.put_investigation(inv)
 
         from .connectors import calendar_hold, create_issue, mail_draft, open_pr
-        from .gateway import invoke
         from .tenant import flag_key, is_tenant_scenario, resolve_tenant
         from .tenant_context import flag_file_for
 
@@ -849,7 +924,8 @@ class LoopEngine:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.pr",
-                    lambda: invoke(
+                    lambda: self._gateway_invoke(
+                        inv,
                         "code_agent",
                         "github.write",
                         open_pr,
@@ -881,7 +957,8 @@ class LoopEngine:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.issue",
-                    lambda: invoke(
+                    lambda: self._gateway_invoke(
+                        inv,
                         "code_agent",
                         "github.write",
                         create_issue,
@@ -896,7 +973,8 @@ class LoopEngine:
                     result["github_issue_url"] = gh["url"]
             if action.artifacts.get("gmail"):
                 reports.append(
-                    invoke(
+                    self._gateway_invoke(
+                        inv,
                         "coordination_agent",
                         "gmail.draft",
                         mail_draft,
@@ -907,7 +985,8 @@ class LoopEngine:
                 )
             if action.artifacts.get("calendar"):
                 reports.append(
-                    invoke(
+                    self._gateway_invoke(
+                        inv,
                         "coordination_agent",
                         "calendar.read",
                         calendar_hold,
@@ -1139,6 +1218,7 @@ class LoopEngine:
                 proof=memory_proof(statement=lesson.statement, lesson_id=lesson.id),
                 extra={"lesson": lesson.model_dump(mode="json")},
             )
+            self._post_verify_outcome(inv, outcome)
         return outcome
 
     def _verify_generic(self, inv: Investigation) -> Outcome:
@@ -1239,6 +1319,7 @@ class LoopEngine:
                 proof=memory_proof(statement=lesson.statement, lesson_id=lesson.id),
                 extra={"lesson": lesson.model_dump(mode="json")},
             )
+            self._post_verify_outcome(inv, outcome)
         return outcome
 
     def run_until_approval(self, as_of: date | None = None) -> Investigation:

@@ -864,6 +864,12 @@ def _finish_investigation_after_open(
                 delay=True,
             )
 
+    from loop.customer_voice_live import maybe_emit_live_customer_voice
+
+    maybe_emit_live_customer_voice(
+        engine, room=room, inv=inv, event=event, claims=claims, pack=pack
+    )
+
     facts = [
         {
             "source_type": c.source_type,
@@ -1136,6 +1142,7 @@ def run_investigation(
     extra_artifacts: dict[str, Any] | None = None,
     live_progress: bool = False,
     async_finish: bool = False,
+    existing_signal: Signal | None = None,
 ) -> dict[str, Any]:
     """Detect → fan-out → evidence → hypothesis → voice/code briefs → risk → propose.
 
@@ -1215,30 +1222,43 @@ def run_investigation(
                 "pipeline": catalog()["pipeline"],
             }
 
-    sig = Signal(
-        id=_id("sig"),
-        family=_family(event.family),
-        direction=direction,
-        funnel_position=event.funnel_position,
-        metric=event.metric,
-        magnitude=event.magnitude,
-        baseline=event.baseline,
-        affected_segments=[
-            Segment(
-                browser=str((event.dimensions.get("segments") or {}).get("browser") or ""),
-                os=str((event.dimensions.get("segments") or {}).get("os") or ""),
-                platform=str((event.dimensions.get("segments") or {}).get("platform") or "web"),
-                geo=str((event.dimensions.get("segments") or {}).get("geo") or ""),
-            )
-        ],
-        detection_window=event.dimensions.get("detection_window")
-        or {"start": "2026-08-26", "end": "2026-08-28", "baseline_start": "2026-08-06", "baseline_end": "2026-08-19"},
-        confidence=event.confidence,
-        source=event.source,
-        status=SignalStatus.OPEN,
-        detected_at=_now(),
-    )
-    engine.store.put_signal(sig)
+    sig = existing_signal
+    if sig is None:
+        sig = Signal(
+            id=_id("sig"),
+            family=_family(event.family),
+            direction=direction,
+            funnel_position=event.funnel_position,
+            metric=event.metric,
+            magnitude=event.magnitude,
+            baseline=event.baseline,
+            affected_segments=[
+                Segment(
+                    browser=str((event.dimensions.get("segments") or {}).get("browser") or ""),
+                    os=str((event.dimensions.get("segments") or {}).get("os") or ""),
+                    platform=str((event.dimensions.get("segments") or {}).get("platform") or "web"),
+                    geo=str((event.dimensions.get("segments") or {}).get("geo") or ""),
+                )
+            ],
+            detection_window=event.dimensions.get("detection_window")
+            or {
+                "start": "2026-08-26",
+                "end": "2026-08-28",
+                "baseline_start": "2026-08-06",
+                "baseline_end": "2026-08-19",
+            },
+            confidence=event.confidence,
+            source=event.source,
+            status=SignalStatus.OPEN,
+            detected_at=_now(),
+        )
+        engine.store.put_signal(sig)
+    elif sig.status == SignalStatus.OPEN:
+        sig.status = SignalStatus.INVESTIGATING
+        engine.store.put_signal(sig)
+    if existing_signal is not None and not sig.affected_segments and bound_tenant:
+        sig.affected_segments = [Segment(channel=f"tenant.{bound_tenant}")]
+        engine.store.put_signal(sig)
     inv = engine.open_investigation(sig, tenant_id=bound_tenant)
     assert inv
     inv.scenario_id = scenario

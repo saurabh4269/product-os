@@ -30,6 +30,15 @@ export function hasAdminToken(): boolean {
   return Boolean(adminToken());
 }
 
+export class ApiAuthError extends Error {
+  status: number;
+  constructor(path: string, status: number) {
+    super(`${path} ${status}`);
+    this.name = "ApiAuthError";
+    this.status = status;
+  }
+}
+
 export function setAdminToken(token: string, remember = false) {
   if (typeof window === "undefined") return;
   const trimmed = token.trim();
@@ -76,7 +85,7 @@ async function get<T>(path: string, _opts?: { admin?: boolean }): Promise<T> {
     credentials: "same-origin",
     headers: requestHeaders("GET"),
   });
-  if (!res.ok) throw new Error(`${path} ${res.status}`);
+  if (!res.ok) throw new ApiAuthError(path, res.status);
   return res.json();
 }
 
