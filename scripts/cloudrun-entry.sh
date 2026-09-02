@@ -17,7 +17,7 @@ fi
 export PYTHONPATH="${APP}/vendor:${APP}/services/loop:${PYTHONPATH:-}"
 export LOOP_STATIC_DIR="${APP}/static"
 export LOOP_DATA_DIR="${APP}/var"
-export LOOP_CONSOLE_ORIGIN="*"
+export LOOP_CONSOLE_ORIGIN="${LOOP_CONSOLE_ORIGIN:-https://productos.heisenbug.in}"
 export PYTHONUNBUFFERED=1
 mkdir -p "$LOOP_DATA_DIR"
 exec python -m uvicorn loop.api:app --host 0.0.0.0 --port "$PORT"

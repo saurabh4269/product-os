@@ -30,13 +30,6 @@ export function hasAdminToken(): boolean {
   return Boolean(adminToken());
 }
 
-function adminHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = adminToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  return headers;
-}
-
 export function setAdminToken(token: string, remember = false) {
   if (typeof window === "undefined") return;
   const trimmed = token.trim();
@@ -68,11 +61,20 @@ export async function verifyAdminToken(token: string, remember = false): Promise
   return true;
 }
 
-async function get<T>(path: string, opts?: { admin?: boolean }): Promise<T> {
+function requestHeaders(method: "GET" | "POST"): Record<string, string> | undefined {
+  const token = adminToken();
+  if (!token && method === "GET") return undefined;
+  const headers: Record<string, string> = {};
+  if (method === "POST") headers["Content-Type"] = "application/json";
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return Object.keys(headers).length ? headers : undefined;
+}
+
+async function get<T>(path: string, _opts?: { admin?: boolean }): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     cache: "no-store",
     credentials: "same-origin",
-    headers: opts?.admin ? adminHeaders() : undefined,
+    headers: requestHeaders("GET"),
   });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
   return res.json();
@@ -105,10 +107,10 @@ async function recoverApproval(path: string): Promise<Record<string, unknown> | 
   return null;
 }
 
-async function post<T>(path: string, body?: unknown, opts?: { admin?: boolean }): Promise<T> {
+async function post<T>(path: string, body?: unknown, _opts?: { admin?: boolean }): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: opts?.admin ? adminHeaders() : { "Content-Type": "application/json" },
+    headers: requestHeaders("POST"),
     body: body ? JSON.stringify(body) : "{}",
     credentials: "same-origin",
   });

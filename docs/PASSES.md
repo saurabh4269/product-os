@@ -72,9 +72,46 @@ Each pass is a focused PR against `main`. Only record what was verified in code 
 
 ---
 
+## Pass 1 — production-grade control plane auth (this PR)
+
+**Branch:** `cursor/pass1-control-plane-auth-7ec2`  
+**Goal:** Close hosted auth holes verified before #9 deploy; keep tenant `/api/t/*` on tenant bearer.
+
+### Verified (still true on `main` after #9)
+
+| # | Issue |
+|---|---|
+| 1 | Unauthenticated GET of rooms, approvals, pipeline, traces, registry, office, signals, memory, oauth status leaked control-plane data |
+| 2 | Mutations (tenants, memory, agent_callback, investigate, improve, research, coordinate, room messages) accepted unauth bodies |
+| 3 | CORS `Access-Control-Allow-Origin: *` with `Authorization` on Cloud Run |
+| 4 | Duplicate tenants `acme` + `cove` (same `saurabh4269/cove` repo) confused Connect |
+
+### Changes
+
+1. **`AdminUnlessEval` dependency** — `require_admin_unless_eval()` on all listed GET routes and mutation routes; runs before body validation via FastAPI `Depends`.
+2. **Protected reads** — `GET /api/rooms`, `/api/rooms/:id`, `/api/approvals`, `/api/pipeline`, `/api/traces`, `/api/registry`, `/api/office`, `/api/signals`, `/api/memory`, `/api/oauth/google` return **401** when `LOOP_EVAL=0` without admin bearer.
+3. **Protected writes** — `POST /api/tenants`, `/api/memory`, `/api/agent_callback`, `/api/investigate`, `/api/improve`, `/api/research`, `/api/coordinate`, `/api/rooms/:id/messages` return **401** before creating data.
+4. **CORS allowlist** — `cors_allowlist()` never emits `*` on Cloud Run; uses `LOOP_PUBLIC_URL` / `LOOP_CONSOLE_ORIGIN` (`https://productos.heisenbug.in`) with `allow_credentials=True`. Deploy scripts updated (`deploy-gcp.sh`, `cloudrun-entry.sh`).
+5. **Console** — `lib/api.ts` sends stored admin bearer on all fetches when present (sessionStorage/localStorage).
+6. **Duplicate tenants** — `GET /api/tenants` hides non-canonical rows that share the same repo (keeps `LOOP_TENANT_ID` / `acme`); data not deleted.
+7. **WebSocket** — Pass 0 already owns `/ws` HTTP probes (405); no change needed.
+
+### Still open
+
+- Deploy this PR to hosted before re-walking Cove checkout hang.
+- OAuth `/start` and `/callback` stay browser redirects (Google); status endpoint is admin-gated.
+- Full duplicate-tenant consolidation (merge SQLite rows) is out of scope — execution already prefers bound `inv.tenant_id`.
+
+### Tests run locally
+
+- `python -m pytest -q` — 256 passed
+- `apps/console` `tsc --noEmit` + `verify-deploy.sh` green
+
+---
+
 ## Pass 1 — stub
 
-**Goal:** _(fill on next walk)_
+**Goal:** _(superseded by section above)_
 
 ### Verified
 

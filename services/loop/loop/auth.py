@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import HTTPException
+from fastapi import Depends, Header, HTTPException
 
 
 def admin_token() -> str:
@@ -57,6 +57,47 @@ def require_admin(authorization: str | None, *, actor: str = "admin") -> str:
             "admin bearer token required — set LOOP_ADMIN_TOKEN on the service and authorize in Connect",
         )
     return actor or "admin"
+
+
+def require_admin_unless_eval(authorization: str | None, *, actor: str = "admin") -> str:
+    """Hosted production reads — open in eval/demo; admin bearer when eval off."""
+    from .runtime_mode import is_eval_mode
+
+    if is_eval_mode():
+        return actor or "eval"
+    return require_admin(authorization, actor=actor)
+
+
+def admin_unless_eval_dep(
+    authorization: str | None = Header(default=None),
+) -> str:
+    """FastAPI dependency — runs before request body validation."""
+    return require_admin_unless_eval(authorization)
+
+
+AdminUnlessEval = Annotated[str, Depends(admin_unless_eval_dep)]
+
+
+def cors_allowlist() -> tuple[list[str], bool]:
+    """Return (origins, allow_credentials). Never wildcard on Cloud Run."""
+    from .config import settings
+
+    origin = (settings().console_origin or "").strip()
+    public = (os.environ.get("LOOP_PUBLIC_URL") or "").strip().rstrip("/")
+    local = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3010", "http://127.0.0.1:3010"]
+    if origin == "*":
+        if is_hosted():
+            hosted = public or "https://productos.heisenbug.in"
+            return [hosted, *local], True
+        return ["*"], False
+    origins = [origin, *local]
+    if public and public not in origins:
+        origins.append(public)
+    # Legacy run.app URL for smoke tests during domain cutover
+    run_app = (os.environ.get("LOOP_RUN_APP_URL") or "").strip().rstrip("/")
+    if run_app and run_app not in origins:
+        origins.append(run_app)
+    return list(dict.fromkeys(o for o in origins if o)), True
 
 
 def require_admin_or_tenant(

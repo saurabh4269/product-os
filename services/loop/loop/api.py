@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 
+from .auth import AdminUnlessEval, cors_allowlist
 from .config import REPO_ROOT, settings
 from .engine import LoopEngine, default_engine, log_verdict
 from .live import HUB, funnel_for
@@ -140,19 +141,12 @@ async def lifespan(_app: FastAPI):
             await tick_task
 
 
-_origin = settings().console_origin
-_wildcard = _origin == "*" or bool(os.environ.get("K_SERVICE"))
+_cors_origins, _cors_credentials = cors_allowlist()
 app = FastAPI(title="LOOP", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"]
-    if _wildcard
-    else [
-        _origin,
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
-    allow_credentials=not _wildcard,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -491,6 +485,26 @@ def _public_tenant(t) -> dict:
     return d
 
 
+def _connect_tenants(store) -> list:
+    """Hide duplicate tenant rows that share the same product repo (e.g. acme vs cove)."""
+    rows = store.list_tenants()
+    canonical = (os.environ.get("LOOP_TENANT_ID") or "acme").strip() or "acme"
+    by_repo: dict[str, list] = {}
+    for t in rows:
+        repo = (t.repo or "").strip()
+        if repo:
+            by_repo.setdefault(repo, []).append(t)
+    hidden: set[str] = set()
+    for group in by_repo.values():
+        if len(group) < 2:
+            continue
+        keep = next((t for t in group if t.id == canonical), group[0])
+        for t in group:
+            if t.id != keep.id:
+                hidden.add(t.id)
+    return [t for t in rows if t.id not in hidden]
+
+
 def _bearer(authorization: str | None) -> str | None:
     if not authorization:
         return None
@@ -580,15 +594,14 @@ def tenants(authorization: str | None = Header(default=None)):
     require_admin(authorization, actor="tenant.list")
     eng = get_engine()
     seed_placeholder(eng.store)
-    return {"tenants": [_public_tenant(t) for t in eng.store.list_tenants()], "gate": _gate(eng)}
+    return {"tenants": [_public_tenant(t) for t in _connect_tenants(eng.store)], "gate": _gate(eng)}
 
 
 @app.post("/api/tenants")
-def upsert_tenant(body: TenantBody, authorization: str | None = Header(default=None)):
+def upsert_tenant(_actor: AdminUnlessEval, body: TenantBody):
     from .audit import record
-    from .auth import require_admin
 
-    actor = require_admin(authorization, actor=f"tenant:{body.id}")
+    actor = f"tenant:{body.id}"
     from .tenant import Tenant, hash_token
 
     eng = get_engine()
@@ -823,7 +836,7 @@ def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | N
 
 
 @app.get("/api/oauth/google")
-def google_oauth_status(request: Request):
+def google_oauth_status(request: Request, _actor: AdminUnlessEval):
     from .connectors import google_oauth
 
     return google_oauth.status(_request_base(request))
@@ -999,7 +1012,7 @@ def adk_status():
 
 
 @app.post("/api/research")
-def research_event(body: ResearchEventBody):
+def research_event(body: ResearchEventBody, _actor: AdminUnlessEval):
     """Generic event → probes → brief → call → structured evidence (recipe-agnostic)."""
     from .adk_runtime import adk_inline_enabled, run_adk_research
     from .customer_research import ResearchEvent, run_customer_research
@@ -1048,7 +1061,7 @@ def research_event(body: ResearchEventBody):
 
 
 @app.post("/api/improve")
-def improve_event(body: ImproveEventBody):
+def improve_event(body: ImproveEventBody, _actor: AdminUnlessEval):
     """Type A/B product loop — detect → hypothesize → fix|experiment → measure → learn."""
     from .models import LoopType, PathKind, RoomKind
     from .product_improvement import ProductSignalEvent, run_product_loop
@@ -1123,7 +1136,7 @@ def calendar_suggest(body: CalendarSuggestBody):
 
 
 @app.post("/api/coordinate")
-def coordinate(body: CoordinateBody):
+def coordinate(body: CoordinateBody, _actor: AdminUnlessEval):
     """HITL in company workflow: resolve owners → calendar → schedule → notify. Never merges."""
     from .coordination import CoordinationRequest, coordinate_for_action, run_coordination
 
@@ -1192,7 +1205,7 @@ def signals_catalog():
 
 
 @app.post("/api/investigate")
-def investigate(body: InvestigateBody):
+def investigate(body: InvestigateBody, _actor: AdminUnlessEval):
     """Parallel investigation workflow — not 'conversion dropped' alone."""
     from .investigation import AnomalyEvent, run_investigation
 
@@ -1563,7 +1576,7 @@ def world_seed():
 
 
 @app.get("/api/rooms")
-def rooms(tenant_id: str | None = Query(default=None)):
+def rooms(_actor: AdminUnlessEval, tenant_id: str | None = Query(default=None)):
     eng = get_engine()
     items = []
     for room in eng.store.list_rooms():
@@ -1581,7 +1594,7 @@ def rooms(tenant_id: str | None = Query(default=None)):
 
 
 @app.get("/api/rooms/by-scenario/{slug}")
-def room_by_scenario(slug: str):
+def room_by_scenario(slug: str, _actor: AdminUnlessEval):
     eng = get_engine()
     room = next((r for r in eng.store.list_rooms() if r.scenario_id == slug), None)
     if not room:
@@ -1758,7 +1771,7 @@ def _pipeline_cards(eng, tenant_id: str | None = None) -> list[dict]:
 
 
 @app.get("/api/pipeline")
-def pipeline_board(tenant_id: str | None = Query(default=None)):
+def pipeline_board(_actor: AdminUnlessEval, tenant_id: str | None = Query(default=None)):
     """Kanban-style cards for open investigations — columns from active workflows."""
     from .workflow import NODE_LABEL, focus_steps, union_columns
 
@@ -1988,7 +2001,7 @@ def public_config():
 
 
 @app.get("/api/rooms/{room_id}")
-def room_detail(room_id: str):
+def room_detail(room_id: str, _actor: AdminUnlessEval):
     from .tenant import resolve_tenant
 
     eng = get_engine()
@@ -2016,7 +2029,7 @@ def room_detail(room_id: str):
 
 
 @app.post("/api/rooms/{room_id}/messages")
-def room_post(room_id: str, body: RoomPostBody):
+def room_post(room_id: str, body: RoomPostBody, _actor: AdminUnlessEval):
     eng = get_engine()
     room = eng.store.get_room(room_id)
     if not room:
@@ -2048,12 +2061,12 @@ def room_post(room_id: str, body: RoomPostBody):
 
 
 @app.get("/api/registry")
-def registry():
+def registry(_actor: AdminUnlessEval):
     return {"agents": [e.model_dump(mode="json") for e in ENTRIES]}
 
 
 @app.get("/api/memory")
-def memory(q: str = "", type: str | None = None, tenant_id: str | None = None):
+def memory(_actor: AdminUnlessEval, q: str = "", type: str | None = None, tenant_id: str | None = None):
     from loop import firestore_memory
 
     eng = get_engine()
@@ -2082,7 +2095,7 @@ def memory(q: str = "", type: str | None = None, tenant_id: str | None = None):
 
 
 @app.post("/api/memory")
-def memory_remember(body: MemoryInBody):
+def memory_remember(body: MemoryInBody, _actor: AdminUnlessEval):
     valid = {"customer", "product", "engineering", "organizational"}
     if body.type not in valid:
         raise HTTPException(400, f"type must be one of {sorted(valid)}")
@@ -2124,7 +2137,7 @@ def scenarios():
 
 
 @app.get("/api/traces")
-def traces():
+def traces(_actor: AdminUnlessEval):
     """Workflow group chats — natural language end-to-end, not handoff pairs."""
     from .narrate import build_workflow_chat, humanize_handoff
 
@@ -2179,7 +2192,7 @@ def traces():
 
 
 @app.get("/api/traces/{trace_id}")
-def trace_detail(trace_id: str):
+def trace_detail(trace_id: str, _actor: AdminUnlessEval):
     eng = get_engine()
     inv = eng.store.get_investigation(trace_id)
     if inv:
@@ -2201,7 +2214,7 @@ def trace_detail(trace_id: str):
 
 
 @app.get("/api/signals")
-def signals():
+def signals(_actor: AdminUnlessEval):
     from .engine import dedupe_signals
 
     raw = get_engine().store.list_signals()
@@ -2209,14 +2222,10 @@ def signals():
 
 
 @app.post("/api/signals")
-def post_signal(body: SignalInBody, authorization: str | None = Header(default=None)):
+def post_signal(_actor: AdminUnlessEval, body: SignalInBody):
     """Ingest a signal → investigation pipeline with live WS events (eval/admin only when hosted)."""
-    from .auth import require_admin
-    from .runtime_mode import is_eval_mode
     from .unified_runner import run_signal_pipeline
 
-    if not is_eval_mode():
-        require_admin(authorization, actor="signals")
     eng = get_engine()
     from loop.world import ensure_api_ready
 
@@ -2326,7 +2335,7 @@ def _publish_human_input_after_approve(eng, action, rid: str | None) -> None:
 
 
 @app.get("/api/approvals")
-def approvals():
+def approvals(_actor: AdminUnlessEval):
     eng = get_engine()
     gate = _gate(eng)
     pending = [_action_row(eng, a) for a in eng.store.pending_approvals()]
@@ -2732,7 +2741,7 @@ class AgentCallbackBody(BaseModel):
 
 
 @app.post("/api/agent_callback")
-def agent_callback(body: AgentCallbackBody):
+def agent_callback(body: AgentCallbackBody, _actor: AdminUnlessEval):
     """Live push: agents POST updates → WebSocket fans out."""
     from .activity import emit_activity
 
@@ -2906,7 +2915,7 @@ def metrics():
 
 
 @app.get("/api/office")
-def office():
+def office(_actor: AdminUnlessEval):
     return office_snapshot(get_engine())
 
 
