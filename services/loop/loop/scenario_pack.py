@@ -8,7 +8,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 
-from loop.investigation import AnomalyEvent, FeatureMention, run_investigation, run_product_intelligence
+from loop.investigation import (
+    AnomalyEvent,
+    FeatureMention,
+    run_investigation,
+    run_product_intelligence,
+)
 from loop.models import Classification, LoopType, PathKind, RiskTier, RoomKind
 from loop.product_improvement import ProductSignalEvent, run_product_loop
 from loop.registry import gateway_allows
@@ -476,7 +481,7 @@ def run_recipe(engine: Any, recipe: ScenarioRecipe) -> dict[str, Any]:
 
 def assert_recipe_outcome(engine: Any, recipe: ScenarioRecipe, result: dict[str, Any]) -> None:
     """Shared assertions for the pytest pack."""
-    from loop.models import InvestigationState, TrustLevel
+    from loop.models import TrustLevel
 
     if recipe.expect_gateway_deny:
         assert result.get("gateway_deny") is True, f"{recipe.id}: gateway must deny exfil"

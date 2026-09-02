@@ -96,7 +96,10 @@ async def lifespan(_app: FastAPI):
                     detected = eng.detect_all_signals()
                     investigated: list[dict] = []
                     if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
-                        from .auto_investigate import auto_investigate_new_signals, open_signal_ids_for_auto_investigate
+                        from .auto_investigate import (
+                            auto_investigate_new_signals,
+                            open_signal_ids_for_auto_investigate,
+                        )
 
                         open_ids = open_signal_ids_for_auto_investigate(eng, detected)
                         if open_ids:
