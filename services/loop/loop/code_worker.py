@@ -65,9 +65,6 @@ def detect_test_command(repo: Path, *, override: str | None = None) -> list[str]
     if (repo / "vitest.config.ts").is_file() or (repo / "vitest.config.mjs").is_file():
         if npx:
             return [npx, "vitest", "run"]
-    lint_script = str(scripts.get("lint") or "").strip()
-    if lint_script and npm:
-        return [npm, "run", "lint"]
     return None
 
 

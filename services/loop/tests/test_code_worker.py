@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 import stat
 
-import pytest
-
 from loop.code_worker import (
     NON_RETRYABLE_TEST_ERRORS,
     detect_test_command,
@@ -39,7 +37,7 @@ def test_find_executable_common_system_dir(tmp_path, monkeypatch):
     assert find_executable("node") == str(fake_node)
 
 
-def test_detect_test_command_prefers_lint_when_no_test_script(tmp_path, monkeypatch):
+def test_detect_test_command_returns_none_without_test_script(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / "package.json").write_text(
@@ -51,8 +49,7 @@ def test_detect_test_command_prefers_lint_when_no_test_script(tmp_path, monkeypa
     fake_npm.write_text("#!/bin/sh\necho npm\n")
     fake_npm.chmod(fake_npm.stat().st_mode | stat.S_IXUSR)
     monkeypatch.setenv("PATH", str(bindir))
-    cmd = detect_test_command(repo)
-    assert cmd == [str(fake_npm), "run", "lint"]
+    assert detect_test_command(repo) is None
 
 
 def test_run_tests_hosted_skips_when_node_present_but_no_script(tmp_path, monkeypatch):
