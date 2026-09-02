@@ -129,7 +129,7 @@ Each pass is a focused PR against `main`. Only record what was verified in code 
 
 ## Pass 2 — stub
 
-**Goal:** _(fill on next walk)_
+**Goal:** _(superseded by section below)_
 
 ### Verified
 
@@ -142,3 +142,63 @@ Each pass is a focused PR against `main`. Only record what was verified in code 
 ### Still open
 
 - 
+
+---
+
+## Pass 2 — real-world case simulation + de-brittle the loop (this PR)
+
+**Branch:** `cursor/pass2-scenario-pack-9fa9`  
+**Goal:** Run many realistic Type A/B/security recipes through one generic pipeline; fix brittleness found by pytest (not demo scripts).
+
+### Cases exercised (20 recipes, one runner)
+
+| ID | Loop | Notes |
+|---|---|---|
+| `checkout_sdk_deploy` | A | Checkout conversion drop after pay-sdk deploy |
+| `crash_spike_ios` | A | OS-specific crash spike after mobile release |
+| `p95_latency_release` | A | p95 latency after API release |
+| `onboarding_activation` | A | Seeded fixture — non-checkout Type A |
+| `geo_only_5xx` | A | Geo-concentrated 5xx |
+| `ads_install_anomaly` | A | Ad spend up, installs down |
+| `support_ticket_cluster` | A | Ticket cluster after flag flip |
+| `docs_typo_low` | A | LOW risk docs typo — auto-executes |
+| `safari_3ds` | A | Seeded warehouse fixture (data only) |
+| `android_sdk` | A | Seeded non-checkout fixture |
+| `apple_pay` | B | N customers → one proposal |
+| `shipping_ux` | B | Seeded funnel improvement |
+| `funnel_bounce` | B | Bounce back a funnel step |
+| `settings_workaround` | B | Settings workaround loop |
+| `security_exfil` | SECURITY | Gateway deny on `customer_records.dump` |
+
+Runner: `services/loop/loop/scenario_pack.py` + `tests/test_pass2_scenario_pack.py` (parametrized). Assertions per case: room opened, ≥3 evidence groups (or honest gate skip), Type A/B fork, risk tier (non-seeded), gateway deny on exfil, memory recall on similar SDK signal, verify job marks `inconclusive` when metric unreadable.
+
+### Verified failures before fix
+
+| Issue | Symptom | Fix |
+|---|---|---|
+| `activation` substring matched `auth` in `assign_risk_tier` | Onboarding + ads recipes got HIGH instead of MEDIUM | Word-boundary HIGH keywords in `assign_risk_tier` |
+| Type B recipes used `probes` but `evidence_from_event` ignored them | `funnel_bounce` / `settings_workaround` stalled at three-source gate | Map `dimensions.probes` → `EvidenceClaim` in `product_improvement.py` |
+| Verify job always returned `status: succeeded` | INCONCLUSIVE investigations looked “resolved” in job row | `run_verify_job` returns `status: inconclusive` when verdict is INCONCLUSIVE |
+| Worker tick only auto-investigated warehouse `detect_all_signals` | Tenant-ingested orphan signals never investigated | `open_signal_ids_for_auto_investigate()` includes `tenant.*` / `onboard.*` sources |
+| Security exfil reused seeded room without gateway assertion | Pass 2 security case passed room check only | `run_recipe` always checks gateway deny for SECURITY recipes |
+
+### Changes
+
+1. **`loop/scenario_pack.py`** — 15 new eval recipes + 5 seeded re-use cases; `run_recipe` / `assert_recipe_outcome`.
+2. **`tests/test_pass2_scenario_pack.py`** — parametrized pack (20 cases) + memory recall, verify inconclusive, worker tenant signal, LOW auto-exec, gateway deny.
+3. **`loop/engine.py`** — `assign_risk_tier` word boundaries (`activation` no longer false-positive `auth`).
+4. **`loop/product_improvement.py`** — probes → evidence for Type B loops.
+5. **`loop/jobs.py`** — verify job status reflects INCONCLUSIVE outcome.
+6. **`loop/auto_investigate.py`** + **`loop/api.py`** — worker tick picks up tenant/onboard signals.
+
+### Still open
+
+- Deploy to hosted before re-walking Cove checkout hang (Pass 0/1 carry-over).
+- ADK graph remains catalog-only on hosted (`LOOP_EVAL=0`); deterministic engine stays source of truth.
+- Full duplicate-tenant consolidation out of scope.
+
+### Tests run locally
+
+- `python -m pytest -q` — 276 passed
+- `apps/console` `tsc --noEmit` + `verify-deploy.sh` green
+

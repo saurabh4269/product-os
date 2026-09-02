@@ -1292,10 +1292,13 @@ class LoopEngine:
 
 def assign_risk_tier(surface: str, statement: str) -> RiskTier:
     """H-1/H-2: surface-based. Ambiguity escalates to HIGH. Not model confidence."""
+    import re
+
     blob = f"{surface} {statement}".lower()
     if not surface.strip():
         return RiskTier.HIGH
-    if any(k in blob for k in ("auth", "payment", "3ds", "pii", "infrastructure", "destruct")):
+    high = re.compile(r"\b(auth|payment|3ds|pii|infrastructure|destructive|destruct)\b")
+    if high.search(blob):
         return RiskTier.HIGH
     if any(k in blob for k in ("schema", "flag", "business logic", "integration", "proposal", "prd", "experiment")):
         return RiskTier.MEDIUM

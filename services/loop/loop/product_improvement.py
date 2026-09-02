@@ -154,6 +154,25 @@ def evidence_from_event(event: ProductSignalEvent) -> list[EvidenceClaim]:
                 by = str(data.get("collected_by") or "agent")
                 data["source_reference"] = f"{st}:{by}"
             out.append(EvidenceClaim.model_validate(data))
+    probes = event.dimensions.get("probes") or {}
+    if isinstance(probes, dict):
+        for agent, pdata in probes.items():
+            if not isinstance(pdata, dict) or not pdata.get("claim"):
+                continue
+            group = str(pdata.get("independence_group") or agent.replace("_agent", ""))
+            if group == "deployment":
+                group = "deploys"
+            collected = agent if str(agent).endswith("_agent") else f"{agent}_agent"
+            out.append(
+                EvidenceClaim(
+                    source_type=str(agent).replace("_agent", ""),
+                    source_reference=group,
+                    claim=str(pdata["claim"]),
+                    independence_group=group,
+                    collected_by=collected,
+                    confidence=float(pdata.get("confidence") or 0.85),
+                )
+            )
     return out
 
 
