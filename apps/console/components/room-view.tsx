@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Phone } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { api, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { queryId, segmentId } from "@/lib/route-id";
 import { cn } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
 import { AgentBadge } from "@/components/agent-badge";
 import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
+import { InvestigationLab } from "@/components/ref/investigation-lab";
 import { ThreadRoomHeader, WorkChatThread, type ChatThreadEvent } from "@/components/work-chat-thread";
 
 function useRoomId(fallback?: string) {
@@ -117,6 +118,9 @@ function Gate({
 /** Live room — messenger chat (same chrome as the old Traces view). */
 export function RoomView({ initialId }: { initialId?: string }) {
   const id = useRoomId(initialId);
+  const searchParams = useSearchParams();
+  const viewParam = searchParams?.get("view");
+  const [tab, setTab] = useState<"chat" | "lab">(viewParam === "lab" ? "lab" : "chat");
   const [data, setData] = useState<RoomDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [text, setText] = useState("");
@@ -164,6 +168,10 @@ export function RoomView({ initialId }: { initialId?: string }) {
     setToolsOpen(false);
     void load(id);
   }, [id]);
+
+  useEffect(() => {
+    if (viewParam === "lab") setTab("lab");
+  }, [viewParam]);
 
   useEffect(() => {
     if (!id) return;
@@ -369,6 +377,28 @@ export function RoomView({ initialId }: { initialId?: string }) {
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            <div className="mr-1 flex rounded-full bg-[var(--elev)] p-0.5">
+              <button
+                type="button"
+                onClick={() => setTab("chat")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
+                  tab === "chat" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]"
+                )}
+              >
+                Chat
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("lab")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
+                  tab === "lab" ? "bg-white text-foreground shadow-sm" : "text-[var(--dim)]"
+                )}
+              >
+                Transparency
+              </button>
+            </div>
             {needsApproval ? (
               <button
                 type="button"
@@ -422,35 +452,48 @@ export function RoomView({ initialId }: { initialId?: string }) {
         ) : null}
       </div>
 
-      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
-        <WorkChatThread
-          events={events}
-          variant="group"
-          empty="Nothing yet — agents will talk through this here."
+      {tab === "lab" ? (
+        <InvestigationLab
+          room={data.room}
+          messages={data.messages}
+          bundle={data.bundle}
+          pending={pending.filter((a) => ["proposed", "awaiting_approval"].includes(a.status))}
+          busy={busy}
+          onDecide={(actionId, d) => void decide(actionId, d)}
         />
-        <div ref={gateRef}>
-          {pending.map((action) => (
-            <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
-          ))}
-        </div>
-        <div ref={bottomRef} />
-      </div>
+      ) : (
+        <>
+          <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+            <WorkChatThread
+              events={events}
+              variant="group"
+              empty="Nothing yet — agents will talk through this here."
+            />
+            <div ref={gateRef}>
+              {pending.map((action) => (
+                <Gate key={action.id} action={action} busy={busy} onDecide={(d) => void decide(action.id, d)} />
+              ))}
+            </div>
+            <div ref={bottomRef} />
+          </div>
 
-      <form
-        className="shrink-0 border-t border-black/5 bg-white px-4 py-2.5 sm:px-6"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send();
-        }}
-      >
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Message"
-          disabled={busy}
-          className="max-w-3xl rounded-full bg-[#ebebed] px-3.5 py-2.5 text-[13px] text-foreground outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
-        />
-      </form>
+          <form
+            className="shrink-0 border-t border-black/5 bg-white px-4 py-2.5 sm:px-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void send();
+            }}
+          >
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Message"
+              disabled={busy}
+              className="max-w-3xl rounded-full bg-[#ebebed] px-3.5 py-2.5 text-[13px] text-foreground outline-none placeholder:text-[var(--faint)] focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
+            />
+          </form>
+        </>
+      )}
     </div>
   );
 }

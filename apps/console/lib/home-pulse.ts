@@ -64,7 +64,7 @@ export function buildHomePulse(input: PulseInput): HomePulse {
         title: "Product OS",
         body: "",
         primary: { label: "Connect Product Y", action: "connect" },
-        secondary: { label: "Explore", href: "#explore" },
+        secondary: { label: "Outcomes", href: "/outcomes" },
         steps: [
           { n: "1", label: "Watch", hint: "Signal agent polls telemetry" },
           { n: "2", label: "Work", hint: "Agents appear as the case needs them" },
@@ -130,7 +130,7 @@ export function buildHomePulse(input: PulseInput): HomePulse {
       title: quietTitle,
       body: "",
       primary: { label: wired ? "Pipeline" : "Connect", action: wired ? "pipeline" : "connect" },
-      secondary: wired ? { label: "Labs", href: "/labs" } : { label: "Connect", href: "/connect" },
+      secondary: wired ? { label: "Labs", href: "/labs" } : { label: "Settings", href: "/settings" },
     },
   };
 }

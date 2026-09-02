@@ -248,11 +248,7 @@ export function LiveWorkBoard({
           </div>
           {subtitle ? (
             <p className="mt-0.5 text-[13px] text-[var(--dim)]">{subtitle}</p>
-          ) : (
-            <p className="mt-0.5 text-[13px] text-[var(--dim)]">
-              Receipts as agents work — columns follow this case, not a fixed strip.
-            </p>
-          )}
+          ) : null}
         </div>
         {loaded && cards.length > 0 ? (
           <p className="text-[12px] text-[var(--faint)]">{stats.total ?? cards.length} receipts</p>
@@ -286,9 +282,6 @@ export function LiveWorkBoard({
       {loaded && cards.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-[#eef2ee]/60 px-5 py-10 text-center">
           <p className="text-[15px] font-medium text-foreground">No live receipts yet</p>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-[var(--dim)]">
-            Run checkout on Product Y or send feedback. Cards appear here as signals, warehouse reads, PRs, and mail land.
-          </p>
         </div>
       ) : null}
 

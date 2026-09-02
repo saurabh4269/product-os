@@ -8,6 +8,7 @@ import { canonicalAgentId, shortName } from "@/lib/names";
 import { queryId, segmentId } from "@/lib/route-id";
 import { ErrorState, Loading } from "@/components/ui";
 import { AgentBadge } from "@/components/agent-badge";
+import { AgentIdentityPanel } from "@/components/agent-trust-glyph";
 import { WorkChatThread, type ChatThreadEvent } from "@/components/work-chat-thread";
 import { ProofGrid, type ProofPayload } from "@/components/proof-embed";
 
@@ -74,8 +75,8 @@ export function AgentView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[var(--bg)]">
-      <div className="border-b border-border bg-white px-5 pb-4 pt-6 sm:px-8 lg:px-12 lg:pt-8">
-        <div className="flex items-start gap-4">
+      <div className="border-b border-surface-subtle bg-white px-5 pb-4 pt-6 sm:px-8 lg:px-12 lg:pt-8">
+        <div className="mx-auto flex max-w-container-max items-start gap-4">
           <AgentBadge
             name={data.agent.id}
             status={
@@ -89,11 +90,11 @@ export function AgentView() {
             variant="face"
           />
           <div className="min-w-0">
-            <Link href="/registry" className="text-[13px] text-[var(--faint)] hover:text-foreground">
+            <Link href="/registry" className="text-body-sm text-text-secondary hover:text-primary">
               ← Agents
             </Link>
-            <h1 className="mt-2 text-[26px] font-semibold tracking-tight">{data.agent.display_name}</h1>
-            <p className="mt-1 max-w-xl text-[14px] text-[var(--dim)]">{data.agent.role}</p>
+            <h1 className="mt-2 text-display-lg tracking-tight text-text-primary">{data.agent.display_name}</h1>
+            <p className="mt-1 max-w-xl text-body-md text-text-secondary">{data.agent.role}</p>
             {desk ? (
               <p className="mt-3 text-[14px] text-foreground">
                 {desk.status === "idle" ? "Idle" : desk.doing}
@@ -161,18 +162,16 @@ export function AgentView() {
             ) : null}
           </div>
 
-          <aside className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--faint)]">
-              Live sources
-            </p>
-            <p className="mt-1 text-[13px] text-[var(--dim)]">
-              What this agent reads — same connectors, live when datasets exist.
-            </p>
+          <aside className="min-w-0 space-y-6">
+            <AgentIdentityPanel agent={data.agent} />
+            <div>
+              <p className="text-label-caps uppercase text-text-secondary">Live sources</p>
             {resources.length ? (
               <ProofGrid cards={resources} className="mt-4 sm:grid-cols-1 xl:grid-cols-1" compact />
             ) : (
               <p className="mt-4 text-[13px] text-[var(--faint)]">No connector cards for this agent yet.</p>
             )}
+            </div>
           </aside>
         </div>
       </div>

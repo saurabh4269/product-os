@@ -116,7 +116,7 @@ export function WorkflowLinksPanel({ compact, className }: { compact?: boolean; 
             </a>
           );
         })}
-        <Link href="/connect" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] text-[var(--dim)] hover:text-foreground">
+        <Link href="/settings" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] text-[var(--dim)] hover:text-foreground">
           Connect
         </Link>
       </div>

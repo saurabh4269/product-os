@@ -8,8 +8,7 @@ import { cn } from "@/lib/utils";
 
 function actionHref(action: PulseAction) {
   if (action === "pipeline" || action === "approvals") return "#pipeline-board";
-  if (action === "explore") return "#explore";
-  if (action === "connect") return "/connect";
+  if (action === "connect") return "/settings";
   return "#work";
 }
 
@@ -51,16 +50,10 @@ export function HomeCommandBar({
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {evalMode ? <DemoRunner variant="bar" /> : null}
           <Link
-            href="#team"
+            href="#work"
             className="rounded-full px-3 py-1.5 text-[12px] font-medium text-[var(--dim)] transition hover:bg-[var(--elev)] hover:text-foreground"
           >
-            Team ↓
-          </Link>
-          <Link
-            href="#pipeline-board"
-            className="rounded-full px-3 py-1.5 text-[12px] font-medium text-[var(--dim)] transition hover:bg-[var(--elev)] hover:text-foreground"
-          >
-            Pipeline ↓
+            Work ↓
           </Link>
         </div>
       </div>

@@ -73,9 +73,8 @@ export function ScenarioChips() {
           </div>
         </div>
       ) : null}
-    <div className="mt-6">
-      <p className="text-[12px] text-[var(--faint)]">Eval fixtures</p>
-      <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mt-0">
+      <div className="flex flex-wrap gap-2">
         {items.map((s) => (
           <button
             key={s.id}

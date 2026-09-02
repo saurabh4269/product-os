@@ -134,6 +134,41 @@ body {
   .field-input {
     @apply transition-colors duration-150 ease-out;
   }
+
+  /* ui/stitch_autonomous_product_operations_os — reference card system */
+  .po-card {
+    @apply border border-[#E2E8F0] bg-white;
+  }
+
+  .po-card-hover:hover {
+    @apply border-[#c0c1ff] bg-[#EEF2FF] transition-all duration-200;
+  }
+
+  .po-ambient-shadow {
+    box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.05);
+  }
+
+  .po-agent-connector {
+    @apply absolute bottom-[-8px] left-4 top-8 z-0 border-l border-dashed border-outline-variant;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e2e8f0;
+    border-radius: 4px;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  }
+  .material-symbols-outlined.fill {
+    font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+  }
 }
 
 .chat-scroll {

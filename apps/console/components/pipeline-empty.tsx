@@ -27,7 +27,7 @@ export function PipelineEmpty() {
               Labs
             </Link>
             <Link
-              href="/connect"
+              href="/settings"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-accent hover:bg-[var(--elev)]"
               aria-label="Connect Product Y"
               title="Connect"

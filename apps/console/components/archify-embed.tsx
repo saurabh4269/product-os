@@ -64,6 +64,7 @@ export function ArchifyEmbed({
   compact,
   hero,
   hideHeader,
+  eager,
   defaultDiagram = "system",
 }: {
   diagrams?: ArchifyDiagram[];
@@ -71,6 +72,7 @@ export function ArchifyEmbed({
   compact?: boolean;
   hero?: boolean;
   hideHeader?: boolean;
+  eager?: boolean;
   defaultDiagram?: string;
 }) {
   const stage = usePipelineHighlight();
@@ -118,7 +120,7 @@ export function ArchifyEmbed({
                 Full screen
               </a>
               <Link href="/labs/architecture" className="text-[13px] text-[var(--faint)] hover:text-foreground">
-                Labs
+                Architecture
               </Link>
             </div>
           </div>
@@ -136,7 +138,7 @@ export function ArchifyEmbed({
           src={uri}
           title={active.title}
           className="h-full w-full border-0 bg-white"
-          loading={hero ? "eager" : "lazy"}
+          loading={hero || eager ? "eager" : "lazy"}
         />
       </div>
     </section>

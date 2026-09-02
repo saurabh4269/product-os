@@ -7,18 +7,20 @@ import {
   BookMarked,
   CalendarDays,
   CircleCheck,
+  Database,
   FlaskConical,
   House,
   Layers,
   PanelLeftClose,
   PanelLeftOpen,
-  Plug,
+  Settings,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { api, type Room } from "@/lib/api";
+import { agentPalette } from "@/lib/names";
 import { cn } from "@/lib/utils";
 import { BeanMark } from "@/components/mascot";
-import { AgentBadge } from "@/components/agent-badge";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { HumanInputProvider } from "@/lib/human-input-context";
 import { HumanInputModals } from "@/components/human-input-modals";
@@ -27,14 +29,29 @@ import { ToastHost } from "@/components/toast-host";
 
 const STORAGE = "loop-sidebar";
 
+/** 18×18 rail mark — same box as Lucide nav icons, no ring/shadow bleed. */
+function NavUserMark() {
+  const { bg, fg } = agentPalette("you");
+  return (
+    <span
+      aria-hidden
+      className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none"
+      style={{ backgroundColor: bg, color: fg }}
+    >
+      Y
+    </span>
+  );
+}
+
 const SYSTEM = [
   { href: "/", label: "Home", icon: House },
   { href: "/registry", label: "Agents", icon: Users },
   { href: "/memory", label: "Memory", icon: BookMarked },
+  { href: "/data", label: "Data plane", icon: Database },
   { href: "/approvals", label: "Approvals", icon: CircleCheck, badgeKey: "approvals" as const },
   { href: "/workflows", label: "Workflows", icon: CalendarDays },
+  { href: "/outcomes", label: "Outcomes", icon: TrendingUp },
   { href: "/labs", label: "Labs", icon: FlaskConical },
-  { href: "/connect", label: "Connect", icon: Plug },
   { href: "/labs/architecture", label: "Architecture", icon: Layers },
 ] as const;
 
@@ -51,6 +68,7 @@ function kindLabel(kind: string) {
 function isActive(path: string, href: string) {
   if (href === "/") return path === "/";
   if (href === "/labs") return path === "/labs";
+  if (href === "/settings") return path === "/settings" || path.startsWith("/connect");
   return path.startsWith(href);
 }
 
@@ -238,7 +256,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       <aside
         className={cn(
-          "relative z-30 flex h-full shrink-0 flex-col border-r border-border bg-white text-left transition-[width] duration-200 ease-out",
+          "relative z-30 flex h-full shrink-0 flex-col overflow-x-hidden border-r border-border bg-white text-left transition-[width] duration-200 ease-out",
           wide ? "w-[min(16.25rem,calc(100vw-3.5rem))]" : "w-16"
         )}
       >
@@ -285,15 +303,38 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="flex-1" />
         )}
 
-        <div className={cn("mt-auto border-t border-border", wide ? "flex items-center gap-2.5 px-3 py-3" : "flex justify-center pb-5 pt-3")}>
-          <AgentBadge name="you" size={wide ? 32 : 28} variant="face" />
-          {wide ? (
-            <div>
-              <p className="text-[13px] font-medium leading-4">You</p>
+        <div className="mt-auto shrink-0 border-t border-border">
+          <nav className={cn("flex flex-col gap-0.5 p-2", !wide && "items-center")}>
+            <Tip label="Settings" show={!wide} fill={wide}>
+              <Link
+                href="/settings"
+                onClick={!desktop ? () => setExpanded(false) : undefined}
+                aria-current={isActive(path, "/settings") ? "page" : undefined}
+                data-active={isActive(path, "/settings") ? "true" : undefined}
+                className={cn(
+                  "nav-item",
+                  !wide ? "h-11 w-11 justify-center" : "h-10 w-full justify-start gap-3 px-3 pl-3.5"
+                )}
+              >
+                <Settings size={18} strokeWidth={1.75} className="shrink-0" />
+                {wide ? <span className="text-[14px]">Settings</span> : <span className="sr-only">Settings</span>}
+              </Link>
+            </Tip>
+            <div
+              className={cn(
+                "nav-item min-w-0 text-foreground",
+                !wide ? "h-11 w-11 justify-center" : "h-10 w-full justify-start gap-3 px-3 pl-3.5"
+              )}
+              aria-label="You"
+            >
+              <NavUserMark />
+              {wide ? (
+                <span className="min-w-0 truncate text-[14px] leading-none">You</span>
+              ) : (
+                <span className="sr-only">You</span>
+              )}
             </div>
-          ) : (
-            <span className="sr-only">You</span>
-          )}
+          </nav>
         </div>
       </aside>
 

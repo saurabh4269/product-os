@@ -26,10 +26,6 @@ function runAction(action: PulseAction, demo: ReturnType<typeof useDemoGuide>) {
     scrollTo("pipeline-board");
     return;
   }
-  if (action === "explore") {
-    scrollTo("explore");
-    return;
-  }
 }
 
 export function HomeBrief({
@@ -87,7 +83,7 @@ export function HomeBrief({
     dismissWelcome();
     onDismiss?.();
     setShow(false);
-    scrollTo("explore");
+    window.location.assign("/outcomes");
   }
 
   return (
@@ -141,7 +137,7 @@ export function HomeBrief({
           </Button>
           {brief.full ? (
             <Button variant="ghost" onClick={exploreOwn}>
-              Explore
+              Outcomes
             </Button>
           ) : brief.secondary ? (
             brief.secondary.href.startsWith("#") ? (

@@ -180,7 +180,7 @@ export default function ArchitectureContent() {
               <TenantWireDiagram />
             </div>
             <p className="mt-3 text-[13px] text-[var(--faint)]">
-              <Link href="/connect" className="text-accent hover:underline">
+              <Link href="/settings" className="text-accent hover:underline">
                 Connect
               </Link>
             </p>

@@ -52,7 +52,7 @@ export function OAuthModal() {
           <Button variant="ghost" onClick={() => hitl?.dismissOAuth()}>
             Not now
           </Button>
-          <a href="/connect" className="self-center text-[13px] text-accent hover:underline">
+          <a href="/settings" className="self-center text-[13px] text-accent hover:underline">
             Connect desk
           </a>
         </div>
