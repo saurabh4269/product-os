@@ -7,7 +7,7 @@ export function generateStaticParams() {
 
 export default function RoomPage() {
   return (
-    <Suspense fallback={<div className="page-pad text-[14px] text-[var(--dim)]">Loading room…</div>}>
+    <Suspense fallback={null}>
       <RoomView />
     </Suspense>
   );

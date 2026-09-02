@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Phone } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { api, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
@@ -116,7 +116,7 @@ function Gate({
 }
 
 /** Live room — messenger chat (same chrome as the old Traces view). */
-export function RoomView({ initialId }: { initialId?: string }) {
+function RoomViewInner({ initialId }: { initialId?: string }) {
   const id = useRoomId(initialId);
   const searchParams = useSearchParams();
   const viewParam = searchParams?.get("view");
@@ -495,5 +495,13 @@ export function RoomView({ initialId }: { initialId?: string }) {
         </>
       )}
     </div>
+  );
+}
+
+export function RoomView({ initialId }: { initialId?: string }) {
+  return (
+    <Suspense fallback={null}>
+      <RoomViewInner initialId={initialId} />
+    </Suspense>
   );
 }
