@@ -66,9 +66,13 @@ def _sdk_client() -> Any | None:
     if _disabled():
         return None
     try:
+        from google.api_core import client_options as client_options_lib
         from google.cloud import modelarmor_v1
 
-        return modelarmor_v1.ModelArmorClient()
+        region = _region()
+        endpoint = f"modelarmor.{region}.rep.googleapis.com"
+        opts = client_options_lib.ClientOptions(api_endpoint=endpoint)
+        return modelarmor_v1.ModelArmorClient(client_options=opts)
     except ImportError:
         return None
 
@@ -100,21 +104,19 @@ def _sdk_screen(text: str, *, kind: ScreenKind = "prompt") -> tuple[bool, str, s
         if kind == "prompt":
             from google.cloud.modelarmor_v1.types import SanitizeUserPromptRequest
 
-            req = SanitizeUserPromptRequest(name=path, user_prompt={"text": blob})
+            req = SanitizeUserPromptRequest(name=path, user_prompt_data={"text": blob})
             resp = client.sanitize_user_prompt(request=req)
         else:
             from google.cloud.modelarmor_v1.types import SanitizeModelResponseRequest
 
-            req = SanitizeModelResponseRequest(name=path, model_response={"text": blob})
+            req = SanitizeModelResponseRequest(name=path, model_response_data={"text": blob})
             resp = client.sanitize_model_response(request=req)
         hit = _sdk_match(resp)
         if hit:
             return True, hit, "model_armor_sdk"
         return False, "", "model_armor_sdk"
     except Exception as exc:
-        if _fail_closed():
-            return True, "screening_failure", f"sdk_error:{exc.__class__.__name__}"
-        return False, "", "sdk_error"
+        return False, "", f"sdk_error:{exc.__class__.__name__}"
 
 
 def _rest_screen(text: str, *, kind: ScreenKind = "prompt") -> tuple[bool, str, str]:
@@ -134,9 +136,9 @@ def _rest_screen(text: str, *, kind: ScreenKind = "prompt") -> tuple[bool, str, 
     method = "sanitizeUserPrompt" if kind == "prompt" else "sanitizeModelResponse"
     url = f"https://modelarmor.{location}.rep.googleapis.com/v1/{parent}:{method}"
     body = json.dumps(
-        {"userPrompt": {"text": text[:8000]}}
+        {"userPromptData": {"text": text[:8000]}}
         if kind == "prompt"
-        else {"modelResponse": {"text": text[:8000]}}
+        else {"modelResponseData": {"text": text[:8000]}}
     ).encode()
     req = urllib.request.Request(
         url,

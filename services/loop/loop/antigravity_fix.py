@@ -70,16 +70,16 @@ async def _run_agent(repo: Path, brief: dict[str, Any]) -> str:
     prompt = _brief_prompt(brief, repo)
     from loop.model_armor import screen_chat, screen_model_response
 
-    hit, needle, _ = screen_chat(prompt)
+    hit, needle, backend = screen_chat(prompt)
     if hit:
-        raise RuntimeError(f"Antigravity prompt blocked by Model Armor: {needle}")
+        raise RuntimeError(f"Antigravity prompt blocked by Model Armor: {needle} ({backend})")
 
     async with Agent(config) as agent:
         response = await agent.chat(prompt)
         text = await response.text()
-    hit_r, needle_r, _ = screen_model_response(str(text))
+    hit_r, needle_r, backend_r = screen_model_response(str(text))
     if hit_r:
-        raise RuntimeError(f"Antigravity response blocked by Model Armor: {needle_r}")
+        raise RuntimeError(f"Antigravity response blocked by Model Armor: {needle_r} ({backend_r})")
     return str(text).strip()
 
 

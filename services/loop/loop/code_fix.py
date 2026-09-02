@@ -166,9 +166,9 @@ def gemini_generate_patches(brief: dict[str, Any], files: dict[str, str]) -> tup
             "target_paths": target_paths,
         }
     )
-    hit, needle, _ = screen_chat(screen_blob)
+    hit, needle, backend = screen_chat(screen_blob)
     if hit:
-        raise RuntimeError(f"code-fix prompt blocked by Model Armor: {needle}")
+        raise RuntimeError(f"code-fix prompt blocked by Model Armor: {needle} ({backend})")
 
     prompt = {
         "task": "Return JSON with keys: files (path→full new file content), summary (string).",
@@ -188,9 +188,9 @@ def gemini_generate_patches(brief: dict[str, Any], files: dict[str, str]) -> tup
     }
     parsed = generate_content_json(json.dumps(prompt))
     text = json.dumps(parsed)
-    hit_r, needle_r, _ = screen_model_response(str(text))
+    hit_r, needle_r, backend_r = screen_model_response(str(text))
     if hit_r:
-        raise RuntimeError(f"code-fix model response blocked by Model Armor: {needle_r}")
+        raise RuntimeError(f"code-fix model response blocked by Model Armor: {needle_r} ({backend_r})")
     out_files = parsed.get("files") if isinstance(parsed.get("files"), dict) else {}
     merged = dict(files)
     for k, v in out_files.items():

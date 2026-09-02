@@ -3112,6 +3112,15 @@ def _spa_file(path: str) -> FileResponse | None:
         return None
     if rel.split("/", 1)[0] in {"shop", "company"}:
         return None
+    if rel == "connect" or rel.startswith("connect/"):
+        for candidate in (
+            _STATIC / "connect" / "index.html",
+            _STATIC / "connect.html",
+            _STATIC / "settings" / "index.html",
+            _STATIC / "settings.html",
+        ):
+            if candidate.is_file():
+                return FileResponse(candidate)
     if not rel:
         return FileResponse(_STATIC / "index.html")
     direct = _STATIC / rel
