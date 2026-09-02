@@ -85,13 +85,16 @@ def complete(store: Any, job_id: str, result: dict[str, Any]) -> Job | None:
 
 
 def fail(store: Any, job_id: str, error: str, *, retry_delay_s: int = 30) -> Job | None:
+    from loop.code_worker import NON_RETRYABLE_TEST_ERRORS
+
     job = store.get_job(job_id)
     if not job:
         return None
     job.attempts += 1
     job.error = error[:500]
     job.updated_at = _iso()
-    if job.attempts >= job.max_attempts:
+    permanent = any(marker in error for marker in NON_RETRYABLE_TEST_ERRORS)
+    if permanent or job.attempts >= job.max_attempts:
         job.status = "dead"
     else:
         job.status = "queued"

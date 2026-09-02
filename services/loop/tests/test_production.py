@@ -60,6 +60,14 @@ def test_jobs_fail_and_retry(engine):
     assert j2.status == "dead"
 
 
+def test_jobs_fail_permanent_error_no_retry(engine):
+    job = enqueue(engine.store, "code_fix", {"x": 1}, max_attempts=3)
+    fail(engine.store, job.id, "no test runner in worker environment (need node/npm for tenant tests)")
+    dead = engine.store.get_job(job.id)
+    assert dead.status == "dead"
+    assert dead.attempts == 1
+
+
 def test_state_persist_roundtrip(tmp_path, monkeypatch):
     db = tmp_path / "loop.db"
     from loop.store import Store

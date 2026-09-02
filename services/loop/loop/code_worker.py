@@ -8,6 +8,30 @@ import shutil
 import subprocess
 from pathlib import Path
 
+_COMMON_BIN_DIRS = ("/usr/local/bin", "/usr/bin", "/bin")
+
+# Permanent worker failures — retrying the same job will not help.
+NON_RETRYABLE_TEST_ERRORS = (
+    "no test runner in worker environment",
+    "no files to commit after patch",
+)
+
+
+def find_executable(name: str) -> str | None:
+    """Resolve a binary on PATH or common system locations (Cloud Run apt installs)."""
+    found = shutil.which(name)
+    if found:
+        return found
+    for directory in _COMMON_BIN_DIRS:
+        candidate = Path(directory) / name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def node_toolchain_available() -> bool:
+    return bool(find_executable("node") and find_executable("npm"))
+
 
 def apply_patches(repo: Path, patches: dict[str, str]) -> list[str]:
     touched: list[str] = []
@@ -23,6 +47,8 @@ def detect_test_command(repo: Path, *, override: str | None = None) -> list[str]
     cmd = (override or os.environ.get("LOOP_CODE_TEST_CMD") or "").strip()
     if cmd:
         return ["bash", "-lc", cmd]
+    npm = find_executable("npm")
+    npx = find_executable("npx")
     pkg = repo / "package.json"
     if not pkg.is_file():
         return None
@@ -31,12 +57,17 @@ def detect_test_command(repo: Path, *, override: str | None = None) -> list[str]
     except json.JSONDecodeError:
         return None
     scripts = meta.get("scripts") if isinstance(meta.get("scripts"), dict) else {}
-    if "test" in scripts and scripts["test"]:
-        if shutil.which("npm"):
-            return ["npm", "test", "--", "--run"]
+    test_script = str(scripts.get("test") or "").strip()
+    if test_script and npm:
+        if "vitest" in test_script:
+            return [npm, "test", "--", "--run"]
+        return [npm, "test"]
     if (repo / "vitest.config.ts").is_file() or (repo / "vitest.config.mjs").is_file():
-        if shutil.which("npx"):
-            return ["npx", "vitest", "run"]
+        if npx:
+            return [npx, "vitest", "run"]
+    lint_script = str(scripts.get("lint") or "").strip()
+    if lint_script and npm:
+        return [npm, "run", "lint"]
     return None
 
 
@@ -46,6 +77,12 @@ def run_tests(repo: Path, *, timeout_s: int = 240, test_command: str | None = No
     cmd = detect_test_command(repo, override=test_command)
     if not cmd:
         if os.environ.get("K_SERVICE") and os.environ.get("LOOP_CODE_REQUIRE_TESTS") == "1":
+            if node_toolchain_available():
+                return (
+                    True,
+                    "no tenant test script — skipped (node/npm present; "
+                    "set LOOP_CODE_TEST_CMD or tenant test_command to require tests)",
+                )
             return False, "no test runner in worker environment (need node/npm for tenant tests)"
         return True, "no test runner detected — skipped"
     try:

@@ -67,6 +67,7 @@ def maybe_emit_live_customer_voice(
     try:
         from .customer_research import extract_structured_evidence, simulate_research_dialogue
 
+        voice_sub = dict(dims.get("voice_subject") or {})
         brief = {
             "title": f"Diagnostic · {event.metric}",
             "user_id": str(dims.get("tenant_id") or "customer"),
@@ -75,6 +76,7 @@ def maybe_emit_live_customer_voice(
             "device": dict(dims.get("segments") or {}),
             "hypothesis": {"statement": voice_ctx.hypothesis_hint if voice_ctx else event.metric},
             "journey": [event.funnel_position],
+            "raw": {"dimensions": {"voice_subject": voice_sub, **voice_sub}},
         }
         if voice_ctx:
             brief.update(
@@ -84,6 +86,11 @@ def maybe_emit_live_customer_voice(
                         **brief["observed"],
                         "failure": voice_ctx.failure,
                         "attempt_summary": voice_ctx.attempt_summary,
+                    },
+                    "call_plan": {
+                        "opening": voice_ctx.opening,
+                        "questions": list(voice_ctx.adaptive_questions),
+                        "adaptive_questions": list(voice_ctx.adaptive_questions),
                     },
                 }
             )
