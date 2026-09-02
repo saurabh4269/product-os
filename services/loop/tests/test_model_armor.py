@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import sys
+import urllib.request
 from io import BytesIO
 from unittest.mock import MagicMock
 
 import pytest
-import urllib.request
 
 from loop import model_armor
 
