@@ -14,4 +14,5 @@ def test_memory_includes_mirror_status(engine, monkeypatch):
         body = client.get("/api/memory").json()
     assert "mirror" in body
     assert "source" in body
+    assert body["mirror"]["configured"] is False
     assert body["mirror"]["enabled"] is False

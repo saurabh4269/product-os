@@ -201,3 +201,50 @@ def test_ingest_after_terminal_investigation_opens_new_room(engine, monkeypatch)
         async_finish=False,
     )
     assert len(engine.store.list_rooms()) > before_rooms
+
+
+def test_ingest_with_stuck_gathering_opens_new_pipeline(engine, monkeypatch):
+    """Hosted repro: open room in GATHERING must not join-only — run investigation."""
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    engine.store.put_tenant(
+        Tenant(
+            id="acme",
+            name="Cove",
+            product="Cove",
+            repo="saurabh4269/cove",
+            deploy_url="https://cove.example.test",
+            token_hash=hash_token("tok"),
+            flag_names=["pay_sdk_4_3"],
+            connected=True,
+        )
+    )
+    sync_regression_from_product(engine, "acme")
+    from loop.world import ingest_tenant_signal
+
+    ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("acme"),
+        metric="checkout_conversion",
+        magnitude=-0.22,
+        baseline=0.72,
+        note="first hang",
+        source="cove.checkout",
+        async_finish=False,
+    )
+    inv = engine.store.list_investigations()[-1]
+    inv.state = InvestigationState.GATHERING
+    engine.store.put_investigation(inv)
+    before = len(engine.store.list_investigations())
+    out = ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("acme"),
+        metric="checkout_conversion",
+        magnitude=-0.2,
+        baseline=0.7,
+        note="checkout hang again",
+        source="cove.checkout",
+        async_finish=False,
+    )
+    assert out.get("joined") is not True
+    assert len(engine.store.list_investigations()) > before
+    assert engine.store.list_evidence(engine.store.list_investigations()[-1].id)

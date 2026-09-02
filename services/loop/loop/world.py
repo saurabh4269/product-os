@@ -408,13 +408,12 @@ def ingest_tenant_signal(
             if candidate.investigation_id
             else None
         )
-        if inv_check and inv_check.state not in {
-            InvestigationState.RESOLVED,
-            InvestigationState.NOT_RESOLVED,
-            InvestigationState.INCONCLUSIVE,
-            InvestigationState.PARTIALLY_RESOLVED,
-        }:
+        if inv_check and inv_check.state == InvestigationState.AWAITING_APPROVAL:
             existing = candidate
+        else:
+            for stale in open_rooms:
+                stale.status = "closed"
+                engine.store.put_room(stale)
     text = note or f"{metric} {magnitude} from {tenant.product}"
     tenant.last_ingest_at = _now().isoformat()
     if existing:

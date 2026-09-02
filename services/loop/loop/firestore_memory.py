@@ -38,7 +38,8 @@ def status() -> dict[str, Any]:
     elif configured and _client is None and _client_tried:
         skipped_reason = "Firestore client unavailable"
     return {
-        "enabled": configured,
+        "configured": configured,
+        "enabled": operational,
         "operational": operational,
         "skipped": not operational,
         "skipped_reason": skipped_reason,

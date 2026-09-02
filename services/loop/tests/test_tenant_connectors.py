@@ -8,7 +8,7 @@ from loop import api as api_mod
 from loop.connectors.github import open_pr
 from loop.connectors.mail import draft, send
 from loop.connectors.voice import place_call
-from loop.models import OutcomeVerdict, RiskTier
+from loop.models import InvestigationState, OutcomeVerdict, RiskTier
 from loop.tenant import ConnectorReport, Tenant, hash_token, token_ok
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -182,6 +182,9 @@ def test_tenant_http_flags_and_ingest(engine, monkeypatch):
         assert sig.json()["room_id"]
         assert sig.json()["joined"] is False
         room_id = sig.json()["room_id"]
+        inv = engine.store.get_investigation(engine.store.get_room(room_id).investigation_id)
+        inv.state = InvestigationState.AWAITING_APPROVAL
+        engine.store.put_investigation(inv)
         again = client.post(
             "/api/t/acme/signals",
             headers={"Authorization": "Bearer newer-secret"},

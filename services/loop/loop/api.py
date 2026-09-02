@@ -6,6 +6,7 @@ import contextlib
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from fastapi import (
     BackgroundTasks,
@@ -159,7 +160,7 @@ app.add_middleware(
 
 class ApproveBody(BaseModel):
     approver: str = "oncall@northstar"
-    decision: str = "approve"
+    decision: Literal["approve", "deny"]
     rationale: str = "Reviewed the evidence pack and risk gate."
 
 
@@ -2208,10 +2209,14 @@ def signals():
 
 
 @app.post("/api/signals")
-def post_signal(body: SignalInBody):
-    """Ingest a signal → investigation pipeline with live WS events."""
+def post_signal(body: SignalInBody, authorization: str | None = Header(default=None)):
+    """Ingest a signal → investigation pipeline with live WS events (eval/admin only when hosted)."""
+    from .auth import require_admin
+    from .runtime_mode import is_eval_mode
     from .unified_runner import run_signal_pipeline
 
+    if not is_eval_mode():
+        require_admin(authorization, actor="signals")
     eng = get_engine()
     from loop.world import ensure_api_ready
 
@@ -2774,6 +2779,25 @@ def agent_callback(body: AgentCallbackBody):
     if body.data:
         HUB.publish(rid, {"type": body.kind or "trace", "agentId": body.agent_id, "data": body.data})
     return {"ok": True, "room_id": rid, "presence": HUB.agents_in(rid)}
+
+
+@app.get("/ws", include_in_schema=False)
+def ws_http_probe() -> None:
+    """Plain HTTP GET must not fall through to the SPA — browsers upgrade via WebSocket."""
+    raise HTTPException(
+        405,
+        "WebSocket upgrade required — connect with wss://",
+        headers={"Upgrade": "websocket"},
+    )
+
+
+@app.get("/ws/rooms/{room_id}", include_in_schema=False)
+def ws_room_http_probe(room_id: str) -> None:
+    raise HTTPException(
+        405,
+        "WebSocket upgrade required — connect with wss://",
+        headers={"Upgrade": "websocket"},
+    )
 
 
 @app.websocket("/ws")

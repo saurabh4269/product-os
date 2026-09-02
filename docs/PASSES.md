@@ -9,38 +9,66 @@ Each pass is a focused PR against `main`. Only record what was verified in code 
 **Branch:** `cursor/pass0-production-e2e-d138`  
 **Hosted:** https://productos.heisenbug.in · Tenant Cove: https://cove-5uy6fkd7bq-uc.a.run.app · tenant `acme`
 
-### Verified before changes
+### Production walk facts (2026-09-02, verified on hosted)
 
-| Check | Result |
+| # | Fact |
 |---|---|
-| `GET /api/status` on hosted | `inline=true`, `tasks_disabled=true`, `last_signal_tick` recent, `auto_investigated=0`, `last_tick_detected=0` |
-| WebSocket `wss://productos.heisenbug.in/ws` (Python client) | Connects; receives `initial_state` |
-| `GET /ws` without upgrade | SPA returned HTML (confusing for probes; WS upgrade path works) |
-| Firestore mirror | `LOOP_FIRESTORE_MEMORY=1` but `403 SERVICE_DISABLED` on Firestore API — not operational |
-| `GET /api/tenants/acme/incident-lifecycle` | Present on tip; requires admin or tenant bearer |
-| Tenant ingest path | `ingest_tenant_signal` runs `run_investigation` async when room is new; joined existing open room even when prior investigation was terminal |
+| 1 | `POST /api/t/acme/signals` (tenant bearer) **200**, **joins** existing open room, does **not** run investigation pipeline; `auto_investigated` stays 0. Worker tick `detected:0`. `tasks_disabled=true`, `inline=true`. Main e2e break vs `test_ingest_runs_investigation_pipeline`. |
+| 2 | `GET /ws` and `GET /ws/rooms/:id` return **HTTP 200 HTML** (SPA catch-all), not 101. Browser Live work shows Offline when upgrade path is confused. `wss://` upgrade works from Python client on current deploy — plain GET must not serve SPA HTML. |
+| 3 | Firestore: API **403 SERVICE_DISABLED**; `GET /api/memory` **200** from SQLite. Status must not advertise `enabled:true` when mirror is skipped. |
+| 4 | `POST /api/signals` **200 with no auth** and runs live fleet graph — must **401** when `LOOP_EVAL=0`. |
+| 5 | Duplicate tenants `acme` and `cove` (same Cove repo/deploy) with diverged flags (`acme` `pay_sdk_4_3=on`, `cove` off). Execute must use **bound** `inv.tenant_id` only. |
+| 6 | Live graph stalls at **three-source gate** (`tokens_consumed` 0). Warehouse/connectors not producing independent evidence in prod. |
+| 7 | Invalid approval decision `"maybe"` was coerced to **deny** (422 expected). A pending HIGH was denied during the walk — **do not re-approve**. |
+| 8 | `NEXT_PUBLIC_LOOP_ADMIN_TOKEN` must never be inlined in the console bundle. |
 
 ### Changes in this pass
 
-1. **Incident panel WS + polling fallback** — `publish_incident_lifecycle` on ingest, approve, arm; console handles `incident_lifecycle` WS events; slower poll when WS live.
-2. **Inline ambient worker** — `LOOP_INLINE_WORKER=1` loop runs detect → auto-investigate (open signals) → job drain and records heartbeat (not only Cloud Scheduler tick).
-3. **Tenant re-repro** — ingest skips join when open room’s investigation is terminal; opens a fresh pipeline.
-4. **Live work status** — show Connecting/Reconnecting instead of labeling initial WS as Offline; transient WS errors reconnect.
-5. **SPA** — do not serve `index.html` for `/ws` GET probes.
-6. **Memory honest skip** — `/api/memory` includes `mirror` + `source`; Memory page banner when Firestore configured but not operational.
+1. **Tenant ingest** — only join when investigation is `AWAITING_APPROVAL`; close stale open rooms and run `run_investigation` for checkout hang (GATHERING/terminal/stuck).
+2. **WebSocket on LOOP** — explicit `GET /ws` + `/ws/rooms/:id` return **405** (not SPA HTML); WS handlers stay on FastAPI; SPA catch-all skips `ws` paths.
+3. **Incident panel** — `incident_lifecycle` WS events + polling fallback.
+4. **Inline worker** — detect → auto-investigate → job drain + heartbeat.
+5. **Memory** — `mirror.configured` vs `mirror.enabled` (operational only); Memory page banner on skip.
+6. **`POST /api/signals`** — admin bearer required when `LOOP_EVAL=0`.
+7. **Approvals** — `decision` must be `approve` \| `deny` (422 otherwise).
+8. **Execute** — prefer `inv.tenant_id` for flag/PR when tenant-bound.
+9. **Console** — admin token sessionStorage only (no `NEXT_PUBLIC_LOOP_ADMIN_TOKEN`).
 
-### Still open (not fixed in Pass 0)
+### Still open in Pass 0 (deploy required)
 
-- Enable Cloud Firestore API on GCP (optional; SQLite remains source of truth).
-- Cloud Scheduler OIDC tick auth — inline worker covers detect/investigate when scheduler misses.
+- Deploy this PR to hosted before re-walking Cove checkout hang.
+- Cloud Firestore API enablement (optional).
 - Cove → LOOP ingest freshness (`last_ingest_at`) depends on Cove posting with valid tenant token.
-- Deploy this PR to hosted (PR does not deploy).
 
 ### Tests run locally
 
-- `cd services/loop && python -m pytest -q`
-- `cd apps/console && ./node_modules/.bin/tsc --noEmit`
-- `./scripts/verify-deploy.sh` (CI gate)
+- `python3 -m pytest -q` (226+ passed; `test_lifecycle_awaiting_approval` pre-existing fail on `main`)
+- `apps/console` `tsc --noEmit` green
+
+---
+
+## Pass A1 — security & evidence (queued, not this PR)
+
+**Goal:** Close production holes found in the walk without widening Pass 0.
+
+### Verified issues to address
+
+| Item | Detail |
+|---|---|
+| Three-source gate stall | Warehouse/BQ/connectors not producing ≥3 independent evidence groups in prod (`tokens_consumed` 0). |
+| Duplicate tenants | Consolidate or hide `cove` vs `acme` on Connect; single canonical tenant for Cove wire. |
+| `POST /api/signals` surface | Confirm no other unauthenticated pipeline entrypoints in eval-off mode. |
+| Approval UX | Surface 422 clearly in console; never coerce invalid decisions to deny. |
+| Scheduler tick | Verify Cloud Scheduler OIDC auth to `/api/internal/worker/tick` (inline worker is fallback). |
+| Firestore | Enable API or set `LOOP_FIRESTORE_MEMORY=0` on deploy for honest config. |
+
+### Changes
+
+- _(stub)_
+
+### Still open
+
+- _(stub)_
 
 ---
 
