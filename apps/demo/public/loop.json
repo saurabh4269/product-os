@@ -1,53 +1,759 @@
 {
-  "investigation": {
-    "id": "inv_691b4139f86c",
-    "originating_signal_ids": [
-      "sig_4ea41d8223f5"
+  "meta": {
+    "exported_at": "2026-09-02T18:31:25.185963+00:00",
+    "pipeline": "generic",
+    "type_a_recipe": "geo_5xx",
+    "type_b_recipe": "settings_workaround"
+  },
+  "scenes": [
+    {
+      "title": "Signal",
+      "body": "http_5xx_rate moved -18% vs baseline 42% \u2014 detected from warehouse + tenant ingest."
+    },
+    {
+      "title": "Evidence",
+      "body": "Parallel specialists \u00b7 analytics \u00b7 customer_voice \u00b7 deploys \u00b7 logs. Three-source gate before root cause."
+    },
+    {
+      "title": "Type A vs B",
+      "body": "Type A fixes (type a) \u00b7 Type B improves (type b) \u2014 one pipeline, different doors."
+    },
+    {
+      "title": "Risk door",
+      "body": "HIGH tier \u2014 HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge."
+    },
+    {
+      "title": "Gateway deny",
+      "body": "DENY \u00b7 prod_db.query blocked by gateway identity \u2014 not a prompt."
+    },
+    {
+      "title": "Memory lesson",
+      "body": "Post-fix verify marks inconclusive when no live metric re-read."
+    }
+  ],
+  "type_a": {
+    "investigation": {
+      "id": "inv_cc50f8ea91d7",
+      "originating_signal_ids": [
+        "sig_89495dcdc4"
+      ],
+      "state": "AWAITING_APPROVAL",
+      "opened_at": "2026-09-02T18:31:25.039075Z",
+      "closed_at": null,
+      "invocation_id": "job_144a5e7c7e77",
+      "assigned_agents": [
+        "orchestrator",
+        "analytics_agent",
+        "logs_agent",
+        "deployment_agent",
+        "customer_voice_agent"
+      ],
+      "token_budget": 200000,
+      "tokens_consumed": 0,
+      "linked_hypothesis_ids": [
+        "hyp_0b3f0c5d72ce"
+      ],
+      "linked_action_ids": [
+        "act_73c0e8af7d2c"
+      ],
+      "verification_result": null,
+      "recalled_lessons": [],
+      "scenario_id": "demo:geo_5xx",
+      "room_id": "room_69f4fc1953",
+      "tenant_id": null,
+      "loop_type": "type_a",
+      "title": "Geo-only 5xx spike in EU-West"
+    },
+    "signals": [
+      {
+        "id": "sig_89495dcdc4",
+        "family": "technical",
+        "direction": "negative",
+        "funnel_position": "product",
+        "metric": "http_5xx_rate",
+        "magnitude": -0.18,
+        "baseline": 0.42,
+        "affected_segments": [
+          {
+            "platform": "web",
+            "os": "",
+            "browser": "",
+            "app_version": null,
+            "geo": "EU-West",
+            "channel": null
+          }
+        ],
+        "detection_window": {
+          "start": "2026-08-26",
+          "end": "2026-08-28",
+          "baseline_start": "2026-08-06",
+          "baseline_end": "2026-08-19"
+        },
+        "confidence": 0.8,
+        "source": "signal_agent",
+        "status": "investigating",
+        "suppression_reason": null,
+        "detected_at": "2026-09-02T18:31:25.037162Z"
+      }
     ],
-    "state": "RESOLVED",
-    "opened_at": "2026-08-30T16:41:00.963245Z",
-    "closed_at": "2026-08-31T04:50:15.293770Z",
-    "invocation_id": "job_4a2e459e3e91",
+    "evidence": [
+      {
+        "id": "ev_ac33508ca5df",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "source_type": "customer_voice",
+        "source_reference": "live-diagnostic:inv_cc50f8ea91d7 reason=unknown_friction",
+        "claim": "Diagnostic conversation: reason=unknown_friction severity=medium friction=technical confidence=0.7",
+        "confidence": 0.7,
+        "trust_level": "trusted",
+        "collected_by": "customer_voice_agent",
+        "collected_at": "2026-09-02T18:31:25.064620Z",
+        "weight": 0.7,
+        "independence_group": "customer_voice"
+      },
+      {
+        "id": "ev_d541babe1ee1",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "source_type": "analytics",
+        "source_reference": "analytics",
+        "claim": "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
+        "confidence": 0.85,
+        "trust_level": "trusted",
+        "collected_by": "analytics_agent",
+        "collected_at": "2026-09-02T18:31:25.066774Z",
+        "weight": 0.85,
+        "independence_group": "analytics"
+      },
+      {
+        "id": "ev_82c6b9faccc5",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "source_type": "logs",
+        "source_reference": "logs",
+        "claim": "502_bad_gateway concentrated on eu-west load balancer.",
+        "confidence": 0.85,
+        "trust_level": "trusted",
+        "collected_by": "logs_agent",
+        "collected_at": "2026-09-02T18:31:25.068264Z",
+        "weight": 0.85,
+        "independence_group": "logs"
+      },
+      {
+        "id": "ev_bf2730cd450d",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "source_type": "deployment",
+        "source_reference": "deploys",
+        "claim": "CDN config change in EU-West 2h before spike.",
+        "confidence": 0.85,
+        "trust_level": "trusted",
+        "collected_by": "deployment_agent",
+        "collected_at": "2026-09-02T18:31:25.069744Z",
+        "weight": 0.85,
+        "independence_group": "deploys"
+      },
+      {
+        "id": "ev_76ffcb7cc1c0",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "source_type": "customer_voice",
+        "source_reference": "customer_voice",
+        "claim": "Customer reports friction: service unavailable.",
+        "confidence": 0.82,
+        "trust_level": "trusted",
+        "collected_by": "customer_voice_agent",
+        "collected_at": "2026-09-02T18:31:25.071180Z",
+        "weight": 0.82,
+        "independence_group": "customer_voice"
+      }
+    ],
+    "hypotheses": [
+      {
+        "id": "hyp_0b3f0c5d72ce",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "statement": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+        "classification": "BUG",
+        "confidence": 0.808,
+        "supporting_evidence_ids": [
+          "ev_ac33508ca5df",
+          "ev_d541babe1ee1",
+          "ev_82c6b9faccc5",
+          "ev_bf2730cd450d",
+          "ev_76ffcb7cc1c0"
+        ],
+        "contradicting_evidence_ids": [],
+        "cited_memory": [],
+        "rank": 1,
+        "independence_groups": [
+          "analytics",
+          "customer_voice",
+          "deploys",
+          "logs"
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "act_73c0e8af7d2c",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "type": "code_change",
+        "risk_tier": "HIGH",
+        "tier_rationale": "Touched surface is product. Tier follows the surface, not model confidence (H-1).",
+        "required_approver_role": "eng-manager",
+        "artifacts": {
+          "code_fix": false,
+          "code_brief": {
+            "issue": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "evidence_summary": [
+              "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
+              "502_bad_gateway concentrated on eu-west load balancer.",
+              "CDN config change in EU-West 2h before spike.",
+              "Customer reports friction: service unavailable."
+            ],
+            "likely_files": [],
+            "expected_behavior": "Restore prior successful path for affected segment.",
+            "regression_test": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}.",
+            "surface": "product",
+            "hypothesis": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "confidence": 0.808
+          },
+          "pr": {
+            "title": "Fix: geo_5xx",
+            "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "files": [],
+            "tests": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}."
+          },
+          "voice_context": {
+            "user_label": "customer",
+            "attempt_summary": "",
+            "device": "EU-West mobile",
+            "failure": "service unavailable",
+            "previous_attempts": 0,
+            "known_issue": "",
+            "hypothesis_hint": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "opening": "Hi \u2014 we saw a problem on your recent product attempt. Thirty seconds to help us diagnose?",
+            "adaptive_questions": [
+              "When you tried to continue, did you see an error message, or did the screen keep loading?",
+              "Did you try again on the same device?",
+              "Have you completed this successfully before on another browser or app?",
+              "Were you on EU-West mobile the whole time?"
+            ],
+            "raw": {
+              "failure": "service unavailable",
+              "device": "EU-West mobile"
+            }
+          }
+        },
+        "idempotency_key": "c73830a8a799556737e5fc9f9b13809e",
+        "status": "awaiting_approval",
+        "consequence": "HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge.",
+        "gate": "This approval stays inside Product OS. No git change.",
+        "gate_mode": "internal",
+        "tenant_repo": ""
+      }
+    ],
+    "approvals": [],
+    "timeline": [
+      {
+        "id": "tl_89fe793cec21",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.041620Z",
+        "actor": "signal_agent",
+        "kind": "signal",
+        "title": "Investigation opened",
+        "detail": "http_5xx_rate -18.0% vs baseline 42.0%",
+        "denial": false
+      },
+      {
+        "id": "tl_7314d9e7ebb0",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.065137Z",
+        "actor": "customer_voice_agent",
+        "kind": "evidence",
+        "title": "customer_voice evidence",
+        "detail": "Diagnostic conversation: reason=unknown_friction severity=medium friction=technical confidence=0.7",
+        "denial": false
+      },
+      {
+        "id": "tl_d91839bb6e32",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.067063Z",
+        "actor": "analytics_agent",
+        "kind": "evidence",
+        "title": "analytics evidence",
+        "detail": "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
+        "denial": false
+      },
+      {
+        "id": "tl_3f2366ed7c33",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.068551Z",
+        "actor": "logs_agent",
+        "kind": "evidence",
+        "title": "logs evidence",
+        "detail": "502_bad_gateway concentrated on eu-west load balancer.",
+        "denial": false
+      },
+      {
+        "id": "tl_624d3a11d6af",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.070014Z",
+        "actor": "deployment_agent",
+        "kind": "evidence",
+        "title": "deployment evidence",
+        "detail": "CDN config change in EU-West 2h before spike.",
+        "denial": false
+      },
+      {
+        "id": "tl_118e9ca71895",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.071415Z",
+        "actor": "customer_voice_agent",
+        "kind": "evidence",
+        "title": "customer_voice evidence",
+        "detail": "Customer reports friction: service unavailable.",
+        "denial": false
+      },
+      {
+        "id": "tl_5d8d285617c9",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.073498Z",
+        "actor": "root_cause_agent",
+        "kind": "hypothesis",
+        "title": "Root cause emitted",
+        "detail": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+        "denial": false
+      },
+      {
+        "id": "tl_152722fdaae7",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "at": "2026-09-02T18:31:25.081576Z",
+        "actor": "risk_agent",
+        "kind": "risk",
+        "title": "HIGH tier \u2014 approval required",
+        "detail": "HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge.",
+        "denial": false
+      }
+    ],
+    "agent_calls": [
+      {
+        "id": "a2a_244c5990a986",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "investigator_agent",
+        "to_agent": "analytics_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.050284Z",
+        "finished_at": "2026-09-02T18:31:25.050285Z",
+        "status": "ok",
+        "summary": "Asked Analytics for the numbers"
+      },
+      {
+        "id": "a2a_ff84a5b3378d",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "investigator_agent",
+        "to_agent": "logs_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.054125Z",
+        "finished_at": "2026-09-02T18:31:25.054127Z",
+        "status": "ok",
+        "summary": "Asked Logs for the logs"
+      },
+      {
+        "id": "a2a_ee67154df08a",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "investigator_agent",
+        "to_agent": "deployment_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.055378Z",
+        "finished_at": "2026-09-02T18:31:25.055378Z",
+        "status": "ok",
+        "summary": "Asked Deployment for what shipped"
+      },
+      {
+        "id": "a2a_b15ed2a68997",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "investigator_agent",
+        "to_agent": "customer_voice_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.056407Z",
+        "finished_at": "2026-09-02T18:31:25.056407Z",
+        "status": "ok",
+        "summary": "Asked Voice for customer notes"
+      },
+      {
+        "id": "a2a_001f0571e83b",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "orchestrator",
+        "to_agent": "analytics_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.066454Z",
+        "finished_at": "2026-09-02T18:31:25.066455Z",
+        "status": "ok",
+        "summary": "Asked Analytics for the numbers"
+      },
+      {
+        "id": "a2a_7536fbfe6d4a",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "orchestrator",
+        "to_agent": "logs_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.067951Z",
+        "finished_at": "2026-09-02T18:31:25.067951Z",
+        "status": "ok",
+        "summary": "Asked Logs for the logs"
+      },
+      {
+        "id": "a2a_ad2004d8f0eb",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "orchestrator",
+        "to_agent": "deployment_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.069387Z",
+        "finished_at": "2026-09-02T18:31:25.069388Z",
+        "status": "ok",
+        "summary": "Asked Deployment for what shipped"
+      },
+      {
+        "id": "a2a_a991060b542c",
+        "investigation_id": "inv_cc50f8ea91d7",
+        "from_agent": "orchestrator",
+        "to_agent": "customer_voice_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.070867Z",
+        "finished_at": "2026-09-02T18:31:25.070868Z",
+        "status": "ok",
+        "summary": "Asked Voice for customer notes"
+      }
+    ],
+    "outcomes": [],
+    "lessons": [],
+    "verdicts": [],
+    "state": "AWAITING_APPROVAL"
+  },
+  "type_b": {
+    "investigation": {
+      "id": "inv_de196c557825",
+      "originating_signal_ids": [
+        "sig_7b1341234a"
+      ],
+      "state": "AWAITING_APPROVAL",
+      "opened_at": "2026-09-02T18:31:25.083294Z",
+      "closed_at": null,
+      "invocation_id": "job_87fb3e1283d9",
+      "assigned_agents": [
+        "orchestrator",
+        "analytics_agent",
+        "logs_agent",
+        "customer_voice_agent"
+      ],
+      "token_budget": 200000,
+      "tokens_consumed": 0,
+      "linked_hypothesis_ids": [
+        "hyp_5dc2f025da19"
+      ],
+      "linked_action_ids": [
+        "act_3933ca92517e"
+      ],
+      "verification_result": null,
+      "recalled_lessons": [],
+      "scenario_id": "eval:settings_workaround",
+      "room_id": "room_b813c0317a",
+      "tenant_id": null,
+      "loop_type": "type_b",
+      "title": "Workaround loop on settings screen"
+    },
+    "signals": [
+      {
+        "id": "sig_7b1341234a",
+        "family": "business",
+        "direction": "positive",
+        "funnel_position": "settings",
+        "metric": "settings_help_loop_rate",
+        "magnitude": 0.17,
+        "baseline": 0.05,
+        "affected_segments": [
+          {
+            "platform": "web",
+            "os": null,
+            "browser": null,
+            "app_version": "",
+            "geo": null,
+            "channel": null
+          }
+        ],
+        "detection_window": {
+          "start": "2026-08-26",
+          "end": "2026-08-28",
+          "baseline_start": "2026-08-06",
+          "baseline_end": "2026-08-19"
+        },
+        "confidence": 0.8,
+        "source": "warehouse",
+        "status": "investigating",
+        "suppression_reason": null,
+        "detected_at": "2026-09-02T18:31:25.082673Z"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "ev_298200b69e9b",
+        "investigation_id": "inv_de196c557825",
+        "source_type": "analytics",
+        "source_reference": "analytics",
+        "claim": "Settings help-loop rate 17% vs 5% baseline.",
+        "confidence": 0.85,
+        "trust_level": "trusted",
+        "collected_by": "analytics_agent",
+        "collected_at": "2026-09-02T18:31:25.085974Z",
+        "weight": 0.85,
+        "independence_group": "analytics"
+      },
+      {
+        "id": "ev_65737e8be3be",
+        "investigation_id": "inv_de196c557825",
+        "source_type": "logs",
+        "source_reference": "logs",
+        "claim": "rage_click on notification toggle rose 3\u00d7.",
+        "confidence": 0.85,
+        "trust_level": "trusted",
+        "collected_by": "logs_agent",
+        "collected_at": "2026-09-02T18:31:25.087889Z",
+        "weight": 0.85,
+        "independence_group": "logs"
+      },
+      {
+        "id": "ev_d75fd8504fa8",
+        "investigation_id": "inv_de196c557825",
+        "source_type": "customer_voice",
+        "source_reference": "customer_voice",
+        "claim": "Users toggle notifications repeatedly \u2014 state not saved.",
+        "confidence": 0.85,
+        "trust_level": "trusted",
+        "collected_by": "customer_voice_agent",
+        "collected_at": "2026-09-02T18:31:25.091917Z",
+        "weight": 0.85,
+        "independence_group": "customer_voice"
+      }
+    ],
+    "hypotheses": [
+      {
+        "id": "hyp_5dc2f025da19",
+        "investigation_id": "inv_de196c557825",
+        "statement": "settings_help_loop_rate moved to 0.17 from baseline 0.05. Opportunity to reduce friction \u2014 design a controlled experiment.",
+        "classification": "OPPORTUNITY",
+        "confidence": 0.86,
+        "supporting_evidence_ids": [
+          "ev_298200b69e9b",
+          "ev_65737e8be3be",
+          "ev_d75fd8504fa8"
+        ],
+        "contradicting_evidence_ids": [],
+        "cited_memory": [],
+        "rank": 1,
+        "independence_groups": [
+          "analytics",
+          "customer_voice",
+          "logs"
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "act_3933ca92517e",
+        "investigation_id": "inv_de196c557825",
+        "type": "experiment",
+        "risk_tier": "MEDIUM",
+        "tier_rationale": "Touched surface is settings / notification UX. Tier follows the surface, not model confidence (H-1).",
+        "required_approver_role": "developer",
+        "artifacts": {
+          "code_fix": false,
+          "code_brief": {
+            "hypothesis": "settings_help_loop_rate moved to 0.17 from baseline 0.05. Opportunity to reduce friction \u2014 design a controlled experiment.",
+            "issue": "Workaround loop on settings screen",
+            "likely_files": [],
+            "surface": "Workaround loop on settings screen"
+          },
+          "pr": {
+            "title": "Fix: Workaround loop on settings screen",
+            "body": "Investigation inv_de196c557825. Hypothesis: settings_help_loop_rate moved to 0.17 from baseline 0.05. Opportunity to reduce friction \u2014 design a controlled experiment.",
+            "tests": ""
+          },
+          "flag": "improve_settings_help_loops",
+          "from": "off",
+          "to": "5",
+          "rollout_pct": 5.0,
+          "primary_metric": "settings_help_loop_rate",
+          "guardrail": "purchase_conversion",
+          "mde": 0.08,
+          "stopping_rule": "14d or guardrail harm"
+        },
+        "idempotency_key": "2c09a74bf75bf09441cc423a3b5de841",
+        "status": "awaiting_approval",
+        "consequence": "MEDIUM experiment: 5.0% flag. Developer approval. Ceiling enforced in tool code (max 5% without human).",
+        "gate": "Will only flip an OS flag. No git repo is connected.",
+        "gate_mode": "flag_only",
+        "tenant_repo": ""
+      }
+    ],
+    "approvals": [],
+    "timeline": [
+      {
+        "id": "tl_04ee48f70b5f",
+        "investigation_id": "inv_de196c557825",
+        "at": "2026-09-02T18:31:25.083913Z",
+        "actor": "signal_agent",
+        "kind": "signal",
+        "title": "Investigation opened",
+        "detail": "settings_help_loop_rate 17.0% vs baseline 5.0%",
+        "denial": false
+      },
+      {
+        "id": "tl_dee92a29b32e",
+        "investigation_id": "inv_de196c557825",
+        "at": "2026-09-02T18:31:25.086244Z",
+        "actor": "analytics_agent",
+        "kind": "evidence",
+        "title": "analytics evidence",
+        "detail": "Settings help-loop rate 17% vs 5% baseline.",
+        "denial": false
+      },
+      {
+        "id": "tl_f5137feaef3b",
+        "investigation_id": "inv_de196c557825",
+        "at": "2026-09-02T18:31:25.089000Z",
+        "actor": "logs_agent",
+        "kind": "evidence",
+        "title": "logs evidence",
+        "detail": "rage_click on notification toggle rose 3\u00d7.",
+        "denial": false
+      },
+      {
+        "id": "tl_0144bc1c47ed",
+        "investigation_id": "inv_de196c557825",
+        "at": "2026-09-02T18:31:25.092201Z",
+        "actor": "customer_voice_agent",
+        "kind": "evidence",
+        "title": "customer_voice evidence",
+        "detail": "Users toggle notifications repeatedly \u2014 state not saved.",
+        "denial": false
+      },
+      {
+        "id": "tl_9f0faf9c1664",
+        "investigation_id": "inv_de196c557825",
+        "at": "2026-09-02T18:31:25.093622Z",
+        "actor": "root_cause_agent",
+        "kind": "hypothesis",
+        "title": "Root cause emitted",
+        "detail": "settings_help_loop_rate moved to 0.17 from baseline 0.05. Opportunity to reduce friction \u2014 design a controlled experiment.",
+        "denial": false
+      },
+      {
+        "id": "tl_cc5702008656",
+        "investigation_id": "inv_de196c557825",
+        "at": "2026-09-02T18:31:25.096204Z",
+        "actor": "risk_agent",
+        "kind": "risk",
+        "title": "MEDIUM tier",
+        "detail": "MEDIUM experiment: 5.0% flag. Developer approval. Ceiling enforced in tool code (max 5% without human).",
+        "denial": false
+      }
+    ],
+    "agent_calls": [
+      {
+        "id": "a2a_1ec481373564",
+        "investigation_id": "inv_de196c557825",
+        "from_agent": "orchestrator",
+        "to_agent": "analytics_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.085629Z",
+        "finished_at": "2026-09-02T18:31:25.085630Z",
+        "status": "ok",
+        "summary": "Asked Analytics for the numbers"
+      },
+      {
+        "id": "a2a_2f17d262bd22",
+        "investigation_id": "inv_de196c557825",
+        "from_agent": "orchestrator",
+        "to_agent": "logs_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.087130Z",
+        "finished_at": "2026-09-02T18:31:25.087131Z",
+        "status": "ok",
+        "summary": "Asked Logs for the logs"
+      },
+      {
+        "id": "a2a_66bde97e7a61",
+        "investigation_id": "inv_de196c557825",
+        "from_agent": "orchestrator",
+        "to_agent": "customer_voice_agent",
+        "trust_boundary": "TB-2",
+        "started_at": "2026-09-02T18:31:25.091535Z",
+        "finished_at": "2026-09-02T18:31:25.091536Z",
+        "status": "ok",
+        "summary": "Asked Voice for customer notes"
+      }
+    ],
+    "outcomes": [],
+    "lessons": [],
+    "verdicts": [],
+    "state": "AWAITING_APPROVAL"
+  },
+  "gateway_deny": {
+    "id": "pv_033fee5dcddb",
+    "agent_identity": "loop-code",
+    "tool": "prod_db.query",
+    "arguments_digest": "9081ae3054215d2d",
+    "verdict": "DENY",
+    "rationale": "Gateway: identity loop-code is denied customer_data.read and prod.db.read. Security plane blocks before any model turn. Not a prompt instruction.",
+    "enforcement_mode": "ENFORCING",
+    "token_usage": 0,
+    "timestamp": "2026-09-02T18:31:25.181825Z",
+    "finding_type": "exfil_attempt"
+  },
+  "investigation": {
+    "id": "inv_cc50f8ea91d7",
+    "originating_signal_ids": [
+      "sig_89495dcdc4"
+    ],
+    "state": "AWAITING_APPROVAL",
+    "opened_at": "2026-09-02T18:31:25.039075Z",
+    "closed_at": null,
+    "invocation_id": "job_144a5e7c7e77",
     "assigned_agents": [
       "orchestrator",
-      "analytics",
-      "logs",
-      "deployment"
+      "analytics_agent",
+      "logs_agent",
+      "deployment_agent",
+      "customer_voice_agent"
     ],
     "token_budget": 200000,
     "tokens_consumed": 0,
     "linked_hypothesis_ids": [
-      "hyp_0843b332557e"
+      "hyp_0b3f0c5d72ce"
     ],
     "linked_action_ids": [
-      "act_eecca7563381"
+      "act_73c0e8af7d2c"
     ],
-    "verification_result": "RESOLVED",
-    "recalled_lessons": [
-      "SDK callback regressions after payment SDK upgrades require a device-specific regression test. Last seen on release 4.2 WebView."
-    ],
-    "scenario_id": "safari_3ds",
-    "room_id": "room_b0c856f2d449",
-    "tenant_id": "beta",
+    "verification_result": null,
+    "recalled_lessons": [],
+    "scenario_id": "demo:geo_5xx",
+    "room_id": "room_69f4fc1953",
+    "tenant_id": null,
     "loop_type": "type_a",
-    "title": "Safari 3DS timeout after pay-sdk 4.3"
+    "title": "Geo-only 5xx spike in EU-West"
   },
   "signals": [
     {
-      "id": "sig_4ea41d8223f5",
-      "family": "business",
+      "id": "sig_89495dcdc4",
+      "family": "technical",
       "direction": "negative",
-      "funnel_position": "purchase",
-      "metric": "purchase_conversion",
-      "magnitude": -0.5383673469387755,
-      "baseline": 0.20114942528735633,
+      "funnel_position": "product",
+      "metric": "http_5xx_rate",
+      "magnitude": -0.18,
+      "baseline": 0.42,
       "affected_segments": [
         {
           "platform": "web",
-          "os": "iOS",
-          "browser": "Safari",
+          "os": "",
+          "browser": "",
           "app_version": null,
-          "geo": null,
+          "geo": "EU-West",
           "channel": null
         }
       ],
@@ -57,400 +763,340 @@
         "baseline_start": "2026-08-06",
         "baseline_end": "2026-08-19"
       },
-      "confidence": 0.95,
-      "source": "warehouse.events_daily",
+      "confidence": 0.8,
+      "source": "signal_agent",
       "status": "investigating",
       "suppression_reason": null,
-      "detected_at": "2026-08-30T16:41:00.958679Z"
+      "detected_at": "2026-09-02T18:31:25.037162Z"
     }
   ],
   "evidence": [
     {
-      "id": "ev_06b842ca250f",
-      "investigation_id": "inv_691b4139f86c",
-      "source_type": "analytics",
-      "source_reference": "events_20260826..events_20260828 browser=Safari metric=purchase/begin_checkout",
-      "claim": "Safari purchase conversion was 9.3% in the detection window versus 20.1% in the 14-day baseline (-53.8%). Chrome held 25.1% vs 21.2%.",
-      "confidence": 0.92,
-      "trust_level": "trusted",
-      "collected_by": "analytics_agent",
-      "collected_at": "2026-08-30T16:41:01.087945Z",
-      "weight": 0.92,
-      "independence_group": "analytics_ga4"
-    },
-    {
-      "id": "ev_18a6fe4a1505",
-      "investigation_id": "inv_691b4139f86c",
-      "source_type": "logs",
-      "source_reference": "Cloud Logging signature=3DS_TIMEOUT browser=Safari 2026-08-26..2026-08-28",
-      "claim": "3DS_TIMEOUT errors on Safari rose from 0 in the baseline window to 114 after 2026-08-20.",
-      "confidence": 0.9,
-      "trust_level": "trusted",
-      "collected_by": "logs_agent",
-      "collected_at": "2026-08-30T16:41:01.119869Z",
-      "weight": 0.9,
-      "independence_group": "logs_errors"
-    },
-    {
-      "id": "ev_503880ae7ca2",
-      "investigation_id": "inv_691b4139f86c",
-      "source_type": "deployment",
-      "source_reference": "deploy:dep_430 sha=9f8e7d6c5b4a",
-      "claim": "Release pay-sdk@4.3.0 shipped 2026-08-20T09:14:00Z (Payment SDK 4.3 \u2014 new 3DS challenge iframe). Onset aligns with the Safari conversion break.",
-      "confidence": 0.88,
-      "trust_level": "trusted",
-      "collected_by": "deployment_agent",
-      "collected_at": "2026-08-30T16:41:01.135607Z",
-      "weight": 0.88,
-      "independence_group": "deploy_timeline"
-    },
-    {
-      "id": "ev_35bdd7fb66df",
-      "investigation_id": "inv_691b4139f86c",
+      "id": "ev_ac33508ca5df",
+      "investigation_id": "inv_cc50f8ea91d7",
       "source_type": "customer_voice",
-      "source_reference": "media-bridge:voice_inv_691b4139f86c structured.reason=payment_timeout",
-      "claim": "Consented diagnostic (not a survey): spinner-only hang on iPhone Safari, Chrome succeeded, willing to retry. Structured reason=payment_timeout confidence=0.94. PII redacted; 0 injected/unsafe turns blocked.",
-      "confidence": 0.94,
+      "source_reference": "live-diagnostic:inv_cc50f8ea91d7 reason=unknown_friction",
+      "claim": "Diagnostic conversation: reason=unknown_friction severity=medium friction=technical confidence=0.7",
+      "confidence": 0.7,
       "trust_level": "trusted",
       "collected_by": "customer_voice_agent",
-      "collected_at": "2026-08-30T16:41:01.155676Z",
-      "weight": 0.94,
+      "collected_at": "2026-09-02T18:31:25.064620Z",
+      "weight": 0.7,
       "independence_group": "customer_voice"
     },
     {
-      "id": "ev_e7de129d7a65",
-      "investigation_id": "inv_691b4139f86c",
-      "source_type": "github_issue",
-      "source_reference": "github://northstar/pay/issues/1847",
-      "claim": "External issue text ingested as untrusted data. Injection screened and blocked. Not used as an instruction.",
-      "confidence": 0.4,
-      "trust_level": "untrusted",
-      "collected_by": "code_agent",
-      "collected_at": "2026-08-30T16:41:01.175913Z",
-      "weight": 0.4,
-      "independence_group": "github_untrusted"
+      "id": "ev_d541babe1ee1",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "source_type": "analytics",
+      "source_reference": "analytics",
+      "claim": "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
+      "confidence": 0.85,
+      "trust_level": "trusted",
+      "collected_by": "analytics_agent",
+      "collected_at": "2026-09-02T18:31:25.066774Z",
+      "weight": 0.85,
+      "independence_group": "analytics"
+    },
+    {
+      "id": "ev_82c6b9faccc5",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "source_type": "logs",
+      "source_reference": "logs",
+      "claim": "502_bad_gateway concentrated on eu-west load balancer.",
+      "confidence": 0.85,
+      "trust_level": "trusted",
+      "collected_by": "logs_agent",
+      "collected_at": "2026-09-02T18:31:25.068264Z",
+      "weight": 0.85,
+      "independence_group": "logs"
+    },
+    {
+      "id": "ev_bf2730cd450d",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "source_type": "deployment",
+      "source_reference": "deploys",
+      "claim": "CDN config change in EU-West 2h before spike.",
+      "confidence": 0.85,
+      "trust_level": "trusted",
+      "collected_by": "deployment_agent",
+      "collected_at": "2026-09-02T18:31:25.069744Z",
+      "weight": 0.85,
+      "independence_group": "deploys"
+    },
+    {
+      "id": "ev_76ffcb7cc1c0",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "source_type": "customer_voice",
+      "source_reference": "customer_voice",
+      "claim": "Customer reports friction: service unavailable.",
+      "confidence": 0.82,
+      "trust_level": "trusted",
+      "collected_by": "customer_voice_agent",
+      "collected_at": "2026-09-02T18:31:25.071180Z",
+      "weight": 0.82,
+      "independence_group": "customer_voice"
     }
   ],
   "hypotheses": [
     {
-      "id": "hyp_0843b332557e",
-      "investigation_id": "inv_691b4139f86c",
-      "statement": "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move. A consented diagnostic call reproduced a spinner-only 3DS hang (reason=payment_timeout).",
+      "id": "hyp_0b3f0c5d72ce",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "statement": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
       "classification": "BUG",
-      "confidence": 0.86,
+      "confidence": 0.808,
       "supporting_evidence_ids": [
-        "ev_06b842ca250f",
-        "ev_18a6fe4a1505",
-        "ev_503880ae7ca2",
-        "ev_35bdd7fb66df"
+        "ev_ac33508ca5df",
+        "ev_d541babe1ee1",
+        "ev_82c6b9faccc5",
+        "ev_bf2730cd450d",
+        "ev_76ffcb7cc1c0"
       ],
       "contradicting_evidence_ids": [],
-      "cited_memory": [
-        "SDK callback regressions after payment SDK upgrades require a device-specific regression test. Last seen on release 4.2 WebView."
-      ],
+      "cited_memory": [],
       "rank": 1,
       "independence_groups": [
-        "analytics_ga4",
+        "analytics",
         "customer_voice",
-        "deploy_timeline",
-        "logs_errors"
+        "deploys",
+        "logs"
       ]
     }
   ],
   "actions": [
     {
-      "id": "act_eecca7563381",
-      "investigation_id": "inv_691b4139f86c",
-      "type": "flag_rollback",
+      "id": "act_73c0e8af7d2c",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "type": "code_change",
       "risk_tier": "HIGH",
-      "tier_rationale": "Touched surface is payment authorization / 3DS / pay-sdk. Tier follows the surface, not model confidence (H-1).",
+      "tier_rationale": "Touched surface is product. Tier follows the surface, not model confidence (H-1).",
       "required_approver_role": "eng-manager",
       "artifacts": {
-        "flag": "pay_sdk_4_3",
-        "from": "on",
-        "to": "off",
-        "pr": {
-          "title": "Revert pay-sdk 4.3 Safari 3DS regression",
-          "body": "Investigation inv_691b4139f86c. Hypothesis: pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move. A consented diagnostic call reproduced a spinner-only 3DS hang (reason=payment_timeout).",
-          "tests": "regression test must fail pre-change and pass post-change"
-        },
-        "execution": {
-          "merged": false,
-          "pr_opened": false,
-          "flag": "pay_sdk_4_3",
-          "value": "off",
-          "tenant_id": "beta",
-          "github": {
-            "status": "skipped",
-            "connector": "github.pr",
-            "detail": "repo 404: {'message': 'Not Found', 'documentation_url': 'https://docs.github.com/rest/repos/repos#get-a-repository', 'status': '404'}",
-            "url": null
-          },
-          "connectors": [
-            {
-              "status": "skipped",
-              "connector": "github.pr",
-              "detail": "repo 404: {'message': 'Not Found', 'documentation_url': 'https://docs.github.com/rest/repos/repos#get-a-repository', 'status': '404'}",
-              "url": null
-            }
+        "code_fix": false,
+        "code_brief": {
+          "issue": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "evidence_summary": [
+            "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
+            "502_bad_gateway concentrated on eu-west load balancer.",
+            "CDN config change in EU-West 2h before spike.",
+            "Customer reports friction: service unavailable."
           ],
-          "reused": false
+          "likely_files": [],
+          "expected_behavior": "Restore prior successful path for affected segment.",
+          "regression_test": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}.",
+          "surface": "product",
+          "hypothesis": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "confidence": 0.808
+        },
+        "pr": {
+          "title": "Fix: geo_5xx",
+          "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "files": [],
+          "tests": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}."
+        },
+        "voice_context": {
+          "user_label": "customer",
+          "attempt_summary": "",
+          "device": "EU-West mobile",
+          "failure": "service unavailable",
+          "previous_attempts": 0,
+          "known_issue": "",
+          "hypothesis_hint": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "opening": "Hi \u2014 we saw a problem on your recent product attempt. Thirty seconds to help us diagnose?",
+          "adaptive_questions": [
+            "When you tried to continue, did you see an error message, or did the screen keep loading?",
+            "Did you try again on the same device?",
+            "Have you completed this successfully before on another browser or app?",
+            "Were you on EU-West mobile the whole time?"
+          ],
+          "raw": {
+            "failure": "service unavailable",
+            "device": "EU-West mobile"
+          }
         }
       },
-      "idempotency_key": "3e39bf5f84a65a8856b748a8a21ae997",
-      "status": "executed",
-      "consequence": "On approval, LOOP will flip feature flag pay_sdk_4_3 to off (rollback to 4.2.x) and open a PR with a Safari 3DS regression test. No merge, no production deploy.",
-      "gate": "Will open a pull request on beta/b. Product OS will not merge it.",
-      "gate_mode": "github_pr",
-      "tenant_repo": "beta/b"
+      "idempotency_key": "c73830a8a799556737e5fc9f9b13809e",
+      "status": "awaiting_approval",
+      "consequence": "HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge.",
+      "gate": "This approval stays inside Product OS. No git change.",
+      "gate_mode": "internal",
+      "tenant_repo": ""
     }
   ],
-  "approvals": [
-    {
-      "id": "appr_8f16b4b1f6bf",
-      "action_id": "act_eecca7563381",
-      "approver_identity": "oncall@beta",
-      "decision": "approve",
-      "rationale": "Evidence pack and risk gate reviewed.",
-      "timestamp": "2026-08-31T04:50:14.604554Z",
-      "tier_at_decision": "HIGH"
-    }
-  ],
+  "approvals": [],
   "timeline": [
     {
-      "id": "tl_f07b4b447a86",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:00.972441Z",
+      "id": "tl_89fe793cec21",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.041620Z",
       "actor": "signal_agent",
       "kind": "signal",
       "title": "Investigation opened",
-      "detail": "purchase_conversion -53.8% vs baseline 20.1%",
+      "detail": "http_5xx_rate -18.0% vs baseline 42.0%",
       "denial": false
     },
     {
-      "id": "tl_beb693e6cc0a",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.103691Z",
-      "actor": "analytics_agent",
-      "kind": "evidence",
-      "title": "analytics evidence",
-      "detail": "Safari purchase conversion was 9.3% in the detection window versus 20.1% in the 14-day baseline (-53.8%). Chrome held 25.1% vs 21.2%.",
-      "denial": false
-    },
-    {
-      "id": "tl_e0185f117816",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.124588Z",
-      "actor": "logs_agent",
-      "kind": "evidence",
-      "title": "logs evidence",
-      "detail": "3DS_TIMEOUT errors on Safari rose from 0 in the baseline window to 114 after 2026-08-20.",
-      "denial": false
-    },
-    {
-      "id": "tl_57ecd4bcb7ee",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.140350Z",
-      "actor": "deployment_agent",
-      "kind": "evidence",
-      "title": "deployment evidence",
-      "detail": "Release pay-sdk@4.3.0 shipped 2026-08-20T09:14:00Z (Payment SDK 4.3 \u2014 new 3DS challenge iframe). Onset aligns with the Safari conversion break.",
-      "denial": false
-    },
-    {
-      "id": "tl_94f4e5d64fe5",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.160501Z",
+      "id": "tl_7314d9e7ebb0",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.065137Z",
       "actor": "customer_voice_agent",
       "kind": "evidence",
       "title": "customer_voice evidence",
-      "detail": "Consented diagnostic (not a survey): spinner-only hang on iPhone Safari, Chrome succeeded, willing to retry. Structured reason=payment_timeout confidence=0.94. PII redacted; 0 injected/unsafe turns blocked.",
+      "detail": "Diagnostic conversation: reason=unknown_friction severity=medium friction=technical confidence=0.7",
       "denial": false
     },
     {
-      "id": "tl_7ee49ea95b4d",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.170544Z",
-      "actor": "tool_output_armor",
-      "kind": "policy",
-      "title": "Blocked injected tool output",
-      "detail": "after_tool_callback screened GitHub/tool payload; needle=ignore previous instructions. Content not forwarded.",
-      "denial": true
-    },
-    {
-      "id": "tl_cf11d3ef7512",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.180728Z",
-      "actor": "code_agent",
+      "id": "tl_d91839bb6e32",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.067063Z",
+      "actor": "analytics_agent",
       "kind": "evidence",
-      "title": "github_issue evidence",
-      "detail": "External issue text ingested as untrusted data. Injection screened and blocked. Not used as an instruction.",
+      "title": "analytics evidence",
+      "detail": "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
       "denial": false
     },
     {
-      "id": "tl_5d47acd113b1",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.200777Z",
+      "id": "tl_3f2366ed7c33",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.068551Z",
+      "actor": "logs_agent",
+      "kind": "evidence",
+      "title": "logs evidence",
+      "detail": "502_bad_gateway concentrated on eu-west load balancer.",
+      "denial": false
+    },
+    {
+      "id": "tl_624d3a11d6af",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.070014Z",
+      "actor": "deployment_agent",
+      "kind": "evidence",
+      "title": "deployment evidence",
+      "detail": "CDN config change in EU-West 2h before spike.",
+      "denial": false
+    },
+    {
+      "id": "tl_118e9ca71895",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.071415Z",
+      "actor": "customer_voice_agent",
+      "kind": "evidence",
+      "title": "customer_voice evidence",
+      "detail": "Customer reports friction: service unavailable.",
+      "denial": false
+    },
+    {
+      "id": "tl_5d8d285617c9",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.073498Z",
       "actor": "root_cause_agent",
       "kind": "hypothesis",
       "title": "Root cause emitted",
-      "detail": "pay-sdk 4.3.0 introduced a Safari WebKit 3DS timeout that drops purchase conversion on iOS Safari. Chrome is unaffected. Ads spend did not move. A consented diagnostic call reproduced a spinner-only 3DS hang (reason=payment_timeout).",
+      "detail": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
       "denial": false
     },
     {
-      "id": "tl_0af53879af1f",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-30T16:41:01.215776Z",
+      "id": "tl_152722fdaae7",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "at": "2026-09-02T18:31:25.081576Z",
       "actor": "risk_agent",
       "kind": "risk",
       "title": "HIGH tier \u2014 approval required",
-      "detail": "On approval, LOOP will flip feature flag pay_sdk_4_3 to off (rollback to 4.2.x) and open a PR with a Safari 3DS regression test. No merge, no production deploy.",
-      "denial": false
-    },
-    {
-      "id": "tl_1586b4288795",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-31T04:50:14.622258Z",
-      "actor": "oncall@beta",
-      "kind": "approval",
-      "title": "Action approve",
-      "detail": "Evidence pack and risk gate reviewed.",
-      "denial": false
-    },
-    {
-      "id": "tl_33f25e8966e1",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-31T04:50:15.227421Z",
-      "actor": "code_agent",
-      "kind": "action",
-      "title": "Approved action executed",
-      "detail": "{'merged': False, 'pr_opened': False, 'flag': 'pay_sdk_4_3', 'value': 'off', 'tenant_id': 'beta', 'github': {'status': 'skipped', 'connector': 'github.pr', 'detail': \"repo 404: {'message': 'Not Found', 'documentation_url': 'https://docs.github.com/rest/repos/repos#get-a-repository', 'status': '404'}\", 'url': None}, 'connectors': [{'status': 'skipped', 'connector': 'github.pr', 'detail': \"repo 404: {'message': 'Not Found', 'documentation_url': 'https://docs.github.com/rest/repos/repos#get-a-repository', 'status': '404'}\", 'url': None}]}",
-      "denial": false
-    },
-    {
-      "id": "tl_0c810f196402",
-      "investigation_id": "inv_691b4139f86c",
-      "at": "2026-08-31T04:50:15.297669Z",
-      "actor": "learning_agent",
-      "kind": "verify",
-      "title": "Verification RESOLVED",
-      "detail": "Safari 3DS regressions after payment SDK upgrades require a Safari WebKit regression test. pay-sdk 4.3 caused a -54% conversion drop; rolling the flag back recovered the funnel.",
+      "detail": "HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge.",
       "denial": false
     }
   ],
   "agent_calls": [
     {
-      "id": "a2a_1aa22d1ec1e8",
-      "investigation_id": "inv_691b4139f86c",
+      "id": "a2a_244c5990a986",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "from_agent": "investigator_agent",
+      "to_agent": "analytics_agent",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-09-02T18:31:25.050284Z",
+      "finished_at": "2026-09-02T18:31:25.050285Z",
+      "status": "ok",
+      "summary": "Asked Analytics for the numbers"
+    },
+    {
+      "id": "a2a_ff84a5b3378d",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "from_agent": "investigator_agent",
+      "to_agent": "logs_agent",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-09-02T18:31:25.054125Z",
+      "finished_at": "2026-09-02T18:31:25.054127Z",
+      "status": "ok",
+      "summary": "Asked Logs for the logs"
+    },
+    {
+      "id": "a2a_ee67154df08a",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "from_agent": "investigator_agent",
+      "to_agent": "deployment_agent",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-09-02T18:31:25.055378Z",
+      "finished_at": "2026-09-02T18:31:25.055378Z",
+      "status": "ok",
+      "summary": "Asked Deployment for what shipped"
+    },
+    {
+      "id": "a2a_b15ed2a68997",
+      "investigation_id": "inv_cc50f8ea91d7",
+      "from_agent": "investigator_agent",
+      "to_agent": "customer_voice_agent",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-09-02T18:31:25.056407Z",
+      "finished_at": "2026-09-02T18:31:25.056407Z",
+      "status": "ok",
+      "summary": "Asked Voice for customer notes"
+    },
+    {
+      "id": "a2a_001f0571e83b",
+      "investigation_id": "inv_cc50f8ea91d7",
       "from_agent": "orchestrator",
       "to_agent": "analytics_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-08-30T16:41:00.981252Z",
-      "finished_at": "2026-08-30T16:41:00.981254Z",
+      "started_at": "2026-09-02T18:31:25.066454Z",
+      "finished_at": "2026-09-02T18:31:25.066455Z",
       "status": "ok",
-      "summary": "funnel conversion by browser"
+      "summary": "Asked Analytics for the numbers"
     },
     {
-      "id": "a2a_4c29f95d501b",
-      "investigation_id": "inv_691b4139f86c",
+      "id": "a2a_7536fbfe6d4a",
+      "investigation_id": "inv_cc50f8ea91d7",
       "from_agent": "orchestrator",
       "to_agent": "logs_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-08-30T16:41:01.108367Z",
-      "finished_at": "2026-08-30T16:41:01.108371Z",
+      "started_at": "2026-09-02T18:31:25.067951Z",
+      "finished_at": "2026-09-02T18:31:25.067951Z",
       "status": "ok",
-      "summary": "error signatures vs deploy window"
+      "summary": "Asked Logs for the logs"
     },
     {
-      "id": "a2a_733ec5056dbe",
-      "investigation_id": "inv_691b4139f86c",
+      "id": "a2a_ad2004d8f0eb",
+      "investigation_id": "inv_cc50f8ea91d7",
       "from_agent": "orchestrator",
       "to_agent": "deployment_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-08-30T16:41:01.129797Z",
-      "finished_at": "2026-08-30T16:41:01.129803Z",
+      "started_at": "2026-09-02T18:31:25.069387Z",
+      "finished_at": "2026-09-02T18:31:25.069388Z",
       "status": "ok",
-      "summary": "release timeline correlation"
+      "summary": "Asked Deployment for what shipped"
     },
     {
-      "id": "a2a_cdbd8f98af9d",
-      "investigation_id": "inv_691b4139f86c",
+      "id": "a2a_a991060b542c",
+      "investigation_id": "inv_cc50f8ea91d7",
       "from_agent": "orchestrator",
       "to_agent": "customer_voice_agent",
-      "trust_boundary": "TB-3",
-      "started_at": "2026-08-30T16:41:01.145227Z",
-      "finished_at": "2026-08-30T16:41:01.145233Z",
+      "trust_boundary": "TB-2",
+      "started_at": "2026-09-02T18:31:25.070867Z",
+      "finished_at": "2026-09-02T18:31:25.070868Z",
       "status": "ok",
-      "summary": "consented diagnostic call"
-    },
-    {
-      "id": "a2a_b4d7e2ce1db4",
-      "investigation_id": "inv_691b4139f86c",
-      "from_agent": "orchestrator",
-      "to_agent": "learning_agent",
-      "trust_boundary": "TB-7",
-      "started_at": "2026-08-31T04:50:15.235970Z",
-      "finished_at": "2026-08-31T04:50:15.235974Z",
-      "status": "ok",
-      "summary": "measure originating metric"
+      "summary": "Asked Voice for customer notes"
     }
   ],
-  "outcomes": [
-    {
-      "id": "out_80b58940305a",
-      "investigation_id": "inv_691b4139f86c",
-      "metric": "purchase_conversion.Safari",
-      "pre_value": 0.09285714285714286,
-      "post_value": 0.17,
-      "control_comparison": 0.23452768729641693,
-      "delta": 0.07714285714285715,
-      "verdict": "RESOLVED",
-      "measured_at": "2026-08-31T04:50:15.280684Z"
-    }
-  ],
-  "lessons": [
-    {
-      "id": "les_3226cd39df99",
-      "investigation_id": "inv_691b4139f86c",
-      "statement": "Safari 3DS regressions after payment SDK upgrades require a Safari WebKit regression test. pay-sdk 4.3 caused a -54% conversion drop; rolling the flag back recovered the funnel.",
-      "root_cause_family": "safari-3ds-sdk",
-      "applicable_conditions": [
-        "browser=Safari",
-        "surface=checkout",
-        "dep=pay-sdk"
-      ],
-      "linked_playbook_skill": "playbooks/safari-payment-sdk",
-      "confidence": 0.84,
-      "author_agent": "learning_agent",
-      "human_reviewer": null,
-      "tenant_id": null
-    }
-  ],
-  "verdicts": [
-    {
-      "id": "pv_a64c87f8b567",
-      "agent_identity": "loop-analysis",
-      "tool": "read_github_issue",
-      "arguments_digest": "59fefacb1435ff49",
-      "verdict": "BLOCK",
-      "rationale": "Prompt-injection pattern in tool output: ignore previous instructions",
-      "enforcement_mode": "ENFORCING",
-      "token_usage": 0,
-      "timestamp": "2026-08-30T16:41:01.165549Z",
-      "finding_type": "prompt_injection"
-    },
-    {
-      "id": "pv_14847978212a",
-      "agent_identity": "loop-code",
-      "tool": "prod_db.query",
-      "arguments_digest": "9081ae3054215d2d",
-      "verdict": "DENY",
-      "rationale": "Gateway: identity loop-code is denied customer_data.read and prod.db.read. Security plane blocks before any model turn. Not a prompt instruction.",
-      "enforcement_mode": "ENFORCING",
-      "token_usage": 0,
-      "timestamp": "2026-08-30T16:41:02.105498Z",
-      "finding_type": "exfil_attempt"
-    }
-  ],
-  "state": "RESOLVED"
+  "outcomes": [],
+  "lessons": [],
+  "verdicts": [],
+  "state": "AWAITING_APPROVAL"
 }

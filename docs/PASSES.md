@@ -146,10 +146,12 @@ Home stacked CityMap + ops dashboard (collapsed pipeline, activity log, demo str
 5. **Glass box auth** — `/api/proof` + `/api/live-work` gated `AdminUnlessEval`; console shows Connect prompt on 401.
 6. **Auto-investigate** — unified `run_investigation` path for worker/signal-watch; `finish_stalled_investigations` completes async ingest; `auto_investigated` counts stalled + applied in status.
 7. **Tests** — `tests/test_pass4_production.py` (12 tests): checkout hang HIGH gate, async stall recovery, live pipeline e2e.
+8. **Remotion demo** — `loop export-demo` writes generic `apps/demo/public/loop.json` (Type A geo_5xx + Type B + gateway deny); `LoopDemo.tsx` is scenes-only, no Safari/checkout fallbacks.
 
 ### Verified locally
 
-- `python3 -m pytest -q` — 295 passed
+- `python3 -m pytest -q` — 298 passed
+- `python3 -m loop.cli export-demo` — generic loop.json, no safari_3ds strings
 - `apps/console` `tsc --noEmit` + `npm run build` green
 
 ---
