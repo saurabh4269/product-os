@@ -157,26 +157,35 @@ def gemini_generate_patches(brief: dict[str, Any], files: dict[str, str]) -> tup
     if not gemini_configured():
         raise RuntimeError("Gemini not configured (set LOOP_USE_VERTEX=1 or GOOGLE_API_KEY)")
 
+    target_paths = list(brief.get("likely_files") or list(files.keys()))
+    screen_blob = json.dumps(
+        {
+            "task": "Suggest a minimal product code change as JSON.",
+            "issue": str(brief.get("issue") or "")[:240],
+            "hypothesis": str(brief.get("hypothesis") or "")[:240],
+            "target_paths": target_paths,
+        }
+    )
+    hit, needle, _ = screen_chat(screen_blob)
+    if hit:
+        raise RuntimeError(f"code-fix prompt blocked by Model Armor: {needle}")
+
     prompt = {
-        "task": "Produce a minimal code fix as JSON. Keys: files (path→full new file content), summary (string).",
+        "task": "Return JSON with keys: files (path→full new file content), summary (string).",
         "issue": brief.get("issue"),
         "hypothesis": brief.get("hypothesis"),
         "expected_behavior": brief.get("expected_behavior"),
         "regression_test": brief.get("regression_test"),
-        "likely_files": brief.get("likely_files"),
+        "target_paths": target_paths,
         "current_files": files,
         "rules": [
-            "Fix root cause in tenant source, not only flags.json.",
-            "Include a regression test under tests/regression/ when applicable.",
-            "Do not remove LOOP ingest calls.",
+            "Make the smallest change that restores expected behavior.",
+            "Prefer editing listed target paths.",
+            "Add a regression test under tests/regression/ when reasonable.",
+            "Keep existing Product OS ingest wiring intact.",
             "Return ONLY JSON.",
         ],
     }
-    prompt_blob = json.dumps(prompt)
-    hit, needle, _ = screen_chat(prompt_blob)
-    if hit:
-        raise RuntimeError(f"code-fix prompt blocked by Model Armor: {needle}")
-
     parsed = generate_content_json(json.dumps(prompt))
     text = json.dumps(parsed)
     hit_r, needle_r, _ = screen_model_response(str(text))
@@ -233,6 +242,27 @@ def generate_patches(repo: Path, brief: dict[str, Any], tenant: Tenant | None = 
     raise RuntimeError(errors[-1] if errors else "no code backend available")
 
 
+def open_flag_pr(
+    tenant: Tenant,
+    *,
+    flags_doc: dict[str, str],
+    title: str,
+    body: str,
+) -> ConnectorReport:
+    """Open the tenant config/flags.json PR — required on HIGH approve."""
+    from loop.connectors.github import open_pr
+    from loop.tenant_context import flag_file_for
+
+    content = json.dumps(flags_doc, indent=2) + "\n"
+    return open_pr(
+        tenant,
+        title,
+        body,
+        file_path=flag_file_for(tenant),
+        file_content=content,
+    )
+
+
 def run_code_fix(
     *,
     tenant: Tenant,
@@ -242,6 +272,7 @@ def run_code_fix(
     flag_patch: dict[str, str] | None = None,
     pr_title: str = "",
     pr_body: str = "",
+    skip_flag_patch: bool = False,
 ) -> ConnectorReport:
     from loop.code_worker import (
         apply_patches,
@@ -258,7 +289,7 @@ def run_code_fix(
             return ConnectorReport(status="skipped", connector="code_fix", detail=detail)
 
         patches, summary, backend = generate_patches(repo, brief, tenant)
-        if flag_patch:
+        if flag_patch and not skip_flag_patch:
             from loop.tenant_context import flag_file_for
 
             patches[flag_file_for(tenant)] = json.dumps(flag_patch, indent=2) + "\n"
@@ -302,6 +333,7 @@ def run_code_fix_job(engine: Any, job: Any) -> dict[str, Any]:
         flag_patch=dict(payload.get("flag_patch") or {}) or None,
         pr_title=str(payload.get("pr_title") or ""),
         pr_body=str(payload.get("pr_body") or ""),
+        skip_flag_patch=bool(payload.get("flag_pr_opened")),
     )
     _apply_job_result(engine, payload, inv, report)
     return {
@@ -321,17 +353,45 @@ def _apply_job_result(engine: Any, payload: dict, inv: Any, report: ConnectorRep
     tenant = engine.store.get_tenant(tenant_id) if tenant_id else None
     if action:
         execution = dict((action.artifacts or {}).get("execution") or {})
+        had_pr = bool(execution.get("pr_opened") or execution.get("pr_url"))
         execution["code_fix"] = report.model_dump()
         if report.status == "applied" and report.url:
-            execution["code_pr_url"] = report.url
-            execution["pr_opened"] = True
-            execution["pr_url"] = report.url
+            if had_pr:
+                execution["code_pr_url"] = report.url
+            else:
+                execution["pr_opened"] = True
+                execution["pr_url"] = report.url
             if tenant:
                 tenant.last_pr_url = str(report.url)
                 tenant.last_connector = report.connector
                 engine.store.put_tenant(tenant)
+        elif report.status == "failed" and not had_pr:
+            flag_patch = dict(payload.get("flag_patch") or {})
+            pr_title = str(payload.get("pr_title") or "Product OS flag rollback")
+            pr_body = str(payload.get("pr_body") or "")
+            if tenant and tenant.repo and flag_patch:
+                fallback = open_flag_pr(
+                    tenant,
+                    flags_doc=flag_patch,
+                    title=pr_title,
+                    body=pr_body or f"Investigation {payload.get('investigation_id') or ''}.",
+                )
+                execution["flag_pr_fallback"] = fallback.model_dump()
+                if fallback.status == "applied" and fallback.url:
+                    execution["pr_opened"] = True
+                    execution["pr_url"] = fallback.url
+                    execution["code_fix_failed"] = report.detail
+                    if tenant:
+                        tenant.last_pr_url = str(fallback.url)
+                        tenant.last_connector = "github.pr flag fallback"
+                        engine.store.put_tenant(tenant)
+                else:
+                    execution["pr_opened"] = False
+                    execution["code_fix_failed"] = report.detail
+            else:
+                execution["pr_opened"] = False
+                execution["code_fix_failed"] = report.detail
         elif report.status == "failed":
-            execution["pr_opened"] = False
             execution["code_fix_failed"] = report.detail
         action.artifacts["execution"] = execution
         engine.store.put_action(action)
@@ -393,6 +453,7 @@ def enqueue_code_fix_job(
     flag_patch: dict[str, str] | None,
     pr_title: str,
     pr_body: str,
+    flag_pr_opened: bool = False,
 ) -> str | None:
     if not tenant:
         return None
@@ -407,6 +468,7 @@ def enqueue_code_fix_job(
         flag_patch=flag_patch,
         pr_title=pr_title,
         pr_body=pr_body,
+        flag_pr_opened=flag_pr_opened,
     )
     action = engine.store.get_action(action_id)
     if action:

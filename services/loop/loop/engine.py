@@ -862,23 +862,29 @@ class LoopEngine:
         self.store.put_investigation(inv)
 
         from .connectors import calendar_hold, create_issue, mail_draft, open_pr
-        from .tenant import flag_key, is_tenant_scenario, resolve_tenant
-        from .tenant_context import flag_file_for
+        from .tenant import flag_key, hydrate_tenant_config, is_tenant_scenario, resolve_tenant
+        from .tenant_context import effective_action_artifacts, flag_file_for
 
         tenant_bound = is_tenant_scenario(inv.scenario_id)
         tenant = resolve_tenant(self.store, investigation=inv)
         if tenant_bound and inv.tenant_id:
-            tenant = self.store.get_tenant(inv.tenant_id) or tenant
+            raw = self.store.get_tenant(inv.tenant_id)
+            tenant = hydrate_tenant_config(raw, self.store) if raw else tenant
+
+        arts = effective_action_artifacts(self.store, action, inv=inv, tenant=tenant)
+        if arts != (action.artifacts or {}):
+            action.artifacts = arts
+            self.store.put_action(action)
 
         reports = []
         result: dict = {"merged": False, "pr_opened": False}
         reused = False
         code_fix_job: dict | None = None
-        if "flag" in action.artifacts:
+        if "flag" in arts:
             import json as json_lib
 
-            name = str(action.artifacts["flag"])
-            value_str = str(action.artifacts.get("to", "off"))
+            name = str(arts["flag"])
+            value_str = str(arts.get("to", "off"))
             if tenant_bound:
                 if not tenant:
                     raise PermissionError("investigation is not bound to a tenant")
@@ -891,11 +897,11 @@ class LoopEngine:
             result["value"] = value
             if tenant:
                 result["tenant_id"] = tenant.id
-            pr_meta = action.artifacts.get("pr") if isinstance(action.artifacts.get("pr"), dict) else {}
+            pr_meta = arts.get("pr") if isinstance(arts.get("pr"), dict) else {}
             title = pr_meta.get("title") or f"Product OS: {name}"
             body = pr_meta.get("body") or f"Investigation {inv.id}. Flag {name} → {value}."
             flags_doc: dict[str, str] = {name: str(value)}
-            companions = action.artifacts.get("companion_flags")
+            companions = arts.get("companion_flags")
             if isinstance(companions, dict):
                 for ck, cv in companions.items():
                     flags_doc[str(ck)] = str(cv)
@@ -903,7 +909,7 @@ class LoopEngine:
                 # Safari fixture only: keep demo flags.json dual-key in sync.
                 flags_doc["pay_sdk"] = "4.2.1" if str(value) == "off" else "4.3.0"
             file_content = json_lib.dumps(flags_doc, indent=2) + "\n"
-            code_fix = action.artifacts.get("code_fix", True) is not False
+            code_fix = arts.get("code_fix", True) is not False
             brief = None
             if code_fix:
                 from .code_fix import resolve_brief
@@ -918,9 +924,10 @@ class LoopEngine:
                         "flag_patch": flags_doc,
                         "pr_title": str(pr_meta.get("title") or title),
                         "pr_body": str(pr_meta.get("body") or body),
+                        "flag_pr_opened": False,
                     }
                     result["code_fix"] = "queued"
-            if tenant and not (code_fix and brief):
+            if tenant:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.pr",
@@ -947,13 +954,17 @@ class LoopEngine:
                 elif gh.get("detail"):
                     tenant.last_connector = str(gh.get("detail"))
                     self.store.put_tenant(tenant)
-            elif code_fix and brief:
+                if code_fix_job is not None and result.get("pr_opened"):
+                    code_fix_job["flag_pr_opened"] = True
+            if code_fix and brief and not result.get("pr_opened"):
                 result["pr_note"] = "Code fix PR opening in background (multi-file)"
         else:
-            issue = action.artifacts.get("github_issue") if isinstance(action.artifacts.get("github_issue"), dict) else {}
-            title = issue.get("title") or "Product OS follow-up"
-            body = issue.get("body") or f"Investigation {inv.id}"
-            if tenant:
+            issue = arts.get("github_issue") if isinstance(arts.get("github_issue"), dict) else None
+            title = (issue or {}).get("title") or "Product OS follow-up"
+            body = (issue or {}).get("body") or f"Investigation {inv.id}"
+            if tenant and tenant.repo and action.type in {"code_change", "flag_rollback"} and not issue:
+                result["skipped_git"] = "repo-bound code action missing flag artifact"
+            elif tenant and issue:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.issue",
@@ -971,7 +982,7 @@ class LoopEngine:
                 result["github"] = gh
                 if gh.get("url"):
                     result["github_issue_url"] = gh["url"]
-            if action.artifacts.get("gmail"):
+            if arts.get("gmail"):
                 reports.append(
                     self._gateway_invoke(
                         inv,
@@ -983,7 +994,7 @@ class LoopEngine:
                         body,
                     ).model_dump()
                 )
-            if action.artifacts.get("calendar"):
+            if arts.get("calendar"):
                 reports.append(
                     self._gateway_invoke(
                         inv,
@@ -991,7 +1002,7 @@ class LoopEngine:
                         "calendar.read",
                         calendar_hold,
                         title,
-                        str(action.artifacts.get("calendar")),
+                        str(arts.get("calendar")),
                     ).model_dump()
                 )
         result["connectors"] = reports
