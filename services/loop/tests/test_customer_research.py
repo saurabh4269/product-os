@@ -96,3 +96,36 @@ def test_evidence_from_generic_dialogue():
     ev = extract_structured_evidence(turns)
     assert ev.reason == "payment_timeout"
     assert ev.friction == "technical"
+
+
+def test_simulate_uses_adaptive_questions_when_call_plan_empty():
+    """Live investigation path: voice_context has questions but call_plan.questions is empty."""
+    turns = simulate_research_dialogue(
+        {
+            "user_id": "u",
+            "event_kind": "conversion_drop",
+            "call_plan": {
+                "opening": "Hi Alex — we saw a problem on your recent payment attempt.",
+                "adaptive_questions": [
+                    "Did the screen keep loading or show an error?",
+                    "Did you try again on the same device?",
+                    "Have you checked out successfully before?",
+                ],
+            },
+            "raw": {
+                "dimensions": {
+                    "demo_replies": [
+                        "Sure, go ahead.",
+                        "It kept loading. My card was not being detected.",
+                        "Yes, twice.",
+                        "No, I gave up.",
+                    ],
+                }
+            },
+        }
+    )
+    agent_msgs = [t["message"] for t in turns if t["role"] == "agent"]
+    assert any("loading" in m.lower() or "error" in m.lower() for m in agent_msgs[1:])
+    ev = extract_structured_evidence(turns)
+    assert ev.reason == "payment_timeout"
+    assert ev.reason != "unknown_friction"

@@ -307,6 +307,57 @@ def call_system_prompt(brief: CustomerContextBrief | dict[str, Any]) -> str:
     )
 
 
+DEFAULT_DIAGNOSTIC_QUESTIONS = [
+    "When you tried to continue, did you see an error message, or did the screen keep loading?",
+    "Did you try again on the same device?",
+    "Have you completed this successfully before on another browser or app?",
+]
+
+DEFAULT_DEMO_REPLIES = [
+    "Sure, go ahead.",
+    "It kept loading. My card was not being detected.",
+    "Yes, twice.",
+    "No, I gave up.",
+]
+
+
+def resolve_diagnostic_plan(
+    brief: CustomerContextBrief | dict[str, Any],
+) -> tuple[str, list[str], list[str]]:
+    """Opening, adaptive questions, and demo replies for simulated / text-fallback calls."""
+    b = brief if isinstance(brief, CustomerContextBrief) else CustomerContextBrief.model_validate(brief)
+    plan = b.call_plan or {}
+    opening = str(plan.get("opening") or "Hi — quick question about your recent session.")
+    dims = (b.raw or {}).get("dimensions") or {}
+    voice_sub = dims.get("voice_subject") if isinstance(dims.get("voice_subject"), dict) else {}
+
+    questions = list(plan.get("questions") or [])
+    if not questions:
+        questions = list(plan.get("adaptive_questions") or [])
+    if not questions:
+        questions = list(voice_sub.get("adaptive_questions") or [])
+    if not questions and isinstance(brief, dict):
+        questions = list(brief.get("adaptive_questions") or [])
+    if not questions:
+        questions = list(DEFAULT_DIAGNOSTIC_QUESTIONS)
+        device = str(
+            voice_sub.get("device")
+            or (b.device.get("label") if isinstance(b.device, dict) else b.device)
+            or dims.get("device")
+            or ""
+        ).strip()
+        if device and not any(device.lower() in q.lower() for q in questions):
+            questions = [*questions, f"Were you on {device} the whole time?"]
+
+    if opening == "Hi — quick question about your recent session." and voice_sub.get("opening"):
+        opening = str(voice_sub["opening"])
+
+    replies = list(dims.get("demo_replies") or voice_sub.get("demo_replies") or [])
+    if not replies:
+        replies = list(DEFAULT_DEMO_REPLIES)
+    return opening, questions, replies
+
+
 def extract_structured_evidence(transcript: list[dict[str, str]]) -> StructuredCallEvidence:
     text = " ".join(f"{t.get('role')}: {t.get('message')}" for t in transcript).lower()
     loading = any(w in text for w in ("loading", "spinner", "kept loading", "hung", "timeout"))
@@ -339,16 +390,7 @@ def extract_structured_evidence(transcript: list[dict[str, str]]) -> StructuredC
 
 def simulate_research_dialogue(brief: CustomerContextBrief | dict[str, Any]) -> list[dict[str, str]]:
     """Deterministic dialogue for demos without a carrier."""
-    b = brief if isinstance(brief, CustomerContextBrief) else CustomerContextBrief.model_validate(brief)
-    q = list((b.call_plan or {}).get("questions") or [])
-    opening = (b.call_plan or {}).get("opening") or "Hi — quick question about your recent session."
-    # Generic replies; recipes can override via dimensions.demo_replies
-    replies = (b.raw.get("dimensions") or {}).get("demo_replies") or [
-        "Sure, go ahead.",
-        "It kept loading. My card was not being detected.",
-        "Yes, twice.",
-        "No, I gave up.",
-    ]
+    opening, q, replies = resolve_diagnostic_plan(brief)
     turns: list[dict[str, str]] = [{"role": "agent", "message": opening}, {"role": "user", "message": replies[0]}]
     for i, question in enumerate(q[:3]):
         turns.append({"role": "agent", "message": question})
