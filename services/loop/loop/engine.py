@@ -924,9 +924,10 @@ class LoopEngine:
                         "flag_patch": flags_doc,
                         "pr_title": str(pr_meta.get("title") or title),
                         "pr_body": str(pr_meta.get("body") or body),
+                        "flag_pr_opened": False,
                     }
                     result["code_fix"] = "queued"
-            if tenant and not (code_fix and brief):
+            if tenant:
                 gh, _ = self.store.claim_idempotency(
                     action.idempotency_key + ":gh",
                     "github.pr",
@@ -953,7 +954,9 @@ class LoopEngine:
                 elif gh.get("detail"):
                     tenant.last_connector = str(gh.get("detail"))
                     self.store.put_tenant(tenant)
-            elif code_fix and brief:
+                if code_fix_job is not None and result.get("pr_opened"):
+                    code_fix_job["flag_pr_opened"] = True
+            if code_fix and brief and not result.get("pr_opened"):
                 result["pr_note"] = "Code fix PR opening in background (multi-file)"
         else:
             issue = arts.get("github_issue") if isinstance(arts.get("github_issue"), dict) else None

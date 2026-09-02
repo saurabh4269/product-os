@@ -118,6 +118,7 @@ def enqueue_code_fix(
     flag_patch: dict[str, str] | None,
     pr_title: str,
     pr_body: str,
+    flag_pr_opened: bool = False,
 ) -> Job:
     return enqueue(
         store,
@@ -130,6 +131,7 @@ def enqueue_code_fix(
             "flag_patch": flag_patch or {},
             "pr_title": pr_title,
             "pr_body": pr_body,
+            "flag_pr_opened": flag_pr_opened,
         },
     )
 
