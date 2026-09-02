@@ -395,10 +395,26 @@ def ingest_tenant_signal(
 
     assert isinstance(tenant, Tenant)
     scenario = f"t:{tenant.id}:{metric}"
-    existing = next(
-        (r for r in engine.store.list_rooms() if r.scenario_id == scenario and r.status == "open"),
-        None,
-    )
+    open_rooms = [
+        r
+        for r in engine.store.list_rooms()
+        if r.scenario_id == scenario and r.status == "open"
+    ]
+    existing = None
+    if open_rooms:
+        candidate = sorted(open_rooms, key=lambda r: r.created_at, reverse=True)[0]
+        inv_check = (
+            engine.store.get_investigation(candidate.investigation_id)
+            if candidate.investigation_id
+            else None
+        )
+        if inv_check and inv_check.state not in {
+            InvestigationState.RESOLVED,
+            InvestigationState.NOT_RESOLVED,
+            InvestigationState.INCONCLUSIVE,
+            InvestigationState.PARTIALLY_RESOLVED,
+        }:
+            existing = candidate
     text = note or f"{metric} {magnitude} from {tenant.product}"
     tenant.last_ingest_at = _now().isoformat()
     if existing:
@@ -450,6 +466,12 @@ def ingest_tenant_signal(
             artifact={"signal_id": sig.id, "tenant": tenant.id, "joined": True},
         )
         engine.store.put_tenant(tenant)
+        try:
+            from .incident_lifecycle import publish_incident_lifecycle
+
+            publish_incident_lifecycle(engine, tenant.id, metric=metric)
+        except Exception:
+            pass
         return {"signal": sig, "room_id": existing.id, "joined": True}
     kind = RoomKind.INCIDENT if magnitude < 0 else RoomKind.OPPORTUNITY
     loop_type = LoopType.TYPE_A if magnitude < 0 else LoopType.TYPE_B
@@ -503,6 +525,12 @@ def ingest_tenant_signal(
         pass
     tenant.last_ingest_at = _now().isoformat()
     engine.store.put_tenant(tenant)
+    try:
+        from .incident_lifecycle import publish_incident_lifecycle
+
+        publish_incident_lifecycle(engine, tenant.id, metric=metric)
+    except Exception:
+        pass
     return {
         "signal": sig,
         "room_id": out["room_id"],

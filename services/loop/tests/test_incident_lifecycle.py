@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from loop.incident_lifecycle import arm_checkout_regression, incident_lifecycle, sync_regression_from_product
+from loop.incident_lifecycle import (
+    arm_checkout_regression,
+    incident_lifecycle,
+    sync_regression_from_product,
+)
 from loop.models import InvestigationState
 from loop.tenant import Tenant, flag_key, hash_token
 
@@ -123,3 +127,77 @@ def test_arm_resets_after_rollback(engine):
     out = arm_checkout_regression(engine, "acme")
     assert out["value"] == "on"
     assert engine.store.get_flag(flag_key("acme", "pay_sdk_4_3")) == "on"
+
+
+def test_publish_incident_lifecycle_ws(engine, monkeypatch):
+    engine.store.put_tenant(
+        Tenant(
+            id="acme",
+            name="Cove",
+            product="Cove",
+            repo="saurabh4269/cove",
+            deploy_url="https://cove.example.test",
+            token_hash=hash_token("tok"),
+            flag_names=["pay_sdk_4_3"],
+            connected=True,
+        )
+    )
+    sync_regression_from_product(engine, "acme")
+    from loop.incident_lifecycle import publish_incident_lifecycle
+
+    published: list[dict] = []
+
+    class _Hub:
+        def publish_global(self, event: dict) -> None:
+            published.append(event)
+
+    import loop.live as live_mod
+
+    monkeypatch.setattr(live_mod, "HUB", _Hub())
+    out = publish_incident_lifecycle(engine, "acme")
+    assert out and out["tenant_id"] == "acme"
+    assert published and published[0]["type"] == "incident_lifecycle"
+
+
+def test_ingest_after_terminal_investigation_opens_new_room(engine, monkeypatch):
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    engine.store.put_tenant(
+        Tenant(
+            id="acme",
+            name="Cove",
+            product="Cove",
+            repo="saurabh4269/cove",
+            deploy_url="https://cove.example.test",
+            token_hash=hash_token("tok"),
+            flag_names=["pay_sdk_4_3"],
+            connected=True,
+        )
+    )
+    sync_regression_from_product(engine, "acme")
+    from loop.world import ingest_tenant_signal
+
+    ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("acme"),
+        metric="checkout_conversion",
+        magnitude=-0.22,
+        baseline=0.72,
+        note="first hang",
+        source="cove.checkout",
+        async_finish=False,
+    )
+    inv = engine.store.list_investigations()[-1]
+    inv.state = InvestigationState.RESOLVED
+    engine.store.put_investigation(inv)
+    before_rooms = len(engine.store.list_rooms())
+    ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("acme"),
+        metric="checkout_conversion",
+        magnitude=-0.18,
+        baseline=0.7,
+        note="second hang after recovery",
+        source="cove.checkout",
+        async_finish=False,
+    )
+    assert len(engine.store.list_rooms()) > before_rooms

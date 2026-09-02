@@ -57,7 +57,8 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
   const [life, setLife] = useState<IncidentLifecycle | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { tick } = useGlobalWs();
+  const { tick, connection, incidentLifecycle } = useGlobalWs();
+  const wsLive = connection === "live";
 
   const refresh = useCallback(async () => {
     try {
@@ -81,13 +82,27 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
   }, [refresh, tick]);
 
   useEffect(() => {
+    if (incidentLifecycle?.tenantId === tenantId) {
+      setLife(incidentLifecycle.lifecycle as IncidentLifecycle);
+      setErr(null);
+    }
+  }, [incidentLifecycle, tenantId]);
+
+  useEffect(() => {
     const phase = life?.phase;
-    const ms = phase === "diagnosing" || phase === "signal_received" ? 2000 : 4000;
+    const activePhase = phase === "diagnosing" || phase === "signal_received";
+    const ms = wsLive
+      ? activePhase
+        ? 8000
+        : 15000
+      : activePhase
+        ? 2000
+        : 4000;
     const id = window.setInterval(() => {
       void refresh();
     }, ms);
     return () => window.clearInterval(id);
-  }, [life?.phase, refresh]);
+  }, [life?.phase, refresh, wsLive]);
 
   async function resetRegression() {
     setBusy(true);

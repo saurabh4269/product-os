@@ -28,8 +28,20 @@ def enabled() -> bool:
 
 
 def status() -> dict[str, Any]:
+    configured = enabled()
+    operational = configured and _client is not None and not _last_error
+    skipped_reason: str | None = None
+    if not configured:
+        skipped_reason = "LOOP_FIRESTORE_MEMORY off or no GCP project"
+    elif _last_error:
+        skipped_reason = _last_error[:240]
+    elif configured and _client is None and _client_tried:
+        skipped_reason = "Firestore client unavailable"
     return {
-        "enabled": enabled(),
+        "enabled": configured,
+        "operational": operational,
+        "skipped": not operational,
+        "skipped_reason": skipped_reason,
         "collection": _COLLECTION,
         "project": (os.environ.get("GOOGLE_CLOUD_PROJECT") or "").strip() or None,
         "client": _client is not None,
@@ -56,7 +68,17 @@ def _get_client() -> Any | None:
     try:
         from google.cloud import firestore
 
-        _client = firestore.Client(project=os.environ.get("GOOGLE_CLOUD_PROJECT"))
+        client = firestore.Client(project=os.environ.get("GOOGLE_CLOUD_PROJECT"))
+        # Probe once — fail closed when API is disabled (SERVICE_DISABLED).
+        try:
+            next(iter(client.collection(_COLLECTION).limit(1).stream()), None)
+            global _last_error
+            _last_error = ""
+        except Exception as exc:
+            _note_error(exc)
+            _client = None
+            return None
+        _client = client
     except Exception as exc:
         _note_error(exc)
         _client = None

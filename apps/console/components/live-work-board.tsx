@@ -229,6 +229,8 @@ export function LiveWorkBoard({
   }, [cards, columns]);
 
   const live = connection === "live";
+  const connectionLabel =
+    live ? "Live" : connection === "connecting" ? "Connecting" : connection === "reconnecting" ? "Reconnecting" : "Offline";
 
   return (
     <div id="live-work" className={cn(className)}>
@@ -243,7 +245,7 @@ export function LiveWorkBoard({
               )}
             >
               <span className={cn("h-1.5 w-1.5 rounded-full", live ? "bg-ok animate-pulse" : "bg-[var(--faint)]")} />
-              {live ? "Live" : connection === "reconnecting" ? "Reconnecting" : "Offline"}
+              {connectionLabel}
             </span>
           </div>
           {subtitle ? (

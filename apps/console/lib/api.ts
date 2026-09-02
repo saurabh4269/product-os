@@ -375,6 +375,14 @@ export const api = {
     get<{
       memory: Record<string, Array<Record<string, unknown>>>;
       lessons: Array<Record<string, unknown>>;
+      mirror?: {
+        enabled?: boolean;
+        operational?: boolean;
+        skipped?: boolean;
+        skipped_reason?: string | null;
+        last_error?: string | null;
+      };
+      source?: string;
     }>("/api/memory"),
   traces: () =>
     get<{

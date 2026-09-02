@@ -38,6 +38,7 @@ type WsSnapshot = {
   activity: ActivityEvent[];
   tick: number;
   connection: ConnectionStatus;
+  incidentLifecycle: { tenantId: string; lifecycle: Record<string, unknown> } | null;
 };
 
 let ws: WebSocket | null = null;
@@ -52,6 +53,7 @@ const snapshot: WsSnapshot = {
   activity: [],
   tick: 0,
   connection: "connecting",
+  incidentLifecycle: null,
 };
 
 const listeners = new Set<() => void>();
@@ -81,6 +83,8 @@ function handleMessage(ev: MessageEvent) {
       action_id?: string;
       event_url?: string;
       pr_url?: string;
+      tenant_id?: string;
+      lifecycle?: Record<string, unknown>;
     };
     const d = demoHandlers;
     const h = humanInputHandlers;
@@ -154,6 +158,13 @@ function handleMessage(ev: MessageEvent) {
     if (e.type === "orchestration" || e.type === "signal_detected") {
       setSnapshot({ tick: snapshot.tick + 1 });
     }
+    if (e.type === "incident_lifecycle" && e.tenant_id && e.lifecycle) {
+      snapshot.incidentLifecycle = {
+        tenantId: String(e.tenant_id),
+        lifecycle: e.lifecycle as Record<string, unknown>,
+      };
+      setSnapshot({ tick: snapshot.tick + 1 });
+    }
   } catch {
     /* ignore */
   }
@@ -175,7 +186,11 @@ function connect() {
       timer = window.setTimeout(connect, backoff);
       backoff = Math.min(backoff * 2, 15000);
     };
-    ws.onerror = () => setSnapshot({ connection: "offline" });
+    ws.onerror = () => {
+      if (snapshot.connection !== "live") {
+        setSnapshot({ connection: "reconnecting" });
+      }
+    };
   } catch {
     setSnapshot({ connection: "offline" });
     timer = window.setTimeout(connect, backoff);
@@ -212,7 +227,12 @@ export function registerToastWsHandlers(handlers: ToastHandlers | null) {
 
 export function useGlobalWs() {
   const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return { activity: snap.activity, tick: snap.tick, connection: snap.connection };
+  return {
+    activity: snap.activity,
+    tick: snap.tick,
+    connection: snap.connection,
+    incidentLifecycle: snap.incidentLifecycle,
+  };
 }
 
 /** Wire demo context into the shared WS connection (homepage only). */
