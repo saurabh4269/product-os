@@ -33,7 +33,9 @@ def test_production_seed_standing_only(engine, monkeypatch):
     assert engine.store.list_rooms()
     assert not any(r.scenario_id for r in engine.store.list_rooms())
     assert not engine.store.list_investigations()
-    assert not engine.store.list_lessons()
+    lessons = engine.store.list_lessons()
+    assert lessons
+    assert all(lesson.investigation_id == "inv_prior_org" for lesson in lessons)
 
 
 def test_production_lifespan_no_safari_regression(prod_client):

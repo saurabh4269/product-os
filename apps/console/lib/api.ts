@@ -39,6 +39,18 @@ export class ApiAuthError extends Error {
   }
 }
 
+/** GET that returns null on 401/403 instead of throwing — for public home shell. */
+export async function tryGet<T>(fn: () => Promise<T>): Promise<{ data: T | null; authRequired: boolean }> {
+  try {
+    return { data: await fn(), authRequired: false };
+  } catch (e) {
+    if (e instanceof ApiAuthError && (e.status === 401 || e.status === 403)) {
+      return { data: null, authRequired: true };
+    }
+    throw e;
+  }
+}
+
 export function setAdminToken(token: string, remember = false) {
   if (typeof window === "undefined") return;
   const trimmed = token.trim();

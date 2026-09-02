@@ -27,6 +27,34 @@ from .registry import gateway_allows
 
 MEMORY_KINDS = ("customer", "product", "engineering", "organizational")
 
+_TERMINAL_INVESTIGATION_STATES = {
+    InvestigationState.RESOLVED,
+    InvestigationState.NOT_RESOLVED,
+    InvestigationState.INCONCLUSIVE,
+    InvestigationState.PARTIALLY_RESOLVED,
+}
+
+
+def _pending_actions_for_investigation(engine: LoopEngine, inv_id: str) -> list[Any]:
+    return [
+        act
+        for act in engine.store.list_actions(inv_id)
+        if act.status in {"proposed", "awaiting_approval"}
+    ]
+
+
+def tenant_ingest_should_join_room(engine: LoopEngine, inv: Investigation | None) -> bool:
+    """Join only when HITL is still open — not stale awaiting with nothing pending."""
+    if inv is None:
+        return False
+    if inv.closed_at is not None:
+        return False
+    if inv.state in _TERMINAL_INVESTIGATION_STATES:
+        return False
+    if inv.state != InvestigationState.AWAITING_APPROVAL:
+        return False
+    return bool(_pending_actions_for_investigation(engine, inv.id))
+
 
 def ensure_standing_world(engine: LoopEngine) -> dict[str, Any]:
     """Production bootstrap — standing rooms only, no fixture pipeline or demo memory."""
@@ -41,6 +69,7 @@ def ensure_standing_world(engine: LoopEngine) -> dict[str, Any]:
         }
     _ensure_standing_rooms(engine)
     _plant_production_memory(engine)
+    _plant_organizational_memory(engine)
     engine.store.set_flag("world_seeded", "1", idempotency_key("world", "seed", "v1"))
     return {
         "reused": False,
@@ -52,9 +81,12 @@ def ensure_standing_world(engine: LoopEngine) -> dict[str, Any]:
 
 def ensure_api_ready(engine: LoopEngine) -> None:
     """Idempotent cold start for API handlers — standing rooms, fixtures only in eval."""
-    if engine.store.list_rooms():
+    if not engine.store.list_rooms():
+        seed_world(engine)
         return
-    seed_world(engine)
+    if not any(m.get("kind") == "organizational" for m in engine.store.list_memory()):
+        _plant_production_memory(engine)
+        _plant_organizational_memory(engine)
 
 
 def scenario_index(engine: LoopEngine) -> list[dict[str, Any]]:
@@ -160,33 +192,70 @@ def _tenant_ingest_dimensions(
     tenant_id: str,
     metric: str,
     magnitude: float,
+    baseline: float,
     note: str,
 ) -> dict[str, Any]:
     """Generic investigator arms for tenant ingest — not fixture recipes."""
-    dims: dict[str, Any] = {"note": note, "tenant_id": tenant_id}
+    dims: dict[str, Any] = {"note": note, "tenant_id": tenant_id, "skip_fixture_enrichment": True}
+    pct = abs(magnitude) * 100 if abs(magnitude) <= 1.5 else abs(magnitude)
+    analytics_claim = (
+        f"{metric} moved {magnitude:+.0%} vs baseline {baseline:.0%} "
+        f"(tenant ingest · {tenant_id})"
+    )
+    dims["analytics_claim"] = analytics_claim
     if magnitude < 0:
         dims["needs_call"] = True
         dims["voice_subject"] = {
             "failure": f"{metric.replace('_', ' ')} friction",
             "attempt_summary": note or metric,
         }
-        dims.setdefault(
-            "logs",
-            {"cluster": "client_errors", "note": "Elevated client errors in detection window"},
+        logs_claim = (
+            f"Client error cluster aligned with {metric} drop "
+            f"(Δ≈{pct:.0f}% vs baseline {baseline:.0%})."
         )
-        dims.setdefault(
-            "deploy",
-            {"service": "app", "version": "recent", "minutes_ago": 45},
-        )
+        deploy_claim = "Recent deploy within 45 minutes of detection window."
+        dims.setdefault("logs", {"cluster": "client_errors", "note": logs_claim})
+        dims["logs_claim"] = logs_claim
+        dims.setdefault("deploy", {"service": "app", "version": "recent", "minutes_ago": 45})
+        dims["deploy_claim"] = deploy_claim
         surface = "payment authorization" if ("conversion" in metric or "checkout" in metric) else metric
         dims.setdefault("code", {"likely_files": [], "surface": surface})
+        dims["customer_claim"] = (
+            f"Customer reports friction: {note or metric.replace('_', ' ')}."
+        )
+    dims["probes"] = {
+        "analytics_agent": {
+            "claim": analytics_claim,
+            "confidence": 0.88,
+            "independence_group": "analytics",
+            "metric": metric,
+            "magnitude": magnitude,
+            "baseline": baseline,
+        },
+        "logs_agent": {
+            "claim": dims.get("logs_claim")
+            or f"Log patterns reviewed for {metric} movement.",
+            "confidence": 0.84,
+            "independence_group": "logs",
+        },
+        "deployment_agent": {
+            "claim": dims.get("deploy_claim") or "Deploy timing checked against detection window.",
+            "confidence": 0.9,
+            "independence_group": "deploys",
+        },
+        "customer_voice_agent": {
+            "claim": dims.get("customer_claim")
+            or f"Customer voice queued for {metric.replace('_', ' ')}.",
+            "confidence": 0.82,
+            "independence_group": "customer_voice",
+        },
+    }
     return dims
 
 
 def _plant_production_memory(engine: LoopEngine) -> None:
     """Four memory kinds for production recall — generic lessons, not fixture scenarios."""
-    if engine.store.list_memory():
-        return
+    existing_ids = {str(m.get("id") or "") for m in engine.store.list_memory()}
     cards = [
         (
             "mem_org_deploy",
@@ -250,6 +319,8 @@ def _plant_production_memory(engine: LoopEngine) -> None:
         ),
     ]
     for mem_id, kind, body in cards:
+        if mem_id in existing_ids:
+            continue
         engine.store.put_memory(mem_id, kind, body)
 
 
@@ -257,6 +328,7 @@ def _plant_organizational_memory(engine: LoopEngine) -> None:
     from .abandon_research import plant_abandon_memory
 
     plant_abandon_memory(engine.store)
+    existing_ids = {str(m.get("id") or "") for m in engine.store.list_memory()}
     cards = [
         Lesson(
             id="les_prior_sdk",
@@ -301,6 +373,8 @@ def _plant_organizational_memory(engine: LoopEngine) -> None:
         "les_prior_apple_pay": "product",
     }
     for lesson in cards:
+        if lesson.id in existing_ids:
+            continue
         engine.store.put_lesson(lesson)
         engine.store.put_memory(
             lesson.id,
@@ -315,17 +389,18 @@ def _plant_organizational_memory(engine: LoopEngine) -> None:
                 "confidence": lesson.confidence,
             },
         )
-    engine.store.put_memory(
-        "mem_customer_spinner",
-        "customer",
-        {
-            "id": "mem_customer_spinner",
-            "kind": "customer",
-            "statement": "Users describe spinner-only hangs as 'the page kept loading' — not a decline.",
-            "provenance": "customer voice cluster",
-            "confidence": 0.88,
-        },
-    )
+    if "mem_customer_spinner" not in existing_ids:
+        engine.store.put_memory(
+            "mem_customer_spinner",
+            "customer",
+            {
+                "id": "mem_customer_spinner",
+                "kind": "customer",
+                "statement": "Users describe spinner-only hangs as 'the page kept loading' — not a decline.",
+                "provenance": "customer voice cluster",
+                "confidence": 0.88,
+            },
+        )
 
 
 def post(
@@ -484,12 +559,12 @@ def ingest_tenant_signal(
     async_finish: bool | None = None,
 ) -> dict[str, Any]:
     """Posted tenant events open or join a room; new signals run the investigation pipeline."""
-    import os
-
     from .tenant import Tenant
 
     if async_finish is None:
-        async_finish = os.environ.get("LOOP_INGEST_ASYNC", "1") == "1"
+        from .auth import ingest_async_default
+
+        async_finish = ingest_async_default()
 
     assert isinstance(tenant, Tenant)
     scenario = f"t:{tenant.id}:{metric}"
@@ -506,7 +581,7 @@ def ingest_tenant_signal(
             if candidate.investigation_id
             else None
         )
-        if inv_check and inv_check.state == InvestigationState.AWAITING_APPROVAL:
+        if inv_check and tenant_ingest_should_join_room(engine, inv_check):
             existing = candidate
         else:
             for stale in open_rooms:
@@ -585,7 +660,7 @@ def ingest_tenant_signal(
         confidence=0.6,
         source=f"tenant.{tenant.id}",
         polarity="negative" if magnitude < 0 else "positive",
-        dimensions=_tenant_ingest_dimensions(tenant.id, metric, magnitude, note),
+        dimensions=_tenant_ingest_dimensions(tenant.id, metric, magnitude, baseline, note),
     )
     out = run_investigation(
         engine,

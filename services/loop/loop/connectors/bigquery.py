@@ -63,6 +63,21 @@ def resolve_bq_config(tenant: Tenant | None) -> BqConfig | None:
     )
 
 
+def _primary_browser(conv: dict[str, Any], *, metric: str = "") -> str:
+    """Pick the busiest browser bucket — never hardcode Safari for generic metrics."""
+    if not conv:
+        return "all"
+    return max(
+        conv.keys(),
+        key=lambda b: float(
+            conv[b].get("begin_checkout")
+            or conv[b].get("purchase")
+            or conv[b].get("conversion")
+            or 0
+        ),
+    )
+
+
 def has_bq(tenant: Tenant | None) -> bool:
     return resolve_bq_config(tenant) is not None
 
@@ -342,7 +357,7 @@ def read_metric_window(
                 end = RECOVERY_START - timedelta(days=1)
             start = end - timedelta(days=2)
             conv = conversion_by_browser(tenant, start, end)
-            browser = "Safari" if "safari" in metric.lower() else next(iter(conv.keys()), "Chrome")
+            browser = _primary_browser(conv, metric=metric)
             row = conv.get(browser) or {}
             if row.get("conversion") is not None:
                 value = float(row["conversion"])
@@ -360,14 +375,15 @@ def read_metric_window(
 
     wh = getattr(engine, "wh", None)
     if wh and hasattr(wh, "conversion_by_browser") and "conversion" in metric.lower():
-        browser = "Safari" if "safari" in metric.lower() else "Chrome"
         # Use the fixture detect window — post-RECOVERY days are empty by design
         end = date.today()
         if end >= RECOVERY_START:
             end = RECOVERY_START - timedelta(days=1)
         start = end - timedelta(days=2)
         try:
-            conv = wh.conversion_by_browser(start, end).get(browser, {}).get("conversion")
+            conv_map = wh.conversion_by_browser(start, end)
+            browser = _primary_browser(conv_map, metric=metric)
+            conv = conv_map.get(browser, {}).get("conversion")
             if conv is not None:
                 return {
                     "value": float(conv),
@@ -505,6 +521,8 @@ def enrich_anomaly_dimensions(store: Any, tenant: Tenant, dims: dict[str, Any]) 
     if not has_bq(tenant):
         return dims
     out = dict(dims)
+    if out.get("skip_fixture_enrichment") or out.get("tenant_id"):
+        return out
     end = date.today()
     if end >= RECOVERY_START:
         end = RECOVERY_START - timedelta(days=1)

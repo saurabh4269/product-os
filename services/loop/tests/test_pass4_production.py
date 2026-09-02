@@ -209,9 +209,60 @@ def test_proof_live_work_require_admin_when_eval_off(engine, monkeypatch):
     with TestClient(api_mod.app) as client:
         assert client.get("/api/proof").status_code == 401
         assert client.get("/api/live-work").status_code == 401
+        assert client.get("/api/status").status_code == 401
+        assert client.get("/api/investigations").status_code == 401
         headers = {"Authorization": "Bearer secret"}
         assert client.get("/api/proof", headers=headers).status_code == 200
         assert client.get("/api/live-work", headers=headers).status_code == 200
+        assert client.get("/api/status", headers=headers).status_code == 200
+        assert client.get("/api/investigations", headers=headers).status_code == 200
+
+
+def test_hosted_ingest_sync_by_default(engine, monkeypatch):
+    from loop.auth import ingest_async_default
+
+    monkeypatch.delenv("LOOP_INGEST_ASYNC", raising=False)
+    monkeypatch.setenv("K_SERVICE", "loop")
+    assert ingest_async_default() is False
+    monkeypatch.delenv("K_SERVICE", raising=False)
+    assert ingest_async_default() is True
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "1")
+    assert ingest_async_default() is True
+
+
+def test_standing_world_plants_organizational_memory(engine: LoopEngine, monkeypatch):
+    monkeypatch.setenv("LOOP_EVAL", "0")
+    engine.store._conn.execute("DELETE FROM memory")
+    engine.store._conn.execute("DELETE FROM lessons")
+    engine.store._conn.commit()
+    engine.store.set_flag("world_seeded", "0", "reset")
+    ensure_standing_world(engine)
+    org = [m for m in engine.store.list_memory() if m.get("kind") == "organizational"]
+    assert org
+    assert any("les_prior_activation" in str(m.get("id")) for m in org)
+
+
+def test_tenant_ingest_avoids_3ds_log_contamination(engine: LoopEngine, monkeypatch):
+    monkeypatch.setenv("LOOP_EVAL", "0")
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    engine.store.put_tenant(
+        Tenant(id="cove", name="Cove", product="Cove", token_hash=hash_token("tok"), repo="saurabh4269/cove")
+    )
+    out = ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("cove"),
+        metric="checkout_completion_rate",
+        magnitude=-0.18,
+        baseline=0.42,
+        note="Checkout spinner after deploy",
+        async_finish=False,
+    )
+    inv = engine.store.get_investigation(out["investigation_id"])
+    blob = " ".join(e.claim for e in engine.store.list_evidence(inv.id)).lower()
+    assert "3ds" not in blob
+    assert "safari" not in blob
+    msgs = engine.store.list_messages(out["room_id"])
+    assert any(m.artifact_type == "call_evidence" for m in msgs)
 
 
 def test_live_checkout_hang_pipeline(engine: LoopEngine, monkeypatch):
@@ -320,3 +371,98 @@ def test_pass4_live_pipeline_e2e(engine: LoopEngine, monkeypatch):
         assert actions[0].risk_tier in {RiskTier.LOW, RiskTier.MEDIUM, RiskTier.HIGH}
     a2a = engine.store.list_agent_calls(inv.id)
     assert a2a
+
+
+def test_stale_awaiting_without_pending_opens_new_room_with_voice(engine: LoopEngine, monkeypatch):
+    """Hosted e2e repro: AWAITING_APPROVAL + pending=[] + closed_at → new room + Customer Voice."""
+    monkeypatch.setenv("LOOP_EVAL", "0")
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    engine.store._conn.execute("DELETE FROM memory")
+    engine.store._conn.commit()
+    engine.store.set_flag("world_seeded", "0", "reset")
+    ensure_standing_world(engine)
+    engine.store.put_tenant(
+        Tenant(
+            id="cove",
+            name="Cove",
+            product="Cove",
+            repo="saurabh4269/cove",
+            deploy_url="https://cove.example",
+            token_hash=hash_token("tok"),
+            flag_names=["new_checkout_flow"],
+        )
+    )
+    first = ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("cove"),
+        metric="checkout_conversion",
+        magnitude=-0.22,
+        baseline=0.72,
+        note="checkout hang",
+        source="cove.checkout",
+        async_finish=False,
+    )
+    assert not first.get("joined")
+    inv = engine.store.get_investigation(first["investigation_id"])
+    assert inv
+    for act in engine.store.list_actions(inv.id):
+        act.status = "executed"
+        engine.store.put_action(act)
+    inv.state = InvestigationState.AWAITING_APPROVAL
+    inv.closed_at = datetime.now(UTC)
+    engine.store.put_investigation(inv)
+
+    second = ingest_tenant_signal(
+        engine,
+        engine.store.get_tenant("cove"),
+        metric="checkout_conversion",
+        magnitude=-0.22,
+        baseline=0.72,
+        note="checkout hang again",
+        source="cove.checkout",
+        async_finish=False,
+    )
+    assert second.get("joined") is not True
+    assert second["room_id"] != first["room_id"]
+    assert second["investigation_id"] != first["investigation_id"]
+    msgs = engine.store.list_messages(second["room_id"])
+    assert any(m.artifact_type == "call_evidence" for m in msgs)
+    assert any(m.author == "customer_voice_agent" and m.kind == "chat" for m in msgs)
+
+
+def test_loop_ingest_wire_opens_investigation_with_voice(engine: LoopEngine, monkeypatch):
+    """Cove Pay-now hang → POST /api/loop/ingest with tenant bearer."""
+    monkeypatch.setenv("LOOP_EVAL", "0")
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    engine.store.put_tenant(
+        Tenant(
+            id="acme",
+            name="Cove",
+            product="Cove",
+            repo="saurabh4269/cove",
+            deploy_url="https://cove.example",
+            token_hash=hash_token("cove-wire-token"),
+        )
+    )
+    with TestClient(api_mod.app) as client:
+        res = client.post(
+            "/api/loop/ingest",
+            headers={"Authorization": "Bearer cove-wire-token"},
+            json={
+                "metric": "checkout_conversion",
+                "magnitude": -0.22,
+                "baseline": 0.72,
+                "note": "Pay now hung after authorizing",
+                "source": "cove.checkout",
+            },
+        )
+    assert res.status_code == 200
+    body = res.json()
+    assert body.get("joined") is False
+    assert body.get("room_id")
+    assert body.get("investigation_id")
+    msgs = engine.store.list_messages(body["room_id"])
+    assert any(m.artifact_type == "call_evidence" for m in msgs)
+    assert any(m.author == "customer_voice_agent" for m in msgs)

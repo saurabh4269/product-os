@@ -23,7 +23,9 @@ def anomaly_event_from_signal(
     src_note = note or str(window.get("source") or window.get("note") or "")
     dims: dict[str, Any] = {}
     if bound:
-        dims = _tenant_ingest_dimensions(bound, sig.metric, float(sig.magnitude), src_note)
+        dims = _tenant_ingest_dimensions(
+            bound, sig.metric, float(sig.magnitude), float(sig.baseline or 0), src_note
+        )
     seg = sig.affected_segments[0] if sig.affected_segments else None
     if seg and (seg.browser or seg.os or seg.platform or seg.geo):
         dims.setdefault("segments", {})

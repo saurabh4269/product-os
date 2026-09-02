@@ -429,7 +429,8 @@ def run_investigators(event: AnomalyEvent) -> list[InvestigatorClaim]:
             if not _arm_supported(event, spec["id"]):
                 continue
             claim = _DEFAULTS[spec["id"]](event)
-            claim.detail = {**(claim.detail or {}), "synthetic": True}
+            if not event.dimensions.get("tenant_id") and not event.dimensions.get("probes"):
+                claim.detail = {**(claim.detail or {}), "synthetic": True}
         out.append(claim)
     if not out:
         out.append(_default_analytics(event))

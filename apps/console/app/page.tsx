@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api, type OfficeSnapshot, type Room } from "@/lib/api";
+import Link from "next/link";
+import { api, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { isFirstVisit, recordVisit } from "@/lib/first-visit";
 import { buildHomePulse } from "@/lib/home-pulse";
 import { useGlobalWs } from "@/lib/use-global-ws";
@@ -14,6 +15,7 @@ import { HomeGlassBox, HomeLiveReceipts } from "@/components/home-glass-box";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { SevenStepLoop } from "@/components/seven-step-loop";
 import { ApprovalModal } from "@/components/approval-modal";
+import { ExternalLink } from "lucide-react";
 
 export default function HomePage() {
   const { tick, connection } = useGlobalWs();
@@ -23,6 +25,7 @@ export default function HomePage() {
   const [configLoaded, setConfigLoaded] = useState(false);
   const [fixtureSlugs, setFixtureSlugs] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<string | null>(null);
+  const [adminAuthRequired, setAdminAuthRequired] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const [status, setStatus] = useState<Awaited<ReturnType<typeof api.status>> | null>(null);
   const [visitReady, setVisitReady] = useState(false);
@@ -35,17 +38,38 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([api.rooms(), api.office(), api.config(), api.status()])
-      .then(([r, o, cfg, st]) => {
-        setRooms(r.rooms);
-        setOffice(o);
+    let cancelled = false;
+    (async () => {
+      try {
+        const cfg = await api.config();
+        if (cancelled) return;
         setEvalMode(cfg.eval_mode);
         setFixtureSlugs(new Set(cfg.fixture_scenarios ?? []));
-        setStatus(st);
         setConfigLoaded(true);
+
+        const [roomsRes, officeRes, statusRes] = await Promise.all([
+          tryGet(() => api.rooms()),
+          tryGet(() => api.office()),
+          tryGet(() => api.status()),
+        ]);
+        if (cancelled) return;
+
+        setRooms(roomsRes.data?.rooms ?? []);
+        setOffice(officeRes.data);
+        setStatus(statusRes.data);
+        setAdminAuthRequired(
+          roomsRes.authRequired || officeRes.authRequired || statusRes.authRequired
+        );
         setErr(null);
-      })
-      .catch((e) => setErr(e instanceof Error ? e.message : "API unreachable"));
+      } catch (e) {
+        if (!cancelled) {
+          setErr(e instanceof Error ? e.message : "API unreachable");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [tick]);
 
   const pulse = useMemo(() => {
@@ -59,8 +83,9 @@ export default function HomePage() {
       verified: status?.verified,
       lessons: status?.funnel?.learn,
       workspaceConnected: status?.workspace?.connected,
+      adminAuthRequired,
     });
-  }, [visitReady, status, office]);
+  }, [visitReady, status, office, adminAuthRequired]);
 
   if (err) return <ErrorState message={err} />;
 
@@ -99,6 +124,21 @@ export default function HomePage() {
           liveMotion={live}
         />
         <HomeBrief pulse={pulse} onDismiss={() => setShowHint(false)} />
+        {adminAuthRequired ? (
+          <div className="pointer-events-auto absolute bottom-24 left-4 right-4 z-30 mx-auto max-w-md rounded-2xl border border-dashed border-accent/40 bg-white/95 px-4 py-3 text-center shadow-sm backdrop-blur-sm sm:left-8 sm:bottom-28 sm:right-auto">
+            <p className="text-[13px] font-medium text-foreground">Authorize to see office and rooms</p>
+            <p className="mt-0.5 text-[12px] text-[var(--dim)]">
+              Campus stays live — paste LOOP_ADMIN_TOKEN on Connect to hydrate agents.
+            </p>
+            <Link
+              href="/connect"
+              className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-accent hover:underline"
+            >
+              Open Connect
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+        ) : null}
         <HomeCommandBar
           pulse={pulse}
           evalMode={evalMode}

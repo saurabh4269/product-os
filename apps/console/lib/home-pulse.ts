@@ -28,6 +28,7 @@ export type PulseInput = {
   verified?: number;
   lessons?: number;
   workspaceConnected?: boolean;
+  adminAuthRequired?: boolean;
 };
 
 const QUIET_TITLES = ["Quiet", "Ready", "Idle"] as const;
@@ -48,9 +49,26 @@ export function buildHomePulse(input: PulseInput): HomePulse {
   const workingAgents = input.workingAgents ?? 0;
   const verified = input.verified ?? 0;
   const wired = input.workspaceConnected ?? false;
+  const needsAdmin = input.adminAuthRequired ?? false;
 
   const countSubtitle =
     open > 0 ? `${open} open` : inFlight > 0 ? `${inFlight} in flight` : verified > 0 ? `${verified} verified` : "";
+
+  if (needsAdmin && !wired) {
+    return {
+      campusLine: "",
+      commandLine: "Connect",
+      commandAction: "connect",
+      pipelineSubtitle: "",
+      exploreHint: "",
+      brief: {
+        kicker: "Authorize",
+        title: "Connect Product Y",
+        body: "Paste LOOP_ADMIN_TOKEN on Connect to load office, rooms, and live receipts.",
+        primary: { label: "Open Connect", action: "connect" },
+      },
+    };
+  }
 
   if (first) {
     return {
