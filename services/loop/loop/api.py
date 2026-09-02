@@ -835,9 +835,50 @@ def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | N
 
             finish_stalled_investigation(eng, inv)
             out["async_finished"] = True
+    return _ingest_response(out)
+
+
+@app.post("/api/loop/ingest")
+def loop_ingest(body: IngestSignalBody, authorization: str | None = Header(default=None)):
+    """Tenant wire — Cove checkout hang posts here with tenant bearer (LOOP_TENANT_TOKEN)."""
+    from .auth import ingest_async_default
+    from .tenant import resolve_tenant_by_token
+    from .world import ingest_tenant_signal
+
+    eng = get_engine()
+    token = _bearer(authorization)
+    tenant = resolve_tenant_by_token(eng.store, token)
+    if not tenant:
+        raise HTTPException(401, "tenant bearer token required")
+    note = body.note or "Checkout authorization hung at Pay now"
+    source = body.source if body.source != "tenant.ingest" else "cove.checkout"
+    out = ingest_tenant_signal(
+        eng,
+        tenant,
+        metric=body.metric if body.metric != "purchase_conversion" else "checkout_conversion",
+        magnitude=body.magnitude,
+        baseline=body.baseline,
+        note=note,
+        source=source,
+        async_finish=ingest_async_default(),
+    )
+    inv_id = out.get("investigation_id")
+    if out.get("async") and inv_id:
+        inv = eng.store.get_investigation(inv_id)
+        if inv and not eng.store.list_hypotheses(inv.id):
+            from .auto_investigate import finish_stalled_investigation
+
+            finish_stalled_investigation(eng, inv)
+            out["async_finished"] = True
+    return _ingest_response(out)
+
+
+def _ingest_response(out: dict) -> dict:
+    inv_id = out.get("investigation_id")
+    sig = out.get("signal")
     return {
-        "signal": out["signal"].model_dump(mode="json"),
-        "room_id": out["room_id"],
+        "signal": sig.model_dump(mode="json") if sig is not None else None,
+        "room_id": out.get("room_id"),
         "joined": out.get("joined", False),
         "investigation_id": inv_id,
         "async": out.get("async", False),

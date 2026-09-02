@@ -65,6 +65,16 @@ def token_ok(tenant: Tenant, raw: str | None) -> bool:
     return hash_token(raw) == tenant.token_hash
 
 
+def resolve_tenant_by_token(store: Any, raw: str | None) -> Tenant | None:
+    """Find tenant row matching a bearer token — Cove wire ingest."""
+    if not raw:
+        return None
+    for tenant in store.list_tenants():
+        if token_ok(tenant, raw):
+            return tenant
+    return None
+
+
 def flag_key(tenant_id: str, name: str) -> str:
     return f"t:{tenant_id}:{name}"
 

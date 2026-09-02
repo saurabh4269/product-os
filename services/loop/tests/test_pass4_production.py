@@ -428,3 +428,41 @@ def test_stale_awaiting_without_pending_opens_new_room_with_voice(engine: LoopEn
     msgs = engine.store.list_messages(second["room_id"])
     assert any(m.artifact_type == "call_evidence" for m in msgs)
     assert any(m.author == "customer_voice_agent" and m.kind == "chat" for m in msgs)
+
+
+def test_loop_ingest_wire_opens_investigation_with_voice(engine: LoopEngine, monkeypatch):
+    """Cove Pay-now hang → POST /api/loop/ingest with tenant bearer."""
+    monkeypatch.setenv("LOOP_EVAL", "0")
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    engine.store.put_tenant(
+        Tenant(
+            id="acme",
+            name="Cove",
+            product="Cove",
+            repo="saurabh4269/cove",
+            deploy_url="https://cove.example",
+            token_hash=hash_token("cove-wire-token"),
+        )
+    )
+    with TestClient(api_mod.app) as client:
+        res = client.post(
+            "/api/loop/ingest",
+            headers={"Authorization": "Bearer cove-wire-token"},
+            json={
+                "metric": "checkout_conversion",
+                "magnitude": -0.22,
+                "baseline": 0.72,
+                "note": "Pay now hung after authorizing",
+                "source": "cove.checkout",
+            },
+        )
+    assert res.status_code == 200
+    body = res.json()
+    assert body.get("joined") is False
+    assert body.get("room_id")
+    assert body.get("investigation_id")
+    msgs = engine.store.list_messages(body["room_id"])
+    assert any(m.artifact_type == "call_evidence" for m in msgs)
+    assert any(m.author == "customer_voice_agent" for m in msgs)
