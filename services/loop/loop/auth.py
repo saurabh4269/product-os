@@ -16,6 +16,14 @@ def is_hosted() -> bool:
     return bool(os.environ.get("K_SERVICE"))
 
 
+def ingest_async_default() -> bool:
+    """Async ingest opens the room then finishes in a thread — unreliable on Cloud Run."""
+    raw = os.environ.get("LOOP_INGEST_ASYNC")
+    if raw is not None:
+        return raw.strip() == "1"
+    return not is_hosted()
+
+
 def dev_open() -> bool:
     """Explicit escape hatch for local/demo — never default on Cloud Run."""
     return os.environ.get("LOOP_DEV_OPEN", "0") == "1"

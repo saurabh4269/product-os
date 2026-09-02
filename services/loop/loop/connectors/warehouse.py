@@ -9,6 +9,25 @@ from typing import Any
 from loop.tenant import ConnectorReport, Tenant
 
 
+def _log_needle_candidates(metric: str) -> list[str]:
+    m = (metric or "").lower()
+    if "checkout" in m or "payment" in m or "conversion" in m:
+        return ["TIMEOUT", "CLIENT_ERROR", "ERROR"]
+    if "activat" in m or "onboard" in m:
+        return ["ACTIVATION", "ERROR"]
+    if "ship" in m or "deliver" in m:
+        return ["SHIPPING", "ERROR"]
+    if "auth" in m or "login" in m:
+        return ["AUTH", "ERROR"]
+    toks = [t for t in m.replace("-", "_").split("_") if t]
+    primary = toks[0].upper() if toks else "ERROR"
+    return [primary, "ERROR"]
+
+
+def _log_needle_from_metric(metric: str) -> str:
+    return _log_needle_candidates(metric)[0]
+
+
 def publish_signal(payload: dict, *, store: Any | None = None) -> ConnectorReport:
     project = (os.environ.get("GOOGLE_CLOUD_PROJECT") or "").strip()
     topic = (os.environ.get("LOOP_PUBSUB_TOPIC") or "loop.signals").strip()
@@ -79,6 +98,8 @@ def enrich_file_dimensions(engine: Any, dims: dict[str, Any], *, metric: str = "
     from loop.warehouse import RECOVERY_START, REGRESSION_START
 
     out = dict(dims)
+    if out.get("skip_fixture_enrichment") or out.get("tenant_id"):
+        return out
     # BQ may be configured but return no rows — still fill missing arms from file warehouse.
     if out.get("warehouse_source") == "bigquery" and out.get("logs_claim") and out.get("deploy_claim"):
         return out
@@ -118,23 +139,37 @@ def enrich_file_dimensions(engine: Any, dims: dict[str, Any], *, metric: str = "
         claim += " (file warehouse)."
         out.setdefault("analytics_claim", claim)
         out.setdefault("segments", {**(segs or {}), "browser": focus})
-    # Logs — needle from metric
-    needle = "3DS" if any(x in (metric or "").lower() for x in ("purchase", "checkout", "payment", "conversion")) else "ERROR"
+    # Logs — pick the first needle with rows; claim stays generic (no fixture 3DS copy).
     start_dt = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
     end_dt = datetime.combine(end, datetime.max.time(), tzinfo=timezone.utc)
     base_start_dt = datetime.combine(baseline_start, datetime.min.time(), tzinfo=timezone.utc)
     base_end_dt = datetime.combine(baseline_end, datetime.max.time(), tzinfo=timezone.utc)
+    needle = ""
+    now_counts: dict[str, int] = {}
+    then_counts: dict[str, int] = {}
     try:
-        now_counts = wh.error_counts(start_dt, end_dt, needle)
-        then_counts = wh.error_counts(base_start_dt, base_end_dt, needle)
+        for candidate in _log_needle_candidates(metric):
+            now_counts = wh.error_counts(start_dt, end_dt, candidate)
+            then_counts = wh.error_counts(base_start_dt, base_end_dt, candidate)
+            if sum(now_counts.values()) or sum(then_counts.values()):
+                needle = candidate
+                break
+        if not needle:
+            needle = _log_needle_from_metric(metric)
+            now_counts = wh.error_counts(start_dt, end_dt, needle)
+            then_counts = wh.error_counts(base_start_dt, base_end_dt, needle)
         now_n = sum(now_counts.values())
         then_n = sum(then_counts.values())
         if now_n or then_n:
+            label = "timeout" if needle == "TIMEOUT" else needle.lower().replace("_", " ")
             out.setdefault(
                 "logs_claim",
-                f"{needle} errors rose from {then_n} (baseline) to {now_n} (detection) in file warehouse.",
+                f"{label.title()} errors rose from {then_n} (baseline) to {now_n} (detection) in file warehouse.",
             )
-            out.setdefault("logs", {"signature": needle, "now": now_n, "then": then_n, "counts": now_counts})
+            out.setdefault(
+                "logs",
+                {"signature": needle, "now": now_n, "then": then_n, "counts": now_counts},
+            )
     except Exception:
         pass
     try:
