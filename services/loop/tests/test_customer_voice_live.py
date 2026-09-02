@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from loop.customer_research import extract_structured_evidence, simulate_research_dialogue
-from loop.investigation import aggregate_evidence, build_voice_context, example_segmented_conversion_anomaly, run_investigators
+from loop.investigation import (
+    aggregate_evidence,
+    build_voice_context,
+    example_segmented_conversion_anomaly,
+    run_investigators,
+)
 
 
 def test_live_brief_shape_runs_adaptive_diagnostic_dialogue():
