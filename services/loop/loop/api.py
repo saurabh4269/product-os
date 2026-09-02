@@ -74,6 +74,7 @@ async def lifespan(_app: FastAPI):
     try:
         from loop import firestore_memory
 
+        firestore_memory.warm_client()
         firestore_memory.backfill_from_store(eng.store)
     except Exception:
         pass
@@ -98,6 +99,7 @@ async def lifespan(_app: FastAPI):
                     if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
                         from .auto_investigate import (
                             auto_investigate_new_signals,
+                            count_applied,
                             open_signal_ids_for_auto_investigate,
                         )
 
@@ -119,6 +121,7 @@ async def lifespan(_app: FastAPI):
                             "count": len(processed),
                             "detected": len(detected),
                             "investigated": investigated,
+                            "auto_investigated": count_applied(investigated),
                         }
                     )
                 except Exception:
@@ -444,7 +447,10 @@ def _status_payload(eng) -> dict:
             "tasks_disabled": os.environ.get("LOOP_TASKS_DISABLE") == "1",
             "last_signal_tick": last_tick.get("at"),
             "last_worker_tick": worker_tick.get("at"),
-            "auto_investigated": last_tick.get("auto_investigated", 0),
+            "auto_investigated": max(
+                int(last_tick.get("auto_investigated", 0) or 0),
+                int(worker_tick.get("auto_investigated", 0) or 0),
+            ),
             "jobs_queued": jobs_queued,
             "jobs_dead": jobs_dead,
             "state_upload_ts": last_upload_ts(),
@@ -824,7 +830,9 @@ def tenant_signal(tenant_id: str, body: IngestSignalBody, authorization: str | N
     return {
         "signal": out["signal"].model_dump(mode="json"),
         "room_id": out["room_id"],
-        "joined": out["joined"],
+        "joined": out.get("joined", False),
+        "investigation_id": out.get("investigation_id"),
+        "async": out.get("async", False),
     }
 
 
@@ -1839,7 +1847,7 @@ def workflows_focus(tenant_id: str | None = Query(default=None)):
 
 
 @app.get("/api/live-work")
-def live_work_board():
+def live_work_board(_actor: AdminUnlessEval):
     """Homepage live work board — receipts that pile into Signal → Evidence → Code → Approve → Verify."""
     from .live_work import build_live_work
     from .proof import enrich_card_proof
@@ -1864,7 +1872,7 @@ def live_work_board():
 
 
 @app.get("/api/proof")
-def proof_bundle():
+def proof_bundle(_actor: AdminUnlessEval):
     """Homepage trust strip — live BQ/GA4 tables + latest GitHub PR."""
     from .proof import homepage_proofs
 
@@ -2550,7 +2558,7 @@ def worker_tick(
     require_admin_or_internal(authorization, internal_header=x_loop_worker)
     eng = get_engine()
     detected = eng.detect_all_signals()
-    from .auto_investigate import open_signal_ids_for_auto_investigate
+    from .auto_investigate import count_applied, open_signal_ids_for_auto_investigate
 
     open_ids = open_signal_ids_for_auto_investigate(eng, detected)
     investigated: list[dict] = []
@@ -2558,6 +2566,10 @@ def worker_tick(
         from .auto_investigate import auto_investigate_new_signals
 
         investigated = auto_investigate_new_signals(eng, open_ids)
+    elif os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
+        from .auto_investigate import finish_stalled_investigations
+
+        investigated = finish_stalled_investigations(eng)
     processed: list[dict] = []
     for _ in range(limit):
         result = process_one(eng.store, eng)
@@ -2569,6 +2581,7 @@ def worker_tick(
         "count": len(processed),
         "detected": len(detected),
         "investigated": investigated,
+        "auto_investigated": count_applied(investigated),
     }
     from .worker_heartbeat import record_tick
 

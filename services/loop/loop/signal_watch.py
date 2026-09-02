@@ -47,10 +47,18 @@ def tick_signal_watch(engine: Any) -> dict[str, Any]:
         _last_seen = current
 
     auto_results: list[dict[str, Any]] = []
-    if new_ids and os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
-        from .auto_investigate import auto_investigate_new_signals
+    if os.environ.get("LOOP_AUTO_INVESTIGATE", "1") == "1":
+        from .auto_investigate import (
+            auto_investigate_new_signals,
+            count_applied,
+            finish_stalled_investigations,
+        )
 
-        auto_results = auto_investigate_new_signals(engine, sorted(new_ids))
+        stalled = finish_stalled_investigations(engine)
+        if new_ids:
+            auto_results = stalled + auto_investigate_new_signals(engine, sorted(new_ids))
+        else:
+            auto_results = stalled
 
     payload = {
         "type": "orchestration",
@@ -58,7 +66,7 @@ def tick_signal_watch(engine: Any) -> dict[str, Any]:
         "at": datetime.now(timezone.utc).isoformat(),
         "signals_open": len([s for s in found if getattr(s, "status", None) != "suppressed"]),
         "new_signal_ids": sorted(new_ids),
-        "auto_investigated": len([r for r in auto_results if r.get("status") == "applied"]),
+        "auto_investigated": count_applied(auto_results),
     }
 
     if new_ids:

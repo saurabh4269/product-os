@@ -40,6 +40,7 @@ def ensure_standing_world(engine: LoopEngine) -> dict[str, Any]:
             "scenarios": [],
         }
     _ensure_standing_rooms(engine)
+    _plant_production_memory(engine)
     engine.store.set_flag("world_seeded", "1", idempotency_key("world", "seed", "v1"))
     return {
         "reused": False,
@@ -153,6 +154,103 @@ def _ensure_standing_rooms(engine: LoopEngine) -> None:
             kind="system",
             text=topic,
         )
+
+
+def _tenant_ingest_dimensions(
+    tenant_id: str,
+    metric: str,
+    magnitude: float,
+    note: str,
+) -> dict[str, Any]:
+    """Generic investigator arms for tenant ingest — not fixture recipes."""
+    dims: dict[str, Any] = {"note": note, "tenant_id": tenant_id}
+    if magnitude < 0:
+        dims["needs_call"] = True
+        dims["voice_subject"] = {
+            "failure": f"{metric.replace('_', ' ')} friction",
+            "attempt_summary": note or metric,
+        }
+        dims.setdefault(
+            "logs",
+            {"cluster": "client_errors", "note": "Elevated client errors in detection window"},
+        )
+        dims.setdefault(
+            "deploy",
+            {"service": "app", "version": "recent", "minutes_ago": 45},
+        )
+        surface = "payment authorization" if ("conversion" in metric or "checkout" in metric) else metric
+        dims.setdefault("code", {"likely_files": [], "surface": surface})
+    return dims
+
+
+def _plant_production_memory(engine: LoopEngine) -> None:
+    """Four memory kinds for production recall — generic lessons, not fixture scenarios."""
+    if engine.store.list_memory():
+        return
+    cards = [
+        (
+            "mem_org_deploy",
+            "organizational",
+            {
+                "statement": (
+                    "Metric drops after deploys need deploy timing + logs + customer voice "
+                    "before changing business logic."
+                ),
+                "root_cause_family": "deploy-correlation",
+                "applicable_conditions": ["family=business", "surface=metric"],
+                "provenance": "organizational memory",
+                "confidence": 0.8,
+            },
+        ),
+        (
+            "mem_eng_regression",
+            "engineering",
+            {
+                "statement": (
+                    "Client-side regressions after SDK bumps need a device-specific regression test "
+                    "before rollback."
+                ),
+                "root_cause_family": "sdk-regression",
+                "applicable_conditions": ["family=sdk", "surface=client"],
+                "provenance": "organizational memory",
+                "confidence": 0.79,
+            },
+        ),
+        (
+            "mem_product_cluster",
+            "product",
+            {
+                "statement": "Recurring feature asks in voice clusters predict revenue lift when themed.",
+                "root_cause_family": "feature-cluster",
+                "applicable_conditions": ["family=feature", "surface=product"],
+                "provenance": "organizational memory",
+                "confidence": 0.74,
+            },
+        ),
+        (
+            "mem_customer_spinner",
+            "customer",
+            {
+                "statement": "Users describe spinner-only hangs as 'kept loading' — not a decline message.",
+                "root_cause_family": "spinner-hang",
+                "applicable_conditions": ["friction=technical", "family=customer"],
+                "provenance": "customer voice cluster",
+                "confidence": 0.88,
+                "structured": {
+                    "reason": "spinner_hang",
+                    "severity": "medium",
+                    "purchase_intent": "high",
+                    "friction": "technical",
+                    "competitor_mentioned": False,
+                    "feature_request": None,
+                    "willing_to_retry": True,
+                    "confidence": 0.88,
+                },
+            },
+        ),
+    ]
+    for mem_id, kind, body in cards:
+        engine.store.put_memory(mem_id, kind, body)
 
 
 def _plant_organizational_memory(engine: LoopEngine) -> None:
@@ -487,7 +585,7 @@ def ingest_tenant_signal(
         confidence=0.6,
         source=f"tenant.{tenant.id}",
         polarity="negative" if magnitude < 0 else "positive",
-        dimensions={"note": note, "tenant_id": tenant.id},
+        dimensions=_tenant_ingest_dimensions(tenant.id, metric, magnitude, note),
     )
     out = run_investigation(
         engine,
