@@ -116,8 +116,8 @@ export function HomeGlassBox({ className }: { className?: string }) {
 
       {skips.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
-          {skips.map((s) => (
-            <SkipChip key={s} detail={s} />
+          {skips.map((s, i) => (
+            <SkipChip key={`${s}-${i}`} detail={s} />
           ))}
         </div>
       ) : null}

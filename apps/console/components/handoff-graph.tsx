@@ -170,8 +170,8 @@ export function HandoffGraph({
           .slice()
           .reverse()
           .slice(0, 4)
-          .map((h) => (
-            <li key={h.id}>
+          .map((h, i) => (
+            <li key={`${h.id}-${i}`}>
               <Link
                 href={h.room_id ? `/rooms/${h.room_id}` : agentHref(h.to_agent)}
                 className="flex items-start gap-3 px-4 py-2.5 transition hover:bg-[var(--elev)] sm:px-5"
