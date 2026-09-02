@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, type OfficeSnapshot, type Room } from "@/lib/api";
-import { DemoGuideProvider, useDemoGuide } from "@/lib/demo-guide-context";
 import { isFirstVisit, recordVisit } from "@/lib/first-visit";
 import { buildHomePulse } from "@/lib/home-pulse";
 import { useGlobalWs } from "@/lib/use-global-ws";
@@ -10,33 +9,23 @@ import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
 import { HomeCommandBar } from "@/components/home-command-bar";
 import { HomeBrief } from "@/components/home-brief";
-import { PipelineBoard } from "@/components/pipeline-board";
-import { LiveWorkBoard } from "@/components/live-work-board";
-import { ActivityLog } from "@/components/activity-log";
+import { HandoffGraph } from "@/components/handoff-graph";
+import { HomeGlassBox, HomeLiveReceipts } from "@/components/home-glass-box";
+import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { SevenStepLoop } from "@/components/seven-step-loop";
 import { ApprovalModal } from "@/components/approval-modal";
-import { GuidedDemoStrip } from "@/components/guided-demo-strip";
 
 export default function HomePage() {
-  return (
-    <DemoGuideProvider>
-      <HomeContent />
-    </DemoGuideProvider>
-  );
-}
-
-function HomeContent() {
-  const demo = useDemoGuide();
-  const { tick } = useGlobalWs();
+  const { tick, connection } = useGlobalWs();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
-  const [evalMode, setEvalMode] = useState(true);
+  const [evalMode, setEvalMode] = useState(false);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [fixtureSlugs, setFixtureSlugs] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [status, setStatus] = useState<Awaited<ReturnType<typeof api.status>> | null>(null);
   const [visitReady, setVisitReady] = useState(false);
-
   const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
@@ -46,10 +35,6 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
-    if (demo?.active) setShowHint(false);
-  }, [demo?.active]);
-
-  useEffect(() => {
     Promise.all([api.rooms(), api.office(), api.config(), api.status()])
       .then(([r, o, cfg, st]) => {
         setRooms(r.rooms);
@@ -57,6 +42,7 @@ function HomeContent() {
         setEvalMode(cfg.eval_mode);
         setFixtureSlugs(new Set(cfg.fixture_scenarios ?? []));
         setStatus(st);
+        setConfigLoaded(true);
         setErr(null);
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "API unreachable"));
@@ -80,10 +66,12 @@ function HomeContent() {
 
   const desks = office?.desks ?? [];
   const handoffs = office?.handoffs ?? [];
+  const live = connection === "live";
+
   const chambers = rooms.filter((r) => {
     const isFixture = r.scenario_id && fixtureSlugs.has(r.scenario_id);
-    if (!evalMode && isFixture) return false;
-    return Boolean(r.scenario_id) || ["review", "research", "ops"].includes(r.kind);
+    if (configLoaded && !evalMode && isFixture) return false;
+    return Boolean(r.scenario_id) || ["review", "research", "ops", "incident", "opportunity"].includes(r.kind);
   });
 
   function walkInside(_district: string) {
@@ -108,7 +96,7 @@ function HomeContent() {
           picked={picked}
           onPick={(id) => setPicked(id)}
           onWalkInside={walkInside}
-          liveMotion={Boolean(demo?.active)}
+          liveMotion={live}
         />
         <HomeBrief pulse={pulse} onDismiss={() => setShowHint(false)} />
         <HomeCommandBar
@@ -118,28 +106,19 @@ function HomeContent() {
         />
       </section>
 
-      <section id="work" className="page-pad border-b border-border bg-[#F8FAFC]">
-        <SevenStepLoop activeStage={demo?.highlightStage} compact className="mt-0" />
+      <section id="work" className="page-pad space-y-8 bg-[#f5f5f7]">
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+          <div className="space-y-6 lg:col-span-7">
+            <HandoffGraph desks={desks} handoffs={handoffs} live={live} />
+            <SevenStepLoop compact />
+            <LiveRoomsRail rooms={chambers} desks={desks} />
+          </div>
+          <div className="lg:col-span-5">
+            <HomeGlassBox />
+          </div>
+        </div>
 
-        {demo?.active ? <GuidedDemoStrip className="mt-4" /> : null}
-
-        <LiveWorkBoard subtitle={pulse?.pipelineSubtitle} className="mt-10" />
-
-        <details className="mt-8 group">
-          <summary className="cursor-pointer list-none text-[13px] font-medium text-[var(--dim)] hover:text-foreground">
-            Stage board
-            <span className="ml-2 text-[12px] font-normal text-[var(--faint)] group-open:hidden">show</span>
-          </summary>
-          <PipelineBoard className="mt-4" />
-        </details>
-
-        <ActivityLog
-          key={demo?.active ? "demo-on" : "demo-off"}
-          roomId={demo?.active && demo.roomId ? demo.roomId : undefined}
-          defaultScope={demo?.active && demo.roomId ? "room" : "all"}
-          defaultOpen={false}
-          className="mt-8"
-        />
+        <HomeLiveReceipts className="border-t border-border pt-8" />
       </section>
     </>
   );

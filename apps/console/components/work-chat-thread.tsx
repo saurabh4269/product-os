@@ -5,6 +5,7 @@ import { ArtifactCard } from "@/components/artifact-card";
 import { ChatBubble } from "@/components/room-chat";
 import { HandoffPacket } from "@/components/handoff-packet";
 import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
+import { StructuredEvidenceCard, structuredFromArtifact } from "@/components/structured-evidence-card";
 import type { RoomMessage } from "@/lib/api";
 import { agentHref, hashHue, shortName } from "@/lib/names";
 import { narrateHandoff } from "@/lib/chat-narrate";
@@ -129,6 +130,25 @@ export function WorkChatThread({
           lastAuthor = row.author;
           const href = row.author_kind !== "human" ? agentHref(row.author) : null;
           const proof = proofFromArtifact(row.artifact, row.artifact_type);
+          const structured = structuredFromArtifact(row.artifact);
+          if (structured) {
+            lastAuthor = "";
+            return (
+              <div key={row.id} className={cn("flex", isYou ? "justify-end" : "justify-start")}>
+                <div className="w-full max-w-[min(100%,28rem)]">
+                  {!isYou && group ? (
+                    <p
+                      className="mb-1 pl-1 text-[13px] font-semibold"
+                      style={{ color: `hsl(${hashHue(row.author)} 58% 36%)` }}
+                    >
+                      {shortName(row.author)}
+                    </p>
+                  ) : null}
+                  <StructuredEvidenceCard structured={structured} />
+                </div>
+              </div>
+            );
+          }
           if (proof) {
             lastAuthor = "";
             return (
@@ -195,6 +215,17 @@ export function WorkChatThread({
             <p className="mb-1 pl-9 text-[11px] text-[var(--faint)]">{row.roomHint}</p>
           ) : null;
         const proof = proofFromArtifact(msg.artifact, msg.artifact_type);
+        const structured = structuredFromArtifact(msg.artifact);
+
+        if (structured) {
+          lastAuthor = "";
+          return (
+            <div key={msg.id} className="max-w-md">
+              {hint}
+              <StructuredEvidenceCard structured={structured} />
+            </div>
+          );
+        }
 
         if (proof) {
           lastAuthor = "";

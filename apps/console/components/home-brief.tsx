@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { dismissBriefSession, dismissWelcome, isBriefDismissedSession, isFirstVisit } from "@/lib/first-visit";
 import type { HomePulse, PulseAction } from "@/lib/home-pulse";
-import { useDemoGuide } from "@/lib/demo-guide-context";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -12,18 +11,17 @@ function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function runAction(action: PulseAction, demo: ReturnType<typeof useDemoGuide>) {
-  if (action === "demo") {
-    demo?.triggerDemo?.();
-    window.setTimeout(() => scrollTo("work"), 120);
+function runAction(action: PulseAction) {
+  if (action === "pipeline" || action === "approvals") {
+    scrollTo("work");
     return;
   }
-  if (action === "pipeline") {
-    scrollTo("pipeline-board");
+  if (action === "connect") {
+    window.location.assign("/connect");
     return;
   }
-  if (action === "approvals") {
-    scrollTo("pipeline-board");
+  if (action === "explore") {
+    scrollTo("rooms");
     return;
   }
 }
@@ -37,15 +35,10 @@ export function HomeBrief({
   className?: string;
   onDismiss?: () => void;
 }) {
-  const demo = useDemoGuide();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (!pulse?.brief) {
-      setShow(false);
-      return;
-    }
-    if (demo?.active) {
       setShow(false);
       return;
     }
@@ -58,9 +51,9 @@ export function HomeBrief({
       return;
     }
     setShow(!isBriefDismissedSession());
-  }, [pulse, demo?.active]);
+  }, [pulse]);
 
-  if (!show || !pulse?.brief || demo?.active) return null;
+  if (!show || !pulse?.brief) return null;
 
   const { brief } = pulse;
 
@@ -76,7 +69,7 @@ export function HomeBrief({
     else dismissBriefSession();
     onDismiss?.();
     setShow(false);
-    runAction(brief.primary.action, demo);
+    runAction(brief.primary.action);
   }
 
   function exploreOwn() {

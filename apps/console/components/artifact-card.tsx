@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { RoomMessage } from "@/lib/api";
 import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
+import { StructuredEvidenceCard, structuredFromArtifact } from "@/components/structured-evidence-card";
 
 const KIND_TONE: Record<string, string> = {
   evidence: "border-emerald-200/80 text-emerald-800",
@@ -101,6 +102,16 @@ export function ArtifactCard({ msg }: { msg: RoomMessage }) {
   const tone = KIND_TONE[kind] || "border-border text-[var(--dim)]";
   const fieldRows = rows((msg.artifact ?? {}) as Record<string, unknown>);
   const proof = proofFromArtifact(msg.artifact as Record<string, unknown>, msg.artifact_type);
+  const structured = structuredFromArtifact(msg.artifact as Record<string, unknown>);
+
+  if (structured) {
+    return (
+      <article className="w-full max-w-[620px]">
+        <StructuredEvidenceCard structured={structured} />
+        {msg.text ? <p className="mt-1.5 text-[12px] text-[var(--dim)]">{msg.text}</p> : null}
+      </article>
+    );
+  }
 
   if (proof) {
     return (

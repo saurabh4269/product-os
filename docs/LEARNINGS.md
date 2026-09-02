@@ -298,6 +298,23 @@ The Next.js **N** overlay in `next dev` is not product UI. It sits on the rail a
 
 ---
 
+## 10. Homepage IA (2026-09-02)
+
+**What was wrong:** `app/page.tsx` stacked CityMap + ops dashboard (collapsed pipeline, activity log, demo strip, static connector list). Users could not see A2A handoffs, tool embeds, or walk into live rooms without scrolling past empty chrome. `evalMode` defaulted `true` before config loaded, so fixture rooms flashed on hosted.
+
+**What we ship now** (see [`DESIGN_INTENT.md`](DESIGN_INTENT.md)):
+
+1. **Campus hero** — handoff paths animate when WS is live (not demo-only).
+2. **A2A graph** — `HandoffGraph` from `/api/office` handoffs + working agents.
+3. **Glass box** — `HomeGlassBox` from `/api/proof` + featured `/api/live-work` card with `ProofEmbed`.
+4. **Open rooms rail** — fixture rooms hidden when `eval_mode` is false; Type A/B label on cards.
+5. **Room chat** — `RoomCaseBanner` (path, risk, memory recall, gateway deny), evidence graph, structured Customer Voice cards.
+6. **No Demo chrome** on hosted (`LOOP_EVAL=0`).
+
+Honest empty/offline when no receipts — never a fake live strip.
+
+---
+
 ## 9. Quick debug checklist
 
 ```bash
