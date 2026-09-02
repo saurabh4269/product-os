@@ -1,6 +1,6 @@
 import { getDemoCount, getVisitCount, hoursSinceLastVisit, isFirstVisit } from "@/lib/first-visit";
 
-export type PulseAction = "demo" | "pipeline" | "approvals" | "connect" | "explore";
+export type PulseAction = "pipeline" | "approvals" | "connect" | "explore";
 
 export type HomePulse = {
   campusLine: string;
@@ -122,7 +122,7 @@ export function buildHomePulse(input: PulseInput): HomePulse {
   return {
     campusLine: workingAgents > 0 ? `${workingAgents} active` : "",
     commandLine: wired ? "Open pipeline" : "Connect",
-    commandAction: demoCount > 2 && !wired ? "connect" : wired ? "pipeline" : "connect",
+    commandAction: demoCount > 2 && !wired ? "connect" : wired ? "explore" : "connect",
     pipelineSubtitle: countSubtitle,
     exploreHint: "",
     brief: {

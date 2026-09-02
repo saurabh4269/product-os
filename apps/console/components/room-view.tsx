@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
 import { AgentBadge } from "@/components/agent-badge";
 import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
+import { proofsFromRoom } from "@/lib/collect-proofs";
+import { RoomCaseBanner } from "@/components/room-case-banner";
+import { EvidenceGraph } from "@/components/evidence-graph";
+import { ProofGrid } from "@/components/proof-embed";
 import { InvestigationLab } from "@/components/ref/investigation-lab";
 import { ThreadRoomHeader, WorkChatThread, type ChatThreadEvent } from "@/components/work-chat-thread";
 
@@ -282,6 +286,11 @@ export function RoomView({ initialId }: { initialId?: string }) {
   }, [id]);
 
   const events = useMemo(() => (data ? eventsFromRoom(data) : []), [data]);
+  const roomProofs = useMemo(
+    () => (data ? proofsFromRoom(data.messages, data.bundle) : []),
+    [data]
+  );
+  const showEvidence = Boolean(data?.bundle?.evidence?.length);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -464,6 +473,26 @@ export function RoomView({ initialId }: { initialId?: string }) {
       ) : (
         <>
           <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
+            <RoomCaseBanner room={data.room} bundle={data.bundle} />
+            {showEvidence ? (
+              <details className="mb-4 group rounded-2xl border border-border bg-white">
+                <summary className="cursor-pointer list-none px-4 py-3 text-[13px] font-medium text-[var(--dim)]">
+                  Evidence graph
+                  <span className="ml-2 text-[12px] font-normal text-[var(--faint)] group-open:hidden">show</span>
+                </summary>
+                <div className="border-t border-border px-3 pb-3">
+                  <EvidenceGraph
+                    evidence={data.bundle?.evidence ?? []}
+                    hypotheses={data.bundle?.hypotheses ?? []}
+                  />
+                </div>
+              </details>
+            ) : null}
+            {roomProofs.length > 0 ? (
+              <div className="mb-4">
+                <ProofGrid cards={roomProofs} compact className="grid-cols-1 sm:grid-cols-2" />
+              </div>
+            ) : null}
             <WorkChatThread
               events={events}
               variant="group"

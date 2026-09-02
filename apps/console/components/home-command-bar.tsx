@@ -7,8 +7,8 @@ import type { HomePulse, PulseAction } from "@/lib/home-pulse";
 import { cn } from "@/lib/utils";
 
 function actionHref(action: PulseAction) {
-  if (action === "pipeline" || action === "approvals") return "#pipeline-board";
-  if (action === "connect") return "/settings";
+  if (action === "pipeline" || action === "approvals") return "#work";
+  if (action === "connect") return "/connect";
   return "#work";
 }
 
@@ -34,7 +34,7 @@ export function HomeCommandBar({
     >
       {pulse?.commandLine && hot ? (
         <p className="mb-2 text-[12px] font-medium leading-5 text-accent sm:text-[13px]">
-          {pulse.commandAction && pulse.commandAction !== "demo" ? (
+          {pulse.commandAction ? (
             <Link href={actionHref(pulse.commandAction)} className="hover:underline">
               {pulse.commandLine}
             </Link>

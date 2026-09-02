@@ -109,6 +109,29 @@ Each pass is a focused PR against `main`. Only record what was verified in code 
 
 ---
 
+## Pass — homepage glass office + design intent (this PR)
+
+**Branch:** `cursor/homepage-glass-office-a9aa`  
+**Spec:** [`docs/DESIGN_INTENT.md`](DESIGN_INTENT.md) committed as binding UI/architecture intent.
+
+### What was wrong
+
+Home stacked CityMap + ops dashboard (collapsed pipeline, activity log, demo strip). No visible A2A graph, no in-page tool embeds, `evalMode` defaulted `true` before config load. Rooms did not surface Type A/B, risk gate, or structured Customer Voice in chat.
+
+### Changes
+
+1. **`docs/DESIGN_INTENT.md`** — Grok/OpenClaw register, named specialists, Customer Voice JSON, four memories, gateway identity, honest skip.
+2. **Home IA** — `HandoffGraph`, `HomeGlassBox`, `LiveRoomsRail`, `SevenStepLoop`; demo chrome removed; `evalMode` defaults `false`.
+3. **Room glass box** — `RoomCaseBanner`, evidence graph, proof grid, `StructuredEvidenceCard` in chat.
+4. **Tests** — `tests/test_design_intent.py` (8 tests, generic pipeline — not checkout-only).
+
+### Verified locally
+
+- `python3 -m pytest -q` — 264 passed
+- `apps/console` `tsc --noEmit` + `npm run build` green
+
+---
+
 ## Pass 1 — stub
 
 **Goal:** _(superseded by section above)_
