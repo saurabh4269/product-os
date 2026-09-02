@@ -62,7 +62,7 @@ def test_jobs_fail_and_retry(engine):
 
 def test_jobs_fail_permanent_error_no_retry(engine):
     job = enqueue(engine.store, "code_fix", {"x": 1}, max_attempts=3)
-    fail(engine.store, job.id, "no test runner in worker environment (need node/npm for tenant tests)")
+    fail(engine.store, job.id, "node/npm not available in worker environment (tenant package.json defines tests)")
     dead = engine.store.get_job(job.id)
     assert dead.status == "dead"
     assert dead.attempts == 1
