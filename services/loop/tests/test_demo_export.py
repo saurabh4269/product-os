@@ -5,7 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from loop.demo_export import WAITING, build_demo_export, build_demo_scenes, lesson_scene_body, write_demo_export
+from loop.demo_export import (
+    WAITING,
+    build_demo_export,
+    build_demo_scenes,
+    lesson_scene_body,
+    write_demo_export,
+)
 
 FORBIDDEN = ("safari_3ds", "safari 3ds", "northstar", "pay-sdk 4.3", "northstar pay")
 

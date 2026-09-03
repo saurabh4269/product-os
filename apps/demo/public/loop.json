@@ -1,6 +1,6 @@
 {
   "meta": {
-    "exported_at": "2026-09-03T03:19:37.795620+00:00",
+    "exported_at": "2026-09-03T07:51:31.267554+00:00",
     "pipeline": "generic",
     "type_a_recipe": "geo_5xx",
     "type_b_recipe": "settings_workaround"
@@ -16,7 +16,7 @@
     },
     {
       "title": "Root cause",
-      "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer.."
+      "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer.."
     },
     {
       "title": "HIGH approval",
@@ -28,19 +28,19 @@
     },
     {
       "title": "Lesson",
-      "body": "When checkout abandon looks like budget hesitation, customers usually return within 5 days. If they do not return, treat it as unresolved technical friction and open a diagnostic call \u2014 not a discount offer."
+      "body": "Memory stage is waiting \u2014 lesson not captured yet."
     }
   ],
   "type_a": {
     "investigation": {
-      "id": "inv_354eac52df57",
+      "id": "inv_10377b12e2cf",
       "originating_signal_ids": [
-        "sig_f57e93ea94"
+        "sig_88786ebf53"
       ],
       "state": "AWAITING_APPROVAL",
-      "opened_at": "2026-09-03T03:19:37.629850Z",
+      "opened_at": "2026-09-03T07:51:31.100117Z",
       "closed_at": null,
-      "invocation_id": "job_911bcc9919ca",
+      "invocation_id": "job_b9498da9e8a3",
       "assigned_agents": [
         "orchestrator",
         "analytics_agent",
@@ -51,24 +51,24 @@
       "token_budget": 200000,
       "tokens_consumed": 0,
       "linked_hypothesis_ids": [
-        "hyp_cbfc843aa2b1"
+        "hyp_217d03ec08dd"
       ],
       "linked_action_ids": [
-        "act_f33653027a11"
+        "act_a478f71ba072"
       ],
       "verification_result": null,
       "recalled_lessons": [
         "When checkout abandon looks like budget hesitation, customers usually return within 5 days. If they do not return, treat it as unresolved technical friction and open a diagnostic call \u2014 not a discount offer."
       ],
       "scenario_id": "demo:geo_5xx",
-      "room_id": "room_973872d89b",
+      "room_id": "room_fa96c7ccc1",
       "tenant_id": null,
       "loop_type": "type_a",
       "title": "Geo-only 5xx spike in EU-West"
     },
     "signals": [
       {
-        "id": "sig_f57e93ea94",
+        "id": "sig_88786ebf53",
         "family": "technical",
         "direction": "negative",
         "funnel_position": "product",
@@ -95,89 +95,89 @@
         "source": "signal_agent",
         "status": "investigating",
         "suppression_reason": null,
-        "detected_at": "2026-09-03T03:19:37.627473Z"
+        "detected_at": "2026-09-03T07:51:31.098090Z"
       }
     ],
     "evidence": [
       {
-        "id": "ev_bd66295c1737",
-        "investigation_id": "inv_354eac52df57",
+        "id": "ev_eec82294943e",
+        "investigation_id": "inv_10377b12e2cf",
         "source_type": "customer_voice",
-        "source_reference": "live-diagnostic:inv_354eac52df57 reason=payment_timeout",
+        "source_reference": "live-diagnostic:inv_10377b12e2cf reason=payment_timeout",
         "claim": "Diagnostic conversation: reason=payment_timeout severity=high friction=technical confidence=0.94",
         "confidence": 0.94,
         "trust_level": "trusted",
         "collected_by": "customer_voice_agent",
-        "collected_at": "2026-09-03T03:19:37.661039Z",
+        "collected_at": "2026-09-03T07:51:31.132413Z",
         "weight": 0.94,
         "independence_group": "customer_voice"
       },
       {
-        "id": "ev_49b4145a8ed2",
-        "investigation_id": "inv_354eac52df57",
+        "id": "ev_5bd09ce853de",
+        "investigation_id": "inv_10377b12e2cf",
         "source_type": "analytics",
         "source_reference": "analytics",
         "claim": "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
         "confidence": 0.85,
         "trust_level": "trusted",
         "collected_by": "analytics_agent",
-        "collected_at": "2026-09-03T03:19:37.662991Z",
+        "collected_at": "2026-09-03T07:51:31.134847Z",
         "weight": 0.85,
         "independence_group": "analytics"
       },
       {
-        "id": "ev_57b76e120d61",
-        "investigation_id": "inv_354eac52df57",
+        "id": "ev_709588efed9c",
+        "investigation_id": "inv_10377b12e2cf",
         "source_type": "logs",
         "source_reference": "logs",
         "claim": "502_bad_gateway concentrated on eu-west load balancer.",
         "confidence": 0.85,
         "trust_level": "trusted",
         "collected_by": "logs_agent",
-        "collected_at": "2026-09-03T03:19:37.664530Z",
+        "collected_at": "2026-09-03T07:51:31.136393Z",
         "weight": 0.85,
         "independence_group": "logs"
       },
       {
-        "id": "ev_ce2944cade88",
-        "investigation_id": "inv_354eac52df57",
+        "id": "ev_e56d15e5d181",
+        "investigation_id": "inv_10377b12e2cf",
         "source_type": "deployment",
         "source_reference": "deploys",
         "claim": "CDN config change in EU-West 2h before spike.",
         "confidence": 0.85,
         "trust_level": "trusted",
         "collected_by": "deployment_agent",
-        "collected_at": "2026-09-03T03:19:37.665982Z",
+        "collected_at": "2026-09-03T07:51:31.137889Z",
         "weight": 0.85,
         "independence_group": "deploys"
       },
       {
-        "id": "ev_9e690af909e2",
-        "investigation_id": "inv_354eac52df57",
+        "id": "ev_8de3906ebc57",
+        "investigation_id": "inv_10377b12e2cf",
         "source_type": "customer_voice",
         "source_reference": "customer_voice",
         "claim": "Customer reports friction: service unavailable.",
         "confidence": 0.82,
         "trust_level": "trusted",
         "collected_by": "customer_voice_agent",
-        "collected_at": "2026-09-03T03:19:37.667381Z",
+        "collected_at": "2026-09-03T07:51:31.141356Z",
         "weight": 0.82,
         "independence_group": "customer_voice"
       }
     ],
     "hypotheses": [
       {
-        "id": "hyp_cbfc843aa2b1",
-        "investigation_id": "inv_354eac52df57",
-        "statement": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+        "id": "hyp_217d03ec08dd",
+        "investigation_id": "inv_10377b12e2cf",
+        "statement": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
         "classification": "BUG",
         "confidence": 0.808,
         "supporting_evidence_ids": [
-          "ev_bd66295c1737",
-          "ev_49b4145a8ed2",
-          "ev_57b76e120d61",
-          "ev_ce2944cade88",
-          "ev_9e690af909e2"
+          "ev_eec82294943e",
+          "ev_5bd09ce853de",
+          "ev_709588efed9c",
+          "ev_e56d15e5d181",
+          "ev_8de3906ebc57"
         ],
         "contradicting_evidence_ids": [],
         "cited_memory": [
@@ -194,8 +194,8 @@
     ],
     "actions": [
       {
-        "id": "act_f33653027a11",
-        "investigation_id": "inv_354eac52df57",
+        "id": "act_a478f71ba072",
+        "investigation_id": "inv_10377b12e2cf",
         "type": "code_change",
         "risk_tier": "HIGH",
         "tier_rationale": "Touched surface is product. Tier follows the surface, not model confidence (H-1).",
@@ -203,7 +203,7 @@
         "artifacts": {
           "code_fix": false,
           "code_brief": {
-            "issue": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "issue": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
             "evidence_summary": [
               "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
               "502_bad_gateway concentrated on eu-west load balancer.",
@@ -214,12 +214,12 @@
             "expected_behavior": "Restore prior successful path for affected segment.",
             "regression_test": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}.",
             "surface": "product",
-            "hypothesis": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "hypothesis": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
             "confidence": 0.808
           },
           "pr": {
             "title": "Fix: geo_5xx",
-            "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
             "files": [],
             "tests": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}."
           },
@@ -230,7 +230,7 @@
             "failure": "service unavailable",
             "previous_attempts": 0,
             "known_issue": "",
-            "hypothesis_hint": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+            "hypothesis_hint": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
             "opening": "Hi \u2014 we saw a problem on your recent product attempt. Thirty seconds to help us diagnose?",
             "adaptive_questions": [
               "When you tried to continue, did you see an error message, or did the screen keep loading?",
@@ -244,7 +244,7 @@
             }
           }
         },
-        "idempotency_key": "ed6048afb5fe88b357166dc39e5340dc",
+        "idempotency_key": "07c071be43d5206d9174166bd6bb81fa",
         "status": "awaiting_approval",
         "consequence": "HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge.",
         "gate": "This approval stays inside Product OS. No git change.",
@@ -255,9 +255,9 @@
     "approvals": [],
     "timeline": [
       {
-        "id": "tl_b8d3e2e90c88",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.632880Z",
+        "id": "tl_3a896745f7e9",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.102058Z",
         "actor": "signal_agent",
         "kind": "signal",
         "title": "Investigation opened",
@@ -265,9 +265,9 @@
         "denial": false
       },
       {
-        "id": "tl_8440d3f44ac6",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.661358Z",
+        "id": "tl_961c8dfa31c4",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.132743Z",
         "actor": "customer_voice_agent",
         "kind": "evidence",
         "title": "customer_voice evidence",
@@ -275,9 +275,9 @@
         "denial": false
       },
       {
-        "id": "tl_63ca1033d592",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.663265Z",
+        "id": "tl_96c05a1507d0",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.135142Z",
         "actor": "analytics_agent",
         "kind": "evidence",
         "title": "analytics evidence",
@@ -285,9 +285,9 @@
         "denial": false
       },
       {
-        "id": "tl_9235eca5447f",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.664797Z",
+        "id": "tl_401813309a56",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.136646Z",
         "actor": "logs_agent",
         "kind": "evidence",
         "title": "logs evidence",
@@ -295,9 +295,9 @@
         "denial": false
       },
       {
-        "id": "tl_1cd8856abe2f",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.666224Z",
+        "id": "tl_379a04481719",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.138145Z",
         "actor": "deployment_agent",
         "kind": "evidence",
         "title": "deployment evidence",
@@ -305,9 +305,9 @@
         "denial": false
       },
       {
-        "id": "tl_48144438d448",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.667634Z",
+        "id": "tl_6585f944d10a",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.141651Z",
         "actor": "customer_voice_agent",
         "kind": "evidence",
         "title": "customer_voice evidence",
@@ -315,19 +315,19 @@
         "denial": false
       },
       {
-        "id": "tl_1ebf001505b8",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.672227Z",
+        "id": "tl_ec29ce8698ea",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.143685Z",
         "actor": "root_cause_agent",
         "kind": "hypothesis",
         "title": "Root cause emitted",
-        "detail": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+        "detail": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
         "denial": false
       },
       {
-        "id": "tl_a385ce3032be",
-        "investigation_id": "inv_354eac52df57",
-        "at": "2026-09-03T03:19:37.680603Z",
+        "id": "tl_cb7d4b020097",
+        "investigation_id": "inv_10377b12e2cf",
+        "at": "2026-09-03T07:51:31.152070Z",
         "actor": "risk_agent",
         "kind": "risk",
         "title": "HIGH tier \u2014 approval required",
@@ -337,90 +337,90 @@
     ],
     "agent_calls": [
       {
-        "id": "a2a_5db487ac5308",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_e23e161dd8b8",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "investigator_agent",
         "to_agent": "analytics_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.641439Z",
-        "finished_at": "2026-09-03T03:19:37.641440Z",
+        "started_at": "2026-09-03T07:51:31.109945Z",
+        "finished_at": "2026-09-03T07:51:31.109946Z",
         "status": "ok",
         "summary": "Asked Analytics for the numbers"
       },
       {
-        "id": "a2a_e07b85678b32",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_062089a83486",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "investigator_agent",
         "to_agent": "logs_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.646739Z",
-        "finished_at": "2026-09-03T03:19:37.646741Z",
+        "started_at": "2026-09-03T07:51:31.115413Z",
+        "finished_at": "2026-09-03T07:51:31.115415Z",
         "status": "ok",
         "summary": "Asked Logs for the logs"
       },
       {
-        "id": "a2a_6872a0ad9eb6",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_c61b2d6ec411",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "investigator_agent",
         "to_agent": "deployment_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.648338Z",
-        "finished_at": "2026-09-03T03:19:37.648339Z",
+        "started_at": "2026-09-03T07:51:31.117591Z",
+        "finished_at": "2026-09-03T07:51:31.117593Z",
         "status": "ok",
         "summary": "Asked Deployment for what shipped"
       },
       {
-        "id": "a2a_0e18c7564671",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_8817e44a8b91",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "investigator_agent",
         "to_agent": "customer_voice_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.651316Z",
-        "finished_at": "2026-09-03T03:19:37.651317Z",
+        "started_at": "2026-09-03T07:51:31.119933Z",
+        "finished_at": "2026-09-03T07:51:31.119935Z",
         "status": "ok",
         "summary": "Asked Voice for customer notes"
       },
       {
-        "id": "a2a_b70bc0158671",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_4d854516418e",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "orchestrator",
         "to_agent": "analytics_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.662648Z",
-        "finished_at": "2026-09-03T03:19:37.662649Z",
+        "started_at": "2026-09-03T07:51:31.134392Z",
+        "finished_at": "2026-09-03T07:51:31.134394Z",
         "status": "ok",
         "summary": "Asked Analytics for the numbers"
       },
       {
-        "id": "a2a_9349c2c343da",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_800034688d81",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "orchestrator",
         "to_agent": "logs_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.664187Z",
-        "finished_at": "2026-09-03T03:19:37.664188Z",
+        "started_at": "2026-09-03T07:51:31.136056Z",
+        "finished_at": "2026-09-03T07:51:31.136057Z",
         "status": "ok",
         "summary": "Asked Logs for the logs"
       },
       {
-        "id": "a2a_04c1ffe963b1",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_cbe9047b2708",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "orchestrator",
         "to_agent": "deployment_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.665673Z",
-        "finished_at": "2026-09-03T03:19:37.665674Z",
+        "started_at": "2026-09-03T07:51:31.137552Z",
+        "finished_at": "2026-09-03T07:51:31.137553Z",
         "status": "ok",
         "summary": "Asked Deployment for what shipped"
       },
       {
-        "id": "a2a_5d37b913168b",
-        "investigation_id": "inv_354eac52df57",
+        "id": "a2a_5869aefba4c9",
+        "investigation_id": "inv_10377b12e2cf",
         "from_agent": "orchestrator",
         "to_agent": "customer_voice_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.667070Z",
-        "finished_at": "2026-09-03T03:19:37.667071Z",
+        "started_at": "2026-09-03T07:51:31.141011Z",
+        "finished_at": "2026-09-03T07:51:31.141012Z",
         "status": "ok",
         "summary": "Asked Voice for customer notes"
       }
@@ -432,14 +432,14 @@
   },
   "type_b": {
     "investigation": {
-      "id": "inv_d4b2735434aa",
+      "id": "inv_3d56deaa5c5f",
       "originating_signal_ids": [
-        "sig_bd93220764"
+        "sig_7198ab4826"
       ],
       "state": "AWAITING_APPROVAL",
-      "opened_at": "2026-09-03T03:19:37.683123Z",
+      "opened_at": "2026-09-03T07:51:31.154213Z",
       "closed_at": null,
-      "invocation_id": "job_22fc32a6dcc9",
+      "invocation_id": "job_69a8d939ca99",
       "assigned_agents": [
         "orchestrator",
         "analytics_agent",
@@ -449,22 +449,22 @@
       "token_budget": 200000,
       "tokens_consumed": 0,
       "linked_hypothesis_ids": [
-        "hyp_48aa2d025584"
+        "hyp_9a76faaf68f5"
       ],
       "linked_action_ids": [
-        "act_3df521e0f0c5"
+        "act_733bef7c9f8b"
       ],
       "verification_result": null,
       "recalled_lessons": [],
       "scenario_id": "eval:settings_workaround",
-      "room_id": "room_ac97b822ce",
+      "room_id": "room_c72817a1ca",
       "tenant_id": null,
       "loop_type": "type_b",
       "title": "Workaround loop on settings screen"
     },
     "signals": [
       {
-        "id": "sig_bd93220764",
+        "id": "sig_7198ab4826",
         "family": "business",
         "direction": "positive",
         "funnel_position": "settings",
@@ -491,61 +491,61 @@
         "source": "warehouse",
         "status": "investigating",
         "suppression_reason": null,
-        "detected_at": "2026-09-03T03:19:37.681854Z"
+        "detected_at": "2026-09-03T07:51:31.153088Z"
       }
     ],
     "evidence": [
       {
-        "id": "ev_96733ee0c1ad",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "ev_e5775a8b8f73",
+        "investigation_id": "inv_3d56deaa5c5f",
         "source_type": "analytics",
         "source_reference": "analytics",
         "claim": "Settings help-loop rate 17% vs 5% baseline.",
         "confidence": 0.85,
         "trust_level": "trusted",
         "collected_by": "analytics_agent",
-        "collected_at": "2026-09-03T03:19:37.690339Z",
+        "collected_at": "2026-09-03T07:51:31.163401Z",
         "weight": 0.85,
         "independence_group": "analytics"
       },
       {
-        "id": "ev_1f7723581aa0",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "ev_a573bfa5061f",
+        "investigation_id": "inv_3d56deaa5c5f",
         "source_type": "logs",
         "source_reference": "logs",
         "claim": "rage_click on notification toggle rose 3\u00d7.",
         "confidence": 0.85,
         "trust_level": "trusted",
         "collected_by": "logs_agent",
-        "collected_at": "2026-09-03T03:19:37.693528Z",
+        "collected_at": "2026-09-03T07:51:31.164933Z",
         "weight": 0.85,
         "independence_group": "logs"
       },
       {
-        "id": "ev_60a6edc2e1aa",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "ev_ef341cdaa6cb",
+        "investigation_id": "inv_3d56deaa5c5f",
         "source_type": "customer_voice",
         "source_reference": "customer_voice",
         "claim": "Users toggle notifications repeatedly \u2014 state not saved.",
         "confidence": 0.85,
         "trust_level": "trusted",
         "collected_by": "customer_voice_agent",
-        "collected_at": "2026-09-03T03:19:37.695225Z",
+        "collected_at": "2026-09-03T07:51:31.166880Z",
         "weight": 0.85,
         "independence_group": "customer_voice"
       }
     ],
     "hypotheses": [
       {
-        "id": "hyp_48aa2d025584",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "hyp_9a76faaf68f5",
+        "investigation_id": "inv_3d56deaa5c5f",
         "statement": "settings_help_loop_rate moved to 0.17 from baseline 0.05. Opportunity to reduce friction \u2014 design a controlled experiment.",
         "classification": "OPPORTUNITY",
         "confidence": 0.86,
         "supporting_evidence_ids": [
-          "ev_96733ee0c1ad",
-          "ev_1f7723581aa0",
-          "ev_60a6edc2e1aa"
+          "ev_e5775a8b8f73",
+          "ev_a573bfa5061f",
+          "ev_ef341cdaa6cb"
         ],
         "contradicting_evidence_ids": [],
         "cited_memory": [],
@@ -559,8 +559,8 @@
     ],
     "actions": [
       {
-        "id": "act_3df521e0f0c5",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "act_733bef7c9f8b",
+        "investigation_id": "inv_3d56deaa5c5f",
         "type": "experiment",
         "risk_tier": "MEDIUM",
         "tier_rationale": "Touched surface is settings / notification UX. Tier follows the surface, not model confidence (H-1).",
@@ -575,7 +575,7 @@
           },
           "pr": {
             "title": "Fix: Workaround loop on settings screen",
-            "body": "Investigation inv_d4b2735434aa. Hypothesis: settings_help_loop_rate moved to 0.17 from baseline 0.05. Opportunity to reduce friction \u2014 design a controlled experiment.",
+            "body": "Investigation inv_3d56deaa5c5f. Hypothesis: settings_help_loop_rate moved to 0.17 from baseline 0.05. Opportunity to reduce friction \u2014 design a controlled experiment.",
             "tests": ""
           },
           "flag": "improve_settings_help_loops",
@@ -587,7 +587,7 @@
           "mde": 0.08,
           "stopping_rule": "14d or guardrail harm"
         },
-        "idempotency_key": "b504b2b7c80c775fdee9c0052e77b81b",
+        "idempotency_key": "5e276d1f0173df4bc0ce0187f06c4eb3",
         "status": "awaiting_approval",
         "consequence": "MEDIUM experiment: 5.0% flag. Developer approval. Ceiling enforced in tool code (max 5% without human).",
         "gate": "Will only flip an OS flag. No git repo is connected.",
@@ -598,9 +598,9 @@
     "approvals": [],
     "timeline": [
       {
-        "id": "tl_65d95027d64f",
-        "investigation_id": "inv_d4b2735434aa",
-        "at": "2026-09-03T03:19:37.685175Z",
+        "id": "tl_c70180902403",
+        "investigation_id": "inv_3d56deaa5c5f",
+        "at": "2026-09-03T07:51:31.157468Z",
         "actor": "signal_agent",
         "kind": "signal",
         "title": "Investigation opened",
@@ -608,9 +608,9 @@
         "denial": false
       },
       {
-        "id": "tl_09e35a6fb154",
-        "investigation_id": "inv_d4b2735434aa",
-        "at": "2026-09-03T03:19:37.691195Z",
+        "id": "tl_619bf960dde4",
+        "investigation_id": "inv_3d56deaa5c5f",
+        "at": "2026-09-03T07:51:31.163686Z",
         "actor": "analytics_agent",
         "kind": "evidence",
         "title": "analytics evidence",
@@ -618,9 +618,9 @@
         "denial": false
       },
       {
-        "id": "tl_fda2d2383f23",
-        "investigation_id": "inv_d4b2735434aa",
-        "at": "2026-09-03T03:19:37.693859Z",
+        "id": "tl_1c8bb1359200",
+        "investigation_id": "inv_3d56deaa5c5f",
+        "at": "2026-09-03T07:51:31.165182Z",
         "actor": "logs_agent",
         "kind": "evidence",
         "title": "logs evidence",
@@ -628,9 +628,9 @@
         "denial": false
       },
       {
-        "id": "tl_2220b63dde6d",
-        "investigation_id": "inv_d4b2735434aa",
-        "at": "2026-09-03T03:19:37.695505Z",
+        "id": "tl_e473e27efb82",
+        "investigation_id": "inv_3d56deaa5c5f",
+        "at": "2026-09-03T07:51:31.167161Z",
         "actor": "customer_voice_agent",
         "kind": "evidence",
         "title": "customer_voice evidence",
@@ -638,9 +638,9 @@
         "denial": false
       },
       {
-        "id": "tl_6c1dcd271c2e",
-        "investigation_id": "inv_d4b2735434aa",
-        "at": "2026-09-03T03:19:37.697086Z",
+        "id": "tl_5b5d89bb89f2",
+        "investigation_id": "inv_3d56deaa5c5f",
+        "at": "2026-09-03T07:51:31.168594Z",
         "actor": "root_cause_agent",
         "kind": "hypothesis",
         "title": "Root cause emitted",
@@ -648,9 +648,9 @@
         "denial": false
       },
       {
-        "id": "tl_4b7df32c6177",
-        "investigation_id": "inv_d4b2735434aa",
-        "at": "2026-09-03T03:19:37.700599Z",
+        "id": "tl_35e3ce25fab2",
+        "investigation_id": "inv_3d56deaa5c5f",
+        "at": "2026-09-03T07:51:31.171129Z",
         "actor": "risk_agent",
         "kind": "risk",
         "title": "MEDIUM tier",
@@ -660,35 +660,35 @@
     ],
     "agent_calls": [
       {
-        "id": "a2a_5d152b400e32",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "a2a_9d9a2d8eef26",
+        "investigation_id": "inv_3d56deaa5c5f",
         "from_agent": "orchestrator",
         "to_agent": "analytics_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.689167Z",
-        "finished_at": "2026-09-03T03:19:37.689169Z",
+        "started_at": "2026-09-03T07:51:31.163009Z",
+        "finished_at": "2026-09-03T07:51:31.163010Z",
         "status": "ok",
         "summary": "Asked Analytics for the numbers"
       },
       {
-        "id": "a2a_950f4a513959",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "a2a_7416e1d63f22",
+        "investigation_id": "inv_3d56deaa5c5f",
         "from_agent": "orchestrator",
         "to_agent": "logs_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.693118Z",
-        "finished_at": "2026-09-03T03:19:37.693119Z",
+        "started_at": "2026-09-03T07:51:31.164603Z",
+        "finished_at": "2026-09-03T07:51:31.164603Z",
         "status": "ok",
         "summary": "Asked Logs for the logs"
       },
       {
-        "id": "a2a_889c023eacab",
-        "investigation_id": "inv_d4b2735434aa",
+        "id": "a2a_162ffd732631",
+        "investigation_id": "inv_3d56deaa5c5f",
         "from_agent": "orchestrator",
         "to_agent": "customer_voice_agent",
         "trust_boundary": "TB-2",
-        "started_at": "2026-09-03T03:19:37.694862Z",
-        "finished_at": "2026-09-03T03:19:37.694863Z",
+        "started_at": "2026-09-03T07:51:31.166532Z",
+        "finished_at": "2026-09-03T07:51:31.166533Z",
         "status": "ok",
         "summary": "Asked Voice for customer notes"
       }
@@ -699,7 +699,7 @@
     "state": "AWAITING_APPROVAL"
   },
   "gateway_deny": {
-    "id": "pv_6ae79d881920",
+    "id": "pv_1f4483f0224e",
     "agent_identity": "loop-code",
     "tool": "prod_db.query",
     "arguments_digest": "9081ae3054215d2d",
@@ -707,18 +707,18 @@
     "rationale": "Gateway: identity loop-code is denied customer_data.read and prod.db.read. Security plane blocks before any model turn. Not a prompt instruction.",
     "enforcement_mode": "ENFORCING",
     "token_usage": 0,
-    "timestamp": "2026-09-03T03:19:37.791382Z",
+    "timestamp": "2026-09-03T07:51:31.264521Z",
     "finding_type": "exfil_attempt"
   },
   "investigation": {
-    "id": "inv_354eac52df57",
+    "id": "inv_10377b12e2cf",
     "originating_signal_ids": [
-      "sig_f57e93ea94"
+      "sig_88786ebf53"
     ],
     "state": "AWAITING_APPROVAL",
-    "opened_at": "2026-09-03T03:19:37.629850Z",
+    "opened_at": "2026-09-03T07:51:31.100117Z",
     "closed_at": null,
-    "invocation_id": "job_911bcc9919ca",
+    "invocation_id": "job_b9498da9e8a3",
     "assigned_agents": [
       "orchestrator",
       "analytics_agent",
@@ -729,24 +729,24 @@
     "token_budget": 200000,
     "tokens_consumed": 0,
     "linked_hypothesis_ids": [
-      "hyp_cbfc843aa2b1"
+      "hyp_217d03ec08dd"
     ],
     "linked_action_ids": [
-      "act_f33653027a11"
+      "act_a478f71ba072"
     ],
     "verification_result": null,
     "recalled_lessons": [
       "When checkout abandon looks like budget hesitation, customers usually return within 5 days. If they do not return, treat it as unresolved technical friction and open a diagnostic call \u2014 not a discount offer."
     ],
     "scenario_id": "demo:geo_5xx",
-    "room_id": "room_973872d89b",
+    "room_id": "room_fa96c7ccc1",
     "tenant_id": null,
     "loop_type": "type_a",
     "title": "Geo-only 5xx spike in EU-West"
   },
   "signals": [
     {
-      "id": "sig_f57e93ea94",
+      "id": "sig_88786ebf53",
       "family": "technical",
       "direction": "negative",
       "funnel_position": "product",
@@ -773,89 +773,89 @@
       "source": "signal_agent",
       "status": "investigating",
       "suppression_reason": null,
-      "detected_at": "2026-09-03T03:19:37.627473Z"
+      "detected_at": "2026-09-03T07:51:31.098090Z"
     }
   ],
   "evidence": [
     {
-      "id": "ev_bd66295c1737",
-      "investigation_id": "inv_354eac52df57",
+      "id": "ev_eec82294943e",
+      "investigation_id": "inv_10377b12e2cf",
       "source_type": "customer_voice",
-      "source_reference": "live-diagnostic:inv_354eac52df57 reason=payment_timeout",
+      "source_reference": "live-diagnostic:inv_10377b12e2cf reason=payment_timeout",
       "claim": "Diagnostic conversation: reason=payment_timeout severity=high friction=technical confidence=0.94",
       "confidence": 0.94,
       "trust_level": "trusted",
       "collected_by": "customer_voice_agent",
-      "collected_at": "2026-09-03T03:19:37.661039Z",
+      "collected_at": "2026-09-03T07:51:31.132413Z",
       "weight": 0.94,
       "independence_group": "customer_voice"
     },
     {
-      "id": "ev_49b4145a8ed2",
-      "investigation_id": "inv_354eac52df57",
+      "id": "ev_5bd09ce853de",
+      "investigation_id": "inv_10377b12e2cf",
       "source_type": "analytics",
       "source_reference": "analytics",
       "claim": "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
       "confidence": 0.85,
       "trust_level": "trusted",
       "collected_by": "analytics_agent",
-      "collected_at": "2026-09-03T03:19:37.662991Z",
+      "collected_at": "2026-09-03T07:51:31.134847Z",
       "weight": 0.85,
       "independence_group": "analytics"
     },
     {
-      "id": "ev_57b76e120d61",
-      "investigation_id": "inv_354eac52df57",
+      "id": "ev_709588efed9c",
+      "investigation_id": "inv_10377b12e2cf",
       "source_type": "logs",
       "source_reference": "logs",
       "claim": "502_bad_gateway concentrated on eu-west load balancer.",
       "confidence": 0.85,
       "trust_level": "trusted",
       "collected_by": "logs_agent",
-      "collected_at": "2026-09-03T03:19:37.664530Z",
+      "collected_at": "2026-09-03T07:51:31.136393Z",
       "weight": 0.85,
       "independence_group": "logs"
     },
     {
-      "id": "ev_ce2944cade88",
-      "investigation_id": "inv_354eac52df57",
+      "id": "ev_e56d15e5d181",
+      "investigation_id": "inv_10377b12e2cf",
       "source_type": "deployment",
       "source_reference": "deploys",
       "claim": "CDN config change in EU-West 2h before spike.",
       "confidence": 0.85,
       "trust_level": "trusted",
       "collected_by": "deployment_agent",
-      "collected_at": "2026-09-03T03:19:37.665982Z",
+      "collected_at": "2026-09-03T07:51:31.137889Z",
       "weight": 0.85,
       "independence_group": "deploys"
     },
     {
-      "id": "ev_9e690af909e2",
-      "investigation_id": "inv_354eac52df57",
+      "id": "ev_8de3906ebc57",
+      "investigation_id": "inv_10377b12e2cf",
       "source_type": "customer_voice",
       "source_reference": "customer_voice",
       "claim": "Customer reports friction: service unavailable.",
       "confidence": 0.82,
       "trust_level": "trusted",
       "collected_by": "customer_voice_agent",
-      "collected_at": "2026-09-03T03:19:37.667381Z",
+      "collected_at": "2026-09-03T07:51:31.141356Z",
       "weight": 0.82,
       "independence_group": "customer_voice"
     }
   ],
   "hypotheses": [
     {
-      "id": "hyp_cbfc843aa2b1",
-      "investigation_id": "inv_354eac52df57",
-      "statement": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+      "id": "hyp_217d03ec08dd",
+      "investigation_id": "inv_10377b12e2cf",
+      "statement": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
       "classification": "BUG",
       "confidence": 0.808,
       "supporting_evidence_ids": [
-        "ev_bd66295c1737",
-        "ev_49b4145a8ed2",
-        "ev_57b76e120d61",
-        "ev_ce2944cade88",
-        "ev_9e690af909e2"
+        "ev_eec82294943e",
+        "ev_5bd09ce853de",
+        "ev_709588efed9c",
+        "ev_e56d15e5d181",
+        "ev_8de3906ebc57"
       ],
       "contradicting_evidence_ids": [],
       "cited_memory": [
@@ -872,8 +872,8 @@
   ],
   "actions": [
     {
-      "id": "act_f33653027a11",
-      "investigation_id": "inv_354eac52df57",
+      "id": "act_a478f71ba072",
+      "investigation_id": "inv_10377b12e2cf",
       "type": "code_change",
       "risk_tier": "HIGH",
       "tier_rationale": "Touched surface is product. Tier follows the surface, not model confidence (H-1).",
@@ -881,7 +881,7 @@
       "artifacts": {
         "code_fix": false,
         "code_brief": {
-          "issue": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "issue": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
           "evidence_summary": [
             "5xx rate 4.2% in EU-West vs 0.3% global baseline.",
             "502_bad_gateway concentrated on eu-west load balancer.",
@@ -892,12 +892,12 @@
           "expected_behavior": "Restore prior successful path for affected segment.",
           "regression_test": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}.",
           "surface": "product",
-          "hypothesis": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "hypothesis": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
           "confidence": 0.808
         },
         "pr": {
           "title": "Fix: geo_5xx",
-          "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "body": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
           "files": [],
           "tests": "Reproduce http_5xx_rate failure for segment {'geo': 'EU-West'}."
         },
@@ -908,7 +908,7 @@
           "failure": "service unavailable",
           "previous_attempts": 0,
           "known_issue": "",
-          "hypothesis_hint": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+          "hypothesis_hint": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
           "opening": "Hi \u2014 we saw a problem on your recent product attempt. Thirty seconds to help us diagnose?",
           "adaptive_questions": [
             "When you tried to continue, did you see an error message, or did the screen keep loading?",
@@ -922,7 +922,7 @@
           }
         }
       },
-      "idempotency_key": "ed6048afb5fe88b357166dc39e5340dc",
+      "idempotency_key": "07c071be43d5206d9174166bd6bb81fa",
       "status": "awaiting_approval",
       "consequence": "HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge.",
       "gate": "This approval stays inside Product OS. No git change.",
@@ -933,9 +933,9 @@
   "approvals": [],
   "timeline": [
     {
-      "id": "tl_b8d3e2e90c88",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.632880Z",
+      "id": "tl_3a896745f7e9",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.102058Z",
       "actor": "signal_agent",
       "kind": "signal",
       "title": "Investigation opened",
@@ -943,9 +943,9 @@
       "denial": false
     },
     {
-      "id": "tl_8440d3f44ac6",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.661358Z",
+      "id": "tl_961c8dfa31c4",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.132743Z",
       "actor": "customer_voice_agent",
       "kind": "evidence",
       "title": "customer_voice evidence",
@@ -953,9 +953,9 @@
       "denial": false
     },
     {
-      "id": "tl_63ca1033d592",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.663265Z",
+      "id": "tl_96c05a1507d0",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.135142Z",
       "actor": "analytics_agent",
       "kind": "evidence",
       "title": "analytics evidence",
@@ -963,9 +963,9 @@
       "denial": false
     },
     {
-      "id": "tl_9235eca5447f",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.664797Z",
+      "id": "tl_401813309a56",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.136646Z",
       "actor": "logs_agent",
       "kind": "evidence",
       "title": "logs evidence",
@@ -973,9 +973,9 @@
       "denial": false
     },
     {
-      "id": "tl_1cd8856abe2f",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.666224Z",
+      "id": "tl_379a04481719",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.138145Z",
       "actor": "deployment_agent",
       "kind": "evidence",
       "title": "deployment evidence",
@@ -983,9 +983,9 @@
       "denial": false
     },
     {
-      "id": "tl_48144438d448",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.667634Z",
+      "id": "tl_6585f944d10a",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.141651Z",
       "actor": "customer_voice_agent",
       "kind": "evidence",
       "title": "customer_voice evidence",
@@ -993,19 +993,19 @@
       "denial": false
     },
     {
-      "id": "tl_1ebf001505b8",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.672227Z",
+      "id": "tl_ec29ce8698ea",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.143685Z",
       "actor": "root_cause_agent",
       "kind": "hypothesis",
       "title": "Root cause emitted",
-      "detail": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. logs: 502_bad_gateway concentrated on eu-west load balancer..",
+      "detail": "http_5xx_rate moved (\u0394\u224818% vs baseline 0.42). concentrated on geo=EU-West. immediately after dep_421 pay-sdk@4.2.1. logs: 502_bad_gateway concentrated on eu-west load balancer..",
       "denial": false
     },
     {
-      "id": "tl_a385ce3032be",
-      "investigation_id": "inv_354eac52df57",
-      "at": "2026-09-03T03:19:37.680603Z",
+      "id": "tl_cb7d4b020097",
+      "investigation_id": "inv_10377b12e2cf",
+      "at": "2026-09-03T07:51:31.152070Z",
       "actor": "risk_agent",
       "kind": "risk",
       "title": "HIGH tier \u2014 approval required",
@@ -1015,90 +1015,90 @@
   ],
   "agent_calls": [
     {
-      "id": "a2a_5db487ac5308",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_e23e161dd8b8",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "investigator_agent",
       "to_agent": "analytics_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.641439Z",
-      "finished_at": "2026-09-03T03:19:37.641440Z",
+      "started_at": "2026-09-03T07:51:31.109945Z",
+      "finished_at": "2026-09-03T07:51:31.109946Z",
       "status": "ok",
       "summary": "Asked Analytics for the numbers"
     },
     {
-      "id": "a2a_e07b85678b32",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_062089a83486",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "investigator_agent",
       "to_agent": "logs_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.646739Z",
-      "finished_at": "2026-09-03T03:19:37.646741Z",
+      "started_at": "2026-09-03T07:51:31.115413Z",
+      "finished_at": "2026-09-03T07:51:31.115415Z",
       "status": "ok",
       "summary": "Asked Logs for the logs"
     },
     {
-      "id": "a2a_6872a0ad9eb6",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_c61b2d6ec411",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "investigator_agent",
       "to_agent": "deployment_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.648338Z",
-      "finished_at": "2026-09-03T03:19:37.648339Z",
+      "started_at": "2026-09-03T07:51:31.117591Z",
+      "finished_at": "2026-09-03T07:51:31.117593Z",
       "status": "ok",
       "summary": "Asked Deployment for what shipped"
     },
     {
-      "id": "a2a_0e18c7564671",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_8817e44a8b91",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "investigator_agent",
       "to_agent": "customer_voice_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.651316Z",
-      "finished_at": "2026-09-03T03:19:37.651317Z",
+      "started_at": "2026-09-03T07:51:31.119933Z",
+      "finished_at": "2026-09-03T07:51:31.119935Z",
       "status": "ok",
       "summary": "Asked Voice for customer notes"
     },
     {
-      "id": "a2a_b70bc0158671",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_4d854516418e",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "orchestrator",
       "to_agent": "analytics_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.662648Z",
-      "finished_at": "2026-09-03T03:19:37.662649Z",
+      "started_at": "2026-09-03T07:51:31.134392Z",
+      "finished_at": "2026-09-03T07:51:31.134394Z",
       "status": "ok",
       "summary": "Asked Analytics for the numbers"
     },
     {
-      "id": "a2a_9349c2c343da",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_800034688d81",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "orchestrator",
       "to_agent": "logs_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.664187Z",
-      "finished_at": "2026-09-03T03:19:37.664188Z",
+      "started_at": "2026-09-03T07:51:31.136056Z",
+      "finished_at": "2026-09-03T07:51:31.136057Z",
       "status": "ok",
       "summary": "Asked Logs for the logs"
     },
     {
-      "id": "a2a_04c1ffe963b1",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_cbe9047b2708",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "orchestrator",
       "to_agent": "deployment_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.665673Z",
-      "finished_at": "2026-09-03T03:19:37.665674Z",
+      "started_at": "2026-09-03T07:51:31.137552Z",
+      "finished_at": "2026-09-03T07:51:31.137553Z",
       "status": "ok",
       "summary": "Asked Deployment for what shipped"
     },
     {
-      "id": "a2a_5d37b913168b",
-      "investigation_id": "inv_354eac52df57",
+      "id": "a2a_5869aefba4c9",
+      "investigation_id": "inv_10377b12e2cf",
       "from_agent": "orchestrator",
       "to_agent": "customer_voice_agent",
       "trust_boundary": "TB-2",
-      "started_at": "2026-09-03T03:19:37.667070Z",
-      "finished_at": "2026-09-03T03:19:37.667071Z",
+      "started_at": "2026-09-03T07:51:31.141011Z",
+      "finished_at": "2026-09-03T07:51:31.141012Z",
       "status": "ok",
       "summary": "Asked Voice for customer notes"
     }
