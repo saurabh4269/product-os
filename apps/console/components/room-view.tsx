@@ -19,11 +19,15 @@ import { ThreadRoomHeader, WorkChatThread, type ChatThreadEvent } from "@/compon
 
 function useRoomId(fallback?: string) {
   const path = usePathname() || "";
-  const [q, setQ] = useState("");
+  const [liveId, setLiveId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return queryId(window.location.search) || segmentId(window.location.pathname, "rooms");
+  });
   useEffect(() => {
-    setQ(queryId(window.location.search));
+    setLiveId(queryId(window.location.search) || segmentId(window.location.pathname, "rooms"));
   }, [path]);
-  return q || segmentId(path, "rooms") || fallback || "";
+  const fromPath = segmentId(path, "rooms");
+  return liveId || fromPath || fallback || "";
 }
 
 function eventsFromRoom(data: RoomDetail): ChatThreadEvent[] {
@@ -188,10 +192,16 @@ export function RoomView({ initialId }: { initialId?: string }) {
 
   useEffect(() => {
     if (!id) return;
+    setToolsOpen(false);
+    if (!hasAdminToken()) {
+      setAdminAuthRequired(true);
+      setData(null);
+      setErr(null);
+      return;
+    }
+    setAdminAuthRequired(false);
     setData(null);
     setErr(null);
-    setAdminAuthRequired(false);
-    setToolsOpen(false);
     void load(id);
   }, [id]);
 
@@ -318,7 +328,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [events.length]);
 
-  if (adminAuthRequired) {
+  if (adminAuthRequired || (id && !hasAdminToken())) {
     return (
       <div className="flex h-full min-h-0 flex-col bg-white">
         <div className="shrink-0 border-b border-black/5 px-4 py-3 sm:px-6">
@@ -336,7 +346,8 @@ export function RoomView({ initialId }: { initialId?: string }) {
   }
 
   if (err) return <ErrorState message={err} />;
-  if (!id || !data) return <Loading label="Opening chat" />;
+  if (!id) return <Loading label="Loading room…" />;
+  if (!data) return <Loading label="Opening chat" />;
 
   const pending = pendingActions(data.bundle);
   const needsApproval = pending.length > 0;

@@ -100,6 +100,8 @@ def test_unauth_room_copy_is_this_room_not_index():
     assert "This room" in room
     assert "Authorize to see open rooms" in index
     assert "Authorize to see open rooms" not in room
+    assert "!hasAdminToken()" in room
+    assert "Loading room" in room
 
 
 def test_room_view_open_uses_single_room_get():
