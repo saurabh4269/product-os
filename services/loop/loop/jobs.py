@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
@@ -38,6 +39,62 @@ def _id(prefix: str = "job") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
+def stale_job_seconds() -> int:
+    raw = (os.environ.get("LOOP_JOB_STALE_SECONDS") or "120").strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 120
+
+
+def _parse_iso(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def job_age_seconds(job: Job, *, now: datetime | str | None = None) -> float:
+    stamp = _parse_iso(job.updated_at) or _parse_iso(job.created_at)
+    if not stamp:
+        return 0.0
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    if now is None:
+        ref = _now()
+    elif isinstance(now, str):
+        ref = _parse_iso(now) or _now()
+    else:
+        ref = now
+    return max(0.0, (ref - stamp).total_seconds())
+
+
+def job_is_stale(job: Job, *, now: datetime | None = None) -> bool:
+    if job.status != "running":
+        return False
+    return job_age_seconds(job, now=now) >= stale_job_seconds()
+
+
+def reclaim_stale_running_jobs(store: Any) -> list[str]:
+    """Return queued zombies that were stuck in running without making progress."""
+    now = _now()
+    reclaimed: list[str] = []
+    for job in store.list_jobs(status="running", limit=200):
+        if not job_is_stale(job, now=now):
+            continue
+        job.status = "queued"
+        note = "reclaimed stale running job"
+        job.error = f"{job.error[:420]}; {note}".strip("; ") if job.error else note
+        job.updated_at = _iso(now)
+        store.put_job(job)
+        reclaimed.append(job.id)
+    if reclaimed:
+        _schedule_persist(store)
+    return reclaimed
+
+
 def enqueue(store: Any, kind: JobKind, payload: dict[str, Any], *, max_attempts: int = 3, run_after: datetime | None = None) -> Job:
     now = _iso()
     job = Job(
@@ -68,6 +125,7 @@ def enqueue_verify(store: Any, investigation_id: str, *, delay_hours: int = 24) 
 
 
 def claim_next(store: Any, kinds: list[JobKind] | None = None) -> Job | None:
+    reclaim_stale_running_jobs(store)
     return store.claim_job(kinds or ["code_fix", "verify"])
 
 
@@ -90,7 +148,6 @@ def fail(store: Any, job_id: str, error: str, *, retry_delay_s: int = 30) -> Job
     job = store.get_job(job_id)
     if not job:
         return None
-    job.attempts += 1
     job.error = error[:500]
     job.updated_at = _iso()
     permanent = any(marker in error for marker in NON_RETRYABLE_TEST_ERRORS)
@@ -104,7 +161,9 @@ def fail(store: Any, job_id: str, error: str, *, retry_delay_s: int = 30) -> Job
     return job
 
 
-def mark_running(store: Any, job: Job) -> Job:
+def begin_attempt(store: Any, job: Job) -> Job:
+    """Mark execution start — attempts must advance before work runs."""
+    job.attempts += 1
     job.status = "running"
     job.updated_at = _iso()
     store.put_job(job)
@@ -156,9 +215,22 @@ def run_verify_job(engine: Any, job: Job) -> dict[str, Any]:
 
 def process_job(store: Any, engine: Any, job_id: str) -> dict[str, Any] | None:
     job = store.get_job(job_id)
-    if not job or job.status not in {"queued", "running"}:
+    if not job:
         return None
-    mark_running(store, job)
+    if job.status not in {"queued", "running"}:
+        return None
+    if job.run_after:
+        run_after = _parse_iso(job.run_after)
+        if run_after and run_after > _now():
+            return None
+    if job.status == "running":
+        if job.attempts > 0 and not job_is_stale(job):
+            return None
+        if job_is_stale(job):
+            job.status = "queued"
+            job.updated_at = _iso()
+            store.put_job(job)
+    begin_attempt(store, job)
     try:
         if job.kind == "code_fix":
             from loop.code_fix import run_code_fix_job
@@ -186,7 +258,11 @@ def process_one(store: Any, engine: Any) -> dict[str, Any] | None:
     job = claim_next(store)
     if not job:
         return None
-    return process_job(store, engine, job.id)
+    try:
+        return process_job(store, engine, job.id)
+    except Exception as exc:
+        fail(store, job.id, str(exc))
+        return {"job_id": job.id, "status": "failed", "error": str(exc)}
 
 
 def dispatch(job: Job, store: Any) -> None:

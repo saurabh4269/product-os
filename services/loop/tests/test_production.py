@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from loop import api as api_mod
 from loop.auth import admin_required, require_admin
 from loop.code_worker import apply_patches, run_tests
-from loop.jobs import complete, enqueue, fail
+from loop.jobs import begin_attempt, complete, enqueue, fail
 from loop.state_persist import hydrate_db, persist_db
 
 
@@ -51,10 +51,12 @@ def test_jobs_enqueue_and_complete(engine):
 
 def test_jobs_fail_and_retry(engine):
     job = enqueue(engine.store, "code_fix", {"x": 1}, max_attempts=2)
+    begin_attempt(engine.store, job)
     fail(engine.store, job.id, "boom")
     j1 = engine.store.get_job(job.id)
     assert j1.status == "queued"
     assert j1.attempts == 1
+    begin_attempt(engine.store, j1)
     fail(engine.store, job.id, "boom again")
     j2 = engine.store.get_job(job.id)
     assert j2.status == "dead"
@@ -62,6 +64,7 @@ def test_jobs_fail_and_retry(engine):
 
 def test_jobs_fail_permanent_error_no_retry(engine):
     job = enqueue(engine.store, "code_fix", {"x": 1}, max_attempts=3)
+    begin_attempt(engine.store, job)
     fail(engine.store, job.id, "node/npm not available in worker environment (tenant package.json defines tests)")
     dead = engine.store.get_job(job.id)
     assert dead.status == "dead"
