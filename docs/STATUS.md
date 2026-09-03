@@ -4,7 +4,7 @@ Last updated: 2026-09-03 (IST)
 
 ## Pause
 
-**Owner paused 2026-09-03 13:35 IST.** Do not merge #27 or deploy until they say go. Overnight keep-going routine is paused.
+**Owner paused deploy 2026-09-03 13:35 IST.** Do not deploy until they say go. Overnight keep-going routine is paused.
 
 ## Hosted
 
@@ -18,7 +18,7 @@ Last updated: 2026-09-03 (IST)
 | `LOOP_EVAL` | `0` |
 | Health | `/` 200 · `/rooms` 200 · `/shop` 404 |
 
-**Main tip (not deployed):** `495a546` — PR #26 scopes demo lesson scenes to the current investigation.
+**Main tip (not deployed):** `54b4b97` — PR #26 (demo lesson scope) + PR #27 (room UI GitHub card truth) on `main`, not live yet.
 
 **State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance.
 
@@ -47,17 +47,15 @@ Last updated: 2026-09-03 (IST)
 | Cove PR | [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, `flags.json` only, never merge |
 | Blocked action | `act_4754e1ae24f5` — do not approve (duplicates #17) |
 | `code_fix` | Failed (no node in worker); `github_pr` is the ship path |
-| UI gap | FAILED+DONE shown until #27 merges and deploys |
+| UI gap | FAILED+DONE on hosted until #26+#27 deploy (merged on `main` as `54b4b97`) |
 
 ## Branches / PRs
 
-### product-os (`main` has #9–#26)
+### product-os (`main` has #9–#27, tip `54b4b97`)
 
-| PR | Branch | Status |
-|---|---|---|
-| [#27](https://github.com/saurabh4269/product-os/pull/27) | `cursor/room-github-card-truth-f525` | **OPEN** — Room UI GitHub card truth. Owner paused before merge/deploy. Leave open. |
+**Open PRs:** none on product-os except this docs handoff ([#28](https://github.com/saurabh4269/product-os/pull/28)).
 
-Recent merged: #23 (unauth rooms Connect CTA), #24 (remove 4s campus poll), #25 (4Gi + lean boot), #26 (demo lesson scope).
+Recent merged: #23 (unauth rooms Connect CTA), #24 (remove 4s campus poll), #25 (4Gi + lean boot), #26 (demo lesson scope), #27 (room UI GitHub card truth, `54b4b97`).
 
 ### Never merge
 
@@ -66,8 +64,8 @@ Recent merged: #23 (unauth rooms Connect CTA), #24 (remove 4s campus poll), #25 
 
 ## Blockers
 
-1. **#27 not merged/deployed** — room UI still mislabels `code_fix` failure vs `github_pr` success.
-2. **Owner pause** — no deploy or #27 merge without explicit go.
+1. **#26+#27 not deployed** — hosted UI still mislabels `code_fix` failure vs `github_pr` success until next deploy.
+2. **Owner pause** — no deploy without explicit go.
 3. **Remotion hang video** — off-repo only; `export-demo` cannot target hosted rooms.
 4. **Workspace OAuth** — Web client still created manually in Google Auth Platform; flow wired on Connect.
 

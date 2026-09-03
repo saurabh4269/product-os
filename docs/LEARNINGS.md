@@ -372,7 +372,7 @@ If hosted HTML is the campus but XHR 404s, you shipped a new revision that is st
 
 **Why:** Failure receipt reused the `github_pr` artifact kind/URL. `code_fix` failed (no node in worker); `github_pr` is the real ship path.
 
-**Fix:** PR #27 (open, not merged). Until deploy, UI may still show FAILED+DONE conflated. Do not approve leftover `act_4754e1ae24f5` — duplicates Cove #17.
+**Fix:** PR #27 merged (`54b4b97`). Until deploy, hosted UI may still show FAILED+DONE conflated. Do not approve leftover `act_4754e1ae24f5` — duplicates Cove #17.
 
 ### Remotion Lesson scene must not use `recalled_lessons` from other metrics
 

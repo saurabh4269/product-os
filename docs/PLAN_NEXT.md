@@ -2,13 +2,12 @@
 
 ## Paused 2026-09-03 (owner 13:35 IST)
 
-Do **not** merge #27 or deploy until owner says go. Overnight keep-going is paused.
+Do **not** deploy until owner says go. Overnight keep-going is paused. (#27 merged on `main` as `54b4b97`.)
 
 When unpaused, in order:
 
-1. **Merge + deploy #27** — Room UI GitHub card truth (`code_fix` failure ≠ `github_pr` URL).
+1. **Persist GCS → package → deploy** — ship `54b4b97` (#26 lesson scope + #27 GitHub card truth).
 2. **Confirm hang demo UI** — `room_f627763ea9` shows `github_pr` success; `code_fix` failure honest; Cove #17 still OPEN (never merge).
-3. **Persist GCS → package → deploy** — include main tip `495a546` (PR #26 lesson scope) if Remotion/demo export matters.
 4. **Workspace OAuth** — create Web client in Google Auth Platform; paste on Connect; test `/api/oauth/google/start`.
 5. **Remotion hang render** — local `export-demo` wrapping `GET /api/rooms/{id}` via `build_demo_scenes`; do not commit hang `loop.json`.
 

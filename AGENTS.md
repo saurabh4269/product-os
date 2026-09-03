@@ -9,7 +9,7 @@ Repo: `github.com/saurabh4269/product-os`
 GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`  
 Demo tenant (Cove only): `github.com/saurabh4269/cove` · Cloud Run `cove` · https://cove-5uy6fkd7bq-uc.a.run.app
 
-**Owner paused 2026-09-03 13:35 IST.** Do not merge #27 or deploy until they say go. Overnight keep-going routine is paused.
+**Owner paused deploy 2026-09-03 13:35 IST.** Do not deploy until they say go. Overnight keep-going routine is paused.
 
 ## What this product is
 
@@ -35,11 +35,11 @@ The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents,
 | Memory | 4Gi · min 1 · max 2 |
 | `LOOP_EVAL` | `0` (no Demo chrome) |
 | Health | `/` and `/rooms` 200 · `/shop` 404 |
-| Main tip | `495a546` (PR #26 lesson scope) — **not yet deployed** |
+| Main tip | `54b4b97` (PR #26 lesson scope + PR #27 GitHub card truth) — **not yet deployed** |
 
 **State:** SQLite persists via `LOOP_STATE_GCS_URI` (`gs://mystical-timing-442601-q8-loop-host/loop_state.db`). Rooms survive restarts unless a deploy hydrates an **old** GCS snapshot. **Persist live sqlite before `package-host.sh`** when the hang room GET is 200. If live is 503/OOM, do **not** overwrite a good snapshot.
 
-**Demo hang (live):** `room_f627763ea9` · `inv_450569ba5e7e` · metric `otp_verify_hang_0904` · Type A HIGH · Voice `payment_timeout`. Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) (`flags.json` only) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (would duplicate #17). `code_fix` extra failed (no node in worker); `github_pr` is the ship path. UI still shows FAILED+DONE until #27 deploys.
+**Demo hang (live):** `room_f627763ea9` · `inv_450569ba5e7e` · metric `otp_verify_hang_0904` · Type A HIGH · Voice `payment_timeout`. Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) (`flags.json` only) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (would duplicate #17). `code_fix` extra failed (no node in worker); `github_pr` is the ship path. UI still shows FAILED+DONE on hosted until #26+#27 deploy.
 
 ## References the user pointed at
 
@@ -63,7 +63,7 @@ Open these before you change campus, mascots, or the rail. Do not copy licensed 
 
 ## GitHub / PRs
 
-**product-os:** `main` has #9–#26 merged. **OPEN:** [#27](https://github.com/saurabh4269/product-os/pull/27) Room UI GitHub card truth (`cursor/room-github-card-truth-f525`) — owner paused before merge/deploy. Leave #27 open.
+**product-os:** `main` tip `54b4b97` (#9–#27 merged). **Open PRs:** none except docs handoff [#28](https://github.com/saurabh4269/product-os/pull/28). Deploy paused.
 
 **Never merge:** Cove PRs #1–#4, #7; LOOP #11–#16, #17. Do not merge Cove.
 
@@ -215,7 +215,7 @@ Inverts that must stay green: unprompted Safari detect, six fixtures one pipelin
 - Do not run `npx next` in this repo.
 - Do not credit Cursor/Copilot/Claude in commit trailers.
 - Do not post to Slack / GitHub issues unless the user asked.
-- Do not merge #27 or deploy until owner says go.
+- Do not deploy until owner says go.
 - Do not merge Cove PRs or leftover LOOP Cove PRs (#11–#17).
 - Do not approve `act_4754e1ae24f5` (duplicates Cove #17).
 - Do not overwrite a good GCS snapshot from a crash-looping instance.
