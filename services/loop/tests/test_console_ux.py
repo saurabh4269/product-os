@@ -100,6 +100,8 @@ def test_unauth_room_copy_is_this_room_not_index():
     assert "This room" in room
     assert "Authorize to see open rooms" in index
     assert "Authorize to see open rooms" not in room
+    assert "!hasAdminToken()" in room
+    assert "Loading room" in room
 
 
 def test_room_view_open_uses_single_room_get():
@@ -111,6 +113,13 @@ def test_room_view_open_uses_single_room_get():
     assert "api.office()" not in load_fn
     assert "api.status()" not in load_fn
     assert "roomContact" in src  # lazy when call tools open
+
+
+def test_pending_actions_trusts_empty_server_list():
+    src = (CONSOLE / "lib" / "api.ts").read_text()
+    fn = src[src.index("export function pendingActions") : src.index("export type RoomDetail")]
+    assert "bundle.pending_actions != null" in fn
+    assert "bundle.pending_actions?.length" not in fn
 
 
 def test_world_refresh_policy_is_at_least_15s():

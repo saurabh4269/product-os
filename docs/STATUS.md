@@ -2,9 +2,9 @@
 
 Last updated: 2026-09-03 (IST)
 
-## Pause
+## Active (2026-09-03 ~23:50 IST)
 
-**#30 is live on `loop-00125-cdb` (~23:20 IST 2026-09-03).** Overnight keep-going routine is still paused.
+Keep-going unpaused by owner. Do not merge Cove.
 
 ## Hosted
 
@@ -12,12 +12,12 @@ Last updated: 2026-09-03 (IST)
 |---|---|
 | User URL | https://productos.heisenbug.in |
 | GCP | `mystical-timing-442601-q8` · `us-central1` · service `loop` |
-| Revision | `loop-00125-cdb` (100% traffic) |
-| SHA deployed | `6f195fab9543bcbf792f67f9157b68ebeb740b93` (PR #30). Container args from PR #31 |
+| Revision | `loop-00127-7dc` (100% traffic) |
+| SHA deployed | `996470e` (#31) + #32 console fixes deployed from branch |
 | Memory / scale | 4Gi · min 1 · max 2 |
 | `LOOP_EVAL` | `0` |
-| Health | `/` 200 · `/rooms` 200 · `/shop` 404 · `POST /api/internal/state/persist` 200 |
-| Deploy finished | ~23:20 IST 2026-09-03 |
+| Health | `/` 200 · `/rooms` 200 · `/shop` 404 · persist POST 200 · OAuth connected |
+| Deploy finished | ~23:50 IST 2026-09-03 |
 
 **State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance.
 
@@ -47,13 +47,13 @@ Last updated: 2026-09-03 (IST)
 | Cove PR | [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, `flags.json` only, never merge |
 | Blocked action | `act_4754e1ae24f5` — do not approve (duplicates #17) |
 | `code_fix` | Lean worker skips (no git/node); `github_pr` is the ship path |
-| State | Survived deploy to `loop-00125-cdb`. Slim GET ~79KB. Leftover HIGH hidden (`pending_actions` empty). |
+| State | Survived deploy to `loop-00127-7dc`. Browser verified: GitHub PR DONE; leftover HIGH gate hidden after pending_actions fix. |
 
 ## Branches / PRs
 
-### product-os (`main` tip `6f195fa`, deployed)
+### product-os (`main` tip `996470e`)
 
-Recent merged: #23–#30. Live on `loop-00125-cdb` at `6f195fa`. Open: [#31](https://github.com/saurabh4269/product-os/pull/31) (boot dest + this status). GitHub Actions `deploy-gcp` still fails (`GCP_SA_KEY` missing) — deploy from a machine with gcloud.
+Recent merged: #23–#31. Live on `loop-00127-7dc`. Open: [#32](https://github.com/saurabh4269/product-os/pull/32) (unauth room + pending_actions UI). GitHub Actions `deploy-gcp` needs `GCP_SA_KEY`.
 
 ### Never merge
 
@@ -62,9 +62,8 @@ Recent merged: #23–#30. Live on `loop-00125-cdb` at `6f195fa`. Open: [#31](htt
 
 ## Blockers
 
-1. **Overnight keep-going paused** — autonomous overnight routine still off.
-2. **Workspace OAuth** — Web client still created manually in Google Auth Platform; flow wired on Connect.
-3. **GitHub Actions deploy** — `google-github-actions/auth` needs repo secret `GCP_SA_KEY`. Until then, ship with local `package-host.sh` + `deploy-gcp.sh`.
+1. **Overnight keep-going** — unpaused by owner 2026-09-03.
+2. **GitHub Actions deploy** — add repo secret `GCP_SA_KEY` or keep shipping via `package-host.sh` + `deploy-gcp.sh`.
 
 ## Redeploy (when owner says go)
 

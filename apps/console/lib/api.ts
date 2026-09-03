@@ -335,7 +335,7 @@ export type Bundle = {
 
 export function pendingActions(bundle: Bundle | null | undefined): Action[] {
   if (!bundle) return [];
-  if (bundle.pending_actions?.length) return bundle.pending_actions;
+  if (bundle.pending_actions != null) return bundle.pending_actions;
   return bundle.actions.filter((a) => ["proposed", "awaiting_approval"].includes(a.status));
 }
 
