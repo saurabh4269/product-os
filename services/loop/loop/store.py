@@ -512,14 +512,16 @@ class Store:
             if not claimable:
                 self._conn.rollback()
                 return None
-            job.status = "running"
-            job.updated_at = now
+            # Own the running transition here so process_job can execute retries.
+            current.attempts += 1
+            current.status = "running"
+            current.updated_at = now
             self._conn.execute(
                 "UPDATE jobs SET json = ? WHERE id = ?",
-                (job.model_dump_json(), job_id),
+                (current.model_dump_json(), job_id),
             )
             self._conn.commit()
-            return job
+            return current
 
     def put_audit(self, event: Any) -> None:
         from .audit import AuditEvent

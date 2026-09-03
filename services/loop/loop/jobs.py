@@ -213,7 +213,13 @@ def run_verify_job(engine: Any, job: Job) -> dict[str, Any]:
     }
 
 
-def process_job(store: Any, engine: Any, job_id: str) -> dict[str, Any] | None:
+def process_job(
+    store: Any,
+    engine: Any,
+    job_id: str,
+    *,
+    from_claim: bool = False,
+) -> dict[str, Any] | None:
     job = store.get_job(job_id)
     if not job:
         return None
@@ -224,13 +230,21 @@ def process_job(store: Any, engine: Any, job_id: str) -> dict[str, Any] | None:
         if run_after and run_after > _now():
             return None
     if job.status == "running":
-        if job.attempts > 0 and not job_is_stale(job):
-            return None
         if job_is_stale(job):
             job.status = "queued"
             job.updated_at = _iso()
             store.put_job(job)
-    begin_attempt(store, job)
+            begin_attempt(store, job)
+        elif from_claim:
+            # claim_job already incremented attempts and set running.
+            pass
+        elif job.attempts > 0:
+            return None
+        else:
+            # Legacy reservation: running without begin_attempt (attempts still 0).
+            begin_attempt(store, job)
+    else:
+        begin_attempt(store, job)
     try:
         if job.kind == "code_fix":
             from loop.code_fix import run_code_fix_job
@@ -259,7 +273,7 @@ def process_one(store: Any, engine: Any) -> dict[str, Any] | None:
     if not job:
         return None
     try:
-        return process_job(store, engine, job.id)
+        return process_job(store, engine, job.id, from_claim=True)
     except Exception as exc:
         fail(store, job.id, str(exc))
         return {"job_id": job.id, "status": "failed", "error": str(exc)}

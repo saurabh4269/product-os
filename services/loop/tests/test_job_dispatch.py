@@ -101,6 +101,87 @@ def test_process_one_reclaims_and_runs_stale_code_fix(engine, monkeypatch):
     assert done.attempts >= 1
 
 
+def test_process_one_reclaims_stale_code_fix_after_first_attempt(engine, monkeypatch):
+    """Regression: reclaimed jobs with attempts>=1 must run, not zombie-loop."""
+    monkeypatch.setenv("LOOP_JOB_STALE_SECONDS", "1")
+    calls: list[str] = []
+
+    def fake_run(eng, job):
+        calls.append(job.id)
+        return {"status": "skipped", "detail": "honest skip"}
+
+    monkeypatch.setattr("loop.code_fix.run_code_fix_job", fake_run)
+
+    job = enqueue(engine.store, "code_fix", {"tenant_id": "acme", "action_id": "act_retry"})
+    job.status = "running"
+    job.attempts = 1
+    job.error = "worker died mid-run"
+    job.updated_at = _iso(datetime.now(timezone.utc) - timedelta(seconds=5))
+    engine.store.put_job(job)
+
+    result = process_one(engine.store, engine)
+    assert result
+    assert result["status"] == "skipped"
+    assert calls == [job.id]
+    done = engine.store.get_job(job.id)
+    assert done.status == "succeeded"
+    assert done.attempts == 2
+    assert "reclaimed stale running job" not in done.error
+
+
+def test_process_one_finishes_flag_pr_job_with_honest_code_fix(engine, monkeypatch):
+    """When flag PR already opened, reclaimed code_fix must complete execution.code_fix."""
+    from tests.test_code_fix import _action_bundle
+
+    monkeypatch.setenv("LOOP_JOB_STALE_SECONDS", "1")
+    from loop.code_fix import enqueue_code_fix_job
+    from loop.tenant import ConnectorReport
+
+    tenant, inv, action = _action_bundle(engine)
+    action.artifacts["execution"] = {
+        "pr_opened": True,
+        "pr_url": "https://github.com/org/shop/pull/7",
+    }
+    engine.store.put_action(action)
+
+    monkeypatch.setattr(
+        "loop.code_fix.run_code_fix",
+        lambda **k: ConnectorReport(
+            status="skipped",
+            connector="code_fix",
+            detail="flag PR already open — code PR deferred",
+        ),
+    )
+
+    job_id = enqueue_code_fix_job(
+        engine,
+        action_id=action.id,
+        tenant=tenant,
+        inv=inv,
+        brief={"issue": "checkout timeout", "likely_files": ["src/checkout.ts"]},
+        flag_patch={"checkout_v2": "off"},
+        pr_title="Fix checkout",
+        pr_body="body",
+        flag_pr_opened=True,
+    )
+    assert job_id
+    job = engine.store.get_job(job_id)
+    job.status = "running"
+    job.attempts = 1
+    job.updated_at = _iso(datetime.now(timezone.utc) - timedelta(seconds=5))
+    engine.store.put_job(job)
+
+    result = process_one(engine.store, engine)
+    assert result
+    assert result["status"] == "skipped"
+    done = engine.store.get_job(job_id)
+    assert done.status == "succeeded"
+    exe = engine.store.get_action(action.id).artifacts["execution"]
+    assert exe["pr_opened"] is True
+    assert exe["pr_url"].endswith("/pull/7")
+    assert exe["code_fix"]["status"] == "skipped"
+
+
 def test_process_job_increments_attempts_before_body(engine, monkeypatch):
     monkeypatch.setattr(
         "loop.code_fix.run_code_fix_job",
