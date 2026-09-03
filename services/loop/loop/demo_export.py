@@ -23,6 +23,14 @@ WAITING = {
 }
 
 
+def lesson_scene_body(bundle: dict[str, Any]) -> str:
+    """Lesson scene copy from this investigation only — not cross-metric recall."""
+    lesson = (bundle.get("lessons") or [None])[0] if bundle.get("lessons") else None
+    if lesson and lesson.get("statement"):
+        return str(lesson["statement"])
+    return WAITING["lesson"]
+
+
 def _bundle(engine: LoopEngine, inv_id: str) -> dict[str, Any]:
     from loop.api import _bundle as api_bundle
 
@@ -77,14 +85,7 @@ def build_demo_scenes(type_a: dict[str, Any], type_b: dict[str, Any] | None = No
     else:
         verified_body = WAITING["verified"]
 
-    recalled = (type_a.get("investigation") or {}).get("recalled_lessons") or []
-    lesson = (type_a.get("lessons") or [None])[0] if type_a.get("lessons") else None
-    if recalled:
-        lesson_body = str(recalled[0])
-    elif lesson and lesson.get("statement"):
-        lesson_body = str(lesson["statement"])
-    else:
-        lesson_body = WAITING["lesson"]
+    lesson_body = lesson_scene_body(type_a)
 
     return [
         {"title": "Signal", "body": signal_body},
