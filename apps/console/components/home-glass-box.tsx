@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiAuthError, hasAdminToken } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { useDebouncedWorldTick } from "@/lib/world-refresh";
 import { ProofEmbed, ProofGrid, type ProofPayload } from "@/components/proof-embed";
 import { LiveWorkBoard, type LiveWorkCard } from "@/components/live-work-board";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ function FeaturedCard({ card }: { card: LiveWorkCard }) {
 /** Live tool receipts — BQ, GitHub, mail, flags — without leaving home. */
 export function HomeGlassBox({ className }: { className?: string }) {
   const { tick, connection } = useGlobalWs();
+  const worldTick = useDebouncedWorldTick(tick);
   const [proofs, setProofs] = useState<ProofPayload[]>([]);
   const [skips, setSkips] = useState<string[]>([]);
   const [featured, setFeatured] = useState<LiveWorkCard | null>(null);
@@ -96,7 +98,7 @@ export function HomeGlassBox({ className }: { className?: string }) {
 
   useEffect(() => {
     loadGlass();
-  }, [tick, loadGlass]);
+  }, [worldTick, loadGlass]);
 
   const live = connection === "live";
   const empty = loaded && !needsAuth && !proofs.length && !featured;
@@ -177,6 +179,7 @@ export function HomeGlassBox({ className }: { className?: string }) {
 /** Compact live-work strip — only when receipts exist. */
 export function HomeLiveReceipts({ className }: { className?: string }) {
   const { tick } = useGlobalWs();
+  const worldTick = useDebouncedWorldTick(tick);
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -184,7 +187,7 @@ export function HomeLiveReceipts({ className }: { className?: string }) {
       .liveWork()
       .then((r) => setCount(r.cards?.length ?? 0))
       .catch(() => setCount(0));
-  }, [tick]);
+  }, [worldTick]);
 
   if (!count) return null;
 

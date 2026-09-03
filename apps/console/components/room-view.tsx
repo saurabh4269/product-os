@@ -154,15 +154,6 @@ export function RoomView({ initialId }: { initialId?: string }) {
       for (const row of d.presence ?? []) p[row.agentId] = row.status;
       setLivePresence(p);
       setErr(null);
-      try {
-        const contact = await api.roomContact(target);
-        setContactOnFile(contact);
-        if (contact.found && contact.phone) {
-          setCallPhone((prev) => prev || contact.phone || "");
-        }
-      } catch {
-        setContactOnFile(null);
-      }
     } catch (e) {
       if (isAdminAuthError(e) || !hasAdminToken()) {
         setAdminAuthRequired(true);
@@ -174,6 +165,26 @@ export function RoomView({ initialId }: { initialId?: string }) {
       setErr(e instanceof Error ? e.message : "failed");
     }
   }
+
+  useEffect(() => {
+    if (!toolsOpen || !id) return;
+    let live = true;
+    api
+      .roomContact(id)
+      .then((contact) => {
+        if (!live) return;
+        setContactOnFile(contact);
+        if (contact.found && contact.phone) {
+          setCallPhone((prev) => prev || contact.phone || "");
+        }
+      })
+      .catch(() => {
+        if (live) setContactOnFile(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [toolsOpen, id]);
 
   useEffect(() => {
     if (!id) return;
