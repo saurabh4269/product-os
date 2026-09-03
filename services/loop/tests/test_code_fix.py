@@ -115,7 +115,7 @@ def _action_bundle(engine):
     return tenant, inv, action
 
 
-def test_code_fix_failure_posts_terminal_receipt_when_flag_pr_open(engine, monkeypatch):
+def test_code_fix_failure_skips_terminal_receipt_when_flag_pr_open(engine, monkeypatch):
     monkeypatch.setattr(
         "loop.code_fix.run_code_fix",
         lambda **k: ConnectorReport(
@@ -148,12 +148,12 @@ def test_code_fix_failure_posts_terminal_receipt_when_flag_pr_open(engine, monke
         "pr_url": "https://github.com/org/shop/pull/7",
     }
     engine.store.put_action(action)
-    posted: list[str] = []
+    posted: list[dict] = []
 
-    def capture(engine, room_id, report, *, pr_url=None):
-        posted.append(str(report.status))
+    def capture(engine, room_id, **kwargs):
+        posted.append(kwargs)
 
-    monkeypatch.setattr("loop.code_fix._post_code_fix_terminal_receipt", capture)
+    monkeypatch.setattr("loop.receipts.post_receipt", capture)
 
     job = enqueue_code_fix(
         engine.store,
@@ -167,7 +167,7 @@ def test_code_fix_failure_posts_terminal_receipt_when_flag_pr_open(engine, monke
         flag_pr_opened=True,
     )
     run_code_fix_job(engine, job)
-    assert posted == ["failed"]
+    assert posted == []
 
 
 def test_execute_opens_flag_pr_when_code_fix_queued(engine, monkeypatch):

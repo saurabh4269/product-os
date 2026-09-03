@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Phone } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { api, hasAdminToken, isAdminAuthError, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
+import { api, hasAdminToken, isAdminAuthError, roomSocket, pendingActions, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { queryId, segmentId } from "@/lib/route-id";
 import { cn } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
@@ -338,8 +338,8 @@ export function RoomView({ initialId }: { initialId?: string }) {
   if (err) return <ErrorState message={err} />;
   if (!id || !data) return <Loading label="Opening chat" />;
 
-  const pending = data.bundle?.actions ?? [];
-  const needsApproval = pending.some((a) => ["proposed", "awaiting_approval"].includes(a.status));
+  const pending = pendingActions(data.bundle);
+  const needsApproval = pending.length > 0;
   const members = (data.room.members || []).filter((m) => m !== "system" && m !== "you");
   const live = Object.entries(livePresence).some(([, st]) => st && st !== "idle");
   const loop = roomLoopLabel(data.bundle, data.room);
@@ -511,7 +511,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
           room={data.room}
           messages={data.messages}
           bundle={data.bundle}
-          pending={pending.filter((a) => ["proposed", "awaiting_approval"].includes(a.status))}
+          pending={pending}
           busy={busy}
           onDecide={(actionId, d) => void decide(actionId, d)}
         />

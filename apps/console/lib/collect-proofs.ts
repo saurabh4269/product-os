@@ -1,13 +1,30 @@
 import type { Bundle, RoomMessage } from "@/lib/api";
 import { proofFromArtifact, type ProofPayload } from "@/components/proof-embed";
 
+function investigationPrUrl(bundle: Bundle | null): string | null {
+  if (!bundle) return null;
+  for (const action of bundle.actions) {
+    const art = action.artifacts as Record<string, unknown> | undefined;
+    const exec = (art?.execution ?? {}) as Record<string, unknown>;
+    for (const key of ["pr_url", "code_pr_url"]) {
+      const url = exec[key];
+      if (typeof url === "string" && url.includes("/pull/")) return url;
+    }
+  }
+  return null;
+}
+
 /** Gather live tool receipts from a room — GA4, BQ, GitHub, mail, etc. */
 export function proofsFromRoom(messages: RoomMessage[], bundle: Bundle | null): ProofPayload[] {
   const seen = new Set<string>();
   const out: ProofPayload[] = [];
+  const shipPr = investigationPrUrl(bundle);
 
   function push(p: ProofPayload | null) {
     if (!p?.kind) return;
+    if (p.kind === "github" && shipPr && p.status === "failed") {
+      return;
+    }
     const key = `${p.kind}-${p.title}-${p.url || p.console_url || ""}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -23,7 +40,9 @@ export function proofsFromRoom(messages: RoomMessage[], bundle: Bundle | null): 
       const art = action.artifacts as Record<string, unknown>;
       const exec = (art?.execution ?? {}) as Record<string, unknown>;
       push(proofFromArtifact({ ...exec, pr_url: exec.pr_url, proof: exec.proof }, "pr"));
-      push(proofFromArtifact(art, "code_fix"));
+      if (!shipPr) {
+        push(proofFromArtifact(art, "code_fix"));
+      }
     }
     for (const ev of bundle.evidence) {
       const ref = ev.source_reference || "";
@@ -40,6 +59,10 @@ export function proofsFromRoom(messages: RoomMessage[], bundle: Bundle | null): 
         });
       }
     }
+  }
+
+  if (shipPr && !out.some((p) => p.kind === "github" && (p.url === shipPr || p.console_url === shipPr))) {
+    push(proofFromArtifact({ pr_url: shipPr, url: shipPr, state: "open", status: "done" }, "pr"));
   }
 
   return out;
