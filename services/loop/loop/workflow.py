@@ -615,15 +615,24 @@ def workflow_for(
     }
 
 
-def workflow_from_store(store: Any, room: Any, inv: Any | None = None) -> dict[str, Any]:
+def workflow_from_store(
+    store: Any,
+    room: Any,
+    inv: Any | None = None,
+    *,
+    messages: list[Any] | None = None,
+    actions: list[Any] | None = None,
+) -> dict[str, Any]:
     """Build workflow for a room using messages + actions already on the store."""
     if inv is None and getattr(room, "investigation_id", None):
         inv = store.get_investigation(room.investigation_id)
 
-    messages = store.list_messages(room.id) if hasattr(store, "list_messages") else []
+    if messages is None:
+        messages = store.list_messages(room.id) if hasattr(store, "list_messages") else []
     arts = [m.artifact_type for m in messages if getattr(m, "artifact_type", None)]
 
-    actions = store.list_actions(inv.id) if inv and hasattr(store, "list_actions") else []
+    if actions is None:
+        actions = store.list_actions(inv.id) if inv and hasattr(store, "list_actions") else []
     action_types = [getattr(a, "type", None) for a in actions]
     action_statuses = [getattr(a, "status", None) for a in actions]
     awaiting = any(s in {"proposed", "awaiting_approval"} for s in action_statuses)

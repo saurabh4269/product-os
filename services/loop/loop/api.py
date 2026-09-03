@@ -582,6 +582,20 @@ def _action_gate(eng, action) -> dict:
 
 def _action_row(eng, action) -> dict:
     row = action.model_dump(mode="json")
+    arts = row.get("artifacts") if isinstance(row.get("artifacts"), dict) else {}
+    exe = arts.get("execution") if isinstance(arts.get("execution"), dict) else {}
+    compact_exe = {
+        k: exe[k]
+        for k in ("pr_url", "pr_opened", "code_pr_url", "code_fix", "flag", "value", "status", "proof")
+        if k in exe
+    }
+    keep_arts = {k: arts[k] for k in ("flag", "to", "from", "code_fix", "github_pr") if k in arts}
+    if compact_exe:
+        keep_arts["execution"] = compact_exe
+    brief = arts.get("code_brief") if isinstance(arts.get("code_brief"), dict) else None
+    if brief and brief.get("issue"):
+        keep_arts["code_brief"] = {"issue": brief.get("issue")}
+    row["artifacts"] = keep_arts
     gate = _action_gate(eng, action)
     row["gate"] = gate["label"]
     row["gate_mode"] = gate["mode"]
@@ -2067,17 +2081,23 @@ def room_detail(room_id: str, _actor: AdminUnlessEval):
     if not room:
         raise HTTPException(404, "room not found")
     inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
+    messages = list(eng.store.list_messages(room_id))
+    message_count = len(messages)
+    if message_count > 80:
+        messages = messages[-80:]
     bundle = _bundle(eng, room.investigation_id) if inv else None
     tenant = resolve_tenant(eng.store, investigation=inv, room=room)
     from .workflow import workflow_from_store
 
+    actions = eng.store.list_actions(inv.id) if inv else []
     return {
         "room": room.model_dump(mode="json"),
-        "messages": [m.model_dump(mode="json") for m in eng.store.list_messages(room_id)],
+        "messages": [m.model_dump(mode="json") for m in messages],
+        "message_count": message_count,
         "bundle": bundle,
         "members": room.members,
         "presence": HUB.agents_in(room_id),
-        "funnel": workflow_from_store(eng.store, room, inv),
+        "funnel": workflow_from_store(eng.store, room, inv, messages=messages, actions=actions),
         "tenant": (
             {"id": tenant.id, "name": tenant.name, "product": tenant.product, "repo": tenant.repo}
             if tenant
@@ -2603,6 +2623,22 @@ def worker_run_job(
     return {"result": result}
 
 
+@app.post("/api/internal/state/persist")
+def persist_state(
+    authorization: str | None = Header(default=None),
+    x_loop_worker: str | None = Header(default=None, alias="X-Loop-Worker"),
+):
+    """Flush live sqlite to GCS before package/deploy. No-op when GCS URI is unset."""
+    from loop.state_persist import persist_now
+
+    from .auth import require_admin_or_internal
+
+    require_admin_or_internal(authorization, internal_header=x_loop_worker)
+    eng = get_engine()
+    ok = persist_now(eng.store.path)
+    return {"ok": bool(ok), "uri_configured": bool(os.environ.get("LOOP_STATE_GCS_URI"))}
+
+
 @app.post("/api/internal/worker/tick")
 def worker_tick(
     authorization: str | None = Header(default=None),
@@ -3027,9 +3063,10 @@ def _investigation_verdicts(eng: LoopEngine, inv_id: str) -> list[dict]:
         for name in (call.from_agent, call.to_agent)
         if name
     }
+    recent = eng.store.list_recent_verdicts(48) if hasattr(eng.store, "list_recent_verdicts") else eng.store.list_verdicts()[-48:]
     return [
         v.model_dump(mode="json")
-        for v in eng.store.list_verdicts()
+        for v in recent
         if v.agent_identity in agents
     ]
 
@@ -3081,8 +3118,8 @@ def _bundle(eng: LoopEngine, inv_id: str) -> dict:
             for a in eng.store.list_actions(inv_id)
             for ap in eng.store.list_approvals(a.id)
         ],
-        "timeline": [t.model_dump(mode="json") for t in eng.store.list_timeline(inv_id)],
-        "agent_calls": [c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv_id)],
+        "timeline": [t.model_dump(mode="json") for t in eng.store.list_timeline(inv_id)[-48:]],
+        "agent_calls": [c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv_id)[-48:]],
         "outcomes": [o.model_dump(mode="json") for o in eng.store.list_outcomes_for_investigation(inv_id)],
         "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons_for_investigation(inv_id)],
         "verdicts": _investigation_verdicts(eng, inv_id),
@@ -3127,6 +3164,14 @@ def _spa_file(path: str) -> FileResponse | None:
                 return FileResponse(candidate)
     if not rel:
         return FileResponse(_STATIC / "index.html")
+    first, _sep, rest = rel.partition("/")
+    if _sep and first in {"rooms", "investigations", "agents"} and rest not in {"", "_"}:
+        for placeholder in (
+            _STATIC / first / "_" / "index.html",
+            _STATIC / first / "_.html",
+        ):
+            if placeholder.is_file():
+                return FileResponse(placeholder)
     # Flat export pages (rooms.html) must win over the rooms/ placeholder directory.
     flat_index = _STATIC / f"{rel}.html"
     if flat_index.is_file():

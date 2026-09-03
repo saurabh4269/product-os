@@ -166,10 +166,10 @@ def build_customer_context_brief(user_id: str = "8472") -> dict[str, Any]:
     return build_brief(event, run_probes(event), []).model_dump(mode="json")
 
 
-def extract_structured_evidence(transcript: list[dict[str, str]]) -> dict[str, Any]:
+def extract_structured_evidence(transcript: list[dict[str, str]], *, metric: str = "") -> dict[str, Any]:
     from loop.customer_research import extract_structured_evidence as _ex
 
-    return _ex(transcript).model_dump(mode="json")
+    return _ex(transcript, metric=metric).model_dump(mode="json")
 
 
 def simulate_research_dialogue(brief: dict[str, Any]) -> list[dict[str, str]]:

@@ -66,6 +66,22 @@ def persist_db(local_path: Path) -> bool:
     return gcs_state.write_bytes(uri, local_path.read_bytes(), content_type="application/x-sqlite3")
 
 
+def persist_now(local_path: Path | None = None) -> bool:
+    """Flush a pending debounce and upload sqlite immediately (ingest / HIGH PR)."""
+    global _timer, _last_upload
+    path = local_path
+    with _lock:
+        if _timer:
+            _timer.cancel()
+            _timer = None
+        if path is None or not path.is_file():
+            return False
+        ok = persist_db(path)
+        if ok:
+            _last_upload = time.time()
+        return ok
+
+
 def schedule_snapshot(local_path: Path, delay_s: float = 2.0) -> bool | None:
     global _timer
 

@@ -2,14 +2,14 @@
 
 ## Paused 2026-09-03 (owner 13:35 IST)
 
-Do **not** deploy until owner says go. Overnight keep-going is paused. (#27 merged on `main` as `54b4b97`.)
+Overnight keep-going is paused. Do not merge Cove.
 
 When unpaused, in order:
 
-1. **Persist GCS → package → deploy** — ship `54b4b97` (#26 lesson scope + #27 GitHub card truth).
-2. **Confirm hang demo UI** — `room_f627763ea9` shows `github_pr` success; `code_fix` failure honest; Cove #17 still OPEN (never merge).
-4. **Workspace OAuth** — create Web client in Google Auth Platform; paste on Connect; test `/api/oauth/google/start`.
-5. **Remotion hang render** — local `export-demo` wrapping `GET /api/rooms/{id}` via `build_demo_scenes`; do not commit hang `loop.json`.
+1. **Persist GCS → package → deploy** this branch (`export-demo --room`, slim room GET, persist-after-ingest, lean boot without apt-get).
+2. **Confirm hang demo UI** — `room_f627763ea9` shows `github_pr` success; leftover HIGH hidden; Cove #17 still OPEN (never merge).
+3. **Workspace OAuth** — create Web client in Google Auth Platform; paste on Connect; test `/api/oauth/google/start`.
+4. **Remotion hang render** — `python3 -m loop.cli export-demo --room room_f627763ea9 -o apps/demo/out/hang.json`; copy to `public/loop.json` for render only; restore the generic fixture.
 
 Never merge Cove PRs (#1–#4, #7) or LOOP leftovers (#11–#17). Do not approve `act_4754e1ae24f5`.
 

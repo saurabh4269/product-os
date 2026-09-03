@@ -221,6 +221,14 @@ class Store:
     def list_verdicts(self) -> list[PolicyVerdict]:
         return self._list("verdicts", PolicyVerdict)
 
+    def list_recent_verdicts(self, limit: int = 24) -> list[PolicyVerdict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT json FROM verdicts ORDER BY rowid DESC LIMIT ?",
+                (max(1, int(limit)),),
+            ).fetchall()
+        return [PolicyVerdict.model_validate_json(r[0]) for r in rows]
+
     def put_timeline(self, e: TimelineEvent) -> None:
         self._put("timeline", e, {"investigation_id": e.investigation_id})
 

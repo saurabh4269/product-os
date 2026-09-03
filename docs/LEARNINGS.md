@@ -30,8 +30,15 @@ Production console must use `BASE = ""` (same origin as FastAPI).
 **Fix:** Use the public image + GCS tarball path already in `scripts/deploy-gcp.sh`:
 
 1. `package-host.sh` writes `dist/loop-host.tgz` (vendor wheels + `loop/` + static `out/`).
-2. Upload to `gs://mystical-timing-442601-q8-loop-host/loop-host.tgz` (object is world-readable so the container can `curl` it).
-**Fix:** Keep the known-good `apt-get` + `curl` boot (gcloud `--args` splits on commas, so a Python `urlretrieve(url, path)` will cut the script in half and the revision never listens). Set `--min-instances 1` so apt-get only runs on deploy, not on every user. Warm TTFB should be hundreds of ms. Do not treat that as a code bug.
+2. Upload to `gs://mystical-timing-442601-q8-loop-host/loop-host.tgz` (object is world-readable so the container can fetch it).
+
+### Cloud Run boot must not put commas in `gcloud --args`
+
+**Symptom:** New revision never listens; `/api/config` 503s until the previous revision is restored.
+
+**Why:** `gcloud run deploy --args` splits on commas. A Python `urlretrieve(url, path)` inside `--args` is cut in half.
+
+**Fix:** Fetch the GCS tarball with **one-argument** `urlretrieve(url)` after `cd /tmp` (filename comes from the URL, `loop-host.tgz`). Do **not** `apt-get` curl/git/node on every start — python:3.12-slim already has CA certs. `code_fix` extra skips cleanly without git/node; flags.json GitHub PR is the ship path. `--min-instances 1` so cold start is deploy-time, not every user.
 
 ### `LOOP_STATIC` left on breaks `next dev`
 
@@ -384,8 +391,8 @@ If hosted HTML is the campus but XHR 404s, you shipped a new revision that is st
 
 ### Unique metric when an AWAITING_APPROVAL room still has pending actions
 
-**Symptom:** New signal joins an existing room instead of opening fresh work; duplicate approvals or blocked ingest.
+**Symptom:** Same-metric ingest opened a second demo room (or closed the hang room) after leftover HIGH was hidden because a flags PR already shipped.
 
-**Why:** Join rule keys on metric + tenant. Reusing the same metric while another room is `AWAITING_APPROVAL` with pending actions causes collision.
+**Why:** Join required visible pending actions. PR #27 hides duplicate HIGH once a sibling opened the tenant PR, so join returned false.
 
-**Fix:** Pick a **unique metric** for a new room when an AWAITING_APPROVAL room still has pending actions (e.g. `otp_verify_hang_0904` for the hang demo).
+**Fix:** Same tenant+metric joins an open `AWAITING_APPROVAL` room when pending remains **or** a flags PR already shipped. Pick a **unique metric** only when you intend a new room (e.g. `otp_verify_hang_0904`). Do not approve leftover `act_4754e1ae24f5`.

@@ -21,6 +21,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("serve", help="Start the API")
     p_export = sub.add_parser("export-demo", help="Write demo JSON for Remotion")
     p_export.add_argument("-o", "--out", default="")
+    p_export.add_argument("--room", default="", help="Hosted room id — fetch via admin bearer, not local geo_5xx")
+    p_export.add_argument("--api", default="", help="Hosted API origin (default LOOP_PUBLIC_URL or productos.heisenbug.in)")
+    p_export.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow --room to overwrite apps/demo/public/loop.json (restore the generic fixture after render)",
+    )
     args = parser.parse_args(argv)
 
     if args.cmd == "seed":
@@ -58,9 +65,32 @@ def main(argv: list[str] | None = None) -> int:
         uvicorn.run("loop.api:app", host=settings().host, port=settings().port, reload=False)
         return 0
     if args.cmd == "export-demo":
-        from .demo_export import write_demo_export
+        import os
+
+        from .demo_export import fetch_hosted_room, write_demo_export, write_hosted_demo_export
 
         dest = Path(args.out) if args.out else Path(__file__).resolve().parents[3] / "apps" / "demo" / "public" / "loop.json"
+        if args.room:
+            token = (os.environ.get("LOOP_ADMIN_TOKEN") or "").strip()
+            api_base = (args.api or os.environ.get("LOOP_PUBLIC_URL") or "https://productos.heisenbug.in").strip()
+            fixture = Path(__file__).resolve().parents[3] / "apps" / "demo" / "public" / "loop.json"
+            if not args.out:
+                dest = Path(__file__).resolve().parents[3] / "apps" / "demo" / "out" / f"{args.room}.json"
+            if dest.resolve() == fixture.resolve() and not args.force:
+                print(
+                    "refusing to overwrite the generic Remotion fixture with a hosted room; "
+                    "pass -o apps/demo/out/hang.json (copy to public/loop.json only for render)",
+                    file=sys.stderr,
+                )
+                return 2
+            try:
+                payload = fetch_hosted_room(args.room, api_base=api_base, token=token)
+            except Exception as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+            path = write_hosted_demo_export(dest, payload)
+            print(path)
+            return 0
         path = write_demo_export(dest)
         print(path)
         return 0

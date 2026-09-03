@@ -129,3 +129,14 @@ def test_simulate_uses_adaptive_questions_when_call_plan_empty():
     ev = extract_structured_evidence(turns)
     assert ev.reason == "payment_timeout"
     assert ev.reason != "unknown_friction"
+
+
+def test_otp_hang_metric_is_not_payment_timeout():
+    turns = [
+        {"role": "user", "message": "It kept loading after the code."},
+        {"role": "agent", "message": "Did you try again?"},
+        {"role": "user", "message": "Yes twice. I gave up."},
+    ]
+    ev = extract_structured_evidence(turns, metric="otp_verify_hang_0904")
+    assert ev.reason == "otp_verify_timeout"
+    assert ev.reason != "payment_timeout"

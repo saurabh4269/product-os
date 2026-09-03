@@ -202,3 +202,60 @@ def test_bundle_pending_actions_filtered(engine):
     bundle = _bundle(engine, inv.id)
     assert len(bundle["actions"]) == 2
     assert bundle["pending_actions"] == []
+
+
+def test_same_metric_joins_awaiting_room_when_flags_pr_already_shipped(engine, monkeypatch):
+    """Leftover HIGH is hidden after a flags PR — same-metric ingest must still join, not open a new room."""
+    from loop.tenant import Tenant, hash_token
+    from loop.world import ingest_tenant_signal, tenant_ingest_should_join_room
+
+    monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
+    tenant = Tenant(
+        id="brandx",
+        name="Brand X",
+        product="Brand X",
+        repo="org/shop",
+        token_hash=hash_token("tok"),
+        connected=True,
+        flag_names=["checkout_v2"],
+    )
+    engine.store.put_tenant(tenant)
+    first = ingest_tenant_signal(
+        engine,
+        tenant,
+        metric="otp_verify_hang_0904",
+        magnitude=-0.2,
+        baseline=0.1,
+        note="OTP hang",
+        async_finish=False,
+    )
+    inv = engine.store.get_investigation(first["investigation_id"])
+    assert inv
+    shipped = False
+    leftover = None
+    for act in engine.store.list_actions(inv.id):
+        if not shipped:
+            act.status = "executed"
+            art = dict(act.artifacts or {})
+            art["execution"] = {"pr_opened": True, "pr_url": "https://github.com/org/shop/pull/17"}
+            act.artifacts = art
+            engine.store.put_action(act)
+            shipped = True
+        elif act.status in {"proposed", "awaiting_approval"}:
+            leftover = act
+    inv.state = InvestigationState.AWAITING_APPROVAL
+    inv.closed_at = None
+    engine.store.put_investigation(inv)
+    assert tenant_ingest_should_join_room(engine, inv) is True
+    assert leftover is None or leftover.status == "awaiting_approval"
+    again = ingest_tenant_signal(
+        engine,
+        tenant,
+        metric="otp_verify_hang_0904",
+        magnitude=-0.18,
+        baseline=0.1,
+        note="OTP hang again",
+        async_finish=False,
+    )
+    assert again.get("joined") is True
+    assert again["room_id"] == first["room_id"]

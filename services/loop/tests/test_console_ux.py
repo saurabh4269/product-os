@@ -87,9 +87,19 @@ def test_rooms_index_ws_tick_debounces_list_refetch():
 def test_shell_does_not_refetch_rooms_on_ws_tick():
     src = (CONSOLE / "components" / "shell.tsx").read_text()
     rooms_effect = src[src.index("api\n      .rooms()") : src.index("api\n      .status()")]
-    assert "[path]" in rooms_effect or "[path]);" in rooms_effect
+    assert "[path]" in rooms_effect or "[path, inRoom]" in rooms_effect
     assert "tick" not in rooms_effect
+    assert "inRoom" in rooms_effect
     assert "useDebouncedWorldTick" in src
+
+
+def test_unauth_room_copy_is_this_room_not_index():
+    room = (CONSOLE / "components" / "room-view.tsx").read_text()
+    index = (CONSOLE / "app" / "rooms" / "page.tsx").read_text()
+    assert "Authorize to open this room" in room
+    assert "This room" in room
+    assert "Authorize to see open rooms" in index
+    assert "Authorize to see open rooms" not in room
 
 
 def test_room_view_open_uses_single_room_get():

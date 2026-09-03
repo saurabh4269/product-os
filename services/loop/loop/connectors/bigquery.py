@@ -356,20 +356,22 @@ def read_metric_window(
             if end >= RECOVERY_START:
                 end = RECOVERY_START - timedelta(days=1)
             start = end - timedelta(days=2)
-            conv = conversion_by_browser(tenant, start, end)
-            browser = _primary_browser(conv, metric=metric)
-            row = conv.get(browser) or {}
-            if row.get("conversion") is not None:
-                value = float(row["conversion"])
-                return {
-                    "value": value,
-                    "baseline": baseline,
-                    "source": "bigquery.events",
-                    "claim": (
-                        f"{metric} at {value:.2%} for {browser} "
-                        f"({int(row.get('purchase', 0))}/{int(row.get('begin_checkout', 0))} checkouts, BQ)"
-                    ),
-                }
+            mlow = (metric or "").lower()
+            if any(k in mlow for k in ("conversion", "checkout", "purchase")):
+                conv = conversion_by_browser(tenant, start, end)
+                browser = _primary_browser(conv, metric=metric)
+                row = conv.get(browser) or {}
+                if row.get("conversion") is not None:
+                    value = float(row["conversion"])
+                    return {
+                        "value": value,
+                        "baseline": baseline,
+                        "source": "bigquery.events",
+                        "claim": (
+                            f"{metric} at {value:.2%} for {browser} "
+                            f"({int(row.get('purchase', 0))}/{int(row.get('begin_checkout', 0))} checkouts, BQ)"
+                        ),
+                    }
         except Exception:
             pass
 

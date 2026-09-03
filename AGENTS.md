@@ -122,7 +122,7 @@ docs/                  See docs/README.md for index
 | `loop/registry.py` | Identity + allow/deny. |
 | `loop/api.py` | FastAPI. CORS `*` on Cloud Run. SPA fallback includes `agents/`. Do **not** serve a tenant storefront from this app. |
 | `loop/store.py` | SQLite + GCS hydrate/persist. `list_all_agent_calls`, `list_all_messages`. |
-| `loop/demo_export.py` | `export-demo` / `build_demo_scenes`. Lesson scenes use investigation `lessons[]`, not `recalled_lessons`. |
+| `loop/demo_export.py` | `export-demo` / `build_demo_scenes`. `--room` fetches hosted GET `/api/rooms/{id}`. Lesson scenes use investigation `lessons[]`, not `recalled_lessons`. |
 
 `a2a()` is **not** posted as room messages. The room UI merges `bundle.agent_calls` as “handed off” rows.
 
@@ -158,7 +158,7 @@ unset NEXT_PUBLIC_API_URL LOOP_STATIC
 ./scripts/deploy-gcp.sh
 ```
 
-This uploads `dist/loop-host.tgz` to `gs://mystical-timing-442601-q8-loop-host` and runs public `python:3.12-slim`, which curl’s the tarball. **`gcloud run deploy --source` fails** (no Cloud Build on this SA). Boot no longer installs nodejs/npm/pip (PR #25).
+This uploads `dist/loop-host.tgz` to `gs://mystical-timing-442601-q8-loop-host` and runs public `python:3.12-slim`, which fetches the tarball with Python `urlretrieve` (no boot `apt-get`). **`gcloud run deploy --source` fails** (no Cloud Build on this SA). Boot does not install curl/git/nodejs/npm/pip. `code_fix` extra skips on the lean worker; `github_pr` is the ship path.
 
 After deploy: hard-refresh https://productos.heisenbug.in. Confirm `/city/campus.webp` is 200 and `/api/office` is 200.
 
@@ -166,10 +166,9 @@ After deploy: hard-refresh https://productos.heisenbug.in. Confirm `/city/campus
 
 `apps/demo` — LoopDemo 1280×720 12s from `export-demo` JSON. Cloud Run does **not** serve it.
 
-- `export-demo` cannot target a hosted room (local temp sqlite `geo_5xx`).
-- Hang render: wrap `GET /api/rooms/{id}` bundle via `build_demo_scenes`; do not commit hang `loop.json`.
-- Lesson scene **must** use investigation `lessons[]`, not `recalled_lessons` (PR #26), or it leaks `checkout_conversion`.
-- Video of the hang exists only off-repo.
+- Hosted hang: `python3 -m loop.cli export-demo --room room_f627763ea9 -o apps/demo/out/hang.json` (needs `LOOP_ADMIN_TOKEN`). Refuses to overwrite `apps/demo/public/loop.json` unless `--force`. Copy to `public/loop.json` for render only, then `git checkout -- apps/demo/public/loop.json`.
+- Lesson/verify scenes use this investigation’s `lessons[]` / `outcomes[]` and name **this metric** when still waiting.
+- LoopDemo shows a Type A / Type B chip. No Safari/3DS/Northstar fallbacks.
 
 ## Fixtures (same pipeline)
 

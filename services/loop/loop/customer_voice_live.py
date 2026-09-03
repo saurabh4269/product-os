@@ -95,7 +95,8 @@ def maybe_emit_live_customer_voice(
                 }
             )
         transcript = simulate_research_dialogue(brief)
-        ev = extract_structured_evidence(transcript)
+        metric = str((brief.get("observed") or {}).get("metric") or "")
+        ev = extract_structured_evidence(transcript, metric=metric)
         structured = ev.model_dump(mode="json")
     except Exception:
         engine._collect_customer_voice(inv)

@@ -69,9 +69,13 @@ def _expand_files(paths: list[str], tenant: Tenant | None = None) -> list[str]:
 
 
 def clone_tenant_repo(tenant: Tenant, dest: Path) -> tuple[bool, str]:
+    from loop.code_worker import find_executable
+
     token = _token(tenant)
     if not token or not tenant.repo:
         return False, "no github token or tenant.repo"
+    if not find_executable("git"):
+        return False, "git not in worker (lean boot); flags.json GitHub PR is the ship path"
     if dest.exists():
         shutil.rmtree(dest, ignore_errors=True)
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -277,10 +281,19 @@ def run_code_fix(
     from loop.code_worker import (
         apply_patches,
         collect_git_diff_files,
+        find_executable,
+        node_toolchain_available,
         read_patched_files,
         run_tests,
     )
     from loop.connectors.github import open_pr_multi_file
+
+    if not find_executable("git") or not node_toolchain_available():
+        return ConnectorReport(
+            status="skipped",
+            connector="code_fix",
+            detail="code_fix extra skipped on lean worker (no git/node/npm); flags.json GitHub PR is the ship path",
+        )
 
     with tempfile.TemporaryDirectory(prefix="loop-code-") as tmp:
         repo = Path(tmp) / "repo"

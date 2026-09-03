@@ -1,16 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { ConnectAdminCta } from "@/components/connect-admin-cta";
+import { RoomView } from "@/components/room-view";
 import { api, hasAdminToken, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
+import { segmentId } from "@/lib/route-id";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { useDebouncedWorldTick } from "@/lib/world-refresh";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { ErrorState, Loading } from "@/components/ui";
 
 export default function RoomsIndex() {
+  const path = usePathname() || "";
+  const nestedId = segmentId(path, "rooms");
+  if (nestedId) {
+    return (
+      <Suspense fallback={<div className="page-pad text-[14px] text-[var(--dim)]">Loading room…</div>}>
+        <RoomView />
+      </Suspense>
+    );
+  }
+
+  return <RoomsIndexBody />;
+}
+
+function RoomsIndexBody() {
   const { tick } = useGlobalWs();
   const worldTick = useDebouncedWorldTick(tick);
   const [rooms, setRooms] = useState<Room[]>([]);

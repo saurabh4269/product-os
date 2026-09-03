@@ -328,7 +328,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
           <ConnectAdminCta
             className="max-w-md"
             title="Authorize to open this room"
-            detail="Paste LOOP_ADMIN_TOKEN on Connect to read messages, handoffs, and tool embeds."
+            detail="This room’s messages, handoffs, and tool embeds stay hidden until you paste LOOP_ADMIN_TOKEN on Connect."
           />
         </div>
       </div>
