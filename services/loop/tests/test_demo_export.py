@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from loop.demo_export import WAITING, build_demo_export, build_demo_scenes, write_demo_export
+from loop.demo_export import WAITING, build_demo_export, build_demo_scenes, lesson_scene_body, write_demo_export
 
 FORBIDDEN = ("safari_3ds", "safari 3ds", "northstar", "pay-sdk 4.3", "northstar pay")
 
@@ -47,6 +47,93 @@ def test_waiting_scenes_never_invent_fixture_copy():
     assert bodies["Verified"] == WAITING["verified"]
     assert bodies["Lesson"] == WAITING["lesson"]
     _assert_no_fixture_copy(json.dumps(scenes))
+
+
+def test_lesson_scene_ignores_recalled_lessons_from_other_metrics():
+    """Hang rooms may recall memory from another metric — Lesson scene must not show it."""
+    foreign = (
+        "Scenario t:acme:checkout_conversion: post-deploy verification needs a tenant metric connector. "
+        "No live re-read for checkout_conversion; marked inconclusive instead of auto-resolved."
+    )
+    bundle = {
+        "signals": [{"metric": "otp_verify_hang", "magnitude": -0.2, "baseline": 0.1}],
+        "investigation": {"recalled_lessons": [foreign], "scenario_id": "t:acme:otp_verify_hang"},
+        "lessons": [],
+    }
+    assert lesson_scene_body(bundle) == WAITING["lesson"]
+    scenes = build_demo_scenes(bundle)
+    assert scenes[-1]["body"] == WAITING["lesson"]
+    assert "checkout_conversion" not in scenes[-1]["body"]
+
+
+def test_two_investigations_do_not_leak_lessons_or_outcomes(engine):
+    from loop.api import _bundle
+    from loop.models import Investigation, InvestigationState, Lesson, Outcome, OutcomeVerdict
+
+    checkout_lesson = (
+        "Scenario t:acme:checkout_conversion: post-deploy verification needs a tenant metric connector."
+    )
+    engine.store.put_investigation(
+        Investigation(
+            id="inv_checkout",
+            originating_signal_ids=[],
+            state=InvestigationState.RESOLVED,
+            opened_at="2026-09-01T00:00:00Z",
+            invocation_id="job_checkout",
+            scenario_id="t:acme:checkout_conversion",
+        )
+    )
+    engine.store.put_lesson(
+        Lesson(
+            id="les_checkout",
+            investigation_id="inv_checkout",
+            statement=checkout_lesson,
+            root_cause_family="checkout",
+            applicable_conditions=["checkout_conversion"],
+            confidence=0.7,
+            author_agent="learning_agent",
+            tenant_id="acme",
+        )
+    )
+    engine.store.put_outcome(
+        Outcome(
+            id="out_checkout",
+            investigation_id="inv_checkout",
+            metric="checkout_conversion",
+            pre_value=0.4,
+            post_value=0.5,
+            control_comparison=None,
+            delta=0.1,
+            verdict=OutcomeVerdict.INCONCLUSIVE,
+            measured_at="2026-09-01T01:00:00Z",
+        )
+    )
+    engine.store.put_investigation(
+        Investigation(
+            id="inv_otp_hang",
+            originating_signal_ids=[],
+            state=InvestigationState.VERIFYING,
+            opened_at="2026-09-02T00:00:00Z",
+            invocation_id="job_otp",
+            recalled_lessons=[checkout_lesson],
+            scenario_id="t:acme:otp_verify_hang",
+            tenant_id="acme",
+        )
+    )
+
+    hang_bundle = _bundle(engine, "inv_otp_hang")
+    assert hang_bundle["lessons"] == []
+    assert hang_bundle["outcomes"] == []
+    scenes = build_demo_scenes(hang_bundle)
+    assert scenes[-1]["body"] == WAITING["lesson"]
+    assert scenes[-2]["body"] == WAITING["verified"]
+    assert "checkout_conversion" not in json.dumps(scenes)
+
+    checkout_bundle = _bundle(engine, "inv_checkout")
+    assert len(checkout_bundle["lessons"]) == 1
+    assert checkout_lesson in checkout_bundle["lessons"][0]["statement"]
+    assert len(checkout_bundle["outcomes"]) == 1
+    assert checkout_bundle["outcomes"][0]["metric"] == "checkout_conversion"
 
 
 def test_loop_demo_waiting_copy_has_no_fixture_strings():

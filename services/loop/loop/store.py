@@ -197,6 +197,9 @@ class Store:
     def list_outcomes(self) -> list[Outcome]:
         return self._list("outcomes", Outcome)
 
+    def list_outcomes_for_investigation(self, investigation_id: str) -> list[Outcome]:
+        return self._list("outcomes", Outcome, "WHERE investigation_id=?", (investigation_id,))
+
     def put_lesson(self, lesson: Lesson) -> None:
         self._put("lessons", lesson, {"investigation_id": lesson.investigation_id})
         try:
@@ -208,6 +211,9 @@ class Store:
 
     def list_lessons(self) -> list[Lesson]:
         return self._list("lessons", Lesson)
+
+    def list_lessons_for_investigation(self, investigation_id: str) -> list[Lesson]:
+        return self._list("lessons", Lesson, "WHERE investigation_id=?", (investigation_id,))
 
     def put_verdict(self, v: PolicyVerdict) -> None:
         self._put("verdicts", v)

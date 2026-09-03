@@ -3079,8 +3079,8 @@ def _bundle(eng: LoopEngine, inv_id: str) -> dict:
         ],
         "timeline": [t.model_dump(mode="json") for t in eng.store.list_timeline(inv_id)],
         "agent_calls": [c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv_id)],
-        "outcomes": [o.model_dump(mode="json") for o in eng.store.list_outcomes() if o.investigation_id == inv_id],
-        "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons() if lesson.investigation_id == inv_id],
+        "outcomes": [o.model_dump(mode="json") for o in eng.store.list_outcomes_for_investigation(inv_id)],
+        "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons_for_investigation(inv_id)],
         "verdicts": _investigation_verdicts(eng, inv_id),
         "state": inv.state.value if isinstance(inv.state, InvestigationState) else inv.state,
     }

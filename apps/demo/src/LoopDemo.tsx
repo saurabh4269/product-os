@@ -59,9 +59,7 @@ function buildScenes(payload: Bundle): Scene[] {
       ? `${outcome.verdict}: ${outcome.metric ?? "metric"} ${Number(outcome.pre_value ?? 0).toPrecision(3)} → ${Number(outcome.post_value ?? 0).toPrecision(3)}.`
       : WAITING.verified;
 
-  const recalled = payload.investigation?.recalled_lessons?.[0];
-  const lessonStatement = payload.lessons?.[0]?.statement;
-  const lessonBody = recalled ?? lessonStatement ?? WAITING.lesson;
+  const lessonBody = payload.lessons?.[0]?.statement ?? WAITING.lesson;
 
   return [
     { title: "Signal", body: signalBody },
