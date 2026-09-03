@@ -11,6 +11,7 @@ import {
   FlaskConical,
   House,
   Layers,
+  LayoutGrid,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -45,6 +46,7 @@ function NavUserMark() {
 
 const SYSTEM = [
   { href: "/", label: "Home", icon: House },
+  { href: "/rooms", label: "Rooms", icon: LayoutGrid },
   { href: "/registry", label: "Agents", icon: Users },
   { href: "/memory", label: "Memory", icon: BookMarked },
   { href: "/data", label: "Data plane", icon: Database },
@@ -67,6 +69,7 @@ function kindLabel(kind: string) {
 
 function isActive(path: string, href: string) {
   if (href === "/") return path === "/";
+  if (href === "/rooms") return path === "/rooms" || path.startsWith("/rooms/");
   if (href === "/labs") return path === "/labs";
   if (href === "/settings") return path === "/settings" || path.startsWith("/connect");
   return path.startsWith(href);
@@ -297,7 +300,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {wide ? (
           <>
             <div className="mx-4 my-4 h-px bg-border" />
-            <RoomList path={path} rooms={rooms} />
+            <div className="px-2 pb-2">
+              <Link
+                href="/rooms"
+                onClick={!desktop ? () => setExpanded(false) : undefined}
+                data-active={path === "/rooms" ? "true" : undefined}
+                className="nav-item mb-2 block px-3 py-2 pl-3.5 text-[13px] font-medium"
+              >
+                All open rooms
+              </Link>
+            </div>
+            <RoomList
+              path={path}
+              rooms={rooms}
+              onNavigate={!desktop ? () => setExpanded(false) : undefined}
+            />
           </>
         ) : (
           <div className="flex-1" />

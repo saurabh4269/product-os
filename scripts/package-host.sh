@@ -24,6 +24,11 @@ cp "$ROOT/scripts/cloudrun-entry.sh" "$DIST/cloudrun-entry.sh"
 export LOOP_STATIC=1
 unset NEXT_PUBLIC_API_URL
 (cd "$ROOT/apps/console" && npm ci --silent && npm run build)
+# Next export writes rooms.html at out root; duplicate as rooms/index.html so
+# /rooms/ directory requests and client-side routing don't fall through to [id].
+if [ -f "$ROOT/apps/console/out/rooms.html" ]; then
+  cp "$ROOT/apps/console/out/rooms.html" "$ROOT/apps/console/out/rooms/index.html"
+fi
 cp -a "$ROOT/apps/console/out/." "$DIST/static/"
 
 mkdir -p "$ROOT/dist"

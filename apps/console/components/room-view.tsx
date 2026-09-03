@@ -10,7 +10,7 @@ import { Button, ErrorState, Loading } from "@/components/ui";
 import { AgentBadge } from "@/components/agent-badge";
 import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
 import { proofsFromRoom } from "@/lib/collect-proofs";
-import { RoomCaseBanner } from "@/components/room-case-banner";
+import { RoomCaseBanner, roomLoopLabel } from "@/components/room-case-banner";
 import { EvidenceGraph } from "@/components/evidence-graph";
 import { ProofGrid } from "@/components/proof-embed";
 import { InvestigationLab } from "@/components/ref/investigation-lab";
@@ -303,6 +303,12 @@ export function RoomView({ initialId }: { initialId?: string }) {
   const needsApproval = pending.some((a) => ["proposed", "awaiting_approval"].includes(a.status));
   const members = (data.room.members || []).filter((m) => m !== "system" && m !== "you");
   const live = Object.entries(livePresence).some(([, st]) => st && st !== "idle");
+  const loop = roomLoopLabel(data.bundle, data.room);
+  const loopKind = loop
+    ? loop.tone === "bug"
+      ? "Type A · fix"
+      : "Type B · improve"
+    : null;
 
   async function send() {
     if (!text.trim()) return;
@@ -373,7 +379,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
       <div className="shrink-0 border-b border-black/5 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <ThreadRoomHeader title={data.room.title} members={members} />
+            <ThreadRoomHeader title={data.room.title} members={members} kind={loopKind} />
             {members.length > 0 ? (
               <div className="mt-2 flex items-center gap-2">
                 <div className="flex -space-x-1.5">

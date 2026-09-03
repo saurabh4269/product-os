@@ -344,6 +344,42 @@ def run_code_fix_job(engine: Any, job: Any) -> dict[str, Any]:
     }
 
 
+def _post_code_fix_terminal_receipt(
+    engine: Any,
+    room_id: str,
+    report: ConnectorReport,
+    *,
+    pr_url: str | None = None,
+) -> None:
+    from loop.proof import github_pr_proof
+    from loop.receipts import post_receipt
+
+    terminal = "failed" if report.status == "failed" else "done"
+    title = "Code fix failed" if report.status == "failed" else "Code fix complete"
+    if report.status == "skipped":
+        title = "Code fix skipped"
+    proof_url = str(report.url or pr_url or "")
+    proof = github_pr_proof(proof_url, tenant=None) if proof_url and "github.com" in proof_url else None
+    post_receipt(
+        engine,
+        room_id,
+        kind="github" if proof else "code_fix",
+        title=title,
+        agent="code_agent",
+        status=terminal,
+        detail=report.detail,
+        open_url=proof_url or None,
+        proof=proof
+        or {
+            "kind": "code_fix",
+            "status": terminal,
+            "title": title,
+            "detail": report.detail,
+            "state": "open" if proof_url else "",
+        },
+    )
+
+
 def _apply_job_result(engine: Any, payload: dict, inv: Any, report: ConnectorReport) -> None:
     from loop.world import post
 
@@ -351,6 +387,7 @@ def _apply_job_result(engine: Any, payload: dict, inv: Any, report: ConnectorRep
     action = engine.store.get_action(action_id) if action_id else None
     tenant_id = str(payload.get("tenant_id") or "")
     tenant = engine.store.get_tenant(tenant_id) if tenant_id else None
+    execution: dict[str, Any] = {}
     if action:
         execution = dict((action.artifacts or {}).get("execution") or {})
         had_pr = bool(execution.get("pr_opened") or execution.get("pr_url"))
@@ -439,6 +476,12 @@ def _apply_job_result(engine: Any, payload: dict, inv: Any, report: ConnectorRep
                 artifact_type="code_fix",
                 artifact=report.model_dump(),
             )
+        _post_code_fix_terminal_receipt(
+            engine,
+            room_id,
+            report,
+            pr_url=str(execution.get("pr_url") or "") or None,
+        )
     if inv:
         engine.timeline(inv.id, "code_agent", "code_fix", report.detail, report.url or "")
 
