@@ -9,7 +9,7 @@ Repo: `github.com/saurabh4269/product-os`
 GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`  
 Demo tenant (Cove only): `github.com/saurabh4269/cove` · Cloud Run `cove` · https://cove-5uy6fkd7bq-uc.a.run.app
 
-**Owner paused deploy 2026-09-03 13:35 IST.** Do not deploy until they say go. Overnight keep-going routine is paused.
+**Owner asked to deploy latest (done ~13:55 IST 2026-09-03).** Overnight keep-going routine is still paused.
 
 ## What this product is
 
@@ -25,21 +25,20 @@ It is **not** a Safari / 3DS / checkout app. Those scenarios are **fixtures** th
 
 The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents, visible handoffs, per-bot chats. It is not a CRUD dashboard and not a dark “war room.”
 
-## Live / hosted (2026-09-03 13:35 IST)
+## Live / hosted (2026-09-03 ~13:55 IST)
 
 | Field | Value |
 |---|---|
 | User URL | https://productos.heisenbug.in |
-| Revision | `loop-00122-drb` |
-| SHA deployed | `10c9ad1` (PR #25 — 4Gi + lean boot) |
+| Revision | `loop-00123-7rx` (100% traffic) |
+| SHA deployed | `fc1611948b3fcec0e68dd6dbe62d9cf7cd8f86b5` (PRs #26, #27, #28) |
 | Memory | 4Gi · min 1 · max 2 |
 | `LOOP_EVAL` | `0` (no Demo chrome) |
 | Health | `/` and `/rooms` 200 · `/shop` 404 |
-| Main tip | `54b4b97` (PR #26 lesson scope + PR #27 GitHub card truth) — **not yet deployed** |
 
 **State:** SQLite persists via `LOOP_STATE_GCS_URI` (`gs://mystical-timing-442601-q8-loop-host/loop_state.db`). Rooms survive restarts unless a deploy hydrates an **old** GCS snapshot. **Persist live sqlite before `package-host.sh`** when the hang room GET is 200. If live is 503/OOM, do **not** overwrite a good snapshot.
 
-**Demo hang (live):** `room_f627763ea9` · `inv_450569ba5e7e` · metric `otp_verify_hang_0904` · Type A HIGH · Voice `payment_timeout`. Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) (`flags.json` only) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (would duplicate #17). `code_fix` extra failed (no node in worker); `github_pr` is the ship path. UI still shows FAILED+DONE on hosted until #26+#27 deploy.
+**Demo hang (live):** `room_f627763ea9` (survived deploy) · `inv_450569ba5e7e` · metric `otp_verify_hang_0904` · Type A HIGH · Voice `payment_timeout`. Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) (`flags.json` only) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (would duplicate #17). `code_fix` extra failed (no node in worker); `github_pr` is the ship path.
 
 ## References the user pointed at
 
@@ -63,7 +62,7 @@ Open these before you change campus, mascots, or the rail. Do not copy licensed 
 
 ## GitHub / PRs
 
-**product-os:** `main` tip `54b4b97` (#9–#27 merged). **Open PRs:** none except docs handoff [#28](https://github.com/saurabh4269/product-os/pull/28). Deploy paused.
+**product-os:** `main` tip `fc16119` (#9–#28 merged, deployed on `loop-00123-7rx`). Overnight keep-going paused.
 
 **Never merge:** Cove PRs #1–#4, #7; LOOP #11–#16, #17. Do not merge Cove.
 

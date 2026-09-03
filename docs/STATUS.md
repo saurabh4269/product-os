@@ -4,7 +4,7 @@ Last updated: 2026-09-03 (IST)
 
 ## Pause
 
-**Owner paused deploy 2026-09-03 13:35 IST.** Do not deploy until they say go. Overnight keep-going routine is paused.
+**Owner asked to deploy latest (done ~13:55 IST 2026-09-03).** Overnight keep-going routine is still paused.
 
 ## Hosted
 
@@ -12,13 +12,12 @@ Last updated: 2026-09-03 (IST)
 |---|---|
 | User URL | https://productos.heisenbug.in |
 | GCP | `mystical-timing-442601-q8` · `us-central1` · service `loop` |
-| Revision | `loop-00122-drb` |
-| SHA deployed | `10c9ad1` (PR #25 — 4Gi memory + lean boot) |
+| Revision | `loop-00123-7rx` (100% traffic) |
+| SHA deployed | `fc1611948b3fcec0e68dd6dbe62d9cf7cd8f86b5` (PRs #26, #27, #28) |
 | Memory / scale | 4Gi · min 1 · max 2 |
 | `LOOP_EVAL` | `0` |
 | Health | `/` 200 · `/rooms` 200 · `/shop` 404 |
-
-**Main tip (not deployed):** `54b4b97` — PR #26 (demo lesson scope) + PR #27 (room UI GitHub card truth) on `main`, not live yet.
+| Deploy finished | ~13:55 IST 2026-09-03 |
 
 **State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance.
 
@@ -47,15 +46,13 @@ Last updated: 2026-09-03 (IST)
 | Cove PR | [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, `flags.json` only, never merge |
 | Blocked action | `act_4754e1ae24f5` — do not approve (duplicates #17) |
 | `code_fix` | Failed (no node in worker); `github_pr` is the ship path |
-| UI gap | FAILED+DONE on hosted until #26+#27 deploy (merged on `main` as `54b4b97`) |
+| State | Survived deploy (`room_f627763ea9` still live) |
 
 ## Branches / PRs
 
-### product-os (`main` has #9–#27, tip `54b4b97`)
+### product-os (`main` tip `fc16119`, deployed)
 
-**Open PRs:** none on product-os except this docs handoff ([#28](https://github.com/saurabh4269/product-os/pull/28)).
-
-Recent merged: #23 (unauth rooms Connect CTA), #24 (remove 4s campus poll), #25 (4Gi + lean boot), #26 (demo lesson scope), #27 (room UI GitHub card truth, `54b4b97`).
+Recent merged: #23–#28 (through docs handoff). Live on `loop-00123-7rx` at `fc16119`.
 
 ### Never merge
 
@@ -64,10 +61,9 @@ Recent merged: #23 (unauth rooms Connect CTA), #24 (remove 4s campus poll), #25 
 
 ## Blockers
 
-1. **#26+#27 not deployed** — hosted UI still mislabels `code_fix` failure vs `github_pr` success until next deploy.
-2. **Owner pause** — no deploy without explicit go.
-3. **Remotion hang video** — off-repo only; `export-demo` cannot target hosted rooms.
-4. **Workspace OAuth** — Web client still created manually in Google Auth Platform; flow wired on Connect.
+1. **Overnight keep-going paused** — owner deployed latest; autonomous overnight routine still off.
+2. **Remotion hang video** — off-repo only; `export-demo` cannot target hosted rooms.
+3. **Workspace OAuth** — Web client still created manually in Google Auth Platform; flow wired on Connect.
 
 ## Redeploy (when owner says go)
 
