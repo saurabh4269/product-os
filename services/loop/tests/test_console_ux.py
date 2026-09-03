@@ -120,6 +120,9 @@ def test_pending_actions_trusts_empty_server_list():
     fn = src[src.index("export function pendingActions") : src.index("export type RoomDetail")]
     assert "bundle.pending_actions != null" in fn
     assert "bundle.pending_actions?.length" not in fn
+
+
+def test_world_refresh_policy_is_at_least_15s():
     src = (CONSOLE / "lib" / "world-refresh.ts").read_text()
     assert "WORLD_REFRESH_MS" in src
     assert "15_000" in src or "15000" in src
