@@ -1013,8 +1013,8 @@ class LoopEngine:
             from .code_fix import enqueue_code_fix_job
 
             enqueue_code_fix_job(self, **code_fix_job)
-            # Running receipt so the user sees work in flight (Cursor-style).
-            if inv.room_id:
+            # Running receipt when flag PR is not open yet; if PR already landed, wait for job done receipt.
+            if inv.room_id and not result.get("pr_opened"):
                 from .receipts import post_receipt
 
                 post_receipt(

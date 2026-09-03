@@ -288,7 +288,9 @@ export function ThreadRoomHeader({
         {names ? <span className="mt-0.5 block truncate text-[12px] text-[var(--faint)]">{names}</span> : null}
       </div>
       {kind ? (
-        <span className="shrink-0 text-[11px] uppercase tracking-wide text-[var(--faint)]">{kind}</span>
+        <span className="shrink-0 rounded-full bg-[var(--elev)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--dim)]">
+          {kind}
+        </span>
       ) : null}
     </>
   );

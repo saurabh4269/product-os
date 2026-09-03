@@ -115,6 +115,61 @@ def _action_bundle(engine):
     return tenant, inv, action
 
 
+def test_code_fix_failure_posts_terminal_receipt_when_flag_pr_open(engine, monkeypatch):
+    monkeypatch.setattr(
+        "loop.code_fix.run_code_fix",
+        lambda **k: ConnectorReport(
+            status="failed",
+            connector="code_fix",
+            detail="tests failed",
+        ),
+    )
+
+    tenant, inv, action = _action_bundle(engine)
+    inv.room_id = "room_cf_test"
+    engine.store.put_investigation(inv)
+    from datetime import datetime
+
+    from loop.models import Room, RoomKind
+
+    engine.store.put_room(
+        Room(
+            id="room_cf_test",
+            title="Checkout",
+            topic="checkout",
+            kind=RoomKind.INCIDENT,
+            created_at=datetime.utcnow(),
+            investigation_id=inv.id,
+            members=["you", "code_agent"],
+        )
+    )
+    action.artifacts["execution"] = {
+        "pr_opened": True,
+        "pr_url": "https://github.com/org/shop/pull/7",
+    }
+    engine.store.put_action(action)
+    posted: list[str] = []
+
+    def capture(engine, room_id, report, *, pr_url=None):
+        posted.append(str(report.status))
+
+    monkeypatch.setattr("loop.code_fix._post_code_fix_terminal_receipt", capture)
+
+    job = enqueue_code_fix(
+        engine.store,
+        action_id=action.id,
+        investigation_id=inv.id,
+        tenant_id=tenant.id,
+        brief={"issue": "checkout timeout", "likely_files": ["src/checkout.ts"]},
+        flag_patch={"checkout_v2": "off"},
+        pr_title="Fix checkout",
+        pr_body="body",
+        flag_pr_opened=True,
+    )
+    run_code_fix_job(engine, job)
+    assert posted == ["failed"]
+
+
 def test_execute_opens_flag_pr_when_code_fix_queued(engine, monkeypatch):
     monkeypatch.setattr("loop.connectors.github._token", lambda: "tok")
     queued: list[dict] = []

@@ -3123,6 +3123,10 @@ def _spa_file(path: str) -> FileResponse | None:
                 return FileResponse(candidate)
     if not rel:
         return FileResponse(_STATIC / "index.html")
+    # Flat export pages (rooms.html) must win over the rooms/ placeholder directory.
+    flat_index = _STATIC / f"{rel}.html"
+    if flat_index.is_file():
+        return FileResponse(flat_index)
     direct = _STATIC / rel
     if direct.is_file():
         return FileResponse(direct)

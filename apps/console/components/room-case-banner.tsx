@@ -12,6 +12,10 @@ function pathLabel(bundle: Bundle | null, room: Room) {
   return null;
 }
 
+export function roomLoopLabel(bundle: Bundle | null, room: Room) {
+  return pathLabel(bundle, room);
+}
+
 /** Type A/B, risk tier, recalled lessons, investigation state — visible in chat, not buried in lab. */
 export function RoomCaseBanner({
   room,
