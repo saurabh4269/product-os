@@ -232,7 +232,6 @@ def test_same_metric_joins_awaiting_room_when_flags_pr_already_shipped(engine, m
     inv = engine.store.get_investigation(first["investigation_id"])
     assert inv
     shipped = False
-    leftover = None
     for act in engine.store.list_actions(inv.id):
         if not shipped:
             act.status = "executed"
@@ -241,13 +240,13 @@ def test_same_metric_joins_awaiting_room_when_flags_pr_already_shipped(engine, m
             act.artifacts = art
             engine.store.put_action(act)
             shipped = True
-        elif act.status in {"proposed", "awaiting_approval"}:
-            leftover = act
     inv.state = InvestigationState.AWAITING_APPROVAL
     inv.closed_at = None
     engine.store.put_investigation(inv)
     assert tenant_ingest_should_join_room(engine, inv) is True
-    assert leftover is None or leftover.status == "awaiting_approval"
+    inv.state = InvestigationState.ACTING
+    engine.store.put_investigation(inv)
+    assert tenant_ingest_should_join_room(engine, inv) is True
     again = ingest_tenant_signal(
         engine,
         tenant,

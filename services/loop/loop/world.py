@@ -54,10 +54,11 @@ def persist_live_state(engine: LoopEngine) -> None:
 def tenant_ingest_should_join_room(engine: LoopEngine, inv: Investigation | None) -> bool:
     """Same-metric ingest joins an open HITL room instead of spawning a second demo room.
 
-    Join when AWAITING_APPROVAL and either a visible pending action remains, or a
-    tenant flags PR already shipped (leftover HIGH is hidden so it cannot duplicate).
-    Closed / terminal investigations open new work. Pick a unique metric when you
-    intend a new room while another is still awaiting.
+    Join when the investigation is still live (AWAITING_APPROVAL / ACTING / APPROVED)
+    and either a visible pending action remains or a tenant flags PR already shipped
+    (leftover HIGH is hidden so it cannot duplicate). Closed / terminal investigations
+    open new work. Pick a unique metric when you intend a new room while another is
+    still awaiting.
     """
     if inv is None:
         return False
@@ -65,7 +66,11 @@ def tenant_ingest_should_join_room(engine: LoopEngine, inv: Investigation | None
         return False
     if inv.state in _TERMINAL_INVESTIGATION_STATES:
         return False
-    if inv.state != InvestigationState.AWAITING_APPROVAL:
+    if inv.state not in {
+        InvestigationState.AWAITING_APPROVAL,
+        InvestigationState.ACTING,
+        InvestigationState.APPROVED,
+    }:
         return False
     if _pending_actions_for_investigation(engine, inv.id):
         return True
