@@ -5,6 +5,7 @@ import { api, tryConfig, tryGet, type OfficeSnapshot, type Room } from "@/lib/ap
 import { isFirstVisit, recordVisit } from "@/lib/first-visit";
 import { buildHomePulse } from "@/lib/home-pulse";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { useDebouncedWorldTick } from "@/lib/world-refresh";
 import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
 import { HomeCommandBar } from "@/components/home-command-bar";
@@ -18,6 +19,7 @@ import { ConnectAdminCta } from "@/components/connect-admin-cta";
 
 export default function HomePage() {
   const { tick, connection } = useGlobalWs();
+  const worldTick = useDebouncedWorldTick(tick);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [evalMode, setEvalMode] = useState(false);
@@ -69,7 +71,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [tick]);
+  }, [worldTick]);
 
   const pulse = useMemo(() => {
     if (!visitReady) return null;

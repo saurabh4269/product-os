@@ -150,22 +150,6 @@ export function CityMap({
     };
   }, [picked]);
 
-  const load = useCallback(async () => {
-    try {
-      const [office, listed] = await Promise.all([api.office(), api.rooms()]);
-      setDesks(office.desks);
-      setHandoffs(office.handoffs);
-      setRooms(listed.rooms);
-    } catch {
-      /* keep last snapshot */
-    }
-  }, []);
-
-  useEffect(() => {
-    const t = setInterval(() => void load(), 4000);
-    return () => clearInterval(t);
-  }, [load]);
-
   const enter = (href: string) => {
     setFly(href);
     window.setTimeout(() => router.push(href), 420);

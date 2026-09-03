@@ -53,6 +53,62 @@ def test_home_uses_try_config_for_public_shell():
     assert "ConnectAdminCta" in src
 
 
+def test_campus_map_does_not_poll_office_rooms():
+    src = (CONSOLE / "components" / "city-map.tsx").read_text()
+    assert "setInterval" not in src
+    assert "4000" not in src
+    assert "api.office()" not in src
+    assert "api.rooms()" not in src
+
+
+def test_home_ws_tick_debounces_world_refetch():
+    src = (CONSOLE / "app" / "page.tsx").read_text()
+    assert "useDebouncedWorldTick" in src
+    assert "worldTick" in src
+    assert "}, [tick]);" not in src
+    world_block = src[src.index("const [rooms, setRooms]") : src.index("const pulse")]
+    assert "api.rooms()" in world_block
+    assert "api.office()" in world_block
+    assert "worldTick" in world_block
+    assert "tick" not in world_block.split("worldTick")[1].split("const pulse")[0]
+
+
+def test_rooms_index_ws_tick_debounces_list_refetch():
+    src = (CONSOLE / "app" / "rooms" / "page.tsx").read_text()
+    assert "useDebouncedWorldTick" in src
+    assert "worldTick" in src
+    assert "}, [tick]);" not in src
+    fetch_block = src[src.index("useEffect(() => {") : src.index("if (loading)")]
+    assert "api.rooms()" in fetch_block
+    assert "api.office()" in fetch_block
+    assert "worldTick" in fetch_block
+
+
+def test_shell_does_not_refetch_rooms_on_ws_tick():
+    src = (CONSOLE / "components" / "shell.tsx").read_text()
+    rooms_effect = src[src.index("api\n      .rooms()") : src.index("api\n      .status()")]
+    assert "[path]" in rooms_effect or "[path]);" in rooms_effect
+    assert "tick" not in rooms_effect
+    assert "useDebouncedWorldTick" in src
+
+
+def test_room_view_open_uses_single_room_get():
+    src = (CONSOLE / "components" / "room-view.tsx").read_text()
+    load_fn = src[src.index("async function load(target") : src.index("useEffect(() => {", src.index("async function load"))]
+    assert "api.room(target)" in load_fn
+    assert "roomContact" not in load_fn
+    assert "api.rooms()" not in load_fn
+    assert "api.office()" not in load_fn
+    assert "api.status()" not in load_fn
+    assert "roomContact" in src  # lazy when call tools open
+
+
+def test_world_refresh_policy_is_at_least_15s():
+    src = (CONSOLE / "lib" / "world-refresh.ts").read_text()
+    assert "WORLD_REFRESH_MS" in src
+    assert "15_000" in src or "15000" in src
+
+
 def test_try_config_helper_retries_and_defaults():
     api_src = (CONSOLE / "lib" / "api.ts").read_text()
     assert "export async function tryConfig" in api_src

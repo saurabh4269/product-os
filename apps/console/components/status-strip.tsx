@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { useDebouncedWorldTick } from "@/lib/world-refresh";
 import { AnimatedStat } from "@/components/animated-stat";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ const CONN_DOT = {
 /** Live dashboard counters — via global WS + fallback poll. */
 export function StatusStrip({ compact }: { compact?: boolean }) {
   const { tick, connection } = useGlobalWs();
+  const worldTick = useDebouncedWorldTick(tick);
   const [s, setS] = useState<{
     rooms?: { open?: number; total?: number };
     approvals_pending?: number;
@@ -39,7 +41,7 @@ export function StatusStrip({ compact }: { compact?: boolean }) {
       .status()
       .then(setS)
       .catch(() => setS(null));
-  }, [tick]);
+  }, [worldTick]);
 
   if (!s) return null;
 

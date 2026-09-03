@@ -6,11 +6,13 @@ import Link from "next/link";
 import { ConnectAdminCta } from "@/components/connect-admin-cta";
 import { api, hasAdminToken, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { useDebouncedWorldTick } from "@/lib/world-refresh";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { ErrorState, Loading } from "@/components/ui";
 
 export default function RoomsIndex() {
   const { tick } = useGlobalWs();
+  const worldTick = useDebouncedWorldTick(tick);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [adminAuthRequired, setAdminAuthRequired] = useState(false);
@@ -46,7 +48,7 @@ export default function RoomsIndex() {
     return () => {
       cancelled = true;
     };
-  }, [tick]);
+  }, [worldTick]);
 
   if (loading) {
     return <Loading label="Loading rooms" />;
