@@ -6,8 +6,8 @@ Overnight keep-going is paused. Do not merge Cove.
 
 When unpaused, in order:
 
-1. **Persist GCS → package → deploy** this branch (`export-demo --room`, slim room GET, persist-after-ingest, lean boot without apt-get).
-2. **Confirm hang demo UI** — `room_f627763ea9` shows `github_pr` success; leftover HIGH hidden; Cove #17 still OPEN (never merge).
+1. ~~**Persist GCS → package → deploy** #30~~ — live on `loop-00125-cdb` (~23:20 IST). Hang room survived. Persist POST is 200. First boot (`loop-00124-rc2`) died: one-arg `urlretrieve` → random tempfile; fix is PR #31.
+2. **Confirm hang demo UI in the browser** — API: `room_f627763ea9` ACTING, leftover HIGH hidden, Cove #17 still OPEN (never merge). Hard-refresh https://productos.heisenbug.in.
 3. **Workspace OAuth** — create Web client in Google Auth Platform; paste on Connect; test `/api/oauth/google/start`.
 4. **Remotion hang render** — `python3 -m loop.cli export-demo --room room_f627763ea9 -o apps/demo/out/hang.json`; copy to `public/loop.json` for render only; restore the generic fixture.
 
