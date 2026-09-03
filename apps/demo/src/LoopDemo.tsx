@@ -4,23 +4,76 @@ import data from "../public/loop.json";
 
 type Scene = { title: string; body: string };
 
-type DemoPayload = {
+type Bundle = {
   meta?: { pipeline?: string; exported_at?: string };
-  scenes?: Scene[];
-  investigation?: { id?: string; state?: string; loop_type?: string };
+  investigation?: { id?: string; state?: string; recalled_lessons?: string[] };
+  signals?: Array<{ metric?: string; magnitude?: number; baseline?: number }>;
+  evidence?: Array<{ independence_group?: string; trust_level?: string }>;
+  hypotheses?: Array<{ statement?: string }>;
+  actions?: Array<{ risk_tier?: string; consequence?: string; tier_rationale?: string }>;
+  outcomes?: Array<{ verdict?: string; metric?: string; pre_value?: number; post_value?: number }>;
+  lessons?: Array<{ statement?: string }>;
 };
 
-const payload = data as DemoPayload;
+const bundle = data as Bundle;
 
-const SCENES: Scene[] =
-  payload.scenes && payload.scenes.length > 0
-    ? payload.scenes
-    : [
-        {
-          title: "Export required",
-          body: "Run python3 -m loop.cli export-demo to generate loop.json from the live pipeline.",
-        },
-      ];
+const WAITING = {
+  signal: "Signal stage is waiting — no metric from the pipeline yet.",
+  evidence: "Evidence stage is waiting — specialists have not grouped sources yet.",
+  rootCause: "Root cause stage is waiting — hypothesis not locked yet.",
+  approval: "Approval stage is waiting — no HIGH consequence drafted yet.",
+  verified: "Verify stage is waiting — outcome not measured yet.",
+  lesson: "Memory stage is waiting — lesson not captured yet.",
+} as const;
+
+function buildScenes(payload: Bundle): Scene[] {
+  const sig = payload.signals?.[0];
+  const signalBody =
+    sig?.metric != null
+      ? `${sig.metric} moved ${((sig.magnitude ?? 0) * 100).toFixed(1)}% vs baseline ${((sig.baseline ?? 0) * 100).toFixed(1)}% — detected from the pipeline.`
+      : WAITING.signal;
+
+  const groups = [
+    ...new Set(
+      (payload.evidence ?? [])
+        .filter((e) => (e.trust_level ?? "trusted") !== "untrusted")
+        .map((e) => e.independence_group)
+        .filter((g): g is string => Boolean(g)),
+    ),
+  ].sort();
+  const evidenceBody =
+    groups.length > 0
+      ? `Parallel specialists · ${groups.slice(0, 6).join(" · ")}. Three-source gate before root cause.`
+      : WAITING.evidence;
+
+  const hypothesis = payload.hypotheses?.[0]?.statement;
+  const rootBody = hypothesis ?? WAITING.rootCause;
+
+  const highAction = (payload.actions ?? []).find((a) => (a.risk_tier ?? "").toUpperCase() === "HIGH");
+  const approvalBody =
+    highAction?.consequence ?? highAction?.tier_rationale ?? WAITING.approval;
+
+  const outcome = payload.outcomes?.[0];
+  const verifiedBody =
+    outcome?.verdict && outcome.verdict.toUpperCase() !== "NOT_RESOLVED"
+      ? `${outcome.verdict}: ${outcome.metric ?? "metric"} ${Number(outcome.pre_value ?? 0).toPrecision(3)} → ${Number(outcome.post_value ?? 0).toPrecision(3)}.`
+      : WAITING.verified;
+
+  const recalled = payload.investigation?.recalled_lessons?.[0];
+  const lessonStatement = payload.lessons?.[0]?.statement;
+  const lessonBody = recalled ?? lessonStatement ?? WAITING.lesson;
+
+  return [
+    { title: "Signal", body: signalBody },
+    { title: "Evidence", body: evidenceBody },
+    { title: "Root cause", body: rootBody },
+    { title: "HIGH approval", body: approvalBody },
+    { title: "Verified", body: verifiedBody },
+    { title: "Lesson", body: lessonBody },
+  ];
+}
+
+const SCENES = buildScenes(bundle);
 
 export const LoopDemo: React.FC = () => {
   const frame = useCurrentFrame();
@@ -60,7 +113,7 @@ export const LoopDemo: React.FC = () => {
           color: "#86868b",
         }}
       >
-        {payload.investigation?.id ?? "investigation"} · {payload.meta?.pipeline ?? "generic"} · real pipeline
+        {bundle.investigation?.id ?? "investigation"} · {bundle.meta?.pipeline ?? "generic"} · real pipeline
       </div>
     </AbsoluteFill>
   );

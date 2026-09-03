@@ -13,6 +13,15 @@ from loop.engine import LoopEngine
 from loop.store import Store
 from loop.warehouse import Warehouse
 
+WAITING = {
+    "signal": "Signal stage is waiting — no metric from the pipeline yet.",
+    "evidence": "Evidence stage is waiting — specialists have not grouped sources yet.",
+    "root_cause": "Root cause stage is waiting — hypothesis not locked yet.",
+    "approval": "Approval stage is waiting — no HIGH consequence drafted yet.",
+    "verified": "Verify stage is waiting — outcome not measured yet.",
+    "lesson": "Memory stage is waiting — lesson not captured yet.",
+}
+
 
 def _bundle(engine: LoopEngine, inv_id: str) -> dict[str, Any]:
     from loop.api import _bundle as api_bundle
@@ -20,99 +29,71 @@ def _bundle(engine: LoopEngine, inv_id: str) -> dict[str, Any]:
     return api_bundle(engine, inv_id)
 
 
-def build_demo_scenes(
-    type_a: dict[str, Any],
-    type_b: dict[str, Any],
-    gateway_deny: dict[str, Any] | None,
-) -> list[dict[str, str]]:
-    sig = (type_a.get("signals") or [{}])[0]
-    metric = str(sig.get("metric") or "primary_metric")
-    mag = float(sig.get("magnitude") or 0)
-    baseline = float(sig.get("baseline") or 0)
+def build_demo_scenes(type_a: dict[str, Any], type_b: dict[str, Any] | None = None) -> list[dict[str, str]]:
+    """Six Remotion scenes derived from a real investigation bundle — honest waiting when empty."""
+    del type_b  # export payload may include Type B; scenes focus on the primary Type A loop.
+
+    sig = (type_a.get("signals") or [None])[0]
+    if sig and sig.get("metric"):
+        signal_body = (
+            f"{sig['metric']} moved {float(sig.get('magnitude') or 0):+.1%} vs baseline "
+            f"{float(sig.get('baseline') or 0):.1%} — detected from the pipeline."
+        )
+    else:
+        signal_body = WAITING["signal"]
+
     evidence = [
         e
         for e in (type_a.get("evidence") or [])
         if str(e.get("trust_level") or "trusted") != "untrusted"
     ]
     groups = sorted({str(e.get("independence_group")) for e in evidence if e.get("independence_group")})
-    voice = next((e for e in evidence if e.get("source_type") == "customer_voice"), None)
-    ev_bits = groups[:5] if groups else []
-    if voice and "customer_voice" not in ev_bits:
-        ev_bits.append("customer_voice")
-
-    action = (type_a.get("actions") or [{}])[0]
-    type_a_loop = str((type_a.get("investigation") or {}).get("loop_type") or "type_a")
-    type_b_loop = str((type_b.get("investigation") or {}).get("loop_type") or "type_b")
-
-    outcome = (type_a.get("outcomes") or [None])[0] if type_a.get("outcomes") else None
-    lesson = (type_a.get("lessons") or [None])[0] if type_a.get("lessons") else None
-    recalled = (type_a.get("investigation") or {}).get("recalled_lessons") or []
-
-    scenes: list[dict[str, str]] = [
-        {
-            "title": "Signal",
-            "body": (
-                f"{metric} moved {mag:+.0%} vs baseline {baseline:.0%} — "
-                "detected from warehouse + tenant ingest."
-            ),
-        },
-        {
-            "title": "Evidence",
-            "body": (
-                f"Parallel specialists · {' · '.join(ev_bits) or 'analytics · logs · deploy'}. "
-                "Three-source gate before root cause."
-            ),
-        },
-        {
-            "title": "Type A vs B",
-            "body": (
-                f"Type A fixes ({type_a_loop.replace('_', ' ')}) · "
-                f"Type B improves ({type_b_loop.replace('_', ' ')}) — one pipeline, different doors."
-            ),
-        },
-        {
-            "title": "Risk door",
-            "body": (
-                f"{action.get('risk_tier', 'MEDIUM')} tier — "
-                f"{action.get('consequence') or action.get('tier_rationale') or 'human approval before execute.'}"
-            ),
-        },
-    ]
-
-    if gateway_deny:
-        scenes.append(
-            {
-                "title": "Gateway deny",
-                "body": (
-                    f"{gateway_deny.get('verdict', 'DENY')} · "
-                    f"{gateway_deny.get('tool', 'tool')} blocked by gateway identity — not a prompt."
-                ),
-            }
+    if groups:
+        evidence_body = (
+            f"Parallel specialists · {' · '.join(groups[:6])}. "
+            "Three-source gate before root cause."
         )
     else:
-        scenes.append(
-            {
-                "title": "Gateway deny",
-                "body": "Gateway identity blocks cross-boundary tools at execute time. fail_open=false.",
-            }
-        )
+        evidence_body = WAITING["evidence"]
 
+    hyp = (type_a.get("hypotheses") or [None])[0]
+    root_body = str(hyp["statement"]) if hyp and hyp.get("statement") else WAITING["root_cause"]
+
+    high_actions = [
+        a for a in (type_a.get("actions") or []) if str(a.get("risk_tier") or "").upper() == "HIGH"
+    ]
+    action = high_actions[0] if high_actions else None
+    if action and (action.get("consequence") or action.get("tier_rationale")):
+        approval_body = str(action.get("consequence") or action.get("tier_rationale"))
+    else:
+        approval_body = WAITING["approval"]
+
+    outcome = (type_a.get("outcomes") or [None])[0] if type_a.get("outcomes") else None
     if outcome and outcome.get("verdict") and str(outcome.get("verdict")).upper() != "NOT_RESOLVED":
-        verify_line = (
-            f"{outcome.get('verdict')}: {outcome.get('metric')} "
+        verified_body = (
+            f"{outcome.get('verdict')}: {outcome.get('metric', 'metric')} "
             f"{float(outcome.get('pre_value') or 0):.3g} → {float(outcome.get('post_value') or 0):.3g}."
         )
     else:
-        verify_line = "Post-fix verify marks inconclusive when no live metric re-read."
+        verified_body = WAITING["verified"]
 
+    recalled = (type_a.get("investigation") or {}).get("recalled_lessons") or []
+    lesson = (type_a.get("lessons") or [None])[0] if type_a.get("lessons") else None
     if recalled:
-        lesson_line = str(recalled[0])
+        lesson_body = str(recalled[0])
     elif lesson and lesson.get("statement"):
-        lesson_line = str(lesson["statement"])
+        lesson_body = str(lesson["statement"])
     else:
-        lesson_line = verify_line
-    scenes.append({"title": "Memory lesson", "body": lesson_line})
-    return scenes
+        lesson_body = WAITING["lesson"]
+
+    return [
+        {"title": "Signal", "body": signal_body},
+        {"title": "Evidence", "body": evidence_body},
+        {"title": "Root cause", "body": root_body},
+        {"title": "HIGH approval", "body": approval_body},
+        {"title": "Verified", "body": verified_body},
+        {"title": "Lesson", "body": lesson_body},
+    ]
 
 
 def build_demo_export(data_dir: Path | None = None) -> dict[str, Any]:
@@ -165,7 +146,7 @@ def build_demo_export(data_dir: Path | None = None) -> dict[str, Any]:
 
     type_a_bundle = _bundle(engine, type_a_inv_id)
     gateway_payload = deny.model_dump(mode="json") if deny else None
-    scenes = build_demo_scenes(type_a_bundle, type_b_bundle, gateway_payload)
+    scenes = build_demo_scenes(type_a_bundle)
 
     payload: dict[str, Any] = {
         "meta": {
