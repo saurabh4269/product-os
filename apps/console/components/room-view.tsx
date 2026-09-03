@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Phone } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { api, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
+import { api, isAdminAuthError, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { queryId, segmentId } from "@/lib/route-id";
 import { cn } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
+import { ConnectAdminCta } from "@/components/connect-admin-cta";
 import { AgentBadge } from "@/components/agent-badge";
 import { ProofEmbed, proofFromArtifact } from "@/components/proof-embed";
 import { proofsFromRoom } from "@/lib/collect-proofs";
@@ -127,6 +128,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
   const [tab, setTab] = useState<"chat" | "lab">(viewParam === "lab" ? "lab" : "chat");
   const [data, setData] = useState<RoomDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [adminAuthRequired, setAdminAuthRequired] = useState(false);
   const [text, setText] = useState("");
   const [callPhone, setCallPhone] = useState("");
   const [callNote, setCallNote] = useState<string | null>(null);
@@ -147,6 +149,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
     try {
       const d = await api.room(target);
       setData(d);
+      setAdminAuthRequired(false);
       const p: Record<string, string> = {};
       for (const row of d.presence ?? []) p[row.agentId] = row.status;
       setLivePresence(p);
@@ -161,6 +164,13 @@ export function RoomView({ initialId }: { initialId?: string }) {
         setContactOnFile(null);
       }
     } catch (e) {
+      if (isAdminAuthError(e)) {
+        setAdminAuthRequired(true);
+        setData(null);
+        setErr(null);
+        return;
+      }
+      setAdminAuthRequired(false);
       setErr(e instanceof Error ? e.message : "failed");
     }
   }
@@ -169,6 +179,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
     if (!id) return;
     setData(null);
     setErr(null);
+    setAdminAuthRequired(false);
     setToolsOpen(false);
     void load(id);
   }, [id]);
@@ -295,6 +306,23 @@ export function RoomView({ initialId }: { initialId?: string }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [events.length]);
+
+  if (adminAuthRequired) {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-white">
+        <div className="shrink-0 border-b border-black/5 px-4 py-3 sm:px-6">
+          <p className="text-[15px] font-semibold text-foreground">Room</p>
+        </div>
+        <div className="flex flex-1 items-center justify-center p-6">
+          <ConnectAdminCta
+            className="max-w-md"
+            title="Authorize to open this room"
+            detail="Paste LOOP_ADMIN_TOKEN on Connect to read messages, handoffs, and tool embeds."
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (err) return <ErrorState message={err} />;
   if (!id || !data) return <Loading label="Opening chat" />;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import { ConnectAdminCta } from "@/components/connect-admin-cta";
 import { api, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
@@ -12,6 +13,7 @@ export default function RoomsIndex() {
   const { tick } = useGlobalWs();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
+  const [adminAuthRequired, setAdminAuthRequired] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,6 +28,7 @@ export default function RoomsIndex() {
         if (cancelled) return;
         setRooms(roomsRes.data?.rooms ?? []);
         setOffice(officeRes.data ?? null);
+        setAdminAuthRequired(roomsRes.authRequired || officeRes.authRequired);
         setErr(null);
       } catch (e) {
         if (!cancelled) {
@@ -65,6 +68,13 @@ export default function RoomsIndex() {
           Open work chambers — walk in to see specialist handoffs and live tool embeds.
         </p>
       </div>
+      {adminAuthRequired ? (
+        <ConnectAdminCta
+          className="mb-6"
+          title="Authorize to see open rooms"
+          detail="Paste LOOP_ADMIN_TOKEN on Connect to list chambers and walk into live handoffs."
+        />
+      ) : null}
       <LiveRoomsRail rooms={rooms} desks={desks} />
     </div>
   );

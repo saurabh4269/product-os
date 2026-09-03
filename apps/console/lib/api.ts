@@ -51,6 +51,37 @@ export async function tryGet<T>(fn: () => Promise<T>): Promise<{ data: T | null;
   }
 }
 
+export type PublicConfig = {
+  eval_mode: boolean;
+  hosted: boolean;
+  fixture_scenarios?: string[];
+};
+
+const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
+  eval_mode: false,
+  hosted: true,
+  fixture_scenarios: [],
+};
+
+/** Public config — retries transient 5xx so campus/rooms chrome still renders. */
+export async function tryConfig(retries = 2): Promise<PublicConfig> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${BASE}/api/config`, { cache: "no-store", credentials: "same-origin" });
+      if (res.ok) return res.json() as Promise<PublicConfig>;
+      if (res.status < 500 || attempt === retries) break;
+    } catch {
+      if (attempt === retries) break;
+    }
+    await new Promise((r) => window.setTimeout(r, 350 * (attempt + 1)));
+  }
+  return DEFAULT_PUBLIC_CONFIG;
+}
+
+export function isAdminAuthError(e: unknown): boolean {
+  return e instanceof ApiAuthError && (e.status === 401 || e.status === 403);
+}
+
 export function setAdminToken(token: string, remember = false) {
   if (typeof window === "undefined") return;
   const trimmed = token.trim();
