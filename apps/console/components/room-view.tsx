@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Phone } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { api, isAdminAuthError, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
+import { api, hasAdminToken, isAdminAuthError, roomSocket, type Action, type RoomDetail, type RoomMessage } from "@/lib/api";
 import { queryId, segmentId } from "@/lib/route-id";
 import { cn } from "@/lib/utils";
 import { Button, ErrorState, Loading } from "@/components/ui";
@@ -164,7 +164,7 @@ export function RoomView({ initialId }: { initialId?: string }) {
         setContactOnFile(null);
       }
     } catch (e) {
-      if (isAdminAuthError(e)) {
+      if (isAdminAuthError(e) || !hasAdminToken()) {
         setAdminAuthRequired(true);
         setData(null);
         setErr(null);

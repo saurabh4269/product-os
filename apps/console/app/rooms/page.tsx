@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { ConnectAdminCta } from "@/components/connect-admin-cta";
-import { api, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
+import { api, hasAdminToken, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { ErrorState, Loading } from "@/components/ui";
@@ -32,7 +32,12 @@ export default function RoomsIndex() {
         setErr(null);
       } catch (e) {
         if (!cancelled) {
-          setErr(e instanceof Error ? e.message : "API unreachable");
+          if (!hasAdminToken()) {
+            setAdminAuthRequired(true);
+            setErr(null);
+          } else {
+            setErr(e instanceof Error ? e.message : "API unreachable");
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);

@@ -22,6 +22,12 @@ def test_rooms_index_does_not_auto_redirect():
     assert "adminAuthRequired" in src
 
 
+def test_rooms_index_unauth_network_errors_use_connect():
+    src = (CONSOLE / "app" / "rooms" / "page.tsx").read_text()
+    assert "hasAdminToken" in src
+    assert "setAdminAuthRequired(true)" in src
+
+
 def test_rooms_index_401_uses_connect_not_error_state():
     src = (CONSOLE / "app" / "rooms" / "page.tsx").read_text()
     assert "ConnectAdminCta" in src
@@ -34,6 +40,7 @@ def test_rooms_index_401_uses_connect_not_error_state():
 def test_room_view_401_uses_connect_not_error_state():
     src = (CONSOLE / "components" / "room-view.tsx").read_text()
     assert "isAdminAuthError" in src
+    assert "hasAdminToken" in src
     assert "ConnectAdminCta" in src
     assert "adminAuthRequired" in src
     assert src.index("adminAuthRequired") < src.index('if (err) return <ErrorState')
