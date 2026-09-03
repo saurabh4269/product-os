@@ -58,18 +58,11 @@ def main(argv: list[str] | None = None) -> int:
         uvicorn.run("loop.api:app", host=settings().host, port=settings().port, reload=False)
         return 0
     if args.cmd == "export-demo":
-        from .api import _bundle
+        from .demo_export import write_demo_export
 
-        invs = eng.store.list_investigations()
-        if not invs:
-            inv = eng.run_until_approval()
-        else:
-            inv = invs[0]
-        payload = _bundle(eng, inv.id)
         dest = Path(args.out) if args.out else Path(__file__).resolve().parents[3] / "apps" / "demo" / "public" / "loop.json"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(json.dumps(payload, indent=2))
-        print(dest)
+        path = write_demo_export(dest)
+        print(path)
         return 0
     return 1
 
