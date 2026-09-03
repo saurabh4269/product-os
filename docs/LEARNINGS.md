@@ -337,3 +337,55 @@ curl -s http://127.0.0.1:8080/api/office | python3 -c "import json,sys; d=json.l
 ```
 
 If hosted HTML is the campus but XHR 404s, you shipped a new revision that is still installing apt packages — wait and retry, don’t revert the UI.
+
+---
+
+## 11. Hosted stability and handoff (2026-09-03)
+
+### Unauth `/rooms` must not ErrorState on 401
+
+**Symptom:** Logged-out user hits `/rooms` and sees a red error, or gets bounced to a stale last-room URL.
+
+**Why:** Protected reads return 401 when `LOOP_EVAL=0`. Chrome autocomplete can leave a fake session that looks logged-in.
+
+**Fix:** Stay on index with Connect CTA (PR #23). Do not `ErrorState` on 401 for `/rooms`. Do not redirect to `localStorage` last room.
+
+### 4s campus poll + WS-tick world refetch OOMs 2Gi
+
+**Symptom:** GFE returns **429 Rate exceeded** on campus or `/api/office`. Revision looks healthy in logs but users see blank or spinning UI.
+
+**Why:** `city-map` polled office + rooms every 4s. Combined with WebSocket-tick world refetch, 2Gi Cloud Run OOM’d. GFE 429 is **not** an in-app rate limiter.
+
+**Fix:** Stampede poll removed (PR #24). Memory raised to 4Gi (PR #25). Do not re-add aggressive campus polling without measuring heap.
+
+### Persist GCS before deploy; crash-loop must not overwrite a good snapshot
+
+**Symptom:** After deploy, live rooms (e.g. hang demo `room_f627763ea9`) vanish. Office looks freshly seeded.
+
+**Why:** `LOOP_STATE_GCS_URI` hydrates on boot. Packaging/deploy while live is 503/OOM uploads a corrupt or empty DB and wipes post-snapshot rooms.
+
+**Fix:** When hang room `GET /api/rooms/{id}` is **200**, persist live sqlite to GCS **before** `package-host.sh`. If live is **503/OOM**, do **not** overwrite a good snapshot — fix the instance first.
+
+### `code_fix` failure receipt must not `kind=github` on the flags PR URL
+
+**Symptom:** Room UI shows a GitHub card pointing at Cove `flags.json` PR for a failed `code_fix` action.
+
+**Why:** Failure receipt reused the `github_pr` artifact kind/URL. `code_fix` failed (no node in worker); `github_pr` is the real ship path.
+
+**Fix:** PR #27 (open, not merged). Until deploy, UI may still show FAILED+DONE conflated. Do not approve leftover `act_4754e1ae24f5` — duplicates Cove #17.
+
+### Remotion Lesson scene must not use `recalled_lessons` from other metrics
+
+**Symptom:** Demo video Lesson slide mentions `checkout_conversion` on an OTP hang investigation.
+
+**Why:** `export-demo` / `build_demo_scenes` pulled global `recalled_lessons` instead of investigation-scoped `lessons[]`.
+
+**Fix:** PR #26 — lesson scenes use `investigation.lessons[]` only. Regenerate `loop.json` after export. Do not commit hang-specific `loop.json`.
+
+### Unique metric when an AWAITING_APPROVAL room still has pending actions
+
+**Symptom:** New signal joins an existing room instead of opening fresh work; duplicate approvals or blocked ingest.
+
+**Why:** Join rule keys on metric + tenant. Reusing the same metric while another room is `AWAITING_APPROVAL` with pending actions causes collision.
+
+**Fix:** Pick a **unique metric** for a new room when an AWAITING_APPROVAL room still has pending actions (e.g. `otp_verify_hang_0904` for the hang demo).
