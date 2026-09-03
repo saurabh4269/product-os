@@ -259,7 +259,9 @@ def build_live_work(store: Store, *, limit: int = 80) -> dict[str, Any]:
             if card:
                 cards.append(card)
         if room.investigation_id:
-            for act in store.list_actions(room.investigation_id):
+            from loop.room_ui import visible_pending_actions
+
+            for act in visible_pending_actions(store, room.investigation_id):
                 ac = card_from_action(act, room_id=room.id, room_title=room.title)
                 if ac:
                     cards.append(ac)

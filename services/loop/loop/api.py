@@ -3060,8 +3060,11 @@ def _approve_payload(
 
 
 def _bundle(eng: LoopEngine, inv_id: str) -> dict:
+    from .room_ui import visible_pending_actions
+
     inv = eng.store.get_investigation(inv_id)
     assert inv
+    pending = visible_pending_actions(eng.store, inv_id)
     return {
         "investigation": inv.model_dump(mode="json"),
         "signals": [
@@ -3072,6 +3075,7 @@ def _bundle(eng: LoopEngine, inv_id: str) -> dict:
         "evidence": [e.model_dump(mode="json") for e in eng.store.list_evidence(inv_id)],
         "hypotheses": [h.model_dump(mode="json") for h in eng.store.list_hypotheses(inv_id)],
         "actions": [_action_row(eng, a) for a in eng.store.list_actions(inv_id)],
+        "pending_actions": [_action_row(eng, a) for a in pending],
         "approvals": [
             ap.model_dump(mode="json")
             for a in eng.store.list_actions(inv_id)

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Bundle, Room } from "@/lib/api";
+import { pendingActions } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 function pathLabel(bundle: Bundle | null, room: Room) {
@@ -27,7 +28,7 @@ export function RoomCaseBanner({
   className?: string;
 }) {
   const path = pathLabel(bundle, room);
-  const action = bundle?.actions?.find((a) => ["proposed", "awaiting_approval"].includes(a.status)) || bundle?.actions?.[0];
+  const action = pendingActions(bundle)[0] || bundle?.actions?.[0];
   const recalled = bundle?.investigation?.recalled_lessons ?? [];
   const hyp = bundle?.hypotheses?.[0];
   const state = bundle?.investigation?.state;

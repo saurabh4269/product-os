@@ -233,18 +233,42 @@ export function proofFromArtifact(
   artifactType?: string | null
 ): ProofPayload | null {
   if (!artifact) return null;
+  const prUrl = String(
+    artifact.pr_url || artifact.url || artifact.html_url || artifact.open_url || ""
+  );
+  const hasPr = prUrl.includes("github.com") && prUrl.includes("/pull/");
   const nested = artifact.proof;
   if (nested && typeof nested === "object" && !Array.isArray(nested)) {
     const p = nested as ProofPayload;
+    if (p.kind === "code_fix") {
+      return {
+        ...p,
+        status: typeof artifact.status === "string" ? artifact.status : p.status,
+        title: (typeof artifact.title === "string" && artifact.title) || p.title || "Code fix",
+        detail: (typeof artifact.detail === "string" && artifact.detail) || p.detail,
+        url: p.url || null,
+        console_url: p.console_url || null,
+      };
+    }
     if (p.kind) {
-      // Carry receipt lifecycle onto the nested proof for the status chip.
-      if (typeof artifact.status === "string" && !p.status) {
-        return { ...p, status: artifact.status };
-      }
+      const status =
+        p.kind === "github" && hasPr
+          ? "done"
+          : typeof artifact.status === "string" && !p.status
+            ? artifact.status
+            : p.status;
       if (artifact.status === "running" || artifact.status === "failed") {
-        return { ...p, status: String(artifact.status) };
+        const resolved =
+          p.kind === "github" && hasPr ? "done" : String(artifact.status);
+        return { ...p, status: resolved, url: p.url || prUrl || null, console_url: p.console_url || prUrl || null };
       }
-      return p;
+      return {
+        ...p,
+        status: status === "failed" && hasPr ? "done" : status,
+        url: p.url || (hasPr ? prUrl : null),
+        console_url: p.console_url || (hasPr ? prUrl : null),
+        state: p.state || (hasPr ? "open" : undefined),
+      };
     }
   }
   if (typeof artifact.kind === "string" && BRAND[artifact.kind]) {
@@ -252,19 +276,32 @@ export function proofFromArtifact(
   }
 
   const type = (artifactType || "").toLowerCase();
-  const url = String(artifact.pr_url || artifact.url || artifact.html_url || artifact.open_url || "");
+  const url = prUrl;
+
+  if (type === "code_fix") {
+    const rawStatus = typeof artifact.status === "string" ? artifact.status : "failed";
+    return {
+      kind: "code_fix",
+      status: rawStatus,
+      title: (typeof artifact.title === "string" && artifact.title) || "Code fix",
+      detail: typeof artifact.detail === "string" ? artifact.detail : undefined,
+      url: typeof artifact.url === "string" && artifact.url.includes("github.com") ? artifact.url : null,
+      console_url: typeof artifact.url === "string" && artifact.url.includes("github.com") ? artifact.url : null,
+    };
+  }
 
   if (
     type === "pr" ||
-    type === "code_fix" ||
     type === "code" ||
     /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url)
   ) {
     if (url.includes("github.com")) {
       const m = url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+      const rawStatus = typeof artifact.status === "string" ? artifact.status : "applied";
+      const status = rawStatus === "failed" ? "done" : rawStatus;
       return {
         kind: "github",
-        status: typeof artifact.status === "string" ? artifact.status : "applied",
+        status,
         title:
           (typeof artifact.title === "string" && artifact.title) ||
           (m ? `PR #${m[3]}` : "Pull request"),
@@ -320,14 +357,31 @@ export function proofFromArtifact(
 
   if (type === "receipt" && typeof artifact.title === "string") {
     const kind = typeof artifact.kind === "string" && BRAND[artifact.kind] ? artifact.kind : "gateway";
+    if (artifact.kind === "code_fix") {
+      const rawStatus = typeof artifact.status === "string" ? artifact.status : "failed";
+      return {
+        kind: "code_fix",
+        status: rawStatus,
+        title: artifact.title,
+        detail: typeof artifact.detail === "string" ? artifact.detail : undefined,
+        url: null,
+        console_url: null,
+      };
+    }
+    const rawStatus = typeof artifact.status === "string" ? artifact.status : "done";
+    const status = kind === "github" && hasPr && rawStatus === "failed" ? "done" : rawStatus;
     return {
       kind,
-      status: typeof artifact.status === "string" ? artifact.status : "done",
-      title: artifact.title,
+      status,
+      title:
+        kind === "github" && hasPr && /fail/i.test(artifact.title)
+          ? "Pull request open"
+          : artifact.title,
       subtitle: typeof artifact.detail === "string" ? artifact.detail : undefined,
       detail: typeof artifact.detail === "string" ? artifact.detail : undefined,
-      url: url || null,
-      console_url: url || null,
+      url: hasPr ? prUrl : url || null,
+      console_url: hasPr ? prUrl : url || null,
+      state: kind === "github" && hasPr ? "open" : undefined,
     };
   }
 

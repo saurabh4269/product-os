@@ -325,12 +325,19 @@ export type Bundle = {
   evidence: Evidence[];
   hypotheses: Hypothesis[];
   actions: Action[];
+  pending_actions?: Action[];
   timeline: Timeline[];
   agent_calls: Array<Record<string, unknown>>;
   outcomes: Array<Record<string, unknown>>;
   lessons: Array<Record<string, unknown>>;
   verdicts: Array<Record<string, unknown>>;
 };
+
+export function pendingActions(bundle: Bundle | null | undefined): Action[] {
+  if (!bundle) return [];
+  if (bundle.pending_actions?.length) return bundle.pending_actions;
+  return bundle.actions.filter((a) => ["proposed", "awaiting_approval"].includes(a.status));
+}
 
 export type RoomDetail = {
   room: Room;

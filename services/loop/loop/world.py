@@ -36,11 +36,9 @@ _TERMINAL_INVESTIGATION_STATES = {
 
 
 def _pending_actions_for_investigation(engine: LoopEngine, inv_id: str) -> list[Any]:
-    return [
-        act
-        for act in engine.store.list_actions(inv_id)
-        if act.status in {"proposed", "awaiting_approval"}
-    ]
+    from .room_ui import visible_pending_actions
+
+    return visible_pending_actions(engine.store, inv_id)
 
 
 def tenant_ingest_should_join_room(engine: LoopEngine, inv: Investigation | None) -> bool:
