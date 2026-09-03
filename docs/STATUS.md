@@ -1,55 +1,86 @@
 # Product OS — Status
 
-Last updated: 2026-08-30
+Last updated: 2026-09-03 (IST)
+
+## Pause
+
+**Owner paused deploy 2026-09-03 13:35 IST.** Do not deploy until they say go. Overnight keep-going routine is paused.
 
 ## Hosted
 
-**Product OS (console + API):** https://loop-5uy6fkd7bq-uc.a.run.app
+| Field | Value |
+|---|---|
+| User URL | https://productos.heisenbug.in |
+| GCP | `mystical-timing-442601-q8` · `us-central1` · service `loop` |
+| Revision | `loop-00122-drb` |
+| SHA deployed | `10c9ad1` (PR #25 — 4Gi memory + lean boot) |
+| Memory / scale | 4Gi · min 1 · max 2 |
+| `LOOP_EVAL` | `0` |
+| Health | `/` 200 · `/rooms` 200 · `/shop` 404 |
 
-`us-central1` Cloud Run service `loop` (bundle path, revision `loop-00034-tm9`). Public `python:3.12-slim` + GCS tarball. `--min-instances 1` so SQLite and the UI stay warm. Vendor wheels are built **inside** `python:3.12-slim` so they match the image (local Kali is 3.13). `/shop` and `/company` 404. Workspace OAuth consent is on Connect.
+**Main tip (not deployed):** `54b4b97` — PR #26 (demo lesson scope) + PR #27 (room UI GitHub card truth) on `main`, not live yet.
 
-**Product Y (Cove):** https://cove-5uy6fkd7bq-uc.a.run.app
+**State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance.
 
-Cloud Run service `cove` (revision `cove-00001-s5b`). Repo: https://github.com/saurabh4269/cove  
-Real Next.js storefront (Epic Design Labs ecommerce starter + LOOP flags/signals/voice). Northstar is retired as Product Y.
-
-Redeploy OS: `unset NEXT_PUBLIC_API_URL && ./scripts/package-host.sh && ./scripts/deploy-gcp.sh`  
-(needs `LOOP_TENANT_REPO=saurabh4269/cove`, `LOOP_TENANT_DEPLOY_URL`, `LOOP_TENANT_BOOTSTRAP_TOKEN`, `LOOP_GITHUB_TOKEN` in the environment)
-
-Redeploy Y: `LOOP_TENANT_TOKEN=… ./scripts/deploy.sh` in the cove repo.
+**Demo tenant (Cove):** https://github.com/saurabh4269/cove · Cloud Run `cove`. Demo only — never merge Cove PRs from here.
 
 ## What works
 
-- Generic Type A / Type B pipeline. Six fixtures, one engine. Safari is a fixture.
-- Campus home: painted island, clickable buildings, isometric floor, generated furniture, flipbook rooms. Mochi (cream / Bubu) is the rail logo only — the sitting pair is off the campus. Memory on the watch, Approvals on the tram. No Shop pin.
-- Icon-rail sidebar (always on) + expand in place on every width (no second flyout). Traces is on the rail. Connect, not Shop.
-- Rooms, per-bot chats (`/agents/:id`), visible handoffs. Pixel people unclipped on phone cards.
-- Agent Registry (identity, permissions, version, risk). Gateway deny on production customer-record dump.
-- Memory Bank: customer / product / engineering / organizational. Lesson recall on similar later signals.
-- Customer Voice: contextual diagnostic + structured JSON. Media-bridge mock (no Live API / PSTN). Tenant feedback POSTs `/api/t/{id}/voice` and opens a research room.
-- Code Agent fixture targets stay in `apps/northstar-shop` (JS adapters only). Product OS does **not** host a tenant shop.
-- Tenant wire: `/connect` form (repo, deploy URL, rotate token — never echoed). Token-gated `/api/t/{id}/flags|signals|voice`. Ingest opens or joins rooms. Approve HIGH flips `pay_sdk_4_3` and opens a real PR on the tenant repo. `merged` stays false. Mail/calendar skip without OAuth.
-- Live rooms: WebSocket hub, agent_callback, presence handoff rail, Work/Transcript + flip artifacts (kind tones), typed A2A, skip-if-done approve, **live fleet graph** (parallel fan-out, review/critique `output_key`, funnel_stage bus), `POST /api/signals`, `POST /api/memory`, `GET /api/status` + campus StatusStrip + scenario chips, gateway deny artifacts. Contract: [`packages/contracts/api.md`](../packages/contracts/api.md).
-- End-to-end path: Cove checkout with SDK 4.3 hangs → signal into OS → HIGH approve → flags off + PR on `saurabh4269/cove` → checkout shows 4.2.1. (Earlier proof used Northstar PR #2; Cove is the live tenant now.)
-- ADK 2: 23 `LlmAgent`s / 7 Apps locally + Workflow soft-attach (JoinNode fan-out, critique). Hosted path is the deterministic engine.
-- Cheap GCP: BQ, Pub/Sub, Model Armor (`fail_open=false` on gated TF). Gateway plan-only.
+- Generic autonomous product loop: observe → rooms → parallel specialists → Customer Voice JSON → Type A/B → LOW/MED/HIGH → human HIGH → tenant flags + PR (never merge) → verify → four memories.
+- Campus + multi-room chat UI. Mochi rail logo only. No Demo chrome (`LOOP_EVAL=0`).
+- Unauth `/rooms` stays on index with Connect CTA (PR #23). No ErrorState on 401.
+- Campus stampede poll removed (PR #24). Was 4s office+rooms poll → OOM on 2Gi → GFE 429.
+- Lean container boot (PR #25): apt no longer installs nodejs/npm/pip.
+- GCS-backed SQLite persistence. Rooms survive restarts unless stale snapshot restored.
+- Tenant wire: Connect, token-gated ingest, GitHub PR on HIGH approve. Cove PR #17 (`flags.json`) is the live ship path for the hang demo.
+- `./scripts/verify.sh` green on `main`.
 
-## Next
+## Demo hang (live)
 
-Create the Google Auth Platform Web client, paste it on Connect, then open `/api/oauth/google/start`. Optional Live. Agent Gateway still plan-only. See [`docs/TENANT.md`](TENANT.md).
+| Field | Value |
+|---|---|
+| Room | `room_f627763ea9` |
+| Investigation | `inv_450569ba5e7e` |
+| Metric | `otp_verify_hang_0904` |
+| Path | Type A HIGH |
+| Voice | `payment_timeout` |
+| Cove PR | [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, `flags.json` only, never merge |
+| Blocked action | `act_4754e1ae24f5` — do not approve (duplicates #17) |
+| `code_fix` | Failed (no node in worker); `github_pr` is the ship path |
+| UI gap | FAILED+DONE on hosted until #26+#27 deploy (merged on `main` as `54b4b97`) |
 
-## PRs
+## Branches / PRs
 
-All numbered PRs through [#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6 shop files are **not** at tip.
+### product-os (`main` has #9–#27, tip `54b4b97`)
 
-## What is mocked / mapped
+**Open PRs:** none on product-os except this docs handoff ([#28](https://github.com/saurabh4269/product-os/pull/28)).
 
-See README “Honest Google-product mapping”. Agent Gateway, Memory Bank, Live API, Antigravity are faithful local equivalents where the named 2026 product is not usable from this SA.
+Recent merged: #23 (unauth rooms Connect CTA), #24 (remove 4s campus poll), #25 (4Gi + lean boot), #26 (demo lesson scope), #27 (room UI GitHub card truth, `54b4b97`).
+
+### Never merge
+
+- **Cove:** PRs #1–#4, #7
+- **LOOP:** #11–#16, #17 (Cove-related leftovers)
+
+## Blockers
+
+1. **#26+#27 not deployed** — hosted UI still mislabels `code_fix` failure vs `github_pr` success until next deploy.
+2. **Owner pause** — no deploy without explicit go.
+3. **Remotion hang video** — off-repo only; `export-demo` cannot target hosted rooms.
+4. **Workspace OAuth** — Web client still created manually in Google Auth Platform; flow wired on Connect.
+
+## Redeploy (when owner says go)
+
+```bash
+# 1. Persist live sqlite if hang room is healthy (GET 200)
+# 2. Package and deploy
+unset NEXT_PUBLIC_API_URL LOOP_STATIC
+./scripts/package-host.sh
+./scripts/deploy-gcp.sh
+```
+
+Never `gcloud run deploy --source`. See [`DEPLOY.md`](DEPLOY.md).
 
 ## Docs for the next agent
 
-- [`AGENTS.md`](../AGENTS.md) — handoff, commands, UI contract, named references
-- [`docs/PLAN_NEXT.md`](PLAN_NEXT.md) — later work (OAuth, Live, Gateway)
-- [`docs/TENANT.md`](TENANT.md) — Cove vs OS; secret **names**
-- [`docs/LEARNINGS.md`](LEARNINGS.md) — pitfalls already hit
-- [`docs/RESEARCH_LEARNINGS.md`](RESEARCH_LEARNINGS.md) — PRD research traps
+Read order: [`AGENTS.md`](../AGENTS.md) → [`LEARNINGS.md`](LEARNINGS.md) → [`PLAN_NEXT.md`](PLAN_NEXT.md) → [`TENANT.md`](TENANT.md) → [`PRD.md`](PRD.md) → [`DESIGN_INTENT.md`](DESIGN_INTENT.md). Full index: [`README.md`](README.md).

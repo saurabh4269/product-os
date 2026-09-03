@@ -1,17 +1,23 @@
 # AGENTS.md — handoff for the next agent
 
-You are continuing **Product OS (LOOP)**. Start from **`main`**. Read this file first, then [`docs/LEARNINGS.md`](docs/LEARNINGS.md), [`docs/RESEARCH_LEARNINGS.md`](docs/RESEARCH_LEARNINGS.md), [`docs/TENANT.md`](docs/TENANT.md), and [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md) before you change deploy, the campus map, the console API URL, or anything that looks like a shop.
+You are continuing **Product OS (LOOP)**. Start from **`main`**.
+
+**Read-first order:** [`AGENTS.md`](AGENTS.md) → [`docs/LEARNINGS.md`](docs/LEARNINGS.md) → [`docs/PLAN_NEXT.md`](docs/PLAN_NEXT.md) → [`docs/TENANT.md`](docs/TENANT.md) → [`docs/PRD.md`](docs/PRD.md) → [`docs/DESIGN_INTENT.md`](docs/DESIGN_INTENT.md). Then [`docs/STATUS.md`](docs/STATUS.md) for branch/PR/blocker snapshot.
 
 Repo: `github.com/saurabh4269/product-os`  
-Live: https://loop-5uy6fkd7bq-uc.a.run.app  
+**User-facing URL:** https://productos.heisenbug.in — never use `*.run.app` as the product URL in user-facing copy.  
 GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`  
-Product Y: `github.com/saurabh4269/cove` · Cloud Run `cove` · https://cove-5uy6fkd7bq-uc.a.run.app
+Demo tenant (Cove only): `github.com/saurabh4269/cove` · Cloud Run `cove` · https://cove-5uy6fkd7bq-uc.a.run.app
+
+**Owner paused deploy 2026-09-03 13:35 IST.** Do not deploy until they say go. Overnight keep-going routine is paused.
 
 ## What this product is
 
-A **generic Product OS**: observe the product, open work into rooms, coordinate agents, gate risky changes, measure, remember.
+A **generic autonomous product team**: observe → rooms → parallel specialists → Customer Voice diagnostic JSON → Type A/B → risk LOW/MED/HIGH → human HIGH → tenant flags + PR (never merge) → verify → four memories.
 
-It is **not** a Safari / 3DS / payments app. Those six scenarios are **fixtures** that all go through one pipeline.
+Judging bar: 40% operational utility / 30% architecture / 30% demo readiness.
+
+It is **not** a Safari / 3DS / checkout app. Those scenarios are **fixtures** through one pipeline.
 
 - **Type A** — something broke → fix (BUG path).
 - **Type B** — something could be better → improve (FEATURE path).
@@ -19,9 +25,25 @@ It is **not** a Safari / 3DS / payments app. Those six scenarios are **fixtures*
 
 The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents, visible handoffs, per-bot chats. It is not a CRUD dashboard and not a dark “war room.”
 
+## Live / hosted (2026-09-03 13:35 IST)
+
+| Field | Value |
+|---|---|
+| User URL | https://productos.heisenbug.in |
+| Revision | `loop-00122-drb` |
+| SHA deployed | `10c9ad1` (PR #25 — 4Gi + lean boot) |
+| Memory | 4Gi · min 1 · max 2 |
+| `LOOP_EVAL` | `0` (no Demo chrome) |
+| Health | `/` and `/rooms` 200 · `/shop` 404 |
+| Main tip | `54b4b97` (PR #26 lesson scope + PR #27 GitHub card truth) — **not yet deployed** |
+
+**State:** SQLite persists via `LOOP_STATE_GCS_URI` (`gs://mystical-timing-442601-q8-loop-host/loop_state.db`). Rooms survive restarts unless a deploy hydrates an **old** GCS snapshot. **Persist live sqlite before `package-host.sh`** when the hang room GET is 200. If live is 503/OOM, do **not** overwrite a good snapshot.
+
+**Demo hang (live):** `room_f627763ea9` · `inv_450569ba5e7e` · metric `otp_verify_hang_0904` · Type A HIGH · Voice `payment_timeout`. Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) (`flags.json` only) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (would duplicate #17). `code_fix` extra failed (no node in worker); `github_pr` is the ship path. UI still shows FAILED+DONE on hosted until #26+#27 deploy.
+
 ## References the user pointed at
 
-These are the named products, looks, and decisions from this chat. Open them before you change campus, mascots, or the rail. Do not copy licensed art.
+Open these before you change campus, mascots, or the rail. Do not copy licensed art.
 
 | What they said | What it means here | Look it up |
 |---|---|---|
@@ -35,23 +57,15 @@ These are the named products, looks, and decisions from this chat. Open them bef
 | **Apple / Stripe / “cloud”** | Light, welcoming. User **rejected** the dark ink + coral + Instrument Serif war-room. | Apple-like: bg `#f5f5f7`, campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. |
 | **Linear / Notion rail** | 64px icon rail always on; expand grows the **same** aside. No second flyout, no hamburger-only. | `components/shell.tsx` |
 | **Memory watch / Approvals tram** | Campus landmarks, % of the **contained image box**. | Watch `28, 72` · tram `50, 80` in `lib/campus.ts` |
-| **Google Doc as “the office”** | Tried; unreadable (auth). Office is in-product. | `office-floor.tsx` + iso floor |
 | **Safari / 3DS** | One **fixture**, not the product. Do not bias UI or architecture around it. | `safari_3ds` in the fixture table |
 
-**Mascot now:** Mochi is the 32px rail mark (waves on home-link hover). PNG only — iPad Safari drops WebP alpha. No sitting pair on campus, phone or desktop. Do not restore Pip.
+**Mascot:** Mochi is the 32px rail mark (waves on home-link hover). PNG only — iPad Safari drops WebP alpha. No sitting pair on campus. Do not restore Pip.
 
-**Live / GitHub**
+## GitHub / PRs
 
-- Console + API: https://loop-5uy6fkd7bq-uc.a.run.app (also `https://loop-632958340118.us-central1.run.app`)
-- This agent run: https://cursor.com/agents/bc-8c53e2be-2abe-4034-a712-16e9ff15e32b
-- Hosted revision: `loop-00033-6mz` (Connect + tenant APIs + GitHub PR on approve; `/shop` 404; min-instances 1)
-- PRs [#1](https://github.com/saurabh4269/product-os/pull/1)–[#8](https://github.com/saurabh4269/product-os/pull/8) are on `main`. #6’s shop commits are in history but **deleted at tip**. Do not restore `/shop`.
+**product-os:** `main` tip `54b4b97` (#9–#27 merged). **Open PRs:** none except docs handoff [#28](https://github.com/saurabh4269/product-os/pull/28). Deploy paused.
 
-**Product Y:** https://github.com/saurabh4269/cove · https://cove-5uy6fkd7bq-uc.a.run.app (Cloud Run `cove`). Fork of Epic-Design-Labs nextjs-ecommerce-starter + LOOP wire. Northstar is retired as the demo tenant.
-
-## Next work
-
-Workspace OAuth is on Connect (`/api/oauth/google/start`) — you still create the Web client in Google Auth Platform once. Optional Live. Agent Gateway still plan-only. Tenant **connectors** are in this repo; Product Y is the other repo (`cove`). Do **not** rebuild a storefront here.
+**Never merge:** Cove PRs #1–#4, #7; LOOP #11–#16, #17. Do not merge Cove.
 
 ## Binding rules
 
@@ -60,30 +74,27 @@ Workspace OAuth is on Connect (`/api/oauth/google/start`) — you still create t
 | Safety | `fail_open = false`. Tool-output armor on. Exfil of production customer records is **DENY** via Gateway **identity**, not a prompt. |
 | Models | IDs only in [`config/models.yaml`](config/models.yaml). Default `gemini-3.5-flash`. Never set sampling on 3.6 / 3.5-lite. |
 | Cost | Cheap GCP only (BQ, Pub/Sub, Cloud Run, Model Armor). Agent Gateway / SGP / telephony stay **plan-only**. |
-| Hosted SQLite | Ephemeral. Cold start re-seeds the world. Room IDs change. Do not hard-code hosted room IDs. |
-| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. **Mochi** (cream / “Bubu”) is the rail logo only. Do **not** put the sitting duo on the campus — they read as a sticker, not the product. |
+| Hosted SQLite | Persists via `LOOP_STATE_GCS_URI` when configured. Rooms survive restarts. A deploy that hydrates an **old** GCS snapshot wipes rooms created after that snapshot — persist live DB before package when healthy. Do not hard-code hosted room IDs in commits. |
+| Theme | Light Apple-like: `#f5f5f7` / campus `#eef2ee`, ink `#1d1d1f`, accent `#0071e3`, Inter. No Instrument Serif, no dark class, no status-color dots. **Mochi** (cream / “Bubu”) is the rail logo only. Do **not** put the sitting duo on the campus. |
 | Art | Campus is `apps/console/public/city/campus.webp` (~75KB) + `campus.jpg`. **Do not re-add the 2MB PNG.** |
-| Tenant product | Product OS is the control plane. **Do not host a customer shop, ads page, or demo storefront on this origin** (`/shop`, `/company`, `public/shop`). The tenant app lives in its own repo and deployment. |
+| Tenant product | Product OS is the control plane. **Do not host a customer shop, ads page, or demo storefront on this origin** (`/shop`, `/company`, `public/shop`). Cove is the demo tenant in its own repo/deploy. |
 | Git | Commits look human. No AI `Co-authored-by` / author overrides. |
+| Deploy | Only `package-host.sh` + `deploy-gcp.sh` with `NEXT_PUBLIC_API_URL` unset. Never `gcloud run deploy --source`. |
+| Eval | Hosted `LOOP_EVAL=0`. No Demo chrome on production. |
 
 ## Repo map
 
 ```
 apps/console/          Next 15 console (rooms, campus, office, agents)
 apps/northstar-shop/   Fixture patch targets only. Not a storefront. Not hosted here.
-apps/demo/             Remotion walkthrough
+apps/demo/             Remotion LoopDemo 1280×720 12s (local only; Cloud Run does not serve it)
 services/loop/         Python control plane (engine, store, API, office, world, registry)
 config/models.yaml     Only place model IDs live
 data/                  Warehouse generator
 playbooks/             SKILL-shaped lessons
 infra/terraform/cheap  Applied. gated/ is plan-only
 scripts/               boot, verify, package-host, deploy-gcp
-docs/PRD.md            Spec (binding MUST)
-docs/PLAN.md           Architecture this code implements
-docs/LEARNINGS.md          Pitfalls — read before you touch host/UI
-docs/RESEARCH_LEARNINGS.md PRD research traps (failOpen, telephony, quotas)
-docs/TENANT.md             Tenant app is a separate repo. What we still need.
-docs/PLAN_NEXT.md          What to build next so Company X can actually connect Product Y.
+docs/                  See docs/README.md for index
 ```
 
 ### Console (what you will edit)
@@ -92,14 +103,14 @@ docs/PLAN_NEXT.md          What to build next so Company X can actually connect 
 |---|---|
 | `components/shell.tsx` | One rail that grows in place on every width (no second flyout). `localStorage` key `loop-sidebar`. `[` toggles. |
 | `components/mascot.tsx` | Mochi (cream) is the rail mark. Pair is two PNG sprites (not WebP — iPad Safari drops alpha). They watch / hop / wave. |
-| `components/city-map.tsx` | Painted campus. Pins **and building ellipses** are % of the contained image box. |
+| `components/city-map.tsx` | Painted campus. Pins **and building ellipses** are % of the contained image box. No 4s office+rooms poll (OOM risk — see LEARNINGS). |
 | `components/iso-office.tsx` | 2:1 isometric floor (Claude City energy, no Phaser). |
 | `components/work-flipbook.tsx` | Click-the-work pages. Do not wrap room cards in a naked `<Link>`. |
 | `lib/furniture.ts` | Deterministic pixel furniture. |
 | `components/pixel-office.tsx` | Pixel people. Do not put sprites in a short `overflow-hidden` + `overflow-x-auto` box. |
 | `components/office-floor.tsx` | Desk grid + handoffs. 2 columns on a phone. |
 | `lib/api.ts` | `NEXT_PUBLIC_API_URL` or `""` in production (same origin). |
-| `app/connect/page.tsx` | Tenant wire. Not a shop. |
+| `app/connect/page.tsx` | Tenant wire. Not a shop. Unauth `/rooms` shows Connect CTA, not ErrorState. |
 | `app/agents/[id]/layout.tsx` | `generateStaticParams` `{ id: "_" }` — required for static export. Same for rooms/investigations. |
 
 ### Control plane
@@ -111,7 +122,8 @@ docs/PLAN_NEXT.md          What to build next so Company X can actually connect 
 | `loop/office.py` | `GET /api/office`, `GET /api/agents/{id}`. `canonical_agent()` aliases (`analytics` → `analytics_agent`). |
 | `loop/registry.py` | Identity + allow/deny. |
 | `loop/api.py` | FastAPI. CORS `*` on Cloud Run. SPA fallback includes `agents/`. Do **not** serve a tenant storefront from this app. |
-| `loop/store.py` | SQLite. `list_all_agent_calls`, `list_all_messages`. |
+| `loop/store.py` | SQLite + GCS hydrate/persist. `list_all_agent_calls`, `list_all_messages`. |
+| `loop/demo_export.py` | `export-demo` / `build_demo_scenes`. Lesson scenes use investigation `lessons[]`, not `recalled_lessons`. |
 
 `a2a()` is **not** posted as room messages. The room UI merges `bundle.agent_calls` as “handed off” rows.
 
@@ -126,7 +138,7 @@ Console against hosted API (CORS is `*` on Cloud Run):
 
 ```bash
 cd apps/console
-env -u LOOP_STATIC NEXT_PUBLIC_API_URL=https://loop-5uy6fkd7bq-uc.a.run.app \
+env -u LOOP_STATIC NEXT_PUBLIC_API_URL=https://productos.heisenbug.in \
   ./node_modules/.bin/next dev --hostname 127.0.0.1 --port 3010
 ```
 
@@ -141,14 +153,24 @@ Local API on `:8080` does **not** allow CORS from `:3010` unless `LOOP_CONSOLE_O
 **Must unset `NEXT_PUBLIC_API_URL`.** If it is `http://127.0.0.1:8080`, the static JS bakes localhost and the hosted console dies.
 
 ```bash
+# When live hang room is healthy, persist sqlite to GCS first (see DEPLOY.md)
 unset NEXT_PUBLIC_API_URL LOOP_STATIC
 ./scripts/package-host.sh
 ./scripts/deploy-gcp.sh
 ```
 
-This uploads `dist/loop-host.tgz` to `gs://mystical-timing-442601-q8-loop-host` and runs public `python:3.12-slim`, which curl’s the tarball. **`gcloud run deploy --source` fails** (no Cloud Build on this SA).
+This uploads `dist/loop-host.tgz` to `gs://mystical-timing-442601-q8-loop-host` and runs public `python:3.12-slim`, which curl’s the tarball. **`gcloud run deploy --source` fails** (no Cloud Build on this SA). Boot no longer installs nodejs/npm/pip (PR #25).
 
-After deploy: hard-refresh the hosted URL. Confirm `/city/campus.webp` is 200 and `/api/office` is 200.
+After deploy: hard-refresh https://productos.heisenbug.in. Confirm `/city/campus.webp` is 200 and `/api/office` is 200.
+
+## Remotion demo
+
+`apps/demo` — LoopDemo 1280×720 12s from `export-demo` JSON. Cloud Run does **not** serve it.
+
+- `export-demo` cannot target a hosted room (local temp sqlite `geo_5xx`).
+- Hang render: wrap `GET /api/rooms/{id}` bundle via `build_demo_scenes`; do not commit hang `loop.json`.
+- Lesson scene **must** use investigation `lessons[]`, not `recalled_lessons` (PR #26), or it leaks `checkout_conversion`.
+- Video of the hang exists only off-repo.
 
 ## Fixtures (same pipeline)
 
@@ -163,12 +185,13 @@ After deploy: hard-refresh the hosted URL. Confirm `/city/campus.webp` is 200 an
 
 ## UI contract (do not regress)
 
-1. **Rail always visible** (64px). Expand grows **the same aside** on every width (`w-16` ↔ `w-[min(16.25rem,calc(100vw-3.5rem))]`). No second flyout, no second Mochi. Phone still auto-collapses on navigate. Do not go back to hamburger-only or a squeezed always-on 248px column on a phone.
+1. **Rail always visible** (64px). Expand grows **the same aside** on every width (`w-16` ↔ `w-[min(16.25rem,calc(100vw-3.5rem))]`). No second flyout, no second Mochi. Phone still auto-collapses on navigate.
 2. **Campus pins** are measured against the **drawn image box** (`object-contain` + `ResizeObserver`). Memory = pocket watch. Approvals = tram.
 3. **People** in room cards and the office must show full sprites. No `h-[80px]` + `overflow-hidden` people strip. `overflow-x-auto` also clips Y — pad inside the scrollport.
 4. **Rooms are one column on a phone** (`lg:grid-cols-2`).
 5. Campus hero is **not** `h-screen` on a phone (that letterboxed the island and floated pins into white).
 6. Keep the painted `campus.webp`. Do not replace it with Phaser / Three / `react-isometric-grid`. Interactivity is hotspots + iso floor + flipbook.
+7. **Unauth `/rooms`** stays on index with Connect CTA (PR #23). No ErrorState on 401.
 
 ## Tests that matter
 
@@ -192,11 +215,17 @@ Inverts that must stay green: unprompted Safari detect, six fixtures one pipelin
 - Do not run `npx next` in this repo.
 - Do not credit Cursor/Copilot/Claude in commit trailers.
 - Do not post to Slack / GitHub issues unless the user asked.
+- Do not deploy until owner says go.
+- Do not merge Cove PRs or leftover LOOP Cove PRs (#11–#17).
+- Do not approve `act_4754e1ae24f5` (duplicates Cove #17).
+- Do not overwrite a good GCS snapshot from a crash-looping instance.
 
 ## If you are stuck
 
 1. Read [`docs/LEARNINGS.md`](docs/LEARNINGS.md) — every sharp edge we already hit.
-2. Hosted 404 on `/rooms/:id` or `/agents/:id` → SPA placeholder `_` + `api.py` `_spa_file`.
-3. Hosted API empty / new room IDs → cold start, SQLite reset. Hit `/` or wait for lifespan seed.
-4. Console “Failed to fetch” from a dev port → CORS or baked localhost. Check `NEXT_PUBLIC_API_URL` and Network.
-5. Deploy IAM → [`docs/DEPLOY.md`](docs/DEPLOY.md).
+2. Read [`docs/STATUS.md`](docs/STATUS.md) — current PRs and blockers.
+3. Hosted 404 on `/rooms/:id` or `/agents/:id` → SPA placeholder `_` + `api.py` `_spa_file`.
+4. Hosted rooms missing after deploy → stale GCS snapshot restored. Check persist timing.
+5. Console “Failed to fetch” from a dev port → CORS or baked localhost. Check `NEXT_PUBLIC_API_URL` and Network.
+6. GFE 429 “Rate exceeded” on campus → likely OOM on 2Gi, not an app rate limiter. See LEARNINGS 2026-09-03.
+7. Deploy IAM → [`docs/DEPLOY.md`](docs/DEPLOY.md).

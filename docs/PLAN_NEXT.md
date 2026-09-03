@@ -1,9 +1,24 @@
 # PLAN NEXT — make Product OS a product Company X can run
 
+## Paused 2026-09-03 (owner 13:35 IST)
+
+Do **not** deploy until owner says go. Overnight keep-going is paused. (#27 merged on `main` as `54b4b97`.)
+
+When unpaused, in order:
+
+1. **Persist GCS → package → deploy** — ship `54b4b97` (#26 lesson scope + #27 GitHub card truth).
+2. **Confirm hang demo UI** — `room_f627763ea9` shows `github_pr` success; `code_fix` failure honest; Cove #17 still OPEN (never merge).
+4. **Workspace OAuth** — create Web client in Google Auth Platform; paste on Connect; test `/api/oauth/google/start`.
+5. **Remotion hang render** — local `export-demo` wrapping `GET /api/rooms/{id}` via `build_demo_scenes`; do not commit hang `loop.json`.
+
+Never merge Cove PRs (#1–#4, #7) or LOOP leftovers (#11–#17). Do not approve `act_4754e1ae24f5`.
+
+---
+
 | Field | Value |
 |---|---|
 | Status | Phases A–F shipped. Start here only for later work (Workspace OAuth, Live, Gateway). |
-| Date | 2026-08-30 |
+| Date | 2026-08-30 (paused list above: 2026-09-03) |
 | Spec | [`PRD.md`](PRD.md) remains binding (safety, risk tiers, no autonomous merge/deploy) |
 | Architecture | [`PLAN.md`](PLAN.md) is what the fixture engine already implements |
 | Tenant split | [`TENANT.md`](TENANT.md) — Product Y is Northstar, never hosted on Cloud Run `loop` |
