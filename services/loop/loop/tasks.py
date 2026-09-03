@@ -23,15 +23,27 @@ def worker_url(job_id: str) -> str:
     return f"{base}/api/internal/worker/run/{job_id}"
 
 
+def use_cloud_tasks() -> bool:
+    """Cloud Tasks races with LOOP_INLINE_WORKER claim/process — use one path."""
+    if os.environ.get("LOOP_TASKS_DISABLE") == "1":
+        return False
+    if os.environ.get("LOOP_INLINE_WORKER") == "1":
+        return False
+    return True
+
+
 def dispatch_job(job_id: str) -> ConnectorReport:
     """Enqueue HTTP task to process one job. Falls back to in-process tick."""
     url = worker_url(job_id)
     project = (os.environ.get("GOOGLE_CLOUD_PROJECT") or "").strip()
-    if not url or not project or os.environ.get("LOOP_TASKS_DISABLE") == "1":
+    if not url or not project or not use_cloud_tasks():
+        detail = "inline worker — no Cloud Tasks"
+        if os.environ.get("LOOP_INLINE_WORKER") == "1":
+            detail = "inline worker active — Cloud Tasks skipped"
         return ConnectorReport(
             status="skipped",
             connector="cloud_tasks",
-            detail="inline worker — no Cloud Tasks",
+            detail=detail,
         )
     token = gcs_state.metadata_access_token()
     if not token:
@@ -39,6 +51,7 @@ def dispatch_job(job_id: str) -> ConnectorReport:
     location = (os.environ.get("GOOGLE_CLOUD_REGION") or "us-central1").strip()
     parent = f"projects/{project}/locations/{location}/queues/{queue_name()}"
     admin = (os.environ.get("LOOP_ADMIN_TOKEN") or "").strip()
+    base = (os.environ.get("LOOP_PUBLIC_URL") or "").rstrip("/")
     body = json.dumps(
         {
             "httpRequest": {
@@ -54,7 +67,7 @@ def dispatch_job(job_id: str) -> ConnectorReport:
                         os.environ.get("LOOP_TASKS_SA")
                         or f"loop-runtime@{project}.iam.gserviceaccount.com"
                     ),
-                    "audience": url,
+                    "audience": base or url,
                 },
             }
         }
@@ -88,9 +101,6 @@ def dispatch_job(job_id: str) -> ConnectorReport:
 
 def kick_job(job_id: str) -> None:
     """Cloud Tasks when available; otherwise background thread with retry bookkeeping."""
-    report = dispatch_job(job_id)
-    if report.status == "applied":
-        return
 
     def worker() -> None:
         from loop.engine import default_engine
@@ -101,5 +111,9 @@ def kick_job(job_id: str) -> None:
             process_job(eng.store, eng, job_id)
         except Exception as exc:
             fail(eng.store, job_id, str(exc))
+
+    report = dispatch_job(job_id)
+    if report.status == "applied":
+        return
 
     threading.Thread(target=worker, name=f"job-{job_id[:8]}", daemon=True).start()

@@ -480,7 +480,7 @@ class Store:
         return rows[:limit]
 
     def claim_job(self, kinds: list[str]) -> Any | None:
-        from .jobs import Job
+        from .jobs import Job, job_is_stale
 
         now = _now()
         with self._lock:
@@ -488,11 +488,14 @@ class Store:
             candidates: list[tuple[str, Job]] = []
             for jid, raw in rows:
                 job = Job.model_validate_json(raw)
-                if job.status != "queued" or job.kind not in kinds:
+                if job.kind not in kinds:
                     continue
-                if job.run_after and job.run_after > now:
-                    continue
-                candidates.append((jid, job))
+                if job.status == "queued":
+                    if job.run_after and job.run_after > now:
+                        continue
+                    candidates.append((jid, job))
+                elif job.status == "running" and job_is_stale(job, now=now):
+                    candidates.append((jid, job))
             if not candidates:
                 return None
             candidates.sort(key=lambda x: x[1].created_at)
@@ -503,7 +506,10 @@ class Store:
                 self._conn.rollback()
                 return None
             current = Job.model_validate_json(cur[0])
-            if current.status != "queued":
+            claimable = current.status == "queued" or (
+                current.status == "running" and job_is_stale(current, now=now)
+            )
+            if not claimable:
                 self._conn.rollback()
                 return None
             job.status = "running"
