@@ -65,6 +65,10 @@ def test_deploy_gcp_loop_host_profile():
     assert "--memory 2Gi" not in script
     assert "apt-get" not in script
     assert "urlretrieve" in script
+    assert "/tmp/loop.tgz" in script
+    assert "^|^-c|" in script
+    # One-arg urlretrieve writes a random NamedTemporaryFile (Py 3.12); tar would miss it.
+    assert "cd /tmp && python -c" not in script
     assert "nodejs" not in script
     assert "npm" not in script
     assert "python3-pip" not in script

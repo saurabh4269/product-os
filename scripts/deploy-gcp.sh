@@ -92,6 +92,8 @@ if [[ -n "${LOOP_ADMIN_TOKEN:-}" ]]; then
   fi
 fi
 
+# ^|^ so gcloud does not split urlretrieve(url, path) on the comma.
+# One-arg urlretrieve writes a random NamedTemporaryFile — always pass /tmp/loop.tgz.
 set +e
 gcloud run deploy "${SERVICE}" \
   --image python:3.12-slim \
@@ -105,7 +107,7 @@ gcloud run deploy "${SERVICE}" \
   --timeout 300 \
   --cpu-boost \
   --command bash \
-  --args="-c,cd /tmp && python -c 'import urllib.request as u; u.urlretrieve(\"${BUNDLE_URL}\")' && mkdir -p /app && tar -xzf /tmp/loop-host.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=https://productos.heisenbug.in PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
+  --args="^|^-c|python -c 'import urllib.request as u; u.urlretrieve(\"${BUNDLE_URL}\", \"/tmp/loop.tgz\")' && mkdir -p /app && tar -xzf /tmp/loop.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=https://productos.heisenbug.in PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
   --set-env-vars "${ENV_VARS}" \
   --quiet
 STATUS=$?

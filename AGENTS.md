@@ -9,7 +9,7 @@ Repo: `github.com/saurabh4269/product-os`
 GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`  
 Demo tenant (Cove only): `github.com/saurabh4269/cove` · Cloud Run `cove` · https://cove-5uy6fkd7bq-uc.a.run.app
 
-**Owner asked to deploy latest (done ~13:55 IST 2026-09-03).** Overnight keep-going routine is still paused.
+**Owner merged #30 and we deployed (~23:20 IST 2026-09-03).** Overnight keep-going routine is still paused.
 
 ## What this product is
 
@@ -25,16 +25,16 @@ It is **not** a Safari / 3DS / checkout app. Those scenarios are **fixtures** th
 
 The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents, visible handoffs, per-bot chats. It is not a CRUD dashboard and not a dark “war room.”
 
-## Live / hosted (2026-09-03 ~13:55 IST)
+## Live / hosted (2026-09-03 ~23:20 IST)
 
 | Field | Value |
 |---|---|
 | User URL | https://productos.heisenbug.in |
-| Revision | `loop-00123-7rx` (100% traffic) |
-| SHA deployed | `fc1611948b3fcec0e68dd6dbe62d9cf7cd8f86b5` (PRs #26, #27, #28) |
+| Revision | `loop-00125-cdb` (100% traffic) |
+| SHA deployed | `6f195fab9543bcbf792f67f9157b68ebeb740b93` (PR #30). Boot args: explicit `/tmp/loop.tgz` (PR #31) |
 | Memory | 4Gi · min 1 · max 2 |
 | `LOOP_EVAL` | `0` (no Demo chrome) |
-| Health | `/` and `/rooms` 200 · `/shop` 404 |
+| Health | `/` and `/rooms` 200 · `/shop` 404 · persist POST 200 |
 
 **State:** SQLite persists via `LOOP_STATE_GCS_URI` (`gs://mystical-timing-442601-q8-loop-host/loop_state.db`). Rooms survive restarts unless a deploy hydrates an **old** GCS snapshot. **Persist live sqlite before `package-host.sh`** when the hang room GET is 200. If live is 503/OOM, do **not** overwrite a good snapshot.
 
@@ -62,7 +62,7 @@ Open these before you change campus, mascots, or the rail. Do not copy licensed 
 
 ## GitHub / PRs
 
-**product-os:** `main` tip `fc16119` (#9–#28 merged, deployed on `loop-00123-7rx`). Overnight keep-going paused.
+**product-os:** `main` tip `6f195fa` (#9–#30). Live on `loop-00125-cdb`. Boot-args fix is PR #31. Overnight keep-going paused.
 
 **Never merge:** Cove PRs #1–#4, #7; LOOP #11–#16, #17. Do not merge Cove.
 

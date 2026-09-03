@@ -32,13 +32,16 @@ Production console must use `BASE = ""` (same origin as FastAPI).
 1. `package-host.sh` writes `dist/loop-host.tgz` (vendor wheels + `loop/` + static `out/`).
 2. Upload to `gs://mystical-timing-442601-q8-loop-host/loop-host.tgz` (object is world-readable so the container can fetch it).
 
-### Cloud Run boot must not put commas in `gcloud --args`
+### Cloud Run boot: `gcloud --args` commas vs one-arg `urlretrieve`
 
-**Symptom:** New revision never listens; `/api/config` 503s until the previous revision is restored.
+**Symptom:** New revision never listens; `/api/config` 503s until the previous revision is restored. `loop-00124-rc2` died this way after #30.
 
-**Why:** `gcloud run deploy --args` splits on commas. A Python `urlretrieve(url, path)` inside `--args` is cut in half.
+**Why:** Two separate traps.
 
-**Fix:** Fetch the GCS tarball with **one-argument** `urlretrieve(url)` after `cd /tmp` (filename comes from the URL, `loop-host.tgz`). Do **not** `apt-get` curl/git/node on every start — python:3.12-slim already has CA certs. `code_fix` extra skips cleanly without git/node; flags.json GitHub PR is the ship path. `--min-instances 1` so cold start is deploy-time, not every user.
+1. `gcloud run deploy --args` splits on commas. A Python `urlretrieve(url, path)` inside a plain `--args="-c,…"` is cut in half.
+2. One-arg `urlretrieve(url)` after `cd /tmp` does **not** write `loop-host.tgz`. Python 3.12 writes a random `NamedTemporaryFile`. `tar -xzf /tmp/loop-host.tgz` then fails and the container exits.
+
+**Fix:** Use the `^|^` list delimiter so the bash `-c` script may contain commas, and pass an explicit dest: `urlretrieve(url, "/tmp/loop.tgz")`. Do **not** `apt-get` curl/git/node on every start — python:3.12-slim already has CA certs. `code_fix` extra skips cleanly without git/node; flags.json GitHub PR is the ship path. `--min-instances 1` so cold start is deploy-time, not every user.
 
 ### `LOOP_STATIC` left on breaks `next dev`
 
