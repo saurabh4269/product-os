@@ -66,9 +66,11 @@ def test_lesson_scene_ignores_recalled_lessons_from_other_metrics():
         "investigation": {"recalled_lessons": [foreign], "scenario_id": "t:acme:otp_verify_hang"},
         "lessons": [],
     }
-    assert lesson_scene_body(bundle) == WAITING["lesson"]
+    assert "otp_verify_hang" in lesson_scene_body(bundle)
+    assert "checkout_conversion" not in lesson_scene_body(bundle)
     scenes = build_demo_scenes(bundle)
-    assert scenes[-1]["body"] == WAITING["lesson"]
+    assert "otp_verify_hang" in scenes[-1]["body"]
+    assert "otp_verify_hang" in scenes[-2]["body"]
     assert "checkout_conversion" not in scenes[-1]["body"]
 
 
@@ -131,8 +133,9 @@ def test_two_investigations_do_not_leak_lessons_or_outcomes(engine):
     assert hang_bundle["lessons"] == []
     assert hang_bundle["outcomes"] == []
     scenes = build_demo_scenes(hang_bundle)
-    assert scenes[-1]["body"] == WAITING["lesson"]
-    assert scenes[-2]["body"] == WAITING["verified"]
+    assert "otp_verify_hang" in scenes[-1]["body"]
+    assert "otp_verify_hang" in scenes[-2]["body"]
+    assert scenes[-1]["body"] != WAITING["lesson"] or "otp_verify_hang" in scenes[-1]["body"]
     assert "checkout_conversion" not in json.dumps(scenes)
 
     checkout_bundle = _bundle(engine, "inv_checkout")
@@ -158,6 +161,7 @@ def test_export_demo_writes_loop_json(tmp_path):
     assert payload.get("type_a", {}).get("investigation")
     assert payload.get("type_b", {}).get("investigation")
     assert payload.get("gateway_deny", {}).get("verdict") == "DENY"
+    assert payload.get("loop_chip") == "Type A · fix"
     _assert_no_fixture_copy(out.read_text())
 
 
@@ -166,3 +170,40 @@ def test_build_demo_export_has_customer_voice_evidence(tmp_path):
     ev = payload.get("evidence") or []
     assert any(e.get("source_type") == "customer_voice" for e in ev)
     _assert_no_fixture_copy(json.dumps(payload.get("scenes") or []))
+
+
+def test_hosted_room_export_uses_this_metric_not_geo_5xx():
+    from loop.demo_export import build_hosted_demo_export
+
+    payload = build_hosted_demo_export(
+        {
+            "room": {"id": "room_demo", "loop_type": "type_a"},
+            "bundle": {
+                "investigation": {
+                    "id": "inv_demo",
+                    "loop_type": "type_a",
+                    "scenario_id": "t:acme:otp_verify_hang_0904",
+                },
+                "signals": [{"metric": "otp_verify_hang_0904", "magnitude": -0.2, "baseline": 0.1}],
+                "evidence": [],
+                "hypotheses": [],
+                "actions": [{"risk_tier": "HIGH", "consequence": "Human approval before flag change."}],
+                "outcomes": [],
+                "lessons": [],
+            },
+        }
+    )
+    blob = json.dumps(payload)
+    assert payload["meta"]["source"] == "hosted_room"
+    assert payload["loop_chip"] == "Type A · fix"
+    assert "otp_verify_hang_0904" in payload["scenes"][-2]["body"]
+    assert "otp_verify_hang_0904" in payload["scenes"][-1]["body"]
+    assert "geo_5xx" not in blob
+    assert "checkout_conversion" not in blob
+    _assert_no_fixture_copy(blob)
+
+
+def test_loop_demo_renders_type_a_chip():
+    source = (Path(__file__).resolve().parents[3] / "apps" / "demo" / "src" / "LoopDemo.tsx").read_text()
+    assert "Type A · fix" in source
+    assert "loopChip" in source

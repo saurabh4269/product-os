@@ -97,6 +97,38 @@ def test_state_persist_roundtrip(tmp_path, monkeypatch):
     assert store2.get_flag("pay_sdk_4_3") == "off"
 
 
+def test_persist_now_flushes_immediately(tmp_path, monkeypatch):
+    from loop.state_persist import persist_now
+    from loop.store import Store
+
+    db = tmp_path / "loop.db"
+    Store(db).set_flag("k", "1", "idem")
+    uploaded: dict[str, bytes] = {}
+    monkeypatch.setattr("loop.state_persist.state_gcs_uri", lambda: "gs://test/loop_state.db")
+
+    def fake_write(u, payload, **kw):
+        uploaded["blob"] = payload
+        return True
+
+    monkeypatch.setattr("loop.gcs_state.write_bytes", fake_write)
+    assert persist_now(db) is True
+    assert uploaded["blob"] == db.read_bytes()
+
+
+def test_persist_endpoint_admin_bearer(engine, monkeypatch):
+    monkeypatch.setenv("LOOP_ADMIN_TOKEN", "secret")
+    monkeypatch.setenv("LOOP_EVAL", "0")
+    monkeypatch.setenv("K_SERVICE", "loop")
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    monkeypatch.setattr("loop.state_persist.persist_now", lambda path: True)
+    with TestClient(api_mod.app) as client:
+        assert client.post("/api/internal/state/persist").status_code == 401
+        res = client.post("/api/internal/state/persist", headers={"Authorization": "Bearer secret"})
+        assert res.status_code == 200
+        assert res.json()["ok"] is True
+
+
 def test_code_worker_apply_and_test_skip(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()

@@ -198,20 +198,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const [ready, setReady] = useState(false);
+  const inRoom = (path || "").startsWith("/rooms/") || (path || "").startsWith("/agents/");
 
   useEffect(() => {
+    if (inRoom) return;
     api
       .rooms()
       .then((r) => setRooms(r.rooms))
       .catch(() => setRooms([]));
-  }, [path]);
+  }, [path, inRoom]);
 
   useEffect(() => {
+    if (inRoom) return;
     api
       .status()
       .then((s) => setApprovalsPending(s.approvals_pending ?? 0))
       .catch(() => setApprovalsPending(0));
-  }, [worldTick]);
+  }, [worldTick, inRoom]);
 
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 1024px)");
@@ -250,7 +253,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [desktop]);
 
-  const inRoom = path.startsWith("/rooms/") || path.startsWith("/agents/");
   const fillMain = inRoom;
   const onCampus = path === "/";
   const wide = expanded;

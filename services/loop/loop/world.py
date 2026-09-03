@@ -41,17 +41,42 @@ def _pending_actions_for_investigation(engine: LoopEngine, inv_id: str) -> list[
     return visible_pending_actions(engine.store, inv_id)
 
 
+def persist_live_state(engine: LoopEngine) -> None:
+    """Upload sqlite now so a deploy cannot hydrate a snapshot from before this ingest."""
+    try:
+        from loop.state_persist import persist_now
+
+        persist_now(engine.store.path)
+    except Exception:
+        pass
+
+
 def tenant_ingest_should_join_room(engine: LoopEngine, inv: Investigation | None) -> bool:
-    """Join only when HITL is still open — not stale awaiting with nothing pending."""
+    """Same-metric ingest joins an open HITL room instead of spawning a second demo room.
+
+    Join when the investigation is still live (AWAITING_APPROVAL / ACTING / APPROVED)
+    and either a visible pending action remains or a tenant flags PR already shipped
+    (leftover HIGH is hidden so it cannot duplicate). Closed / terminal investigations
+    open new work. Pick a unique metric when you intend a new room while another is
+    still awaiting.
+    """
     if inv is None:
         return False
     if inv.closed_at is not None:
         return False
     if inv.state in _TERMINAL_INVESTIGATION_STATES:
         return False
-    if inv.state != InvestigationState.AWAITING_APPROVAL:
+    if inv.state not in {
+        InvestigationState.AWAITING_APPROVAL,
+        InvestigationState.ACTING,
+        InvestigationState.APPROVED,
+    }:
         return False
-    return bool(_pending_actions_for_investigation(engine, inv.id))
+    if _pending_actions_for_investigation(engine, inv.id):
+        return True
+    from .room_ui import investigation_pr_opened
+
+    return investigation_pr_opened(engine.store, inv.id)
 
 
 def ensure_standing_world(engine: LoopEngine) -> dict[str, Any]:
@@ -642,6 +667,7 @@ def ingest_tenant_signal(
             publish_incident_lifecycle(engine, tenant.id, metric=metric)
         except Exception:
             pass
+        persist_live_state(engine)
         return {"signal": sig, "room_id": existing.id, "joined": True}
     kind = RoomKind.INCIDENT if magnitude < 0 else RoomKind.OPPORTUNITY
     loop_type = LoopType.TYPE_A if magnitude < 0 else LoopType.TYPE_B
@@ -701,6 +727,7 @@ def ingest_tenant_signal(
         publish_incident_lifecycle(engine, tenant.id, metric=metric)
     except Exception:
         pass
+    persist_live_state(engine)
     return {
         "signal": sig,
         "room_id": out["room_id"],
@@ -834,6 +861,7 @@ def ingest_tenant_voice(
                 artifact_type="voice",
                 artifact={"room_id": existing.id, "tenant": tenant.id},
             )
+        persist_live_state(engine)
         return {
             "voice": rec,
             "room_id": existing.id,
@@ -886,6 +914,7 @@ def ingest_tenant_voice(
             artifact_type="voice",
             artifact={"room_id": room.id, "tenant": tenant.id},
         )
+    persist_live_state(engine)
     return {
         "voice": rec,
         "room_id": room.id,

@@ -358,15 +358,26 @@ def resolve_diagnostic_plan(
     return opening, questions, replies
 
 
-def extract_structured_evidence(transcript: list[dict[str, str]]) -> StructuredCallEvidence:
+def extract_structured_evidence(
+    transcript: list[dict[str, str]],
+    *,
+    metric: str = "",
+) -> StructuredCallEvidence:
     text = " ".join(f"{t.get('role')}: {t.get('message')}" for t in transcript).lower()
+    ctx = f"{text} {(metric or '').lower()}"
     loading = any(w in text for w in ("loading", "spinner", "kept loading", "hung", "timeout"))
     error_shown = any(w in text for w in ("error", "declined", "invalid card"))
     card_detect = "card" in text and any(w in text for w in ("detect", "not being", "wasn't", "wasnt"))
     tried_again = any(w in text for w in ("twice", "again", "retr"))
     gave_up = any(w in text for w in ("gave up", "gaveup", "i gave"))
+    otpish = any(w in ctx for w in ("otp", "verify", "2fa", "two-factor", "two factor"))
     if loading or card_detect:
-        reason = "payment_timeout" if loading else "card_not_detected"
+        if otpish and loading:
+            reason = "otp_verify_timeout"
+        elif loading:
+            reason = "payment_timeout"
+        else:
+            reason = "card_not_detected"
     elif error_shown:
         reason = "payment_error"
     else:
@@ -652,10 +663,10 @@ def run_customer_research(
         )
         # Still run simulated dialogue so the fleet gets structured evidence in demos.
         transcript = simulate_research_dialogue(brief)
-        evidence = extract_structured_evidence(transcript)
+        evidence = extract_structured_evidence(transcript, metric=str(getattr(event, "metric", "") or ""))
     else:
         transcript = simulate_research_dialogue(brief)
-        evidence = extract_structured_evidence(transcript)
+        evidence = extract_structured_evidence(transcript, metric=str(getattr(event, "metric", "") or ""))
         call_report = {
             "status": "simulated",
             "connector": "voice.research",

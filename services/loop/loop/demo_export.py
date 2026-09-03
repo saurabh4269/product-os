@@ -23,11 +23,25 @@ WAITING = {
 }
 
 
+def _signal_metric(bundle: dict[str, Any]) -> str:
+    sig = (bundle.get("signals") or [None])[0]
+    if sig and sig.get("metric"):
+        return str(sig["metric"])
+    inv = bundle.get("investigation") if isinstance(bundle.get("investigation"), dict) else {}
+    scenario = str(inv.get("scenario_id") or "")
+    if scenario.startswith("t:") and scenario.count(":") >= 2:
+        return scenario.split(":", 2)[2]
+    return ""
+
+
 def lesson_scene_body(bundle: dict[str, Any]) -> str:
     """Lesson scene copy from this investigation only — not cross-metric recall."""
     lesson = (bundle.get("lessons") or [None])[0] if bundle.get("lessons") else None
     if lesson and lesson.get("statement"):
         return str(lesson["statement"])
+    metric = _signal_metric(bundle)
+    if metric:
+        return f"Memory stage is waiting — lesson not captured yet for {metric}."
     return WAITING["lesson"]
 
 
@@ -77,11 +91,14 @@ def build_demo_scenes(type_a: dict[str, Any], type_b: dict[str, Any] | None = No
         approval_body = WAITING["approval"]
 
     outcome = (type_a.get("outcomes") or [None])[0] if type_a.get("outcomes") else None
+    metric = _signal_metric(type_a)
     if outcome and outcome.get("verdict") and str(outcome.get("verdict")).upper() != "NOT_RESOLVED":
         verified_body = (
-            f"{outcome.get('verdict')}: {outcome.get('metric', 'metric')} "
+            f"{outcome.get('verdict')}: {outcome.get('metric', metric or 'metric')} "
             f"{float(outcome.get('pre_value') or 0):.3g} → {float(outcome.get('post_value') or 0):.3g}."
         )
+    elif metric:
+        verified_body = f"Verify stage is waiting — {metric} outcome not measured yet."
     else:
         verified_body = WAITING["verified"]
 
@@ -155,11 +172,13 @@ def build_demo_export(data_dir: Path | None = None) -> dict[str, Any]:
             "pipeline": "generic",
             "type_a_recipe": "geo_5xx",
             "type_b_recipe": type_b_recipe.id,
+            "loop_type": "type_a",
         },
         "scenes": scenes,
         "type_a": type_a_bundle,
         "type_b": type_b_bundle,
         "gateway_deny": gateway_payload,
+        "loop_chip": "Type A · fix",
         **type_a_bundle,
     }
     if tmp is not None:
@@ -169,6 +188,71 @@ def build_demo_export(data_dir: Path | None = None) -> dict[str, Any]:
 
 def write_demo_export(dest: Path, *, data_dir: Path | None = None) -> Path:
     payload = build_demo_export(data_dir=data_dir)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(payload, indent=2) + "\n")
+    return dest
+
+
+def _loop_chip(loop_type: str | None) -> str:
+    raw = (loop_type or "type_a").lower()
+    if raw in {"type_b", "b", "feature"}:
+        return "Type B · improve"
+    return "Type A · fix"
+
+
+def build_hosted_demo_export(room_payload: dict[str, Any]) -> dict[str, Any]:
+    """Remotion payload from a hosted room GET — never silent local geo_5xx."""
+    bundle = dict(room_payload.get("bundle") or {})
+    room = dict(room_payload.get("room") or {})
+    inv = bundle.get("investigation") if isinstance(bundle.get("investigation"), dict) else {}
+    loop_type = str(inv.get("loop_type") or room.get("loop_type") or "type_a")
+    scenes = build_demo_scenes(bundle)
+    return {
+        "meta": {
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "pipeline": "generic",
+            "source": "hosted_room",
+            "room_id": room.get("id"),
+            "loop_type": loop_type,
+        },
+        "scenes": scenes,
+        "type_a": bundle,
+        "type_b": {},
+        "gateway_deny": None,
+        "loop_chip": _loop_chip(loop_type),
+        **bundle,
+    }
+
+
+def fetch_hosted_room(room_id: str, *, api_base: str, token: str, timeout_s: int = 60) -> dict[str, Any]:
+    """GET /api/rooms/{id} from a hosted control plane. Never prints the bearer."""
+    import urllib.error
+    import urllib.request
+
+    base = (api_base or "").strip().rstrip("/")
+    if not base:
+        raise ValueError("hosted API base URL is required")
+    if not token:
+        raise ValueError("LOOP_ADMIN_TOKEN is required to export a hosted room")
+    url = f"{base}/api/rooms/{room_id}"
+    req = urllib.request.Request(
+        url,
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"hosted room GET {exc.code}") from exc
+    data = json.loads(raw)
+    if not isinstance(data, dict) or not data.get("bundle"):
+        raise RuntimeError("hosted room has no investigation bundle")
+    return data
+
+
+def write_hosted_demo_export(dest: Path, room_payload: dict[str, Any]) -> Path:
+    payload = build_hosted_demo_export(room_payload)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(payload, indent=2) + "\n")
     return dest

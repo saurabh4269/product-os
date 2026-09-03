@@ -1062,6 +1062,12 @@ class LoopEngine:
         )
         if not reused and inv.room_id:
             self._post_approve_coordination(inv, action, result)
+        try:
+            from loop.state_persist import persist_now
+
+            persist_now(self.store.path)
+        except Exception:
+            pass
         return {**result, "reused": reused}
 
     def _post_approve_coordination(self, inv: Investigation, action: ProposedAction, result: dict) -> None:

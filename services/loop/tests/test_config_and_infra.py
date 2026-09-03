@@ -59,17 +59,16 @@ def test_failopen_false_in_terraform():
 
 
 def test_deploy_gcp_loop_host_profile():
-    """Hosted LOOP: 4Gi RAM, lean boot (no node/npm/pip — console is prebuilt in package-host)."""
+    """Hosted LOOP: 4Gi RAM, lean boot (no apt-get curl/git/node — python urllib fetches the bundle)."""
     script = (ROOT / "scripts" / "deploy-gcp.sh").read_text()
     assert "--memory 4Gi" in script
     assert "--memory 2Gi" not in script
-    boot = script.split("apt-get install -y -qq ", 1)[1].split(" && curl", 1)[0]
-    assert "curl" in boot
-    assert "ca-certificates" in boot
-    assert "git" in boot
-    assert "nodejs" not in boot
-    assert "npm" not in boot
-    assert "python3-pip" not in boot
+    assert "apt-get" not in script
+    assert "urlretrieve" in script
+    assert "nodejs" not in script
+    assert "npm" not in script
+    assert "python3-pip" not in script
+    assert "/api/internal/state/persist" in script
 
 
 def test_models_yaml_forbids_pro():

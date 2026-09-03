@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Cloud Run entry: fetch the LOOP bundle and serve API + console on $PORT.
+# No apt-get — python:3.12-slim already has CA certs; urllib fetches the tarball.
 set -euo pipefail
 PORT="${PORT:-8080}"
 APP="${LOOP_APP_DIR:-/app}"
@@ -8,9 +9,7 @@ cd "$APP"
 
 if [[ -n "${LOOP_BUNDLE_URL:-}" ]]; then
   echo "loop-entry: fetching bundle"
-  apt-get update -qq
-  apt-get install -y -qq curl ca-certificates
-  curl -fsSL "$LOOP_BUNDLE_URL" -o /tmp/loop.tgz
+  python -c 'import os,urllib.request as u; u.urlretrieve(os.environ["LOOP_BUNDLE_URL"], "/tmp/loop.tgz")'
   tar -xzf /tmp/loop.tgz -C "$APP"
 fi
 

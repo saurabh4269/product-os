@@ -77,6 +77,21 @@ if [[ -n "${LOOP_ADMIN_TOKEN:-}" ]]; then
   ENV_VARS="${ENV_VARS},LOOP_EVAL=0,LOOP_VERIFY_DEFER=1,LOOP_WORKER_SECRET=${LOOP_ADMIN_TOKEN}"
 fi
 
+# Persist live sqlite when the service is healthy so this deploy cannot restore a stale GCS DB.
+PUBLIC_URL="${LOOP_PUBLIC_URL:-https://productos.heisenbug.in}"
+if [[ -n "${LOOP_ADMIN_TOKEN:-}" ]]; then
+  cfg_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "${PUBLIC_URL}/api/config" || true)"
+  echo "deploy-gcp: live /api/config ${cfg_code}"
+  if [[ "${cfg_code}" == "200" ]]; then
+    persist_code="$(curl -sS -o /tmp/loop-persist.json -w '%{http_code}' --max-time 45 \
+      -X POST -H "Authorization: Bearer ${LOOP_ADMIN_TOKEN}" \
+      "${PUBLIC_URL}/api/internal/state/persist" || true)"
+    echo "deploy-gcp: persist HTTP ${persist_code}"
+  elif [[ "${cfg_code}" == "503" ]]; then
+    echo "deploy-gcp: live 503 — skip persist so a good GCS snapshot is not overwritten"
+  fi
+fi
+
 set +e
 gcloud run deploy "${SERVICE}" \
   --image python:3.12-slim \
@@ -90,7 +105,7 @@ gcloud run deploy "${SERVICE}" \
   --timeout 300 \
   --cpu-boost \
   --command bash \
-  --args="-c,apt-get update -qq && apt-get install -y -qq curl ca-certificates git && curl -fsSL ${BUNDLE_URL} -o /tmp/loop.tgz && mkdir -p /app && tar -xzf /tmp/loop.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=https://productos.heisenbug.in PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
+  --args="-c,cd /tmp && python -c 'import urllib.request as u; u.urlretrieve(\"${BUNDLE_URL}\")' && mkdir -p /app && tar -xzf /tmp/loop-host.tgz -C /app && export PYTHONPATH=/app/vendor:/app/services/loop LOOP_STATIC_DIR=/app/static LOOP_DATA_DIR=/app/var LOOP_CONSOLE_ORIGIN=https://productos.heisenbug.in PYTHONUNBUFFERED=1 && mkdir -p /app/var && python -m uvicorn loop.api:app --host 0.0.0.0 --port \${PORT}" \
   --set-env-vars "${ENV_VARS}" \
   --quiet
 STATUS=$?

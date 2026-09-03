@@ -5,8 +5,9 @@ import data from "../public/loop.json";
 type Scene = { title: string; body: string };
 
 type Bundle = {
-  meta?: { pipeline?: string; exported_at?: string };
-  investigation?: { id?: string; state?: string; recalled_lessons?: string[] };
+  meta?: { pipeline?: string; exported_at?: string; loop_type?: string };
+  loop_chip?: string;
+  investigation?: { id?: string; state?: string; recalled_lessons?: string[]; loop_type?: string };
   signals?: Array<{ metric?: string; magnitude?: number; baseline?: number }>;
   evidence?: Array<{ independence_group?: string; trust_level?: string }>;
   hypotheses?: Array<{ statement?: string }>;
@@ -54,12 +55,17 @@ function buildScenes(payload: Bundle): Scene[] {
     highAction?.consequence ?? highAction?.tier_rationale ?? WAITING.approval;
 
   const outcome = payload.outcomes?.[0];
+  const metric = sig?.metric;
   const verifiedBody =
     outcome?.verdict && outcome.verdict.toUpperCase() !== "NOT_RESOLVED"
-      ? `${outcome.verdict}: ${outcome.metric ?? "metric"} ${Number(outcome.pre_value ?? 0).toPrecision(3)} → ${Number(outcome.post_value ?? 0).toPrecision(3)}.`
-      : WAITING.verified;
+      ? `${outcome.verdict}: ${outcome.metric ?? metric ?? "metric"} ${Number(outcome.pre_value ?? 0).toPrecision(3)} → ${Number(outcome.post_value ?? 0).toPrecision(3)}.`
+      : metric
+        ? `Verify stage is waiting — ${metric} outcome not measured yet.`
+        : WAITING.verified;
 
-  const lessonBody = payload.lessons?.[0]?.statement ?? WAITING.lesson;
+  const lessonBody =
+    payload.lessons?.[0]?.statement ??
+    (metric ? `Memory stage is waiting — lesson not captured yet for ${metric}.` : WAITING.lesson);
 
   return [
     { title: "Signal", body: signalBody },
@@ -73,12 +79,20 @@ function buildScenes(payload: Bundle): Scene[] {
 
 const SCENES = buildScenes(bundle);
 
+function loopChip(payload: Bundle): string {
+  if (payload.loop_chip) return payload.loop_chip;
+  const raw = String(payload.investigation?.loop_type || payload.meta?.loop_type || "type_a").toLowerCase();
+  if (raw.includes("type_b") || raw === "b" || raw === "feature") return "Type B · improve";
+  return "Type A · fix";
+}
+
 export const LoopDemo: React.FC = () => {
   const frame = useCurrentFrame();
   const scene = Math.min(SCENES.length - 1, Math.floor(frame / 60));
   const local = frame % 60;
   const opacity = interpolate(local, [0, 8, 50, 60], [0, 1, 1, 0], { extrapolateRight: "clamp" });
   const current = SCENES[scene];
+  const chip = loopChip(bundle);
 
   return (
     <AbsoluteFill
@@ -89,8 +103,24 @@ export const LoopDemo: React.FC = () => {
         padding: 72,
       }}
     >
-      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 14, letterSpacing: "0.2em", color: "#0071e3" }}>
-        LOOP · PRODUCT OS
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 14, letterSpacing: "0.2em", color: "#0071e3" }}>
+          LOOP · PRODUCT OS
+        </div>
+        <div
+          style={{
+            fontFamily: "ui-monospace, monospace",
+            fontSize: 12,
+            letterSpacing: "0.08em",
+            color: "#1d1d1f",
+            backgroundColor: "#e8f1fc",
+            border: "1px solid #0071e3",
+            borderRadius: 999,
+            padding: "4px 12px",
+          }}
+        >
+          {chip}
+        </div>
       </div>
       <div style={{ opacity, marginTop: 48 }}>
         <div style={{ fontSize: 18, color: "#6e6e73", textTransform: "uppercase", letterSpacing: "0.12em" }}>

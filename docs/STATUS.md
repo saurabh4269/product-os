@@ -29,9 +29,10 @@ Last updated: 2026-09-03 (IST)
 - Campus + multi-room chat UI. Mochi rail logo only. No Demo chrome (`LOOP_EVAL=0`).
 - Unauth `/rooms` stays on index with Connect CTA (PR #23). No ErrorState on 401.
 - Campus stampede poll removed (PR #24). Was 4s office+rooms poll → OOM on 2Gi → GFE 429.
-- Lean container boot (PR #25): apt no longer installs nodejs/npm/pip.
-- GCS-backed SQLite persistence. Rooms survive restarts unless stale snapshot restored.
-- Tenant wire: Connect, token-gated ingest, GitHub PR on HIGH approve. Cove PR #17 (`flags.json`) is the live ship path for the hang demo.
+- Lean container boot: no apt-get curl/git/node on start (Python `urlretrieve` fetches the tarball). `code_fix` extra skips; `github_pr` is the ship.
+- GCS-backed SQLite persistence. Ingest and HIGH approve flush sqlite immediately. `deploy-gcp.sh` POSTs `/api/internal/state/persist` when live `/api/config` is 200.
+- Tenant wire: Connect, token-gated ingest, GitHub PR on HIGH approve. Cove PR #17 (`flags.json`) is the live ship path for the hang demo. Same-metric ingest joins an open AWAITING_APPROVAL room (including after leftover HIGH is hidden).
+- `export-demo --room` targets hosted GET `/api/rooms/{id}` with admin bearer. Refuses to overwrite the generic Remotion fixture.
 - `./scripts/verify.sh` green on `main`.
 
 ## Demo hang (live)
@@ -42,10 +43,10 @@ Last updated: 2026-09-03 (IST)
 | Investigation | `inv_450569ba5e7e` |
 | Metric | `otp_verify_hang_0904` |
 | Path | Type A HIGH |
-| Voice | `payment_timeout` |
+| Voice | Live still `payment_timeout`; new OTP diagnostics classify `otp_verify_timeout` |
 | Cove PR | [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, `flags.json` only, never merge |
 | Blocked action | `act_4754e1ae24f5` — do not approve (duplicates #17) |
-| `code_fix` | Failed (no node in worker); `github_pr` is the ship path |
+| `code_fix` | Lean worker skips (no git/node); `github_pr` is the ship path |
 | State | Survived deploy (`room_f627763ea9` still live) |
 
 ## Branches / PRs
@@ -61,15 +62,14 @@ Recent merged: #23–#28 (through docs handoff). Live on `loop-00123-7rx` at `fc
 
 ## Blockers
 
-1. **Overnight keep-going paused** — owner deployed latest; autonomous overnight routine still off.
-2. **Remotion hang video** — off-repo only; `export-demo` cannot target hosted rooms.
-3. **Workspace OAuth** — Web client still created manually in Google Auth Platform; flow wired on Connect.
+1. **Overnight keep-going paused** — autonomous overnight routine still off.
+2. **Workspace OAuth** — Web client still created manually in Google Auth Platform; flow wired on Connect.
+3. **Hosted revision** — this branch is not live until persist + `package-host.sh` + `deploy-gcp.sh`. Do not redeploy for docs-only.
 
 ## Redeploy (when owner says go)
 
 ```bash
-# 1. Persist live sqlite if hang room is healthy (GET 200)
-# 2. Package and deploy
+# persist runs inside deploy-gcp.sh when live /api/config is 200
 unset NEXT_PUBLIC_API_URL LOOP_STATIC
 ./scripts/package-host.sh
 ./scripts/deploy-gcp.sh

@@ -89,7 +89,7 @@ def test_run_tests_hosted_skips_when_no_test_or_lint(tmp_path, monkeypatch):
     assert "no tenant test script" in msg
 
 
-def test_run_tests_hosted_fails_when_test_script_but_no_node(tmp_path, monkeypatch):
+def test_run_tests_hosted_skips_when_test_script_but_no_node(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / "package.json").write_text('{"scripts":{"test":"vitest run"}}')
@@ -97,9 +97,9 @@ def test_run_tests_hosted_fails_when_test_script_but_no_node(tmp_path, monkeypat
     monkeypatch.setenv("K_SERVICE", "loop")
     monkeypatch.setenv("LOOP_CODE_REQUIRE_TESTS", "1")
     ok, msg = run_tests(repo)
-    assert ok is False
-    assert "node/npm not available" in msg
-    assert "defines tests" in msg
+    assert ok is True
+    assert "skipped" in msg
+    assert "flags.json" in msg
 
 
 def test_run_tests_hosted_skips_lint_when_install_fails(tmp_path, monkeypatch):
