@@ -356,8 +356,24 @@ def _post_code_fix_terminal_receipt(
     from loop.room_ui import github_card_lifecycle, github_card_title, receipt_proof_status
 
     ship_pr = str(pr_url or "").strip() or None
-    if report.status == "failed" and ship_pr:
-        # Flag/github_pr ship already opened — auxiliary code_fix failure is not a GitHub fail card.
+    if ship_pr and report.status in {"failed", "skipped"}:
+        title = "Code fix failed" if report.status == "failed" else "Code fix skipped"
+        post_receipt(
+            engine,
+            room_id,
+            kind="code_fix",
+            title=title,
+            agent="code_agent",
+            status="failed" if report.status == "failed" else "done",
+            detail=report.detail,
+            open_url=None,
+            proof={
+                "kind": "code_fix",
+                "status": report.status,
+                "title": title,
+                "detail": report.detail,
+            },
+        )
         return
     terminal = github_card_lifecycle(pr_url=ship_pr or str(report.url or "") or None, connector_status=report.status)
     title = github_card_title(
@@ -367,12 +383,14 @@ def _post_code_fix_terminal_receipt(
     )
     if report.status == "skipped":
         title = "Code fix skipped"
-    proof_url = str(report.url or ship_pr or "")
+    proof_url = str(report.url or "")
+    if ship_pr and proof_url == ship_pr:
+        proof_url = ""
     proof = github_pr_proof(proof_url, tenant=None) if proof_url and "github.com" in proof_url else None
     if proof and isinstance(proof, dict):
         proof = {
             **proof,
-            "status": receipt_proof_status(kind="github", receipt_status=terminal, pr_url=ship_pr or proof_url),
+            "status": receipt_proof_status(kind="github", receipt_status=terminal, pr_url=proof_url or ship_pr),
             "state": proof.get("state") or "open",
         }
     post_receipt(
@@ -384,7 +402,7 @@ def _post_code_fix_terminal_receipt(
         status=receipt_proof_status(
             kind="github" if proof else "code_fix",
             receipt_status=terminal,
-            pr_url=ship_pr or (proof_url if proof else None),
+            pr_url=proof_url or ship_pr if proof else None,
         ),
         detail=report.detail,
         open_url=proof_url or None,
@@ -396,7 +414,7 @@ def _post_code_fix_terminal_receipt(
             "detail": report.detail,
             "state": "open" if proof_url else "",
         },
-        extra={"pr_url": ship_pr or proof_url} if (ship_pr or proof_url) else None,
+        extra={"pr_url": proof_url} if proof_url else None,
     )
 
 

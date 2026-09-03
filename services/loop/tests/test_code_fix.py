@@ -115,13 +115,13 @@ def _action_bundle(engine):
     return tenant, inv, action
 
 
-def test_code_fix_failure_skips_terminal_receipt_when_flag_pr_open(engine, monkeypatch):
+def test_code_fix_failure_posts_code_fix_not_github_when_flag_pr_open(engine, monkeypatch):
     monkeypatch.setattr(
         "loop.code_fix.run_code_fix",
         lambda **k: ConnectorReport(
             status="failed",
             connector="code_fix",
-            detail="tests failed",
+            detail="node/npm missing in worker",
         ),
     )
 
@@ -167,7 +167,12 @@ def test_code_fix_failure_skips_terminal_receipt_when_flag_pr_open(engine, monke
         flag_pr_opened=True,
     )
     run_code_fix_job(engine, job)
-    assert posted == []
+    assert len(posted) == 1
+    receipt = posted[0]
+    assert receipt["kind"] == "code_fix"
+    assert receipt.get("open_url") is None
+    assert receipt["proof"]["kind"] == "code_fix"
+    assert "github.com" not in str(receipt.get("open_url") or "")
 
 
 def test_execute_opens_flag_pr_when_code_fix_queued(engine, monkeypatch):
@@ -205,11 +210,28 @@ def test_code_fix_failure_preserves_flag_pr(engine, monkeypatch):
         lambda **k: ConnectorReport(
             status="failed",
             connector="code_fix",
-            detail="gemini: code-fix prompt blocked by Model Armor: screening_failure",
+            detail="node/npm missing in worker",
         ),
     )
 
     tenant, inv, action = _action_bundle(engine)
+    inv.room_id = "room_cf_preserve"
+    engine.store.put_investigation(inv)
+    from datetime import datetime
+
+    from loop.models import Room, RoomKind
+
+    engine.store.put_room(
+        Room(
+            id="room_cf_preserve",
+            title="Checkout",
+            topic="checkout",
+            kind=RoomKind.INCIDENT,
+            created_at=datetime.utcnow(),
+            investigation_id=inv.id,
+            members=["you", "code_agent"],
+        )
+    )
     action.artifacts["execution"] = {
         "pr_opened": True,
         "pr_url": "https://github.com/org/shop/pull/7",
@@ -233,6 +255,22 @@ def test_code_fix_failure_preserves_flag_pr(engine, monkeypatch):
     assert exe["pr_opened"] is True
     assert exe["pr_url"].endswith("/pull/7")
     assert "code_fix_failed" in exe
+    receipts = [
+        m.artifact
+        for m in engine.store.list_messages("room_cf_preserve")
+        if m.artifact_type == "receipt"
+    ]
+    github_failed = [
+        r
+        for r in receipts
+        if r.get("kind") == "github"
+        and r.get("status") == "failed"
+        and str(r.get("open_url") or "").endswith("/pull/7")
+    ]
+    assert github_failed == []
+    code_fix_receipts = [r for r in receipts if r.get("kind") == "code_fix"]
+    assert len(code_fix_receipts) == 1
+    assert code_fix_receipts[0]["proof"]["kind"] == "code_fix"
 
 
 def test_code_fix_failure_opens_flag_pr_fallback(engine, monkeypatch):

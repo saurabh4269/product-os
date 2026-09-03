@@ -163,7 +163,10 @@ def test_code_fix_failure_skips_github_failed_receipt_when_flag_pr_open(engine, 
         flag_pr_opened=True,
     )
     run_code_fix_job(engine, job)
-    assert posted == []
+    assert len(posted) == 1
+    assert posted[0]["kind"] == "code_fix"
+    assert posted[0].get("open_url") is None
+    assert posted[0]["proof"]["kind"] == "code_fix"
 
 
 def test_bundle_pending_actions_filtered(engine):

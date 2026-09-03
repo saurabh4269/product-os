@@ -240,6 +240,16 @@ export function proofFromArtifact(
   const nested = artifact.proof;
   if (nested && typeof nested === "object" && !Array.isArray(nested)) {
     const p = nested as ProofPayload;
+    if (p.kind === "code_fix") {
+      return {
+        ...p,
+        status: typeof artifact.status === "string" ? artifact.status : p.status,
+        title: (typeof artifact.title === "string" && artifact.title) || p.title || "Code fix",
+        detail: (typeof artifact.detail === "string" && artifact.detail) || p.detail,
+        url: p.url || null,
+        console_url: p.console_url || null,
+      };
+    }
     if (p.kind) {
       const status =
         p.kind === "github" && hasPr
@@ -268,9 +278,20 @@ export function proofFromArtifact(
   const type = (artifactType || "").toLowerCase();
   const url = prUrl;
 
+  if (type === "code_fix") {
+    const rawStatus = typeof artifact.status === "string" ? artifact.status : "failed";
+    return {
+      kind: "code_fix",
+      status: rawStatus,
+      title: (typeof artifact.title === "string" && artifact.title) || "Code fix",
+      detail: typeof artifact.detail === "string" ? artifact.detail : undefined,
+      url: typeof artifact.url === "string" && artifact.url.includes("github.com") ? artifact.url : null,
+      console_url: typeof artifact.url === "string" && artifact.url.includes("github.com") ? artifact.url : null,
+    };
+  }
+
   if (
     type === "pr" ||
-    type === "code_fix" ||
     type === "code" ||
     /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url)
   ) {
@@ -336,6 +357,17 @@ export function proofFromArtifact(
 
   if (type === "receipt" && typeof artifact.title === "string") {
     const kind = typeof artifact.kind === "string" && BRAND[artifact.kind] ? artifact.kind : "gateway";
+    if (artifact.kind === "code_fix") {
+      const rawStatus = typeof artifact.status === "string" ? artifact.status : "failed";
+      return {
+        kind: "code_fix",
+        status: rawStatus,
+        title: artifact.title,
+        detail: typeof artifact.detail === "string" ? artifact.detail : undefined,
+        url: null,
+        console_url: null,
+      };
+    }
     const rawStatus = typeof artifact.status === "string" ? artifact.status : "done";
     const status = kind === "github" && hasPr && rawStatus === "failed" ? "done" : rawStatus;
     return {
