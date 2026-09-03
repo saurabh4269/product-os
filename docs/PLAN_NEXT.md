@@ -1,15 +1,15 @@
 # PLAN NEXT — make Product OS a product Company X can run
 
-## Paused 2026-09-03 (owner 13:35 IST)
+## Active 2026-09-03 (owner unpaused)
 
-Overnight keep-going is paused. Do not merge Cove.
+Do not merge Cove.
 
-When unpaused, in order:
+Done / live:
 
-1. ~~**Persist GCS → package → deploy** #30~~ — live on `loop-00125-cdb` (~23:20 IST). Hang room survived. Persist POST is 200. First boot (`loop-00124-rc2`) died: one-arg `urlretrieve` → random tempfile; fix is PR #31.
-2. **Confirm hang demo UI in the browser** — API: `room_f627763ea9` ACTING, leftover HIGH hidden, Cove #17 still OPEN (never merge). Hard-refresh https://productos.heisenbug.in.
-3. **Workspace OAuth** — create Web client in Google Auth Platform; paste on Connect; test `/api/oauth/google/start`.
-4. **Remotion hang render** — `python3 -m loop.cli export-demo --room room_f627763ea9 -o apps/demo/out/hang.json`; copy to `public/loop.json` for render only; restore the generic fixture.
+1. ~~Persist GCS → package → deploy #30–#31~~ — `loop-00127-7dc`. Hang survived. Persist POST 200.
+2. ~~Confirm hang demo UI~~ — browser verified; GitHub PR DONE; leftover HIGH gate hidden (#32).
+3. ~~Workspace OAuth~~ — connected on Connect (`saurabhgupta0342@gmail.com`).
+4. **Remotion hang render** (optional local) — `apps/demo/out/hang.json` exported; copy to `public/loop.json` for render only; restore generic fixture.
 
 Never merge Cove PRs (#1–#4, #7) or LOOP leftovers (#11–#17). Do not approve `act_4754e1ae24f5`.
 
