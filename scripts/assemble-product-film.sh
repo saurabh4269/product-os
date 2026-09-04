@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Assemble Product OS film: title (Remotion) + live capture + end (Remotion).
+# Live capture: ./scripts/record-product-film.sh  (ffmpeg x11grab — no Cursor branding)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEMO="$ROOT/apps/demo"
