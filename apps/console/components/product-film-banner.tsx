@@ -26,13 +26,13 @@ export function ProductFilmBanner({ className = "" }: { className?: string }) {
         </div>
         <div className="flex flex-1 flex-col justify-center gap-3 p-5 sm:p-6">
           <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-[var(--faint)]">
-            Product film · ~6 min
+            Product film · ~3.5 min
           </p>
           <p className="text-[17px] font-semibold leading-snug tracking-tight text-foreground">
-            Watch the full loop — Connect, room, proofs, Cove.
+            Watch the full guided loop — Cove, room, proofs, GitHub.
           </p>
           <p className="text-[13px] leading-relaxed text-[var(--dim)]">
-            Campus → Connect → hang room with Gmail · Calendar · GitHub → human gate → Cove storefront.
+            End-to-end multi-app walkthrough with voiceover: Campus → Connect → Cove storefront → incident room → PR.
           </p>
           <Link href="/demo" className="text-[14px] font-medium text-accent hover:underline">
             Full film with controls →
