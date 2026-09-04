@@ -1,10 +1,10 @@
 # Product OS — Status
 
-Last updated: 2026-09-03 (IST)
+Last updated: 2026-09-04 (IST)
 
-## Active (2026-09-03 ~23:50 IST)
+## Active (2026-09-04 ~07:00 IST)
 
-Keep-going unpaused by owner. Do not merge Cove.
+Keep-going unpaused by owner. Do not merge Cove. Local ship via `./scripts/local-ship.sh`.
 
 ## Hosted
 
@@ -12,14 +12,14 @@ Keep-going unpaused by owner. Do not merge Cove.
 |---|---|
 | User URL | https://productos.heisenbug.in |
 | GCP | `mystical-timing-442601-q8` · `us-central1` · service `loop` |
-| Revision | `loop-00127-7dc` (100% traffic) |
-| SHA deployed | `996470e` (#31) + #32 console fixes deployed from branch |
+| Revision | `loop-00129-ghd` (100% traffic) |
+| SHA deployed | `8588d32` on main (#32) via Actions `deploy-gcp` |
 | Memory / scale | 4Gi · min 1 · max 2 |
-| `LOOP_EVAL` | `0` |
+| `LOOP_EVAL` | `0` (`eval_mode: false`) |
 | Health | `/` 200 · `/rooms` 200 · `/shop` 404 · persist POST 200 · OAuth connected |
-| Deploy finished | ~23:50 IST 2026-09-03 |
+| Deploy finished | ~07:15 IST 2026-09-04 (Actions run 33826458867) |
 
-**State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance.
+**State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance. Post-deploy persist confirmed 200 after this ship (pre-deploy `/api/config` curl timed out once — hang GET was still 200).
 
 **Demo tenant (Cove):** https://github.com/saurabh4269/cove · Cloud Run `cove`. Demo only — never merge Cove PRs from here.
 
@@ -47,13 +47,13 @@ Keep-going unpaused by owner. Do not merge Cove.
 | Cove PR | [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, `flags.json` only, never merge |
 | Blocked action | `act_4754e1ae24f5` — do not approve (duplicates #17) |
 | `code_fix` | Lean worker skips (no git/node); `github_pr` is the ship path |
-| State | Survived deploy to `loop-00127-7dc`. Browser verified: GitHub PR DONE; leftover HIGH gate hidden after pending_actions fix. |
+| State | Survived Actions deploy to `loop-00129-ghd`. ACTING · `pending_actions` empty · leftover `act_4754e1ae24f5` still in history (`awaiting_approval`) but not in pending UI. Do not approve. |
 
 ## Branches / PRs
 
-### product-os (`main` tip `996470e`)
+### product-os (`main` tip `8588d32`)
 
-Recent merged: #23–#31. Live on `loop-00127-7dc`. Open: [#32](https://github.com/saurabh4269/product-os/pull/32) (unauth room + pending_actions UI). GitHub Actions `deploy-gcp` needs `GCP_SA_KEY`.
+Recent merged: #23–#32. Live on Actions-shipped revision (see Hosted table). `GCP_SA_KEY` is set; Actions `deploy-gcp` green.
 
 ### Never merge
 
@@ -63,12 +63,13 @@ Recent merged: #23–#31. Live on `loop-00127-7dc`. Open: [#32](https://github.c
 ## Blockers
 
 1. **Overnight keep-going** — unpaused by owner 2026-09-03.
-2. **GitHub Actions deploy** — add repo secret `GCP_SA_KEY` or keep shipping via `package-host.sh` + `deploy-gcp.sh`.
+2. ~~**GitHub Actions deploy**~~ — `GCP_SA_KEY` set 2026-09-04 (SA `loop-cloud-agent`). Manual `workflow_dispatch` run succeeded: https://github.com/saurabh4269/product-os/actions/runs/33826458867. Auto-deploy on green `ci` → `main` should work now.
 
 ## Redeploy (when owner says go)
 
 ```bash
-# persist runs inside deploy-gcp.sh when live /api/config is 200
+./scripts/local-ship.sh
+# or:
 unset NEXT_PUBLIC_API_URL LOOP_STATIC
 ./scripts/package-host.sh
 ./scripts/deploy-gcp.sh

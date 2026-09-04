@@ -1,15 +1,16 @@
 # PLAN NEXT — make Product OS a product Company X can run
 
-## Active 2026-09-03 (owner unpaused)
+## Active 2026-09-04 (owner unpaused)
 
 Do not merge Cove.
 
 Done / live:
 
-1. ~~Persist GCS → package → deploy #30–#31~~ — `loop-00127-7dc`. Hang survived. Persist POST 200.
-2. ~~Confirm hang demo UI~~ — browser verified; GitHub PR DONE; leftover HIGH gate hidden (#32).
+1. ~~Persist GCS → package → deploy #30–#32~~ — `loop-00129-ghd` (`8588d32`) via Actions. Hang survived. Persist POST 200. Laptop fallback: `./scripts/local-ship.sh`.
+2. ~~Confirm hang demo UI~~ — GitHub PR DONE; leftover HIGH gate hidden (`pending_actions` empty; do not approve `act_4754e1ae24f5`).
 3. ~~Workspace OAuth~~ — connected on Connect (`saurabhgupta0342@gmail.com`).
 4. **Remotion hang render** (optional local) — `apps/demo/out/hang.json` exported; copy to `public/loop.json` for render only; restore generic fixture.
+5. ~~**Optional: GitHub secret `GCP_SA_KEY`**~~ — set 2026-09-04; Actions `deploy-gcp` green (run 33826458867).
 
 Never merge Cove PRs (#1–#4, #7) or LOOP leftovers (#11–#17). Do not approve `act_4754e1ae24f5`.
 

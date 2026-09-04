@@ -48,7 +48,11 @@ One-time setup: add repo secret **`GCP_SA_KEY`** (JSON for a service account wit
 `loop`). Use the same account as local deploy (`loop-cloud-agent@…` or your owner SA).
 Then push to `main`; watch **Actions → deploy-gcp**.
 
-Manual deploy anytime: **Actions → deploy-gcp → Run workflow**.
+Manual deploy anytime: **Actions → deploy-gcp → Run workflow**, or from a laptop:
+
+```bash
+./scripts/local-ship.sh
+```
 
 SQLite on Cloud Run is backed by `LOOP_STATE_GCS_URI` (full DB snapshot) and `LOOP_FLAGS_GCS_URI` (tenant flags). Cold start hydrates from GCS when the blob is newer than local disk. Without GCS URIs, cold start re-seeds fixtures.
 
