@@ -55,8 +55,8 @@ SEGMENTS = [
         "Here is the actual pull request live on GitHub in the Cove repo. You can see the exact diff: flipping the pay SDK flag back so shoppers aren't left hanging. Product OS never merges PRs automatically; human engineers remain in complete control."
     ),
     (
-        "11_approvals",
-        "In the Approvals console, we see our strict governance gates: policy enforcement, exfiltration guards, and Model Armor scans. Every proposed change requires explicit authorization."
+        "11_workflows",
+        "Over in Workflows, we can see the full automation pipeline visualized: the five-stage loop from Signal detection to Investigation, Diagnosis, Fix, and Outcome verification. Notice how each stage ties back to durable artifacts."
     ),
     (
         "12_outcomes_campus",

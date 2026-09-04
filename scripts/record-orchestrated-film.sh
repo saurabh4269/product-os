@@ -29,7 +29,15 @@ echo "=== Starting Playwright walkthrough runner ==="
 
 echo "=== Playwright runner finished. Waiting 3s then stopping ffmpeg ==="
 sleep 3
-kill -INT "$FFMPEG_PID" 2>/dev/null || kill -TERM "$FFMPEG_PID" 2>/dev/null || true
+kill -INT "$FFMPEG_PID" 2>/dev/null || true
+# Give ffmpeg 5s to flush frames and write the mp4 moov header cleanly
+for i in {1..10}; do
+  if ! kill -0 "$FFMPEG_PID" 2>/dev/null; then
+    break
+  fi
+  sleep 0.5
+done
+kill -TERM "$FFMPEG_PID" 2>/dev/null || true
 wait "$FFMPEG_PID" 2>/dev/null || true
 
 echo "=== Screen recording complete ==="

@@ -9,20 +9,51 @@ token_path = Path("/tmp/.loop_admin")
 if token_path.exists():
     ADMIN_TOKEN = token_path.read_text().strip()
 
-async def smooth_scroll(page, target_y, duration=2.5, steps=25):
-    """Smooth human-like scrolling."""
+async def smooth_scroll_window(page, target_y, duration=3.0, steps=30):
+    """Smooth window scrolling with continuous subtle mouse movements."""
     current_y = await page.evaluate("window.scrollY")
     distance = target_y - current_y
     for i in range(steps):
-        # Ease out quad
         t = (i + 1) / steps
         ease = t * (2 - t)
         y = current_y + distance * ease
         await page.evaluate(f"window.scrollTo({{ top: {y}, behavior: 'instant' }})")
+        await page.mouse.move(960 + (i % 6) * 5, 540 + (i % 4) * 4)
         await asyncio.sleep(duration / steps)
 
+async def smooth_scroll_chat(page, target_y, duration=3.5, steps=35):
+    """Smooth scroll within the incident room .chat-scroll container."""
+    current_y = await page.evaluate("""() => {
+        const el = document.querySelector('.chat-scroll');
+        return el ? el.scrollTop : window.scrollY;
+    }""")
+    distance = target_y - current_y
+    for i in range(steps):
+        t = (i + 1) / steps
+        ease = t * (2 - t)
+        y = current_y + distance * ease
+        await page.evaluate(f"""() => {{
+            const el = document.querySelector('.chat-scroll');
+            if (el) {{
+                el.scrollTop = {y};
+            }} else {{
+                window.scrollTo(0, {y});
+            }}
+        }}""")
+        await page.mouse.move(700 + (i % 5) * 6, 400 + (i % 4) * 5)
+        await asyncio.sleep(duration / steps)
+
+async def active_pause(page, seconds, center_x=960, center_y=540):
+    """Keep screen alive with natural human cursor drift while narrator speaks."""
+    steps = int(seconds * 5)
+    for i in range(steps):
+        dx = (i % 7 - 3) * 6
+        dy = (i % 5 - 2) * 5
+        await page.mouse.move(center_x + dx, center_y + dy)
+        await asyncio.sleep(0.2)
+
 async def run_walkthrough():
-    print("Launching Chromium on DISPLAY=:1 at 1920x1080...")
+    print("Launching Chromium single-page walkthrough on DISPLAY=:1...")
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=False,
@@ -40,165 +71,126 @@ async def run_walkthrough():
             device_scale_factor=1,
         )
 
-        # Tab 1: Product OS Campus
-        page_os = await context.new_page()
-        # Seed admin token before navigation
-        await page_os.add_init_script(f"""
+        page = await context.new_page()
+        # Seed admin token & sidebar state
+        await page.add_init_script(f"""
             sessionStorage.setItem('loop_admin_token', '{ADMIN_TOKEN}');
+            localStorage.setItem('loop_admin_token', '{ADMIN_TOKEN}');
+            localStorage.setItem('loop_admin_token_remember', '1');
             localStorage.setItem('loop-sidebar', '1');
+            sessionStorage.setItem('loop-welcome-dismissed', '1');
+            sessionStorage.setItem('loop-brief-dismissed', '1');
         """)
 
-        # Tab 2: Cove Storefront
-        page_cove = await context.new_page()
-
-        # Tab 3: GitHub PR #17 on Cove
-        page_gh = await context.new_page()
-
-        # Bring Tab 1 to front
-        await page_os.bring_to_front()
+        # ========================================================
+        # SEGMENT 01 (0s - 12s): INTRO ON CAMPUS
+        # ========================================================
+        print("[01] Intro on Campus...")
+        await page.goto("http://127.0.0.1:3000/", wait_until="load", timeout=15000)
+        await active_pause(page, 10.0, 960, 360)
 
         # ========================================================
-        # BEAT 1 & 2: CAMPUS & LIVE RECEIPTS (0s - 32s)
+        # SEGMENT 02 (12s - 32s): CAMPUS RECEIPT STRIP & HANDOFFS
         # ========================================================
-        print("[Beat 1-2] Navigating to Campus...")
-        await page_os.goto("http://127.0.0.1:3000/", wait_until="networkidle")
-        await asyncio.sleep(4)
-
-        # Hover campus elements gently
-        await page_os.mouse.move(960, 360, steps=20)
-        await asyncio.sleep(2)
-        await page_os.mouse.move(750, 420, steps=20)
-        await asyncio.sleep(2)
-
-        # Scroll down smoothly to Live Work & Tools in focus
-        print("Scrolling down to live work & receipts...")
-        await smooth_scroll(page_os, 580, duration=3.0)
-        await asyncio.sleep(4)
-
-        # Hover over agent handoff strip
-        await page_os.mouse.move(500, 480, steps=15)
-        await asyncio.sleep(2)
-        await page_os.mouse.move(1200, 480, steps=20)
-        await asyncio.sleep(3)
-
-        # Scroll slightly further to reveal proof cards
-        await smooth_scroll(page_os, 880, duration=2.5)
-        await asyncio.sleep(4)
+        print("[02] Campus Live Receipts & Handoffs...")
+        await smooth_scroll_window(page, 580, duration=3.5)
+        await active_pause(page, 6.0, 600, 480)
+        await smooth_scroll_window(page, 880, duration=3.0)
+        await active_pause(page, 6.0, 1100, 520)
 
         # ========================================================
-        # BEAT 3: CONNECT DESK (32s - 54s)
+        # SEGMENT 03 (32s - 50s): CONNECT DESK (TENANT & OAUTH)
         # ========================================================
-        print("[Beat 3] Navigating to /connect...")
-        await page_os.goto("http://127.0.0.1:3000/connect", wait_until="networkidle")
-        await asyncio.sleep(3)
-
-        # Showcase Cove integration and OAuth
-        await page_os.mouse.move(960, 420, steps=20)
-        await asyncio.sleep(3)
-        await smooth_scroll(page_os, 450, duration=2.5)
-        await asyncio.sleep(3)
-        await smooth_scroll(page_os, 850, duration=2.5)
-        await asyncio.sleep(4)
+        print("[03] Connect Desk...")
+        await page.goto("http://127.0.0.1:3000/connect", wait_until="load", timeout=15000)
+        await active_pause(page, 5.0, 960, 420)
+        await smooth_scroll_window(page, 450, duration=3.0)
+        await active_pause(page, 4.0, 700, 500)
+        await smooth_scroll_window(page, 850, duration=3.0)
+        await active_pause(page, 4.0, 700, 600)
 
         # ========================================================
-        # BEAT 4: COVE TENANT STOREFRONT (54s - 78s)
+        # SEGMENT 04 (50s - 66s): COVE TENANT STOREFRONT
         # ========================================================
-        print("[Beat 4] Switching to Cove Storefront Tab...")
-        await page_cove.bring_to_front()
-        await page_cove.goto("https://cove-5uy6fkd7bq-uc.a.run.app/", wait_until="networkidle")
-        await asyncio.sleep(4)
-
-        # Browse products
-        await smooth_scroll(page_cove, 450, duration=2.5)
-        await asyncio.sleep(3)
-        await page_cove.mouse.move(600, 500, steps=20)
-        await asyncio.sleep(2)
-        await smooth_scroll(page_cove, 900, duration=2.5)
-        await asyncio.sleep(4)
-        await smooth_scroll(page_cove, 0, duration=2.0)
-        await asyncio.sleep(2)
+        print("[04] Cove Storefront...")
+        await page.goto("https://cove-5uy6fkd7bq-uc.a.run.app/", wait_until="load", timeout=15000)
+        await active_pause(page, 3.5, 960, 350)
+        await smooth_scroll_window(page, 450, duration=2.5)
+        await active_pause(page, 3.5, 600, 500)
+        await smooth_scroll_window(page, 850, duration=2.5)
+        await active_pause(page, 3.0, 800, 500)
+        await smooth_scroll_window(page, 0, duration=2.0)
 
         # ========================================================
-        # BEAT 5 & 6: INCIDENT ROOM & SPECIALISTS (78s - 120s)
+        # SEGMENT 05 (66s - 80s): INCIDENT ROOM ENTRY
         # ========================================================
-        print("[Beat 5-6] Switching back to Product OS -> Hang Room...")
-        await page_os.bring_to_front()
-        await page_os.goto("http://127.0.0.1:3000/rooms/room_f627763ea9", wait_until="networkidle")
-        await asyncio.sleep(4)
-
-        # Look at the room header & tags
-        await page_os.mouse.move(400, 150, steps=15)
-        await asyncio.sleep(3)
-
-        # Scroll down through initial signal & specialist handoffs
-        print("Scrolling through room messages...")
-        await smooth_scroll(page_os, 400, duration=3.0)
-        await asyncio.sleep(4)
-        await smooth_scroll(page_os, 850, duration=3.0)
-        await asyncio.sleep(4)
+        print("[05] Incident Room Entry...")
+        await page.goto("http://127.0.0.1:3000/rooms/room_f627763ea9", wait_until="load", timeout=15000)
+        await active_pause(page, 12.0, 400, 200)
 
         # ========================================================
-        # BEAT 7 & 8: CUSTOMER VOICE & PROOFS (120s - 158s)
+        # SEGMENT 06 (80s - 98s): PARALLEL SPECIALIST HANDOFFS
         # ========================================================
-        print("[Beat 7-8] Customer Voice & Evidence Proofs...")
-        await smooth_scroll(page_os, 1400, duration=3.0)
-        await asyncio.sleep(5)
-
-        # Hover on structured customer voice evidence
-        await page_os.mouse.move(680, 520, steps=15)
-        await asyncio.sleep(3)
-
-        # Scroll down to proof embed cards & coordination messages
-        await smooth_scroll(page_os, 2100, duration=3.0)
-        await asyncio.sleep(4)
-        await page_os.mouse.move(800, 600, steps=15)
-        await asyncio.sleep(3)
-
-        # Scroll to pending action / risk assessment
-        await smooth_scroll(page_os, 2800, duration=3.0)
-        await asyncio.sleep(4)
+        print("[06] Specialist Handoffs...")
+        await smooth_scroll_chat(page, 450, duration=3.0)
+        await active_pause(page, 5.0, 500, 350)
+        await smooth_scroll_chat(page, 950, duration=3.0)
+        await active_pause(page, 6.0, 500, 450)
 
         # ========================================================
-        # BEAT 9 & 10: GITHUB PR #17 TAB (158s - 176s)
+        # SEGMENT 07 (98s - 118s): CUSTOMER VOICE DIAGNOSTIC JSON
         # ========================================================
-        print("[Beat 9-10] Switching to GitHub PR #17 Tab...")
-        await page_gh.bring_to_front()
-        await page_gh.goto("https://github.com/saurabh4269/cove/pull/17", wait_until="networkidle")
-        await asyncio.sleep(3)
-
-        # Show PR description and title
-        await smooth_scroll(page_gh, 350, duration=2.5)
-        await asyncio.sleep(3)
-
-        # Show changed files tab if available or scroll down diff
-        await page_gh.goto("https://github.com/saurabh4269/cove/pull/17/files", wait_until="networkidle")
-        await asyncio.sleep(3)
-        await smooth_scroll(page_gh, 400, duration=2.5)
-        await asyncio.sleep(4)
+        print("[07] Customer Voice Diagnostic Evidence...")
+        await smooth_scroll_chat(page, 1550, duration=3.0)
+        await active_pause(page, 14.0, 680, 520)
 
         # ========================================================
-        # BEAT 11: APPROVALS & GOVERNANCE (176s - 192s)
+        # SEGMENT 08 (118s - 134s): PROOF CARDS & COORDINATION
         # ========================================================
-        print("[Beat 11] Navigating to Approvals page...")
-        await page_os.bring_to_front()
-        await page_os.goto("http://127.0.0.1:3000/approvals", wait_until="networkidle")
-        await asyncio.sleep(3)
-
-        await page_os.mouse.move(700, 350, steps=15)
-        await asyncio.sleep(3)
-        await smooth_scroll(page_os, 400, duration=2.0)
-        await asyncio.sleep(3)
+        print("[08] Proof Embed Cards & Coordination...")
+        await smooth_scroll_chat(page, 2200, duration=3.0)
+        await active_pause(page, 12.0, 800, 550)
 
         # ========================================================
-        # BEAT 12: RETURN TO CAMPUS (192s - 208s)
+        # SEGMENT 09 (134s - 151s): HIGH RISK & PR PREPARATION
         # ========================================================
-        print("[Beat 12] Returning to Campus Hero...")
-        await page_os.goto("http://127.0.0.1:3000/", wait_until="networkidle")
-        await asyncio.sleep(3)
-        await page_os.mouse.move(960, 400, steps=20)
-        await asyncio.sleep(5)
+        print("[09] High Risk & PR Preparation...")
+        await smooth_scroll_chat(page, 2850, duration=3.0)
+        await active_pause(page, 13.0, 700, 600)
 
-        print("Walkthrough completed successfully!")
+        # ========================================================
+        # SEGMENT 10 (151s - 169s): GITHUB PR #17 DIFF
+        # ========================================================
+        print("[10] GitHub PR #17 Diff...")
+        await page.goto("https://github.com/saurabh4269/cove/pull/17", wait_until="load", timeout=15000)
+        await active_pause(page, 4.0, 500, 300)
+        await smooth_scroll_window(page, 350, duration=2.5)
+        await active_pause(page, 3.0, 600, 400)
+        try:
+            await page.goto("https://github.com/saurabh4269/cove/pull/17/files", wait_until="load", timeout=15000)
+            await active_pause(page, 3.0, 500, 300)
+            await smooth_scroll_window(page, 350, duration=2.5)
+            await active_pause(page, 3.0, 600, 450)
+        except Exception:
+            await active_pause(page, 6.0, 600, 400)
+
+        # ========================================================
+        # SEGMENT 11 (169s - 185s): WORKFLOWS ORCHESTRATION PIPELINE
+        # ========================================================
+        print("[11] Workflows Orchestration Pipeline...")
+        await page.goto("http://127.0.0.1:3000/workflows", wait_until="load", timeout=15000)
+        await active_pause(page, 5.0, 700, 350)
+        await smooth_scroll_window(page, 450, duration=2.5)
+        await active_pause(page, 7.0, 600, 500)
+
+        # ========================================================
+        # SEGMENT 12 (185s - 206s): RETURN TO CAMPUS HERO & CLOSE
+        # ========================================================
+        print("[12] Return to Campus Hero...")
+        await page.goto("http://127.0.0.1:3000/", wait_until="load", timeout=15000)
+        await active_pause(page, 17.0, 960, 400)
+
+        print("Single-page walkthrough perfectly timed and completed!")
         await browser.close()
 
 if __name__ == "__main__":
