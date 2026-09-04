@@ -8,6 +8,7 @@ node_modules/
 out/
 var/
 *.mp4
+!apps/console/public/demo/product-os-demo.mp4
 .terraform/
 *.tfstate
 *.tfstate.*

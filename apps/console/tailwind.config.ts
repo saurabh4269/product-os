@@ -67,6 +67,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
         display: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+        serif: ['Georgia', '"Times New Roman"', "serif"],
         mono: ["var(--font-mono)", "IBM Plex Mono", "monospace"],
       },
       borderRadius: {
