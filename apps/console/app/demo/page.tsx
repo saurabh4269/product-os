@@ -20,8 +20,8 @@ export default function DemoPage() {
             One loop, end to end.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[var(--dim)]">
-            Real hosted UI — campus, a live incident room, diagnosis, human gate, and a tenant flags PR.
-            Cove is the demo tenant only; Product OS never merges tenant PRs.
+            Real Product OS loop — campus, Connect, Cove hang room with Gmail · Calendar · GitHub proofs,
+            human gate, and tenant storefront. No time limit; Product OS never merges tenant PRs.
           </p>
         </header>
 

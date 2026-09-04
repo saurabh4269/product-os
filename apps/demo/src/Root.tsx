@@ -4,8 +4,8 @@ import { LoopDemo } from "./LoopDemo";
 import { FilmEnd, FilmTitle } from "./FilmCards";
 
 const FPS = 30;
-const TITLE_FRAMES = 90;
-const END_FRAMES = 90;
+const TITLE_FRAMES = 150;
+const END_FRAMES = 150;
 
 export const RemotionRoot: React.FC = () => {
   return (
