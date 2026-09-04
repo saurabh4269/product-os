@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "remotion studio",
     "build": "remotion bundle",
-    "render": "remotion render src/index.ts LoopDemo out/loop-demo.mp4"
+    "render": "remotion render src/index.ts LoopDemo out/loop-demo.mp4",
+    "render:title": "remotion render src/index.ts FilmTitle out/title.mp4",
+    "render:end": "remotion render src/index.ts FilmEnd out/end.mp4",
+    "demo:cards": "npm run render:title && npm run render:end"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.284",

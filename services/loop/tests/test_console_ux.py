@@ -134,6 +134,17 @@ def test_try_config_helper_retries_and_defaults():
     assert "DEFAULT_PUBLIC_CONFIG" in api_src
 
 
+def test_demo_page_and_film_banner_exist():
+    demo = (CONSOLE / "app" / "demo" / "page.tsx").read_text()
+    banner = (CONSOLE / "components" / "product-film-banner.tsx").read_text()
+    home = (CONSOLE / "app" / "page.tsx").read_text()
+    assert "/demo/product-os-demo.mp4" in demo
+    assert "playsInline" in demo
+    assert "Connect Product Y" in demo
+    assert "ProductFilmBanner" in home
+    assert "muted" in banner and "autoPlay" in banner
+
+
 def test_package_host_duplicates_rooms_index():
     script = (ROOT / "scripts" / "package-host.sh").read_text()
     assert "rooms/index.html" in script

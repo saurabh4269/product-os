@@ -16,6 +16,7 @@ import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { SevenStepLoop } from "@/components/seven-step-loop";
 import { ApprovalModal } from "@/components/approval-modal";
 import { ConnectAdminCta } from "@/components/connect-admin-cta";
+import { ProductFilmBanner } from "@/components/product-film-banner";
 
 export default function HomePage() {
   const { tick, connection } = useGlobalWs();
@@ -146,6 +147,7 @@ export default function HomePage() {
         </div>
 
         <HomeLiveReceipts className="border-t border-border pt-8" />
+        <ProductFilmBanner className="border-t border-border pt-8" />
       </section>
     </>
   );
