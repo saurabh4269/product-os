@@ -369,7 +369,7 @@ If hosted HTML is the campus but XHR 404s, you shipped a new revision that is st
 **Why:** Campus polled office + rooms on every WS tick (and faster when tab visible). `/api/office` called `list_all_messages` + `list_all_agent_calls` per poll. `/api/rooms` list did N SQL round-trips per room. GFE 429 is **not** an in-app rate limiter — it is often OOM/backpressure.
 
 **Fix (PR #35 — stay on 2Gi forever, no 4Gi):**
-- `deploy-gcp.sh`: `--memory 2Gi` + `--concurrency 16` (explicit; never 80).
+- `deploy-gcp.sh`: `--memory 2Gi` + `--concurrency 8` (explicit; never 80). Production profile: `LOOP_INLINE_WORKER=0`, `LOOP_AUTO_INVESTIGATE=0`.
 - Batch `room_message_summaries()` for GET `/api/rooms` list; no per-room `list_messages`.
 - Office snapshot: SQL caps (`recent_agent_calls`, `message_stats_by_author`) — no full-table loads.
 - Console: 30s/60s debounced refetch; **pause polls when `document.hidden`**.
