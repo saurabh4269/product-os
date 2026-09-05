@@ -23,6 +23,7 @@ cd "$ROOT/apps/console"
 if [[ ! -d node_modules ]]; then npm install; fi
 npm run lint
 npm run typecheck
+npm run test:unit
 npm run build
 
 echo "== remotion =="
