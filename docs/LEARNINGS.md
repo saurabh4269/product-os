@@ -456,3 +456,21 @@ Do not re-add aggressive campus polling or raise memory to 4Gi without owner sig
 | Action | `act_4d9bccc41f92` approved |
 | Cove PR | [#18](https://github.com/saurabh4269/cove/pull/18) — OPEN, never merge (`flags.json` only) |
 | Live revision | `loop-00141-j22` · SHA `3faa7ba` (#35) |
+
+### GEAP Runtime opt-in (2026-09-05)
+
+**Pattern:** Managed Agent Runtime for orchestration turns; LoopEngine on `loop` Cloud Run for persistence, UI, HITL, and GitHub PR connectors.
+
+**Env:** `LOOP_GEAP_ENABLED=1`, `LOOP_GEAP_AGENT_ENGINE_ID=projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872`, `LOOP_GEAP_STAGING_BUCKET=gs://mystical-timing-442601-q8-loop-host/agent_engine/`.
+
+**Deploy:** `./scripts/deploy-gcp.sh` wires GEAP by default. `./scripts/deploy-geap-agent.sh` for engine create/redeploy (requirements include `cloudpickle` + `pydantic`).
+
+**Fallback:** When GEAP SDK or engine id missing, `dispatch_signal` falls through to ADK worker → inline ADK → deterministic graph — hosted demo never breaks.
+
+**Status:** `GET /api/geap/status`, `GET /api/adk/status` (includes `geap` block).
+
+**Memory Bank:** `geap_memory.py` hooks `engine.recall_lessons`; SQLite/Firestore remain fallback.
+
+**Entitlements still plan-only:** Agent Gateway enforcement, SGP, outbound PSTN — document in status API, do not block Runtime ship.
+
+---

@@ -60,6 +60,14 @@ Production profile (when `LOOP_ADMIN_TOKEN` is set on deploy): `LOOP_EVAL=0`, `L
 
 **Cloud Run defaults (`deploy-gcp.sh`):** `--memory 2Gi`, `--concurrency 8`, `--min-instances 0`, `--max-instances 3`. Never patch env with `gcloud run deploy --env-vars-file` and a single key — it wipes the map. Use `--update-env-vars` for one-key fixes.
 
+**GEAP Agent Runtime (live):** `deploy-gcp.sh` sets `LOOP_GEAP_ENABLED=1` and the live Reasoning Engine by default. Opt out with `LOOP_GEAP_ENABLE=0`. Smoke after deploy: `POST /api/geap/smoke` (Bearer `LOOP_ADMIN_TOKEN`) or `python -m loop.geap_deploy --smoke`.
+
+| Var | Live value |
+|---|---|
+| `LOOP_GEAP_AGENT_ENGINE_ID` | `projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872` |
+| `LOOP_GEAP_STAGING_BUCKET` | `gs://mystical-timing-442601-q8-loop-host/agent_engine/` |
+| `LOOP_GEAP_DISPLAY_NAME` | `loop-incident-orchestrator` |
+
 **Cove (demo tenant):** separate Cloud Run service — scale to zero when not demoing; no keep-warm from Product OS.
 
 ## Cloud Run (image build — optional, needs extra IAM)

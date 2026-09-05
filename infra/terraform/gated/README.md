@@ -27,6 +27,10 @@ terraform apply gated.tfplan
 # 3. Deploy reasoning engines WITH identity + gateway at creation (A-1, immutable)
 # gcloud ai reasoning-engines create ... --identity-type=AGENT_IDENTITY \
 #   --agent-gateway-config=...
+#
+# LOOP hackathon path (Runtime only — no Gateway apply required):
+#   ./scripts/deploy-geap-agent.sh
+#   gcloud run services update loop --update-env-vars LOOP_GEAP_ENABLED=1,LOOP_GEAP_AGENT_ENGINE_ID=<id>
 ```
 
 Do **not** grant `roles/modelarmor.admin` to the gateway SA (lacks `callouts.invoke`). Use `roles/modelarmor.calloutUser`.

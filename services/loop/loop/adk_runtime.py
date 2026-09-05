@@ -168,7 +168,15 @@ def dispatch_signal(
     fork: str | None = None,
     probe_exfil: bool = False,
 ) -> dict[str, Any]:
-    """Worker URL → inline ADK → deterministic graph."""
+    """GEAP Runtime → ADK worker URL → inline ADK → deterministic graph."""
+    try:
+        from loop.geap_runtime import dispatch_geap_signal
+
+        geap = dispatch_geap_signal(engine, room_id, signal, fork=fork, probe_exfil=probe_exfil)
+        if geap is not None and "error" not in geap:
+            return geap
+    except Exception:
+        pass
     forwarded = forward_post(
         "/internal/adk/signal",
         {"room_id": room_id, "signal": signal, "fork": fork, "probe_exfil": probe_exfil},

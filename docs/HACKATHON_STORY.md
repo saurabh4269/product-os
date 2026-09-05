@@ -127,7 +127,31 @@ Optional Cloud Run `loop` env: `TWILIO_*`, `GOOGLE_API_KEY`, `LOOP_GTP_PHONE_NUM
 
 Hosted Cloud Run still runs the **deterministic engine** (cold start without Gemini). Workflows are catalogued at `GET /api/workflows`. Workflow-as-Tool (≥2.4) needs an explicit Pydantic `input_schema` on the node — we do not hang raw Workflows on `LlmAgent.tools` until those schemas exist (App build stays green).
 
-## Google Enterprise / Workspace (codelab pattern)
+## GEAP hackathon path (2026-09-05)
+
+Product OS now ships **real wiring** to Gemini Enterprise Agent Platform — not just docs:
+
+| Layer | Live today | GEAP when enabled |
+|---|---|---|
+| Agent fabric | `loop-adk` Cloud Run or deterministic LoopEngine | Managed Reasoning Engine via `geap_runtime.py` |
+| Orchestrator | Optional Gemini note + `run_live_graph` | `async_stream_query` on deployed AdkApp |
+| Memory | SQLite + Firestore mirror | `VertexAiMemoryBankService` (`agentengine://ID`) |
+| Governance | Local `gateway.py` + Model Armor plugins | Agent Identity on engine create; Gateway TF plan-only |
+| Product surface | `loop` Cloud Run — rooms, HITL, GitHub PR | Unchanged — UI + gates stay on control plane |
+
+Deploy managed runtime:
+
+```bash
+./scripts/deploy-geap-agent.sh   # create/redeploy engine (cloudpickle + pydantic in requirements)
+./scripts/deploy-gcp.sh          # wires LOOP_GEAP_* by default (LOOP_GEAP_ENABLE=0 to opt out)
+python -m loop.geap_deploy --smoke
+```
+
+Live engine: `loop-incident-orchestrator` · `projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872`
+
+Judges: `GET /api/geap/status` · `POST /api/geap/smoke`
+
+---
 
 No service account for Gmail/Calendar. One browser consent with `access_type=offline`, store refresh token, refresh in memory.
 
