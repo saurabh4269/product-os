@@ -34,6 +34,7 @@ def _no_background_job_dispatch(monkeypatch):
     monkeypatch.setenv("LOOP_VERIFY_DEFER", "0")
     monkeypatch.setenv("LOOP_INGEST_ASYNC", "0")
     monkeypatch.setenv("LOOP_EVAL", "1")
+    monkeypatch.setenv("LOOP_SIGNAL_WATCH", "0")
     from loop.signal_watch import reset_watch_state
 
     reset_watch_state(None)

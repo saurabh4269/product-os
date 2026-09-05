@@ -110,8 +110,13 @@ def _generic_gemini_fallback() -> str:
     )
 
 
+def _gemini_gather_timeout() -> float:
+    return float(os.environ.get("LOOP_LEXI_GEMINI_TIMEOUT") or "4")
+
+
 def _gemini_reply(system: str, user: str, history: list[dict[str, str]], *, brief: dict[str, Any] | None = None) -> str | None:
     """Short spoken reply via Gemini. Returns None when Gemini is unavailable or fails."""
+    from loop.outreach import LEXI_SPOKEN_SAFETY_RULES
     from loop.vertex_gemini import gemini_configured, generate_content
 
     if not gemini_configured():
@@ -128,11 +133,14 @@ def _gemini_reply(system: str, user: str, history: list[dict[str, str]], *, brie
     blob += (
         f"\nCustomer just said: {user}\n"
         "Reply as Lexi in under 40 spoken words. No markdown. "
+        "Never ask for passwords, OTP codes, credit cards, SSN, or credentials. "
+        "Never mention ML servers, Vertex, Gemini, API errors, or infrastructure. "
+        f"{LEXI_SPOKEN_SAFETY_RULES} "
         "Never invent a specific failure mode that is not in the brief context. "
         "If evidence is thin, ask an open diagnostic question."
     )
     try:
-        text = generate_content(blob, timeout=25.0).strip()
+        text = generate_content(blob, timeout=_gemini_gather_timeout()).strip()
         return text or None
     except Exception:
         return None
@@ -164,26 +172,86 @@ def fix_notify_opening(product: str = "your product", fix_summary: str = "") -> 
     )
 
 
+def _safe_spoken_line(text: str, *, fallback: str | None = None) -> str:
+    from loop.outreach import prepare_spoken_line
+
+    cleaned = prepare_spoken_line(text)
+    if cleaned:
+        return cleaned
+    return fallback or _generic_gemini_fallback()
+
+
 def _brief_opening(brief: dict[str, Any] | None, reason: str, product: str) -> str:
     b = brief or {}
     opening = b.get("opening") or ((b.get("call_plan") or {}).get("opening"))
     if opening:
-        return str(opening)
+        cleaned = _safe_spoken_line(str(opening), fallback="")
+        if cleaned:
+            return cleaned
     if b.get("purpose") == "fix_notify":
-        return fix_notify_opening(product, str(b.get("fix_summary") or ""))
-    return opening_line(reason, product or "your product")
+        return _safe_spoken_line(fix_notify_opening(product, str(b.get("fix_summary") or "")))
+    return _safe_spoken_line(opening_line(reason, product or "your product"))
 
 
 def _brief_listen_prompt(brief: dict[str, Any] | None) -> str:
     b = brief or {}
     listen = b.get("listen_prompt") or ((b.get("call_plan") or {}).get("listen_prompt"))
-    return str(listen) if listen else LISTEN_PROMPT
+    if listen:
+        return _safe_spoken_line(str(listen), fallback=LISTEN_PROMPT)
+    return LISTEN_PROMPT
 
 
 def _brief_questions(brief: dict[str, Any] | None) -> list[str]:
     b = brief or {}
     qs = b.get("questions") or ((b.get("call_plan") or {}).get("questions")) or []
-    return [str(q) for q in qs if q]
+    out: list[str] = []
+    for q in qs:
+        cleaned = _safe_spoken_line(str(q), fallback="")
+        if cleaned:
+            out.append(cleaned)
+    return out
+
+
+def _gather_reply(
+    *,
+    turns: int,
+    scripted: list[str],
+    system: str,
+    speech: str,
+    history: list[dict[str, str]],
+    brief: dict[str, Any],
+) -> str:
+    """Scripted plan first (fast), then short-timeout Gemini, always rails-safe."""
+    idx = turns - 1
+    if idx < len(scripted):
+        reply = _safe_spoken_line(scripted[idx])
+        if reply:
+            return reply
+    reply = _gemini_reply(
+        system=system,
+        user=speech or "(silence)",
+        history=history,
+        brief=brief if isinstance(brief, dict) else None,
+    )
+    if reply:
+        safe = _safe_spoken_line(reply, fallback="")
+        if safe:
+            return safe
+    return _generic_gemini_fallback()
+
+
+def _twiml_gather_loop(reply: str, listen: str, action: str) -> str:
+    voice = TWILIO_VOICE
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="{voice}">{xml.escape(reply)}</Say>
+  <Gather input="speech" speechTimeout="auto" timeout="{GATHER_TIMEOUT}" action="{xml.escape(action)}" method="POST">
+    <Say voice="{voice}">{xml.escape(listen)}</Say>
+  </Gather>
+  <Say voice="{voice}">Thanks again for your time. Goodbye.</Say>
+  <Hangup/>
+</Response>
+"""
 
 
 def place_call(
@@ -316,6 +384,18 @@ def twiml_open(room: str, reason: str, product: str, brief: dict[str, Any] | Non
 
 
 def twiml_gather(call_sid: str, speech: str, room: str) -> str:
+    """Always return valid TwiML quickly — never dead air on Gemini/infra failures."""
+    try:
+        return _twiml_gather_inner(call_sid, speech, room)
+    except Exception:
+        voice = TWILIO_VOICE
+        fallback = xml.escape(_generic_gemini_fallback())
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response><Say voice="{voice}">{fallback}</Say><Hangup/></Response>
+"""
+
+
+def _twiml_gather_inner(call_sid: str, speech: str, room: str) -> str:
     from loop.abandon_research import call_system_prompt
 
     sess = get_session(call_sid) or {
@@ -348,40 +428,24 @@ def twiml_gather(call_sid: str, speech: str, room: str) -> str:
 
     scripted = list(sess.get("scripted_questions") or [])
     brief = sess.get("brief") or {}
+    if not isinstance(brief, dict):
+        brief = {}
     system = sess.get("system_prompt") or call_system_prompt(brief)
-    reply = _gemini_reply(
+    reply = _gather_reply(
+        turns=turns,
+        scripted=scripted,
         system=system,
-        user=speech or "(silence)",
+        speech=speech,
         history=list(sess.get("transcript") or []),
-        brief=brief if isinstance(brief, dict) else None,
+        brief=brief,
     )
-    if not reply:
-        idx = turns - 1
-        if idx < len(scripted):
-            reply = scripted[idx]
-        else:
-            reply = _generic_gemini_fallback()
     sess.setdefault("transcript", []).append({"role": "agent", "message": reply})
     put_session(call_sid, sess)
 
     base = _public_base()
     action = f"{base}/api/twilio/gather?{urlencode({'room': room or sess.get('room_id') or ''})}"
-    voice = TWILIO_VOICE
-    listen = xml.escape(
-        _brief_listen_prompt(brief if isinstance(brief, dict) else None)
-        if turns < 3
-        else "Anything else before I let you go?"
-    )
-    return f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="{voice}">{xml.escape(reply)}</Say>
-  <Gather input="speech" speechTimeout="auto" timeout="{GATHER_TIMEOUT}" action="{xml.escape(action)}" method="POST">
-    <Say voice="{voice}">{listen}</Say>
-  </Gather>
-  <Say voice="{voice}">Thanks again for your time. Goodbye.</Say>
-  <Hangup/>
-</Response>
-"""
+    listen = _brief_listen_prompt(brief) if turns < 3 else "Anything else before I let you go?"
+    return _twiml_gather_loop(reply, listen, action)
 
 
 def _metric_for_session(sess: dict[str, Any]) -> str:
