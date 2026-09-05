@@ -2465,6 +2465,13 @@ def decide(
             reused=True,
         )
     if body.decision == "approve":
+        from .room_ui import suppress_pending_action
+
+        if suppress_pending_action(eng.store, action):
+            raise HTTPException(
+                409,
+                "duplicate HIGH approval suppressed — tenant PR already open for this investigation",
+            )
         outcome = eng.resume_after_approval(action_id, body.approver, body.rationale)
         fresh = eng.store.get_action(action_id)
         execution = ((fresh.artifacts or {}).get("execution") if fresh else None) or {}

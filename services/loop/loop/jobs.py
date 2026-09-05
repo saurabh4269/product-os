@@ -124,8 +124,56 @@ def enqueue_verify(store: Any, investigation_id: str, *, delay_hours: int = 24) 
     )
 
 
+def sweep_dead_jobs(store: Any) -> list[str]:
+    """Clear zombie dead jobs and queue verify when flags PR already shipped."""
+    swept: list[str] = []
+    for job in store.list_jobs(status="dead", limit=200):
+        inv_id = str(job.payload.get("investigation_id") or "")
+        if job.kind == "code_fix" and (
+            job.payload.get("flag_pr_opened") or job.result.get("flag_pr_opened")
+        ):
+            job.status = "succeeded"
+            job.result = {
+                **(job.result or {}),
+                "status": "skipped",
+                "detail": "flags.json PR path — code_fix not required on lean worker",
+            }
+            job.error = ""
+            job.updated_at = _iso()
+            store.put_job(job)
+            swept.append(job.id)
+            if inv_id and not _investigation_has_verify_job(store, inv_id):
+                enqueue_verify(store, inv_id, delay_hours=0)
+            continue
+        if job.kind == "verify" and inv_id:
+            # One retry for verify jobs that died before posting room outcome.
+            job.status = "queued"
+            job.attempts = 0
+            job.max_attempts = max(job.max_attempts, 2)
+            job.run_after = _iso()
+            job.error = ""
+            job.updated_at = _iso()
+            store.put_job(job)
+            swept.append(job.id)
+    if swept:
+        _schedule_persist(store)
+    return swept
+
+
+def _investigation_has_verify_job(store: Any, inv_id: str) -> bool:
+    for job in store.list_jobs(kind="verify", limit=200):
+        if str(job.payload.get("investigation_id") or "") == inv_id and job.status in {
+            "queued",
+            "running",
+            "succeeded",
+        }:
+            return True
+    return False
+
+
 def claim_next(store: Any, kinds: list[JobKind] | None = None) -> Job | None:
     reclaim_stale_running_jobs(store)
+    sweep_dead_jobs(store)
     return store.claim_job(kinds or ["code_fix", "verify"])
 
 

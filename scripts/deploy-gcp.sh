@@ -74,7 +74,7 @@ done
 
 # Production profile: close eval approvals and defer verify when admin token is set.
 if [[ -n "${LOOP_ADMIN_TOKEN:-}" ]]; then
-  ENV_VARS="${ENV_VARS},LOOP_EVAL=0,LOOP_VERIFY_DEFER=1,LOOP_WORKER_SECRET=${LOOP_ADMIN_TOKEN}"
+  ENV_VARS="${ENV_VARS},LOOP_EVAL=0,LOOP_VERIFY_DEFER=1,LOOP_VERIFY_DELAY_HOURS=0,LOOP_WORKER_SECRET=${LOOP_ADMIN_TOKEN}"
 fi
 
 # Persist live sqlite when the service is healthy so this deploy cannot restore a stale GCS DB.
