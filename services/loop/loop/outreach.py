@@ -91,28 +91,34 @@ def friendly_fix_notify_email(*, product: str, summary: str = "") -> tuple[str, 
 def call_brief_for_outreach(row: dict[str, Any], *, fix_summary: str = "") -> dict[str, Any]:
     """Purpose for the call: feedback ask vs fix notify."""
     purpose = str(row.get("call_purpose") or row.get("purpose") or "feedback_ask")
+    product = str(row.get("product") or "your product")
     if purpose == "fix_notify" or fix_summary:
+        summary = fix_summary or row.get("fix_summary") or "the OTP verification hang at checkout"
         return {
             "purpose": "fix_notify",
+            "fix_summary": summary,
             "opening": (
-                "Hi — quick call from support. We fixed the issue you reported earlier. "
-                "Just confirming you're unblocked now?"
+                f"Hi, this is Lexi from the {product} team. "
+                f"We tracked an issue where checkout could hang during OTP verification, "
+                f"and we shipped a fix for {summary}. "
+                "I wanted to check in and hear what you experienced."
             ),
             "questions": [
-                "Are you able to complete the flow that was broken before?",
-                "Anything still stuck?",
+                "Was it the spinner that never stopped, or did you see an error message?",
+                "Did the verification code ever arrive, or did it time out?",
+                "Have you tried again since the fix — is anything still stuck?",
             ],
-            "fix_summary": fix_summary or row.get("fix_summary") or "",
         }
     return {
         "purpose": "feedback_ask",
         "opening": (
-            "Hi — we emailed about a problem a few people hit and didn't hear back. "
-            "Thirty seconds to tell us what you saw?"
+            f"Hi, this is Lexi from the {product} team. "
+            "We emailed about a checkout issue a few people hit and did not hear back. "
+            "I am calling to learn what you saw — do you have about thirty seconds?"
         ),
         "questions": [
-            "What happened on your screen?",
-            "Did you see an error, or did it keep loading?",
+            "What happened on your screen — did it keep loading or show an error?",
+            "Were you trying to verify with a one-time code?",
             "Have you tried again since?",
         ],
     }

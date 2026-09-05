@@ -1531,7 +1531,7 @@ async def twilio_voice(
     reason: str = Query(default="checkout"),
     product: str = Query(default=""),
 ):
-    from .telephony import put_session, twiml_open
+    from .telephony import get_session, put_session, twiml_open
     from .tenant import product_for_room
 
     eng = get_engine()
@@ -1539,20 +1539,23 @@ async def twilio_voice(
 
     form = await request.form()
     call_sid = str(form.get("CallSid") or "")
+    existing = get_session(call_sid) or {} if call_sid else {}
     if call_sid:
         put_session(
             call_sid,
             {
-                "to": str(form.get("To") or ""),
-                "room_id": room,
-                "reason": reason,
-                "product": resolved,
+                **existing,
+                "to": str(form.get("To") or existing.get("to") or ""),
+                "room_id": room or existing.get("room_id") or "",
+                "reason": reason or existing.get("reason") or "checkout",
+                "product": resolved or existing.get("product") or "",
                 "status": "in-progress",
-                "turns": 0,
-                "transcript": [],
+                "turns": int(existing.get("turns") or 0),
+                "transcript": list(existing.get("transcript") or []),
             },
         )
-    xml = twiml_open(room, reason, resolved)
+    brief = existing.get("brief") if isinstance(existing.get("brief"), dict) else None
+    xml = twiml_open(room, reason, resolved, brief=brief)
     return Response(content=xml, media_type="application/xml")
 
 
