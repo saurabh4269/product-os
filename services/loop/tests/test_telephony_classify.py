@@ -11,15 +11,20 @@ from loop.outreach import (
     _generic_fallback_brief,
     call_brief_for_outreach,
     contains_spoken_placeholder,
+    prepare_spoken_line,
     room_call_context,
     sanitize_call_script,
     sanitize_spoken_line,
+    spoken_line_fails_rails,
 )
 from loop.telephony import (
     GATHER_TIMEOUT,
     TWILIO_VOICE,
+    _gather_reply,
+    _generic_gemini_fallback,
     fix_notify_opening,
     normalize_e164,
+    twiml_gather,
     twiml_open,
 )
 
@@ -202,6 +207,74 @@ def test_call_brief_uses_room_context(engine, monkeypatch):
     blob = f"{brief['opening']} {' '.join(brief['questions'])}"
     assert "otp_verify" not in blob.lower()
     assert "spinner" not in blob.lower()
+
+
+def test_spoken_line_fails_rails_rejects_password_and_infra():
+    assert spoken_line_fails_rails("Can you confirm your initial password for me?")
+    assert spoken_line_fails_rails("Can't reach the ML server, try again later.")
+    assert spoken_line_fails_rails("Vertex returned a 503 error.")
+    assert not spoken_line_fails_rails("What did you see on screen after you tried again?")
+
+
+def test_prepare_spoken_line_maps_infra_error_to_none():
+    assert prepare_spoken_line("Can't reach some ML server, try again later.") is None
+    assert prepare_spoken_line("Hi, this is Lexi from Cove.") == "Hi, this is Lexi from Cove."
+
+
+def test_gather_reply_prefers_scripted_before_gemini(monkeypatch):
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+    called = {"gemini": 0}
+
+    def _slow_generate(*_a, **_k):
+        called["gemini"] += 1
+        raise TimeoutError("vertex slow")
+
+    monkeypatch.setattr("loop.vertex_gemini.generate_content", _slow_generate)
+    monkeypatch.setattr("loop.vertex_gemini.gemini_configured", lambda: True)
+
+    reply = _gather_reply(
+        turns=1,
+        scripted=["What happened on your screen?"],
+        system="test",
+        speech="it hung",
+        history=[{"role": "user", "message": "it hung"}],
+        brief={"product": "Cove"},
+    )
+    assert reply == "What happened on your screen?"
+    assert called["gemini"] == 0
+
+
+def test_gather_reply_rails_bad_gemini_to_fallback(monkeypatch):
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+
+    def _bad_generate(*_a, **_k):
+        return "Please share your initial password so I can verify your account."
+
+    monkeypatch.setattr("loop.vertex_gemini.generate_content", _bad_generate)
+    monkeypatch.setattr("loop.vertex_gemini.gemini_configured", lambda: True)
+
+    reply = _gather_reply(
+        turns=3,
+        scripted=[],
+        system="test",
+        speech="it hung",
+        history=[{"role": "user", "message": "it hung"}],
+        brief={"product": "Cove"},
+    )
+    assert "password" not in reply.lower()
+    assert reply == _generic_gemini_fallback()
+
+
+def test_twiml_gather_returns_say_on_internal_error(monkeypatch):
+    monkeypatch.setenv("LOOP_PUBLIC_URL", "https://loop.example")
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("loop.telephony._twiml_gather_inner", _boom)
+    xml = twiml_gather("CA_test", "hello", "room1")
+    assert "<Say" in xml
+    assert "Thanks for taking the call" in xml
 
 
 def test_sanitize_spoken_line_strips_bracket_placeholders():

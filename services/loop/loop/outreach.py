@@ -95,6 +95,40 @@ _PLACEHOLDER_CURLY = re.compile(r"\{[^}]+\}")
 _PLACEHOLDER_CUSTOMER_NAME = re.compile(r"\bCustomer Name\b", re.I)
 _VAGUE_FEEDBACK_PHRASE = re.compile(r"feedback you shared", re.I)
 
+# Never speak credential requests or infra failures to customers on PSTN.
+_CREDENTIAL_ASK_PATTERNS = (
+    re.compile(r"\binitial\s+password\b", re.I),
+    re.compile(r"\b(your|the|an?)\s+password\b", re.I),
+    re.compile(r"\bpassword\b.*\b(provide|share|give|tell|enter|confirm|need|verify)\b", re.I),
+    re.compile(r"\b(provide|share|give|tell|enter|confirm|need|verify).*\bpassword\b", re.I),
+    re.compile(r"\b(share|provide|give|tell|enter|confirm).*\b(otp|pin code|security code)\b", re.I),
+    re.compile(r"\b(one.?time|verification)\s+(code|password)\b.*\b(share|provide|give|tell|enter)\b", re.I),
+    re.compile(r"\bcredit\s+card\b", re.I),
+    re.compile(r"\bcvv\b", re.I),
+    re.compile(r"\bssn\b", re.I),
+    re.compile(r"\bsocial\s+security\b", re.I),
+    re.compile(r"\bcredentials\b", re.I),
+    re.compile(r"\blogin\s+(details|credentials|info)\b", re.I),
+)
+
+_INFRA_SPEAK_PATTERNS = (
+    re.compile(r"\b(ml|machine learning)\s+server\b", re.I),
+    re.compile(r"\b(vertex|gemini|openai|anthropic)\b", re.I),
+    re.compile(r"\b(can'?t|cannot)\s+reach\b", re.I),
+    re.compile(r"\b(503|502|500|429)\b"),
+    re.compile(r"\b(server|service)\s+(error|unavailable|down|timeout)\b", re.I),
+    re.compile(r"\btry again later\b", re.I),
+    re.compile(r"\binfrastructure\b", re.I),
+    re.compile(r"\bapi\s+(error|timeout|failed)\b", re.I),
+    re.compile(r"\bmodel\s+server\b", re.I),
+)
+
+LEXI_SPOKEN_SAFETY_RULES = (
+    "Never ask for passwords, OTP codes, credit cards, SSN, or any credentials. "
+    "Never mention ML servers, Vertex, Gemini, API errors, or other infrastructure. "
+    "If unsure, thank the caller and ask one open diagnostic question about what they saw on screen."
+)
+
 
 def contains_spoken_placeholder(text: str) -> bool:
     """True when text still has bracket/curly placeholders or literal Customer Name."""
@@ -117,6 +151,31 @@ def sanitize_spoken_line(text: str) -> str:
     t = re.sub(r"\s+([,.!?;:])", r"\1", t)
     t = re.sub(r"Hi\s+,", "Hi,", t, flags=re.I)
     return t
+
+
+def spoken_line_fails_rails(text: str) -> bool:
+    """True when text must not be spoken on a customer PSTN call."""
+    if not (text or "").strip():
+        return True
+    if contains_spoken_placeholder(text):
+        return True
+    if _VAGUE_FEEDBACK_PHRASE.search(text):
+        return True
+    for pat in _CREDENTIAL_ASK_PATTERNS:
+        if pat.search(text):
+            return True
+    for pat in _INFRA_SPEAK_PATTERNS:
+        if pat.search(text):
+            return True
+    return False
+
+
+def prepare_spoken_line(text: str) -> str | None:
+    """Sanitize and enforce customer-call safety rails. None → use generic fallback."""
+    cleaned = sanitize_spoken_line(text)
+    if spoken_line_fails_rails(cleaned):
+        return None
+    return cleaned
 
 
 def _voice_reason_phrase(voice_reason: str) -> str:
@@ -256,10 +315,13 @@ def sanitize_call_script(
     fix_summary: str = "",
 ) -> dict[str, Any]:
     """Reject Gemini placeholders; ground opening in room evidence when present."""
-    opening = sanitize_spoken_line(str(plan.get("opening") or ""))
-    questions = [sanitize_spoken_line(str(q)) for q in (plan.get("questions") or []) if q]
-    questions = [q for q in questions if q]
-    listen = sanitize_spoken_line(str(plan.get("listen_prompt") or "")) or GENERIC_LISTEN_PROMPT
+    opening = prepare_spoken_line(str(plan.get("opening") or "")) or ""
+    questions = []
+    for q in plan.get("questions") or []:
+        cleaned = prepare_spoken_line(str(q))
+        if cleaned:
+            questions.append(cleaned)
+    listen = prepare_spoken_line(str(plan.get("listen_prompt") or "")) or GENERIC_LISTEN_PROMPT
 
     voice_reason = str(ctx.get("voice_reason") or "").strip()
     blob = f"{opening} {' '.join(questions)}"
@@ -332,10 +394,12 @@ def _generate_call_plan_with_gemini(ctx: dict[str, Any], purpose: str, fix_summa
         "- When Customer Voice reason is present, reference it naturally in the opening (underscores may become spaces)\n"
         "- Never mention OTP, spinner, verification code, or other specifics UNLESS they appear in the context above\n"
         "- If evidence is thin, use open diagnostic questions without inventing specifics or placeholders\n"
+        "- NEVER ask for passwords, OTP codes, credit cards, SSN, or credentials — diagnostic only\n"
+        "- NEVER mention ML servers, Vertex, Gemini, API errors, or infrastructure to the caller\n"
         "- Output ONLY valid JSON, no markdown"
     )
     try:
-        raw = generate_content(prompt, timeout=30.0)
+        raw = generate_content(prompt, timeout=12.0)
         plan = json.loads(_strip_json_fence(raw))
         if isinstance(plan, dict) and plan.get("opening"):
             return plan

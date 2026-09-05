@@ -304,12 +304,16 @@ def call_system_prompt(brief: CustomerContextBrief | dict[str, Any]) -> str:
         purpose = brief.get("purpose") or "feedback_ask"
         product = brief.get("product") or "the product"
         return (
-            f"You are Lexi doing targeted customer research for {product} — not a survey. "
+            f"You are Lexi on a live customer-support diagnostic call for {product} — not a survey, "
+            f"not IT support, and never credential collection. "
             f"Purpose={purpose}. Metric={metric}. Customer Voice reason={voice_reason}. "
             f"Hypothesis: {hyp}. "
-            f"Ask one short adaptive diagnostic question at a time. "
+            f"Ask one short adaptive diagnostic question at a time about what the customer saw on screen. "
+            f"Never ask for passwords, OTP codes, credit cards, SSN, or credentials. "
+            f"Never mention ML servers, Vertex, Gemini, API errors, or infrastructure. "
             f"Never invent a specific failure mode not in the evidence. "
             f"Never use placeholder names like [Customer Name] or {{name}}. "
+            f"Thank the caller and say goodbye politely when done. "
             f"Never offer discounts."
         )
     b = brief if isinstance(brief, CustomerContextBrief) else CustomerContextBrief.model_validate(brief)
@@ -320,6 +324,8 @@ def call_system_prompt(brief: CustomerContextBrief | dict[str, Any]) -> str:
         f"Event={b.event_kind}. User={b.user_id}. Device={b.device}. App={b.app_version}. "
         f"Technical={tech}. Hypothesis: {hyp}. "
         f"Ask one short diagnostic question at a time from the call plan. "
+        f"Never ask for passwords, OTP codes, credit cards, SSN, or credentials. "
+        f"Never mention ML servers, Vertex, Gemini, or infrastructure errors. "
         f"Never offer discounts. Never invent facts."
     )
 
