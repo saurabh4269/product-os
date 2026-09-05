@@ -295,6 +295,22 @@ def build_brief(
 
 
 def call_system_prompt(brief: CustomerContextBrief | dict[str, Any]) -> str:
+    if isinstance(brief, dict) and "user_id" not in brief:
+        hyp = brief.get("hypothesis") or "friction in the journey"
+        if isinstance(hyp, dict):
+            hyp = hyp.get("statement") or "friction in the journey"
+        metric = brief.get("metric") or brief.get("signal_title") or "unknown signal"
+        voice_reason = brief.get("voice_reason") or "not classified"
+        purpose = brief.get("purpose") or "feedback_ask"
+        product = brief.get("product") or "the product"
+        return (
+            f"You are Lexi doing targeted customer research for {product} — not a survey. "
+            f"Purpose={purpose}. Metric={metric}. Customer Voice reason={voice_reason}. "
+            f"Hypothesis: {hyp}. "
+            f"Ask one short adaptive diagnostic question at a time. "
+            f"Never invent a specific failure mode not in the evidence. "
+            f"Never offer discounts."
+        )
     b = brief if isinstance(brief, CustomerContextBrief) else CustomerContextBrief.model_validate(brief)
     hyp = (b.hypothesis or {}).get("statement") or "friction in the journey"
     tech = b.technical or {}

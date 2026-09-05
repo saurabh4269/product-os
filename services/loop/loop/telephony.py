@@ -103,33 +103,45 @@ def put_session(call_sid: str, data: dict[str, Any]) -> None:
     _persist_sessions()
 
 
-def _gemini_reply(system: str, user: str, history: list[dict[str, str]]) -> str:
-    """Short spoken reply. Falls back to a scripted line if Gemini unavailable."""
+def _generic_gemini_fallback() -> str:
+    return (
+        "Thanks for taking the call. Can you walk me through what happened on your side — "
+        "what you saw on screen and whether you tried again?"
+    )
+
+
+def _gemini_reply(system: str, user: str, history: list[dict[str, str]], *, brief: dict[str, Any] | None = None) -> str | None:
+    """Short spoken reply via Gemini. Returns None when Gemini is unavailable or fails."""
     from loop.vertex_gemini import gemini_configured, generate_content
 
-    fallback = (
-        "Thanks for taking the call. I am looking into what happened at checkout. "
-        "Can you tell me whether the payment screen spun forever or showed an error?"
-    )
     if not gemini_configured():
-        return fallback
-    blob = f"System: {system}\n\nConversation so far:\n"
+        return None
+    blob = f"System: {system}\n\nCall brief context:\n"
+    if brief:
+        for key in ("metric", "signal_title", "voice_reason", "hypothesis", "purpose", "product"):
+            val = brief.get(key)
+            if val:
+                blob += f"- {key}: {val}\n"
+    blob += "\nConversation so far:\n"
     for turn in history[-8:]:
         blob += f"{turn.get('role', 'user')}: {turn.get('message', '')}\n"
-    blob += f"\nCustomer just said: {user}\nReply in under 40 spoken words. No markdown."
+    blob += (
+        f"\nCustomer just said: {user}\n"
+        "Reply as Lexi in under 40 spoken words. No markdown. "
+        "Never invent a specific failure mode that is not in the brief context. "
+        "If evidence is thin, ask an open diagnostic question."
+    )
     try:
         text = generate_content(blob, timeout=25.0).strip()
-        return text or fallback
+        return text or None
     except Exception:
-        return fallback
+        return None
 
 
 TWILIO_VOICE = "alice"
 GATHER_TIMEOUT = "8"
-LISTEN_PROMPT = (
-    "After the tone, tell me what you saw — "
-    "did the screen keep spinning, show an error, or did the code never arrive?"
-)
+GENERIC_LISTEN_PROMPT = "After the tone, tell me what you saw on your side."
+LISTEN_PROMPT = GENERIC_LISTEN_PROMPT
 
 
 def opening_line(reason: str, product: str = "your product") -> str:
@@ -144,11 +156,10 @@ def opening_line(reason: str, product: str = "your product") -> str:
 
 def fix_notify_opening(product: str = "your product", fix_summary: str = "") -> str:
     product = product or "your product"
-    fix = (fix_summary or "the OTP verification hang at checkout").strip()[:180]
+    fix = (fix_summary or "a recent issue").strip()[:180]
     return (
         f"Hi, this is Lexi from the {product} team. "
-        f"We tracked an issue where checkout could hang during OTP verification, "
-        f"and we shipped a fix for {fix}. "
+        f"We shipped a fix for {fix}. "
         "I wanted to check in and hear what you experienced."
     )
 
@@ -161,6 +172,12 @@ def _brief_opening(brief: dict[str, Any] | None, reason: str, product: str) -> s
     if b.get("purpose") == "fix_notify":
         return fix_notify_opening(product, str(b.get("fix_summary") or ""))
     return opening_line(reason, product or "your product")
+
+
+def _brief_listen_prompt(brief: dict[str, Any] | None) -> str:
+    b = brief or {}
+    listen = b.get("listen_prompt") or ((b.get("call_plan") or {}).get("listen_prompt"))
+    return str(listen) if listen else LISTEN_PROMPT
 
 
 def _brief_questions(brief: dict[str, Any] | None) -> list[str]:
@@ -279,12 +296,10 @@ def place_call(
 
 
 def twiml_open(room: str, reason: str, product: str, brief: dict[str, Any] | None = None) -> str:
-    from loop.abandon_research import build_customer_context_brief
-
-    b = brief or build_customer_context_brief()
+    b = brief or {}
     opening = _brief_opening(b, reason, product or "your product")
     say = xml.escape(opening)
-    listen = xml.escape(LISTEN_PROMPT)
+    listen = xml.escape(_brief_listen_prompt(b))
     base = _public_base()
     action = f"{base}/api/twilio/gather?{urlencode({'room': room})}"
     voice = TWILIO_VOICE
@@ -332,23 +347,31 @@ def twiml_gather(call_sid: str, speech: str, room: str) -> str:
 """
 
     scripted = list(sess.get("scripted_questions") or [])
-    # Prefer call-plan questions in order (targeted research), then Gemini
-    if turns <= len(scripted):
-        reply = scripted[turns - 1]
-    else:
-        system = sess.get("system_prompt") or call_system_prompt(sess.get("brief") or {})
-        reply = _gemini_reply(
-            system=system,
-            user=speech or "(silence)",
-            history=list(sess.get("transcript") or []),
-        )
+    brief = sess.get("brief") or {}
+    system = sess.get("system_prompt") or call_system_prompt(brief)
+    reply = _gemini_reply(
+        system=system,
+        user=speech or "(silence)",
+        history=list(sess.get("transcript") or []),
+        brief=brief if isinstance(brief, dict) else None,
+    )
+    if not reply:
+        idx = turns - 1
+        if idx < len(scripted):
+            reply = scripted[idx]
+        else:
+            reply = _generic_gemini_fallback()
     sess.setdefault("transcript", []).append({"role": "agent", "message": reply})
     put_session(call_sid, sess)
 
     base = _public_base()
     action = f"{base}/api/twilio/gather?{urlencode({'room': room or sess.get('room_id') or ''})}"
     voice = TWILIO_VOICE
-    listen = xml.escape(LISTEN_PROMPT if turns < 3 else "Anything else before I let you go?")
+    listen = xml.escape(
+        _brief_listen_prompt(brief if isinstance(brief, dict) else None)
+        if turns < 3
+        else "Anything else before I let you go?"
+    )
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="{voice}">{xml.escape(reply)}</Say>

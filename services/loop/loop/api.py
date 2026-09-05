@@ -1424,7 +1424,14 @@ def place_outbound_call(body: PlaceCallBody):
             )
 
     purpose = (body.purpose or "").strip() or "feedback_ask"
-    brief = call_brief_for_outreach({"purpose": purpose})
+    brief = call_brief_for_outreach(
+        {"purpose": purpose, "product": product},
+        store=eng.store,
+        room_id=body.room_id,
+    )
+    from .abandon_research import call_system_prompt
+
+    system_prompt = call_system_prompt(brief)
     report = place_call(
         body.tokenized_user,
         body.reason,
@@ -1432,6 +1439,7 @@ def place_outbound_call(body: PlaceCallBody):
         room_id=body.room_id,
         product=product,
         brief=brief,
+        system_prompt=system_prompt,
     )
     if body.room_id and eng.store.get_room(body.room_id):
         from .receipts import call_proof, post_receipt
@@ -1531,6 +1539,8 @@ async def twilio_voice(
     reason: str = Query(default="checkout"),
     product: str = Query(default=""),
 ):
+    from .abandon_research import call_system_prompt
+    from .outreach import call_brief_for_outreach
     from .telephony import get_session, put_session, twiml_open
     from .tenant import product_for_room
 
@@ -1540,6 +1550,13 @@ async def twilio_voice(
     form = await request.form()
     call_sid = str(form.get("CallSid") or "")
     existing = get_session(call_sid) or {} if call_sid else {}
+    brief = existing.get("brief") if isinstance(existing.get("brief"), dict) else None
+    if not brief and room:
+        brief = call_brief_for_outreach(
+            {"purpose": existing.get("purpose") or "feedback_ask", "product": resolved},
+            store=eng.store,
+            room_id=room,
+        )
     if call_sid:
         put_session(
             call_sid,
@@ -1552,9 +1569,11 @@ async def twilio_voice(
                 "status": "in-progress",
                 "turns": int(existing.get("turns") or 0),
                 "transcript": list(existing.get("transcript") or []),
+                "brief": brief or existing.get("brief") or {},
+                "scripted_questions": (brief or {}).get("questions") or existing.get("scripted_questions") or [],
+                "system_prompt": existing.get("system_prompt") or call_system_prompt(brief or {}),
             },
         )
-    brief = existing.get("brief") if isinstance(existing.get("brief"), dict) else None
     xml = twiml_open(room, reason, resolved, brief=brief)
     return Response(content=xml, media_type="application/xml")
 
