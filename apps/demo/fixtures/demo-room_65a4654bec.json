@@ -1,0 +1,181 @@
+{
+  "meta": {
+    "exported_at": "2026-09-05T17:00:00+00:00",
+    "pipeline": "generic",
+    "source": "hosted_room",
+    "room_id": "room_65a4654bec",
+    "loop_type": "type_a"
+  },
+  "loop_chip": "Type A · fix",
+  "scenes": [
+    {
+      "title": "Signal",
+      "body": "otp_verify_hang_demo_1788625174 moved -18.0% vs baseline 64.0% — detected from the pipeline."
+    },
+    {
+      "title": "Evidence",
+      "body": "Parallel specialists · analytics · code · customer_voice · deploys · logs. Three-source gate before root cause."
+    },
+    {
+      "title": "Root cause",
+      "body": "otp_verify_timeout · client-error cluster on OTP verify path. Customer Voice and logs agree — not vague payment slowness."
+    },
+    {
+      "title": "HIGH approval",
+      "body": "HIGH: mandatory human approval before tenant flag change. Surface=product. Never auto-merge."
+    },
+    {
+      "title": "Verified",
+      "body": "INCONCLUSIVE: otp_verify_hang_demo_1788625174 — post-deploy verification needs tenant metric connector."
+    },
+    {
+      "title": "Lesson",
+      "body": "OTP hang on checkout: mail-first outreach, then call. Post-ship verify needs live metric connector — mark inconclusive honestly."
+    }
+  ],
+  "investigation": {
+    "id": "inv_demo_65a4654",
+    "state": "AWAITING_APPROVAL",
+    "loop_type": "type_a",
+    "scenario_id": "t:cove:otp_verify_hang_demo_1788625174",
+    "room_id": "room_65a4654bec",
+    "tenant_id": "cove",
+    "title": "OTP verify hang at checkout",
+    "assigned_agents": [
+      "orchestrator",
+      "analytics_agent",
+      "logs_agent",
+      "code_agent",
+      "customer_research_agent",
+      "customer_voice_agent"
+    ]
+  },
+  "signals": [
+    {
+      "id": "sig_otp_hang",
+      "metric": "otp_verify_hang_demo_1788625174",
+      "magnitude": -0.18,
+      "baseline": 0.64,
+      "family": "technical",
+      "direction": "negative",
+      "funnel_position": "checkout"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_analytics",
+      "source_type": "analytics",
+      "independence_group": "analytics",
+      "claim": "Checkout OTP step abandon +18% vs 64% baseline.",
+      "trust_level": "trusted",
+      "collected_by": "analytics_agent"
+    },
+    {
+      "id": "ev_logs",
+      "source_type": "logs",
+      "independence_group": "logs",
+      "claim": "client-error cluster on otp_verify endpoint · timeout spikes.",
+      "trust_level": "trusted",
+      "collected_by": "logs_agent"
+    },
+    {
+      "id": "ev_code",
+      "source_type": "code",
+      "independence_group": "code",
+      "claim": "pay-sdk OTP verify path changed in recent deploy.",
+      "trust_level": "trusted",
+      "collected_by": "code_agent"
+    },
+    {
+      "id": "ev_voice",
+      "source_type": "customer_voice",
+      "independence_group": "customer_voice",
+      "claim": "Diagnostic: reason=otp_verify_timeout severity=high friction=technical",
+      "trust_level": "trusted",
+      "collected_by": "customer_voice_agent"
+    },
+    {
+      "id": "ev_deploys",
+      "source_type": "deployment",
+      "independence_group": "deploys",
+      "claim": "Tenant deploy 2h before spike.",
+      "trust_level": "trusted",
+      "collected_by": "deployment_agent"
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp_otp",
+      "statement": "otp_verify_timeout · client-error cluster on OTP verify. Voice + logs agree — checkout hang, not payment slowness.",
+      "classification": "BUG",
+      "confidence": 0.91
+    }
+  ],
+  "actions": [
+    {
+      "id": "act_high_flags",
+      "risk_tier": "HIGH",
+      "consequence": "HIGH: mandatory human approval (auth/payment/financial/destructive). Surface=product. Never auto-merge.",
+      "gate_mode": "github_pr",
+      "tenant_repo": "github.com/saurabh4269/cove",
+      "status": "awaiting_approval",
+      "artifacts": {
+        "github_pr": {
+          "title": "flags: disable OTP hang path",
+          "repo": "github.com/saurabh4269/cove",
+          "number": 18,
+          "state": "open",
+          "files": [{ "filename": "config/flags.json", "status": "modified" }]
+        },
+        "voice_context": {
+          "failure": "OTP verify hang",
+          "device": "mobile checkout",
+          "opening": "Hi — we fixed the checkout issue. Sorry for the wait."
+        }
+      }
+    }
+  ],
+  "outcomes": [
+    {
+      "verdict": "INCONCLUSIVE",
+      "metric": "otp_verify_hang_demo_1788625174",
+      "pre_value": 0.64,
+      "post_value": 0.52
+    }
+  ],
+  "lessons": [
+    {
+      "statement": "OTP hang: mail-first, then Lexi call. Post-ship verify needs tenant metric connector — inconclusive until live read."
+    }
+  ],
+  "agent_calls": [
+    { "from_agent": "investigator_agent", "to_agent": "analytics_agent", "summary": "Asked Analytics for the numbers" },
+    { "from_agent": "investigator_agent", "to_agent": "logs_agent", "summary": "Asked Logs for the logs" },
+    { "from_agent": "investigator_agent", "to_agent": "code_agent", "summary": "Asked Code for what shipped" },
+    { "from_agent": "investigator_agent", "to_agent": "customer_voice_agent", "summary": "Asked Voice for customer notes" },
+    { "from_agent": "orchestrator", "to_agent": "customer_research_agent", "summary": "Asked Research for abandon cohort" }
+  ],
+  "timeline": [
+    {
+      "kind": "signal",
+      "actor": "signal_agent",
+      "detail": "otp_verify_hang_demo_1788625174 -18.0% vs baseline 64.0%"
+    },
+    {
+      "kind": "evidence",
+      "actor": "customer_voice_agent",
+      "detail": "Diagnostic conversation: reason=otp_verify_timeout severity=high friction=technical"
+    },
+    {
+      "kind": "contact_lookup",
+      "actor": "customer_research_agent",
+      "detail": "Contact lookup · 12 users matched abandon cohort"
+    },
+    {
+      "kind": "mail_outreach",
+      "actor": "outreach",
+      "detail": "Mail-first: what did you see at checkout?"
+    }
+  ],
+  "recalled_lessons": []
+}

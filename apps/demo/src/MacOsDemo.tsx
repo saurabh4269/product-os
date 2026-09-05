@@ -153,7 +153,7 @@ function BeatScene({ beatIndex }: { beatIndex: number }) {
             opacity: 0.8 * opacity,
           }}
         >
-          {INVESTIGATION_ID} · {bundle.meta?.pipeline ?? "generic"}
+          {INVESTIGATION_ID} · {bundle.investigation?.room_id ?? bundle.meta?.room_id ?? "room"}
         </div>
       ) : null}
     </MacDesktop>

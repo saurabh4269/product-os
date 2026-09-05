@@ -2,6 +2,8 @@ import React from "react";
 import { Easing, interpolate } from "remotion";
 import type { ScriptBeat, ScriptBeatKind } from "./script";
 import {
+  exportScene,
+  githubPrNumber,
   lessonLine,
   loopChip,
   rootCauseLine,
@@ -199,14 +201,14 @@ function SceneVisual({ kind, localFrame }: { kind: ScriptBeatKind; localFrame: n
             localFrame={localFrame}
             tone="signal"
             title={`Signal · ${signalMetric()}`}
-            subtitle="Ingest from demo tenant · generic pipeline"
+            subtitle={exportScene("Signal") ?? signalDetail()}
             meta="Cove = demo tenant · Product OS = control plane"
           />
           <Card
             localFrame={localFrame}
             delay={24}
             title="Room opened"
-            subtitle="Incident room · specialists assigned"
+            subtitle="room_65a4654bec · incident · specialists assigned"
             meta="Type A · fix"
           />
         </>
@@ -217,6 +219,7 @@ function SceneVisual({ kind, localFrame }: { kind: ScriptBeatKind; localFrame: n
         (a) => a.charAt(0).toUpperCase() + a.slice(1),
       );
       const lit = Math.min(agents.length - 1, Math.floor((localFrame - 12) / 28));
+      const evidenceLine = exportScene("Evidence");
       return (
         <>
           <div style={{ ...fadeUp(localFrame, 8), display: "flex", gap: 7, flexWrap: "wrap", padding: "8px 28px 0" }}>
@@ -238,6 +241,15 @@ function SceneVisual({ kind, localFrame }: { kind: ScriptBeatKind; localFrame: n
             ))}
           </div>
           <HandoffRow localFrame={localFrame} />
+          {evidenceLine ? (
+            <Card
+              localFrame={localFrame}
+              delay={36}
+              title="Three-source gate"
+              subtitle={evidenceLine}
+              tone="neutral"
+            />
+          ) : null}
         </>
       );
     }
@@ -275,27 +287,28 @@ function SceneVisual({ kind, localFrame }: { kind: ScriptBeatKind; localFrame: n
             localFrame={localFrame}
             delay={20}
             title="Hypothesis locked"
-            subtitle={rootCauseLine()}
-            meta="otp_verify_timeout · not “payments feel slow”"
+            subtitle={exportScene("Root cause") ?? rootCauseLine()}
+            meta="otp_verify_timeout · client-error cluster"
           />
         </>
       );
 
     case "high_gate": {
       const showPr = localFrame > 180;
+      const prNum = githubPrNumber();
       return (
         <>
           <Card
             localFrame={localFrame}
             title="HIGH gate"
-            subtitle="Human must open the door — auth/payment surface"
+            subtitle={exportScene("HIGH approval") ?? "Human must open the door — auth/payment surface"}
             tone="approve"
           />
           {showPr ? (
             <Card
               localFrame={localFrame}
               delay={0}
-              title="GitHub · flags PR"
+              title={`GitHub · flags PR${prNum ? ` #${prNum}` : ""}`}
               subtitle={`config/flags.json on ${tenantRepoLabel()}`}
               meta="OPEN · never auto-merge"
               tone="github"
@@ -335,9 +348,9 @@ function SceneVisual({ kind, localFrame }: { kind: ScriptBeatKind; localFrame: n
           <Card
             localFrame={localFrame}
             delay={24}
-            title="Verify + remember"
-            subtitle={verifyMetricLine()}
-            meta={lessonLine()}
+            title="Verify"
+            subtitle={exportScene("Verified") ?? verifyMetricLine()}
+            meta={exportScene("Lesson") ?? lessonLine()}
             tone="ok"
           />
         </>

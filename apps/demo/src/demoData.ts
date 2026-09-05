@@ -1,4 +1,4 @@
-import data from "../public/loop.json";
+import data from "../fixtures/demo-room_65a4654bec.json";
 import type { ScriptBeatKind } from "./script";
 
 export type DemoBundle = {
@@ -53,7 +53,7 @@ export function loopChip(payload: DemoBundle = bundle): string {
 export function signalMetric(payload: DemoBundle = bundle): string {
   const sig = payload.signals?.[0];
   if (sig?.metric) return sig.metric;
-  return "otp_verify_hang";
+  return "otp_verify_hang_demo_1788625174";
 }
 
 export function signalDetail(payload: DemoBundle = bundle): string {
@@ -126,6 +126,21 @@ export function lessonLine(payload: DemoBundle = bundle): string {
 
 export const LOOP_CHIP = loopChip();
 export const INVESTIGATION_ID = bundle.investigation?.id ?? "investigation";
+export const ROOM_ID = bundle.investigation?.room_id ?? bundle.meta?.room_id ?? "room";
+
+/** Export-demo scene body by title (Signal, Evidence, Root cause, …) */
+export function exportScene(title: string, payload: DemoBundle = bundle): string | undefined {
+  return payload.scenes?.find((s) => s.title.toLowerCase() === title.toLowerCase())?.body;
+}
+
+export function githubPrNumber(payload: DemoBundle = bundle): number | null {
+  const high = (payload.actions ?? []).find((a) => (a.risk_tier ?? "").toUpperCase() === "HIGH");
+  const gh = (high?.artifacts as Record<string, unknown> | undefined)?.github_pr as
+    | Record<string, unknown>
+    | undefined;
+  const n = gh?.number;
+  return typeof n === "number" ? n : null;
+}
 
 /** Scene-aligned title shown inside the Mac window (not the VO caption) */
 export function sceneTitle(kind: ScriptBeatKind): string {
