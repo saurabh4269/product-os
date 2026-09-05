@@ -1,6 +1,6 @@
 "use client";
 
-import { api, type OfficeSnapshot, type Room } from "@/lib/api";
+import { api, ApiAuthError, type GeapMemoryMirror, type GeapRuntimeMirror, type GeapStatusPayload, type OfficeSnapshot, type Room } from "@/lib/api";
 import { WORLD_REFRESH_MS, WORLD_SLOW_REFRESH_MS } from "@/lib/world-refresh";
 
 export type WorldStatus = Awaited<ReturnType<typeof api.status>>;
@@ -9,6 +9,8 @@ export type WorldGlass = {
   proofs: Awaited<ReturnType<typeof api.proof>>;
   liveWork: Awaited<ReturnType<typeof api.liveWork>>;
 };
+
+export type WorldGeap = Awaited<ReturnType<typeof api.geapStatus>>;
 
 type Cache<T> = {
   value: T | null;
@@ -24,6 +26,7 @@ const roomsCache = createCache<Room[]>();
 const officeCache = createCache<OfficeSnapshot>();
 const statusCache = createCache<WorldStatus>();
 const glassCache = createCache<WorldGlass>();
+const geapCache = createCache<WorldGeap>();
 
 async function cachedFetch<T>(cache: Cache<T>, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
   const now = Date.now();
@@ -63,6 +66,33 @@ export function fetchWorldStatus(): Promise<WorldStatus> {
   return cachedFetch(statusCache, WORLD_SLOW_REFRESH_MS, () => api.status());
 }
 
+/** Coalesced GET /api/geap/status — public, slow poll. Falls back to /api/adk/status on 401. */
+export function fetchWorldGeap(): Promise<WorldGeap> {
+  return cachedFetch(geapCache, WORLD_SLOW_REFRESH_MS, async () => {
+    try {
+      return await api.geapStatus();
+    } catch (err) {
+      if (err instanceof ApiAuthError && (err.status === 401 || err.status === 403)) {
+        const adk = await api.adkStatus();
+        return geapPayloadFromAdk(adk);
+      }
+      throw err;
+    }
+  });
+}
+
+function geapPayloadFromAdk(adk: Awaited<ReturnType<typeof api.adkStatus>>): GeapStatusPayload {
+  return {
+    geap: (adk.geap || {}) as GeapRuntimeMirror,
+    memory_bank: (adk.geap_memory || {}) as GeapMemoryMirror,
+    routing: {
+      signals: "geap → adk worker → inline adk → LoopEngine",
+      research: "geap note + local pipeline when enabled",
+      ui_and_gate: "loop Cloud Run (SQLite, approvals, GitHub PR)",
+    },
+  };
+}
+
 /** Coalesced proof + live-work pair (home glass box). */
 export function fetchWorldGlass(): Promise<WorldGlass> {
   return cachedFetch(glassCache, WORLD_SLOW_REFRESH_MS, async () => {
@@ -73,7 +103,7 @@ export function fetchWorldGlass(): Promise<WorldGlass> {
 
 /** Drop cached snapshots after navigation mutations (optional). */
 export function invalidateWorldCache(): void {
-  for (const cache of [roomsCache, officeCache, statusCache, glassCache]) {
+  for (const cache of [roomsCache, officeCache, statusCache, glassCache, geapCache]) {
     cache.value = null;
     cache.fetchedAt = 0;
     cache.inflight = null;

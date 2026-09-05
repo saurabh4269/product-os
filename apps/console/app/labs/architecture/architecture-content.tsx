@@ -29,6 +29,7 @@ import { TenantWireDiagram } from "@/components/diagrams/tenant-wire-diagram";
 import { TrustBoundariesDiagram } from "@/components/diagrams/trust-boundaries-diagram";
 import { DiagramDetailPanel } from "@/components/diagrams/diagram-detail-panel";
 import { SevenStepLoop } from "@/components/seven-step-loop";
+import { GeapStatusCard } from "@/components/geap-status-card";
 
 const LANE_DETAILS: Record<string, { body: string; adk: string }> = {
   Detect: { body: "Signal agent reads webhooks and warehouse anomalies. It does not investigate alone.", adk: "Detect opens a room" },
@@ -170,6 +171,8 @@ export default function ArchitectureContent() {
       </header>
 
       <ArchitectureTabs tab={tab} onTab={pickTab} className="mt-8" />
+
+      <GeapStatusCard className="mt-6" compact />
 
       {tab === "overview" ? (
         <div className="mt-8 space-y-10">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { fetchWorldStatus } from "@/lib/world-data";
 import { useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";

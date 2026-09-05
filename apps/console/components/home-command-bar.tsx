@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { StatusStrip } from "@/components/status-strip";
+import { GeapStatusChip } from "@/components/geap-status-card";
 import { DemoRunner } from "@/components/demo-runner";
 import type { HomePulse, PulseAction } from "@/lib/home-pulse";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,8 @@ export function HomeCommandBar({
         </p>
       ) : null}
       <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 overflow-x-auto">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-x-auto">
+          <GeapStatusChip />
           <StatusStrip compact />
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
