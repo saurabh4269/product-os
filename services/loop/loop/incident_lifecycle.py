@@ -75,10 +75,10 @@ def _find_room(store: Any, tenant_id: str, metric: str = CHECKOUT_METRIC):
 def _pending_action(store: Any, inv_id: str | None):
     if not inv_id:
         return None
-    for act in store.list_actions(inv_id):
-        if act.status in {"proposed", "awaiting_approval"}:
-            return act
-    return None
+    from .room_ui import visible_pending_actions
+
+    pending = visible_pending_actions(store, inv_id)
+    return pending[0] if pending else None
 
 
 def _execution(store: Any, inv_id: str | None) -> dict[str, Any]:
@@ -152,6 +152,28 @@ def _diagnosis_detail(inv: Any | None, *, investigating: bool) -> str:
         }
         return labels.get(str(state), f"Diagnosing · {state}")
     return str(state)
+
+
+def _verify_step_copy(outcomes: list[Any], inv: Any | None) -> tuple[str, str]:
+    """Honest verify labels — inconclusive is not 'recovery measured'."""
+    if outcomes:
+        verdict = getattr(outcomes[0], "verdict", None)
+        v = getattr(verdict, "value", verdict)
+        detail = str(getattr(outcomes[0], "detail", "") or getattr(outcomes[0], "summary", "") or "")
+        if str(v) == "INCONCLUSIVE":
+            return (
+                "Verification inconclusive",
+                detail or "Metric not recovered yet — waiting for more checkout data.",
+            )
+        if str(v) in {"RESOLVED", "PARTIALLY_RESOLVED"}:
+            return ("Recovery measured · lesson written", detail or str(v))
+        return (f"Outcome · {v}", detail or str(v))
+    if inv is not None and getattr(inv.state, "value", inv.state) == "INCONCLUSIVE":
+        return (
+            "Verification inconclusive",
+            "Investigation closed without a measurable recovery signal.",
+        )
+    return ("Measuring recovery", "Waiting for post-fix metric read.")
 
 
 def _incident_phase(
@@ -281,6 +303,7 @@ def incident_lifecycle(
         inv=inv,
     )
 
+    verify_label, verify_detail = _verify_step_copy(outcomes, inv)
     steps = [
         {
             "id": "degraded",
@@ -326,8 +349,8 @@ def incident_lifecycle(
         },
         {
             "id": "verify",
-            "label": "Recovery measured · lesson written",
-            "detail": outcomes[0].verdict.value if outcomes and hasattr(outcomes[0].verdict, "value") else (str(getattr(inv.state, "value", "")) if inv else "—"),
+            "label": verify_label,
+            "detail": verify_detail,
             "done": verified,
             "active": phase == "verifying" and not verified,
             "href": f"/rooms/{room.id}" if room else None,

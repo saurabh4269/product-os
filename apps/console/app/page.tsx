@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { api, tryConfig, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
+import { api, hasAdminToken, tryConfig, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { isFirstVisit, recordVisit } from "@/lib/first-visit";
 import { buildHomePulse } from "@/lib/home-pulse";
 import { useGlobalWs } from "@/lib/use-global-ws";
@@ -65,7 +65,12 @@ export default function HomePage() {
         setErr(null);
       } catch (e) {
         if (!cancelled) {
-          setErr(e instanceof Error ? e.message : "API unreachable");
+          if (!hasAdminToken()) {
+            setAdminAuthRequired(true);
+            setErr(null);
+          } else {
+            setErr(e instanceof Error ? e.message : "API unreachable");
+          }
         }
       }
     })();
@@ -89,7 +94,7 @@ export default function HomePage() {
     });
   }, [visitReady, status, office, adminAuthRequired]);
 
-  if (err) return <ErrorState message={err} />;
+  if (err && hasAdminToken()) return <ErrorState message={err} />;
 
   const desks = office?.desks ?? [];
   const handoffs = office?.handoffs ?? [];

@@ -67,6 +67,8 @@ def test_mail_first_then_call_non_responder(engine, monkeypatch):
     assert out["held"] is False
     assert len(out["mailed"]) >= 1
     assert all(m["channel"] == "email" for m in out["mailed"])
+    kinds = {m.artifact_type for m in engine.store.list_messages(room.id) if m.artifact_type}
+    assert "contact_lookup" in kinds
 
     # Cold call blocked without force
     gate = gate_place_call(engine.store, room_id=room.id, tokenized_user="tok_a", force=False)

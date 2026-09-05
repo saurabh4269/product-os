@@ -20,6 +20,7 @@ from loop.room_ui import (
     receipt_proof_status,
     suppress_pending_action,
     visible_pending_actions,
+    visible_pending_approvals,
 )
 from loop.tenant import ConnectorReport
 
@@ -202,6 +203,77 @@ def test_bundle_pending_actions_filtered(engine):
     bundle = _bundle(engine, inv.id)
     assert len(bundle["actions"]) == 2
     assert bundle["pending_actions"] == []
+
+
+def test_visible_pending_approvals_hides_duplicate_globally(engine):
+    tenant, inv = _room_bundle(engine)
+    shipped = ProposedAction(
+        id="act_shipped_global",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"execution": {"pr_url": "https://github.com/org/shop/pull/11"}},
+        idempotency_key="idem_shipped_global",
+        status="executed",
+        consequence="Opened PR",
+    )
+    duplicate = ProposedAction(
+        id="act_dup_global",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"flag": "checkout_v2"},
+        idempotency_key="idem_dup_global",
+        status="awaiting_approval",
+        consequence="Duplicate rollback",
+    )
+    engine.store.put_action(shipped)
+    engine.store.put_action(duplicate)
+    assert len(engine.store.pending_approvals()) == 1
+    assert visible_pending_approvals(engine.store) == []
+
+
+def test_approvals_api_hides_duplicate_pending(engine, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from loop import api as api_mod
+
+    tenant, inv = _room_bundle(engine)
+    shipped = ProposedAction(
+        id="act_shipped_api",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"execution": {"pr_url": "https://github.com/org/shop/pull/12"}},
+        idempotency_key="idem_shipped_api",
+        status="executed",
+        consequence="Opened PR",
+    )
+    duplicate = ProposedAction(
+        id="act_dup_api",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"flag": "checkout_v2"},
+        idempotency_key="idem_dup_api",
+        status="awaiting_approval",
+        consequence="Duplicate rollback",
+    )
+    engine.store.put_action(shipped)
+    engine.store.put_action(duplicate)
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        body = client.get("/api/approvals").json()
+    assert body["pending"] == []
 
 
 def test_same_metric_joins_awaiting_room_when_flags_pr_already_shipped(engine, monkeypatch):

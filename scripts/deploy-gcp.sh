@@ -123,4 +123,10 @@ EOF
 fi
 
 gcloud run services describe "${SERVICE}" --project "${PROJECT}" --region "${REGION}" --format='value(status.url)'
+DEPLOYED_MEMORY="$(gcloud run services describe "${SERVICE}" --project "${PROJECT}" --region "${REGION}" --format='value(spec.template.spec.containers[0].resources.limits.memory)' 2>/dev/null || true)"
+if [[ "${DEPLOYED_MEMORY}" != "4Gi" ]]; then
+  echo "deploy-gcp: ERROR expected Cloud Run memory 4Gi, got '${DEPLOYED_MEMORY:-<unset>}'" >&2
+  exit 1
+fi
+echo "deploy-gcp: memory ${DEPLOYED_MEMORY}"
 echo "deploy-gcp: optional Cloud Scheduler → POST /api/internal/worker/tick (Bearer LOOP_ADMIN_TOKEN) for BQ detect + job drain"

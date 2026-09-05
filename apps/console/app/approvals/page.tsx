@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, hasAdminToken, type Action, type Room } from "@/lib/api";
+import { api, hasAdminToken, tryGet, type Action, type Room } from "@/lib/api";
 import { Button, Empty, ErrorState, Loading } from "@/components/ui";
+import { ConnectAdminCta } from "@/components/connect-admin-cta";
 import { ProofEmbed, proofFromArtifact, type ProofPayload } from "@/components/proof-embed";
 import { MIcon } from "@/components/ref/icon";
 import { ToolSurfaceRail } from "@/components/ref/tool-surface-rail";
@@ -39,12 +40,21 @@ export default function ApprovalsPage() {
 
   async function load() {
     try {
-      const [next, listed] = await Promise.all([api.approvals(), api.rooms()]);
-      setData(next);
-      setRooms(listed.rooms);
+      const [next, listed] = await Promise.all([
+        tryGet(() => api.approvals()),
+        tryGet(() => api.rooms()),
+      ]);
+      setData(next.data);
+      setRooms(listed.data?.rooms ?? []);
+      setNeedsAdmin(next.authRequired || listed.authRequired);
       setErr(null);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "failed");
+      if (!hasAdminToken()) {
+        setNeedsAdmin(true);
+        setErr(null);
+      } else {
+        setErr(e instanceof Error ? e.message : "failed");
+      }
     }
   }
 
@@ -65,7 +75,17 @@ export default function ApprovalsPage() {
     );
   }, [action]);
 
-  if (err) return <ErrorState message={err} />;
+  if (err && hasAdminToken()) return <ErrorState message={err} />;
+  if (!data && needsAdmin) {
+    return (
+      <div className="page-pad mx-auto max-w-3xl">
+        <ConnectAdminCta
+          title="Authorize to review approvals"
+          detail="Paste LOOP_ADMIN_TOKEN on Connect to approve HIGH-risk tenant changes."
+        />
+      </div>
+    );
+  }
   if (!data) return <Loading />;
 
   function roomHref(a: Action) {

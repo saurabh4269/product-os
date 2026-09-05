@@ -391,8 +391,10 @@ def _status_payload(eng) -> dict:
     from .connectors import google_oauth
     from .workflow import workflow_from_store
 
+    from .room_ui import visible_pending_approvals
+
     rooms = eng.store.list_rooms()
-    pending = eng.store.pending_approvals()
+    pending = visible_pending_approvals(eng.store)
     presence_n = sum(len(v) for v in HUB.presence.values())
     open_rooms = [r for r in rooms if r.status == "open"]
     by_kind: dict[str, int] = {}
@@ -2414,9 +2416,11 @@ def _publish_human_input_after_approve(eng, action, rid: str | None) -> None:
 
 @app.get("/api/approvals")
 def approvals(_actor: AdminUnlessEval):
+    from .room_ui import visible_pending_approvals
+
     eng = get_engine()
     gate = _gate(eng)
-    pending = [_action_row(eng, a) for a in eng.store.pending_approvals()]
+    pending = [_action_row(eng, a) for a in visible_pending_approvals(eng.store)]
     history = [a.model_dump(mode="json") for a in eng.store.list_approvals()]
     return {"pending": pending, "history": history, "gate": gate}
 
