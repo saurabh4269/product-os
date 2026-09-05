@@ -3,22 +3,25 @@
 from __future__ import annotations
 
 from loop.models import InvestigationState, SignalStatus
-from loop.signal_watch import tick_signal_watch
+from loop.signal_watch import reset_watch_state, tick_signal_watch
 
 
 def test_tick_auto_investigates_new_signal(engine, monkeypatch):
     monkeypatch.setenv("LOOP_AUTO_INVESTIGATE", "1")
+    reset_watch_state(None)
+    reset_watch_state(engine)
     signals = engine.detect_signals()
-    assert signals
+    assert signals, "warehouse fixtures must emit detectable signals"
     sig = signals[0]
     sig.status = SignalStatus.OPEN
     engine.store.put_signal(sig)
 
     before = len(engine.store.list_investigations())
+    reset_watch_state(None)
     summary = tick_signal_watch(engine)
     after = len(engine.store.list_investigations())
 
-    assert summary.get("new_signal_ids") or summary.get("auto_investigated", 0) >= 0
+    assert summary.get("new_signal_ids"), summary
     invs = engine.store.list_investigations()
     if after > before:
         inv = invs[0]

@@ -13,7 +13,6 @@ from loop.auth import require_admin_or_internal, verify_internal_oidc
 from loop.jobs import enqueue_verify, process_job
 from loop.models import InvestigationState, RiskTier
 from loop.pubsub_consumer import decode_push, handle_signal_push
-from loop.signal_watch import tick_signal_watch
 from loop.tenant import Tenant, hash_token
 from loop.worker_heartbeat import last_tick, record_tick
 
@@ -172,26 +171,26 @@ def test_status_includes_production_fields(client):
 
 def test_full_ambient_pipeline_to_approval(engine, monkeypatch):
     """Detect → auto-investigate → awaiting approval without human ingest."""
-    from loop.signal_watch import reset_watch_state
+    from loop.models import SignalStatus
+    from loop.signal_watch import reset_watch_state, tick_signal_watch
 
     monkeypatch.setenv("LOOP_AUTO_INVESTIGATE", "1")
     reset_watch_state(None)
-    from loop.models import SignalStatus
+    reset_watch_state(engine)
 
     signals = list(engine.detect_signals())
     assert signals, "warehouse fixtures must emit detectable signals"
     for sig in signals:
         sig.status = SignalStatus.OPEN
         engine.store.put_signal(sig)
+
     reset_watch_state(None)
     summary = tick_signal_watch(engine)
     assert summary is not None
+    assert summary.get("new_signal_ids"), summary
+
     invs = engine.store.list_investigations()
-    if not invs:
-        applied = int(summary.get("auto_investigated") or 0)
-        assert applied > 0 or summary.get("new_signal_ids"), summary
-        invs = engine.store.list_investigations()
-    assert invs
+    assert invs, summary
     inv = invs[-1]
     assert inv.state in {InvestigationState.AWAITING_APPROVAL, InvestigationState.APPROVED}
     actions = engine.store.list_actions(inv.id)
