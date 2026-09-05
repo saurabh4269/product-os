@@ -1,4 +1,9 @@
-"""GEAP Memory Bank adapter — optional recall path via VertexAiMemoryBankService."""
+"""GEAP Memory Bank adapter — recall via live Agent Engine memory APIs.
+
+Uses ``vertexai.Client.agent_engines.get(...).async_search_memory`` on the
+deployed Reasoning Engine (no ``google-adk`` import on the lean host).
+Writes use ``agent_engines.memories.create`` on the same client.
+"""
 
 from __future__ import annotations
 
@@ -11,12 +16,14 @@ from loop.geap_runtime import (
     geap_enabled,
     geap_project,
     geap_region,
+    get_client,
+    get_remote_agent,
     sdk_available,
 )
 
 _last_error: str = ""
-_service: Any | None = None
-_service_tried = False
+_engine: Any | None = None
+_engine_tried = False
 
 
 def enabled() -> bool:
@@ -25,18 +32,22 @@ def enabled() -> bool:
 
 def status() -> dict[str, Any]:
     configured = geap_enabled() and bool(engine_id_short())
-    operational = configured and _service is not None and not _last_error
+    if configured and sdk_available() and not _engine_tried:
+        _get_engine()
+    operational = configured and _engine is not None and not _last_error
     skipped_reason: str | None = None
     if not geap_enabled():
         skipped_reason = "LOOP_GEAP_ENABLED is not 1"
     elif not engine_id_short():
         skipped_reason = "LOOP_GEAP_AGENT_ENGINE_ID unset"
     elif not sdk_available():
-        skipped_reason = "Memory Bank SDK not installed on this service"
+        skipped_reason = "vertexai SDK not installed on this service"
     elif _last_error:
         skipped_reason = _last_error[:240]
-    elif configured and _service is None and _service_tried:
-        skipped_reason = "VertexAiMemoryBankService unavailable"
+    elif configured and _engine is None and _engine_tried:
+        skipped_reason = "Agent Engine memory APIs unavailable"
+    elif configured and not _engine_tried:
+        skipped_reason = "Memory Bank not probed yet"
     return {
         "configured": configured,
         "enabled": operational,
@@ -48,19 +59,30 @@ def status() -> dict[str, Any]:
         "project": geap_project() or None,
         "region": geap_region(),
         "last_error": _last_error or None,
+        "backend": "agent_engine.async_search_memory",
     }
 
 
 def reset_service() -> None:
-    global _service, _service_tried, _last_error
-    _service = None
-    _service_tried = False
+    global _engine, _engine_tried, _last_error
+    _engine = None
+    _engine_tried = False
     _last_error = ""
 
 
 def memory_service_builder() -> Any:
-    """Factory for AdkApp memory_service_builder hook."""
-    return _get_service()
+    """Factory for AdkApp memory_service_builder hook (deploy script only)."""
+    try:
+        from google.adk.memory import VertexAiMemoryBankService
+
+        return VertexAiMemoryBankService(
+            project=geap_project(),
+            location=geap_region(),
+            agent_engine_id=engine_id_short(),
+        )
+    except Exception as exc:
+        _note_error(exc)
+        return None
 
 
 def _note_error(exc: Exception | str) -> None:
@@ -68,27 +90,41 @@ def _note_error(exc: Exception | str) -> None:
     _last_error = str(exc)[:400]
 
 
-def _get_service() -> Any | None:
-    global _service, _service_tried
-    if _service_tried:
-        return _service
-    _service_tried = True
+def _memory_name() -> str:
+    short = engine_id_short()
+    return f"reasoningEngines/{short}" if short else ""
+
+
+def _get_engine() -> Any | None:
+    """Load remote Agent Engine and confirm memory search is registered."""
+    global _engine, _engine_tried
+    if _engine_tried:
+        return _engine
+    _engine_tried = True
     if not enabled():
         return None
     try:
-        from google.adk.memory import VertexAiMemoryBankService
+        remote = get_remote_agent()
+        if remote is None:
+            from loop.geap_runtime import status as runtime_status
 
-        _service = VertexAiMemoryBankService(
-            project=geap_project(),
-            location=geap_region(),
-            agent_engine_id=engine_id_short(),
-        )
+            rt_err = runtime_status().get("last_error") or "Agent Engine unavailable"
+            _note_error(rt_err)
+            _engine = None
+            return None
+        if not hasattr(remote, "async_search_memory"):
+            _note_error(
+                "Agent Engine missing async_search_memory — redeploy with memory_service_builder"
+            )
+            _engine = None
+            return None
         global _last_error
         _last_error = ""
+        _engine = remote
     except Exception as exc:
         _note_error(exc)
-        _service = None
-    return _service
+        _engine = None
+    return _engine
 
 
 def _run_async(coro: Any) -> Any:
@@ -104,62 +140,89 @@ def _run_async(coro: Any) -> Any:
         return asyncio.run(coro)
 
 
-def recall(*needles: str, tenant_id: str | None = None) -> list[str]:
-    """Best-effort Memory Bank search for investigation needles."""
-    svc = _get_service()
-    if not svc:
-        return []
-    query = " ".join(n for n in needles if n).strip()
-    if not query:
-        return []
-    app_name = os.environ.get("LOOP_GEAP_APP_NAME", "loop_orchestration")
-    user_id = tenant_id or os.environ.get("LOOP_GEAP_MEMORY_USER", "loop")
-    try:
-        if hasattr(svc, "search_memory"):
-            result = _run_async(svc.search_memory(app_name=app_name, user_id=user_id, query=query))
-        else:
-            return []
-    except Exception as exc:
-        _note_error(exc)
-        return []
+def _extract_memory_text(mem: Any) -> str:
+    if isinstance(mem, dict):
+        text = str(mem.get("fact") or mem.get("text") or mem.get("content") or "")
+        if text:
+            return text.strip()
+        content = mem.get("content")
+        if isinstance(content, dict):
+            parts = content.get("parts") or []
+            for part in parts:
+                if isinstance(part, dict) and part.get("text"):
+                    return str(part["text"]).strip()
+        return ""
+    fact = getattr(mem, "fact", None)
+    if fact:
+        return str(fact).strip()
+    text_attr = getattr(mem, "text", None) or getattr(mem, "content", None)
+    if isinstance(text_attr, str) and text_attr.strip():
+        return text_attr.strip()
+    content = getattr(mem, "content", None)
+    parts = getattr(content, "parts", None) if content is not None else None
+    if parts:
+        for part in parts:
+            part_text = getattr(part, "text", None)
+            if part_text:
+                return str(part_text).strip()
+    return str(mem).strip()
+
+
+def _parse_search_hits(result: Any) -> list[str]:
     hits: list[str] = []
     seen: set[str] = set()
     memories = getattr(result, "memories", None) or (result.get("memories") if isinstance(result, dict) else None)
     if not memories and isinstance(result, list):
         memories = result
     for mem in memories or []:
-        text = ""
-        if isinstance(mem, dict):
-            text = str(mem.get("fact") or mem.get("text") or mem.get("content") or "")
-        else:
-            text = str(getattr(mem, "fact", None) or getattr(mem, "text", None) or mem)
-        text = text.strip()
+        text = _extract_memory_text(mem)
         if text and text not in seen:
             hits.append(text)
             seen.add(text)
     return hits[:10]
 
 
+def recall(*needles: str, tenant_id: str | None = None) -> list[str]:
+    """Best-effort Memory Bank search for investigation needles."""
+    remote = _get_engine()
+    if not remote:
+        return []
+    query = " ".join(n for n in needles if n).strip()
+    if not query:
+        return []
+    user_id = tenant_id or os.environ.get("LOOP_GEAP_MEMORY_USER", "loop")
+    try:
+        result = _run_async(remote.async_search_memory(user_id=user_id, query=query))
+    except Exception as exc:
+        _note_error(exc)
+        return []
+    return _parse_search_hits(result)
+
+
 def remember(title: str, body: str, *, tenant_id: str | None = None) -> dict[str, Any]:
-    """Explicit Memory Bank write when SDK supports add_memory."""
-    svc = _get_service()
+    """Explicit Memory Bank write via agent_engines.memories.create."""
     st = status()
-    if not svc:
-        return {"ok": False, "mirror": st, "error": _last_error or "Memory Bank unavailable"}
+    if not enabled():
+        return {"ok": False, "mirror": st, "error": st.get("skipped_reason") or "Memory Bank unavailable"}
+    name = _memory_name()
+    if not name:
+        return {"ok": False, "mirror": st, "error": "LOOP_GEAP_AGENT_ENGINE_ID unset"}
     app_name = os.environ.get("LOOP_GEAP_APP_NAME", "loop_orchestration")
     user_id = tenant_id or os.environ.get("LOOP_GEAP_MEMORY_USER", "loop")
     payload = f"{title}\n{body}".strip()
+    if not payload:
+        return {"ok": False, "mirror": st, "error": "empty memory payload"}
     try:
-        if hasattr(svc, "add_memory"):
-            _run_async(
-                svc.add_memory(
-                    app_name=app_name,
-                    user_id=user_id,
-                    memory={"fact": payload},
-                )
-            )
-            return {"ok": True, "mirror": status(), "stored": True}
-        return {"ok": False, "mirror": st, "error": "add_memory not supported by SDK version"}
+        cli = get_client()
+        cli.agent_engines.memories.create(
+            name=name,
+            fact=payload,
+            scope={"app_name": app_name, "user_id": user_id},
+            config={"wait_for_completion": True},
+        )
+        global _last_error
+        _last_error = ""
+        return {"ok": True, "mirror": status(), "stored": True}
     except Exception as exc:
         _note_error(exc)
         return {"ok": False, "mirror": status(), "error": str(exc)[:200]}

@@ -203,13 +203,73 @@ def test_geap_memory_recall_mock(monkeypatch):
     monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "123")
     monkeypatch.setattr(geap_memory, "sdk_available", lambda: True)
 
-    svc = MagicMock()
+    remote = MagicMock()
 
     async def _search(**_kwargs):
         return {"memories": [{"fact": "OTP verify timeout on Safari"}]}
 
-    svc.search_memory = _search
-    monkeypatch.setattr(geap_memory, "_get_service", lambda: svc)
+    remote.async_search_memory = _search
+    monkeypatch.setattr(geap_memory, "_get_engine", lambda: remote)
 
     hits = geap_memory.recall("otp", "safari")
     assert any("OTP" in h for h in hits)
+
+
+def test_geap_memory_status_probes_engine(monkeypatch):
+    monkeypatch.setenv("LOOP_GEAP_ENABLED", "1")
+    monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "123")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-proj")
+    monkeypatch.setattr(geap_memory, "sdk_available", lambda: True)
+
+    remote = MagicMock()
+    remote.async_search_memory = MagicMock()
+    monkeypatch.setattr("loop.geap_memory.get_remote_agent", lambda **_: remote)
+
+    st = geap_memory.status()
+    assert st["operational"] is True
+    assert st["skipped"] is False
+    assert st["skipped_reason"] is None
+
+
+def test_geap_memory_status_honest_when_engine_missing_memory(monkeypatch):
+    monkeypatch.setenv("LOOP_GEAP_ENABLED", "1")
+    monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "123")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-proj")
+    monkeypatch.setattr(geap_memory, "sdk_available", lambda: True)
+    monkeypatch.setattr("loop.geap_memory.get_remote_agent", lambda **_: MagicMock(spec=[]))
+
+    st = geap_memory.status()
+    assert st["operational"] is False
+    assert st["skipped_reason"]
+    assert "async_search_memory" in (st["skipped_reason"] or "")
+
+
+def test_geap_memory_remember_mock(monkeypatch):
+    monkeypatch.setenv("LOOP_GEAP_ENABLED", "1")
+    monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "123")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-proj")
+    monkeypatch.setattr(geap_memory, "sdk_available", lambda: True)
+
+    remote = MagicMock()
+    remote.async_search_memory = MagicMock()
+    monkeypatch.setattr(geap_memory, "_get_engine", lambda: remote)
+
+    fake_client = MagicMock()
+    fake_client.agent_engines.memories.create.return_value = MagicMock(done=True)
+    monkeypatch.setattr("loop.geap_memory.get_client", lambda: fake_client)
+
+    out = geap_memory.remember("Lesson", "OTP timeout on Safari")
+    assert out["ok"] is True
+    fake_client.agent_engines.memories.create.assert_called_once()
+    call = fake_client.agent_engines.memories.create.call_args.kwargs
+    assert call["name"] == "reasoningEngines/123"
+    assert "OTP" in call["fact"]
+
+
+def test_geap_memory_recall_fail_closed(monkeypatch):
+    monkeypatch.setenv("LOOP_GEAP_ENABLED", "1")
+    monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "123")
+    monkeypatch.setattr(geap_memory, "sdk_available", lambda: True)
+    monkeypatch.setattr(geap_memory, "_get_engine", lambda: None)
+
+    assert geap_memory.recall("otp") == []
