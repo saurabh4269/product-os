@@ -32,7 +32,7 @@ The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents,
 | User URL | https://productos.heisenbug.in |
 | Revision | `loop-00141-j22` (100% traffic) |
 | SHA deployed | `3faa7ba` on main (#35 lean host) via Actions |
-| Memory | **2Gi** · concurrency **8** · min 1 · max 2 |
+| Memory | **2Gi** · concurrency **8** · min **0** · max **3** |
 | Worker profile | `LOOP_INLINE_WORKER=0` · `LOOP_AUTO_INVESTIGATE=0` |
 | `LOOP_EVAL` | `0` (no Demo chrome) |
 | Health | `/` and `/rooms` 200 · `/shop` 404 · persist POST 200 · Workspace OAuth connected |

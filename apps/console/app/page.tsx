@@ -5,6 +5,7 @@ import { api, hasAdminToken, tryConfig, tryGet, type OfficeSnapshot, type Room }
 import { isFirstVisit, recordVisit } from "@/lib/first-visit";
 import { buildHomePulse } from "@/lib/home-pulse";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { fetchWorldOffice, fetchWorldRooms, fetchWorldStatus } from "@/lib/world-data";
 import { useDebouncedWorldTick, useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
@@ -20,8 +21,9 @@ import { ProductFilmBanner } from "@/components/product-film-banner";
 
 export default function HomePage() {
   const { tick, connection } = useGlobalWs();
-  const worldTick = useDebouncedWorldTick(tick);
-  const slowTick = useSlowWorldTick(tick);
+  const wsLive = connection === "live";
+  const worldTick = useDebouncedWorldTick(tick, undefined, wsLive);
+  const slowTick = useSlowWorldTick(tick, wsLive);
   const pollEnabled = useWorldPollEnabled();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
@@ -64,9 +66,9 @@ export default function HomePage() {
     let cancelled = false;
     (async () => {
       try {
-        const roomsRes = await tryGet(() => api.rooms());
+        const roomsRes = await tryGet(() => fetchWorldRooms());
         if (cancelled) return;
-        setRooms(roomsRes.data?.rooms ?? []);
+        setRooms(roomsRes.data ?? []);
         setAdminAuthRequired((prev) => prev || roomsRes.authRequired);
         setErr(null);
       } catch (e) {
@@ -86,8 +88,8 @@ export default function HomePage() {
     (async () => {
       try {
         const [officeRes, statusRes] = await Promise.all([
-          tryGet(() => api.office()),
-          tryGet(() => api.status()),
+          tryGet(() => fetchWorldOffice()),
+          tryGet(() => fetchWorldStatus()),
         ]);
         if (cancelled) return;
         setOffice(officeRes.data);
@@ -185,7 +187,7 @@ export default function HomePage() {
         </div>
 
         <HomeLiveReceipts className="border-t border-border pt-8" />
-        <ProductFilmBanner className="border-t border-border pt-8" />
+        {evalMode ? <ProductFilmBanner className="border-t border-border pt-8" /> : null}
       </section>
     </>
   );

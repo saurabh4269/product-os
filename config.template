@@ -37,7 +37,7 @@
 # LOOP_TASKS_QUEUE=loop-jobs
 # LOOP_TASKS_DISABLE=1     # force inline worker threads (no Cloud Tasks)
 # LOOP_USE_VERTEX=1          # bill Gemini via Vertex AI (hackathon / GCP credits)
-# LOOP_VERTEX_MODEL=gemini-2.5-flash  # Vertex model when LOOP_USE_VERTEX=1
+# LOOP_VERTEX_MODEL=gemini-3.5-flash  # Vertex model when LOOP_USE_VERTEX=1 (see config/models.yaml)
 # LOOP_ANTIGRAVITY_VERTEX=1  # Antigravity uses Vertex ADC instead of API key
 # LOOP_ADK_WORKER_URL=       # loop-adk Cloud Run URL (main service forwards signals)
 # LOOP_ADK_ENABLED=1         # inline ADK on same process (worker service sets this)

@@ -59,9 +59,7 @@ def _vertex_url(model: str) -> str:
 
 
 def _model_id() -> str:
-    if use_vertex():
-        return (os.environ.get("LOOP_VERTEX_MODEL") or "gemini-2.5-flash").strip()
-    return default_model_id()
+    return (os.environ.get("LOOP_VERTEX_MODEL") or default_model_id()).strip()
 
 
 def generate_content(prompt: str, *, timeout: float = 90.0) -> str:
