@@ -7,6 +7,7 @@ import { useGlobalWs } from "@/lib/use-global-ws";
 import { fetchWorldGlass, fetchWorldStatus } from "@/lib/world-data";
 import { useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { ProofEmbed, ProofGrid, type ProofPayload } from "@/components/proof-embed";
+import { GeapStatusCard } from "@/components/geap-status-card";
 import { LiveWorkBoard, type LiveWorkCard } from "@/components/live-work-board";
 import { cn } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
@@ -148,6 +149,8 @@ export function HomeGlassBox({ className }: { className?: string }) {
       </div>
 
       {authHint}
+
+      <GeapStatusCard />
 
       {featured ? <FeaturedCard card={featured} /> : null}
 

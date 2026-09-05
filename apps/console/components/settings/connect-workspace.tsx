@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api, adminRememberEnabled, clearAdminToken, hasAdminToken, verifyAdminToken, type GoogleOAuth, type Tenant } from "@/lib/api";
 import { Button, ErrorState, Loading } from "@/components/ui";
 import { LiveIncidentPanel } from "@/components/live-incident-panel";
+import { GeapStatusCard } from "@/components/geap-status-card";
 import { SignalSourcesDiagram } from "@/components/diagrams/signal-sources-diagram";
 import { TenantWireDiagram } from "@/components/diagrams/tenant-wire-diagram";
 
@@ -380,6 +381,9 @@ export function ConnectWorkspace() {
         </section>
       )}
       {tenant ? <p className="text-[13px] text-[var(--faint)]">{tenant.id}</p> : null}
+
+      <GeapStatusCard className="mt-4 max-w-xl" />
+
       {allTenants.length > 1 ? (
         <label className="mt-2 block text-[13px] text-[var(--faint)]">
           Tenant

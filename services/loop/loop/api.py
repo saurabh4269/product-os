@@ -1103,8 +1103,8 @@ def adk_status():
 
 
 @app.get("/api/geap/status")
-def geap_status(_actor: AdminUnlessEval):
-    """GEAP Agent Runtime + Memory Bank configuration (honest)."""
+def geap_status():
+    """GEAP Agent Runtime + Memory Bank configuration (honest, public read)."""
     from loop import geap_memory, geap_runtime
 
     return {

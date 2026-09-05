@@ -171,6 +171,19 @@ def test_geap_api_status(engine, monkeypatch):
         assert "entitlements_needed" in body
 
 
+def test_geap_api_status_public_when_admin_required(engine, monkeypatch):
+    """Judges read GEAP on campus without admin bearer."""
+    monkeypatch.setenv("LOOP_ADMIN_TOKEN", "secret-host-token")
+    monkeypatch.setenv("K_SERVICE", "loop")
+    monkeypatch.delenv("LOOP_DEV_OPEN", raising=False)
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        res = client.get("/api/geap/status")
+        assert res.status_code == 200
+        assert "geap" in res.json()
+
+
 def test_geap_memory_status_api(engine, monkeypatch):
     monkeypatch.setattr(api_mod, "_engine", engine)
     monkeypatch.setattr(api_mod, "get_engine", lambda: engine)

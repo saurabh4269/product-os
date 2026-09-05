@@ -63,6 +63,50 @@ const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
   fixture_scenarios: [],
 };
 
+export type GeapRuntimeMirror = {
+  enabled?: boolean;
+  configured?: boolean;
+  operational?: boolean;
+  skipped?: boolean;
+  skipped_reason?: string | null;
+  display_name?: string | null;
+  agent_engine_id?: string | null;
+  agent_engine_short_id?: string | null;
+  resource_name?: string | null;
+  memory_bank_uri?: string | null;
+  preferred?: boolean;
+  project?: string | null;
+  region?: string | null;
+};
+
+export type GeapMemoryMirror = {
+  configured?: boolean;
+  enabled?: boolean;
+  operational?: boolean;
+  skipped?: boolean;
+  skipped_reason?: string | null;
+  agent_engine_id?: string | null;
+  memory_bank_uri?: string | null;
+  project?: string | null;
+  region?: string | null;
+};
+
+export type GeapStatusPayload = {
+  geap: GeapRuntimeMirror;
+  memory_bank: GeapMemoryMirror;
+  live_engine?: {
+    resource_name?: string;
+    display_name?: string;
+    staging_bucket?: string;
+  };
+  routing?: {
+    signals?: string;
+    research?: string;
+    ui_and_gate?: string;
+  };
+  entitlements_needed?: Record<string, string>;
+};
+
 /** Public config — retries transient 5xx so campus/rooms chrome still renders. */
 export async function tryConfig(retries = 2): Promise<PublicConfig> {
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -684,7 +728,12 @@ export const api = {
       };
       code_backend: string;
       pitch: string;
+      geap?: GeapRuntimeMirror;
+      geap_memory?: GeapMemoryMirror;
+      geap_preferred?: boolean;
     }>("/api/adk/status"),
+  geapStatus: () =>
+    get<GeapStatusPayload>("/api/geap/status"),
   research: (body: {
     kind: string;
     user_id: string;
