@@ -129,7 +129,7 @@ export const FilmEnd: React.FC = () => {
           Start on campus.
         </p>
         <p style={{ ...cta, margin: "20px 0 0", fontSize: 24, color: DIM }}>
-          Two minutes to Connect Product Y.
+          Observe. Investigate. Gate. Ship. Measure. Remember.
         </p>
         <div
           style={{

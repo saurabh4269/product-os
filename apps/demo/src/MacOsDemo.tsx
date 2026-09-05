@@ -8,98 +8,23 @@ import {
 } from "remotion";
 import { MacDesktop, MacWindow } from "./MacDesktop";
 import { MacCursor, cursorBetween } from "./MacCursor";
-import { MacScenePanel, SceneProgress } from "./MacScenePanels";
-import { MAC_SCENES, INVESTIGATION_ID, LOOP_CHIP, bundle } from "./demoData";
+import { MacScenePanel, SceneProgress, windowOpenOpacity, windowOpenScale } from "./MacScenePanels";
+import { VoCaption } from "./VoCaption";
+import { INVESTIGATION_ID, bundle } from "./demoData";
+import { FPS, SCRIPT_BEATS, MACOS_DEMO_DURATION, beatOffsets } from "./script";
 
-export const FPS = 30;
-export const FRAMES_PER_SCENE = 80;
-export const INTRO_FRAMES = 50;
-export const OUTRO_FRAMES = 60;
-export const MACOS_DEMO_DURATION =
-  INTRO_FRAMES + MAC_SCENES.length * FRAMES_PER_SCENE + OUTRO_FRAMES;
+export { FPS, MACOS_DEMO_DURATION };
 
 const WINDOW = { left: 180, top: 100, width: 920, height: 482 };
+const OFFSETS = beatOffsets();
 
-function IntroBeat() {
+function EndCardBeat() {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 12, INTRO_FRAMES - 10, INTRO_FRAMES], [0, 1, 1, 0], {
+  const beat = SCRIPT_BEATS[SCRIPT_BEATS.length - 1];
+  const opacity = interpolate(frame, [0, 14, beat.durationFrames - 10, beat.durationFrames], [0, 1, 1, 0], {
     extrapolateRight: "clamp",
   });
-  const y = interpolate(frame, [0, 18], [20, 0], {
-    extrapolateRight: "clamp",
-    easing: Easing.out(Easing.cubic),
-  });
-  const scale = interpolate(frame, [0, 18], [0.96, 1], {
-    extrapolateRight: "clamp",
-    easing: Easing.out(Easing.cubic),
-  });
-
-  return (
-    <MacDesktop showDock={false} drift={false}>
-      <div
-        style={{
-          opacity,
-          transform: `translateY(${y}px) scale(${scale})`,
-          textAlign: "center",
-          color: "#fff",
-          textShadow: "0 2px 24px rgba(0,0,0,0.25)",
-        }}
-      >
-        <div
-          style={{
-            width: 72,
-            height: 72,
-            margin: "0 auto 20px",
-            borderRadius: 18,
-            background: "linear-gradient(180deg, #3d9eff, #0071e3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 22,
-            fontWeight: 700,
-            boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
-          }}
-        >
-          OS
-        </div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 48,
-            fontWeight: 600,
-            letterSpacing: "-0.03em",
-          }}
-        >
-          Product OS
-        </h1>
-        <p style={{ margin: "12px 0 0", fontSize: 20, opacity: 0.88, fontWeight: 400 }}>
-          Autonomous loop · observe to verify
-        </p>
-        <div
-          style={{
-            marginTop: 20,
-            display: "inline-flex",
-            padding: "6px 14px",
-            borderRadius: 999,
-            background: "rgba(255,255,255,0.22)",
-            border: "1px solid rgba(255,255,255,0.35)",
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        >
-          {LOOP_CHIP}
-        </div>
-      </div>
-    </MacDesktop>
-  );
-}
-
-function OutroBeat() {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 14, OUTRO_FRAMES - 12, OUTRO_FRAMES], [0, 1, 1, 0], {
-    extrapolateRight: "clamp",
-  });
-  const y = interpolate(frame, [0, 16], [16, 0], {
+  const y = interpolate(frame, [0, 16], [12, 0], {
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
   });
@@ -107,30 +32,47 @@ function OutroBeat() {
   return (
     <MacDesktop showDock={true} drift={false}>
       <div style={{ opacity, transform: `translateY(${y}px)`, textAlign: "center" }}>
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            margin: "0 auto 18px",
+            borderRadius: 16,
+            background: "linear-gradient(180deg, #3d9eff, #0071e3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 20,
+            fontWeight: 700,
+            color: "#fff",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.22)",
+          }}
+        >
+          OS
+        </div>
         <p
           style={{
             margin: 0,
-            fontSize: 36,
+            fontSize: 32,
             fontWeight: 600,
             color: "#fff",
             letterSpacing: "-0.02em",
+            lineHeight: 1.35,
             textShadow: "0 2px 20px rgba(0,0,0,0.2)",
+            maxWidth: 720,
           }}
         >
-          Start on campus.
-        </p>
-        <p style={{ margin: "14px 0 0", fontSize: 18, color: "rgba(255,255,255,0.85)" }}>
-          Connect your product · one loop
+          {beat.caption}
         </p>
         <div
           style={{
             marginTop: 28,
             display: "inline-flex",
-            padding: "12px 28px",
+            padding: "11px 26px",
             borderRadius: 999,
             background: "#0071e3",
             color: "#fff",
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: 600,
             boxShadow: "0 8px 28px rgba(0,113,227,0.45)",
           }}
@@ -142,85 +84,95 @@ function OutroBeat() {
   );
 }
 
-function StoryScene({ sceneIndex }: { sceneIndex: number }) {
+function BeatScene({ beatIndex }: { beatIndex: number }) {
   const frame = useCurrentFrame();
-  const scene = MAC_SCENES[sceneIndex];
-  const prev = sceneIndex > 0 ? MAC_SCENES[sceneIndex - 1] : null;
+  const beat = SCRIPT_BEATS[beatIndex];
+  const prev = beatIndex > 0 ? SCRIPT_BEATS[beatIndex - 1] : null;
+  const isColdOpen = beat.kind === "cold_open";
 
   const fadeIn = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
   const fadeOut = interpolate(
     frame,
-    [FRAMES_PER_SCENE - 10, FRAMES_PER_SCENE],
+    [beat.durationFrames - 12, beat.durationFrames],
     [1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
   const opacity = Math.min(fadeIn, fadeOut);
 
   const cursorPos = prev
-    ? cursorBetween(frame, prev.hotspot, scene.hotspot, 0, 22)
-    : cursorBetween(frame, { x: 0.5, y: 0.7 }, scene.hotspot, 0, 22);
+    ? cursorBetween(frame, prev.hotspot, beat.hotspot, 0, Math.min(28, beat.durationFrames * 0.15))
+    : cursorBetween(frame, { x: 0.55, y: 0.62 }, beat.hotspot, 0, 30);
 
-  const windowTitle =
-    scene.kind === "room"
-      ? "Room · parallel specialists"
-      : scene.kind === "approve"
-        ? "Approvals"
-        : "Product OS";
+  const winScale = isColdOpen ? windowOpenScale(frame) : 1;
+  const winOpacity = isColdOpen ? windowOpenOpacity(frame) : 1;
+
+  const showWindow = !isColdOpen || frame > 15;
 
   return (
-    <MacDesktop>
-      <div style={{ opacity }}>
-        <MacWindow title={windowTitle}>
-          <MacScenePanel scene={scene} localFrame={frame} />
-          <SceneProgress count={MAC_SCENES.length} active={sceneIndex} localFrame={frame} />
-        </MacWindow>
-      </div>
+    <MacDesktop showDock={isColdOpen && frame < 40}>
+      {showWindow ? (
+        <div
+          style={{
+            opacity: opacity * winOpacity,
+            transform: `scale(${winScale})`,
+            transformOrigin: "center center",
+          }}
+        >
+          <MacWindow title={beat.windowTitle}>
+            <MacScenePanel beat={beat} localFrame={frame} />
+            {beat.kind !== "cold_open" && beat.kind !== "end_card" ? (
+              <SceneProgress
+                count={SCRIPT_BEATS.length - 1}
+                active={beatIndex}
+                localFrame={frame}
+              />
+            ) : null}
+          </MacWindow>
+        </div>
+      ) : null}
+
       <MacCursor
         position={cursorPos}
-        clickAt={scene.clickAt}
+        clickAt={beat.clickAt}
         localFrame={frame}
         windowOffset={WINDOW}
-        visible={opacity > 0.2}
+        visible={opacity > 0.15 && (showWindow || isColdOpen)}
       />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 88,
-          right: 56,
-          fontSize: 11,
-          color: "rgba(255,255,255,0.75)",
-          fontFamily: "ui-monospace, monospace",
-          opacity: 0.85 * opacity,
-        }}
-      >
-        {INVESTIGATION_ID} · {bundle.meta?.pipeline ?? "generic"}
-      </div>
+
+      <VoCaption text={beat.caption} localFrame={frame} durationFrames={beat.durationFrames} />
+
+      {beat.kind !== "end_card" ? (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 88,
+            right: 56,
+            fontSize: 10,
+            color: "rgba(255,255,255,0.65)",
+            fontFamily: "ui-monospace, monospace",
+            opacity: 0.8 * opacity,
+          }}
+        >
+          {INVESTIGATION_ID} · {bundle.meta?.pipeline ?? "generic"}
+        </div>
+      ) : null}
     </MacDesktop>
   );
 }
 
 export const MacOsDemo: React.FC = () => {
-  let offset = 0;
+  const storyBeats = SCRIPT_BEATS.filter((b) => b.kind !== "end_card");
+  const endBeat = SCRIPT_BEATS[SCRIPT_BEATS.length - 1];
 
   return (
     <AbsoluteFill>
-      <Sequence from={offset} durationInFrames={INTRO_FRAMES}>
-        <IntroBeat />
-      </Sequence>
-      {offset += INTRO_FRAMES}
-
-      {MAC_SCENES.map((_, i) => {
-        const from = offset + i * FRAMES_PER_SCENE;
-        return (
-          <Sequence key={i} from={from} durationInFrames={FRAMES_PER_SCENE}>
-            <StoryScene sceneIndex={i} />
-          </Sequence>
-        );
-      })}
-      {offset += MAC_SCENES.length * FRAMES_PER_SCENE}
-
-      <Sequence from={offset} durationInFrames={OUTRO_FRAMES}>
-        <OutroBeat />
+      {storyBeats.map((beat, i) => (
+        <Sequence key={beat.kind} from={OFFSETS[i]} durationInFrames={beat.durationFrames}>
+          <BeatScene beatIndex={i} />
+        </Sequence>
+      ))}
+      <Sequence from={OFFSETS[SCRIPT_BEATS.length - 1]} durationInFrames={endBeat.durationFrames}>
+        <EndCardBeat />
       </Sequence>
     </AbsoluteFill>
   );
