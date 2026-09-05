@@ -360,9 +360,17 @@ def mail_proof(artifact: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def enrich_card_proof(store: Any, card: dict[str, Any], engine: Any | None = None) -> dict[str, Any]:
+def enrich_card_proof(
+    store: Any,
+    card: dict[str, Any],
+    engine: Any | None = None,
+    *,
+    allow_network: bool = True,
+) -> dict[str, Any]:
     """Attach a proof block to a live-work card when we can resolve one."""
     if card.get("proof"):
+        return card
+    if not allow_network:
         return card
     art_type = (card.get("artifact_type") or "").lower()
     pr_url = card.get("pr_url")

@@ -2028,25 +2028,10 @@ def workflows_focus(tenant_id: str | None = Query(default=None)):
 def live_work_board(_actor: AdminUnlessEval):
     """Homepage live work board — receipts that pile into Signal → Evidence → Code → Approve → Verify."""
     from .live_work import build_live_work
-    from .proof import enrich_card_proof
 
-    eng = get_engine()
-    out = build_live_work(eng.store)
-    cards = []
-    for card in out.get("cards") or []:
-        # Prefer proof already stored on the message artifact
-        room_id = card.get("room_id")
-        if room_id and not card.get("proof"):
-            for msg in eng.store.list_messages(room_id):
-                if msg.id != card.get("id"):
-                    continue
-                art = msg.artifact if isinstance(msg.artifact, dict) else {}
-                if isinstance(art.get("proof"), dict):
-                    card["proof"] = art["proof"]
-                break
-        cards.append(enrich_card_proof(eng.store, card, engine=eng))
-    out["cards"] = cards
-    return out
+    # Cards already carry artifact proof from build_live_work; do not block on
+    # per-card message rescans or live GitHub/BQ enrichment here.
+    return build_live_work(get_engine().store)
 
 
 @app.get("/api/proof")
