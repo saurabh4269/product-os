@@ -67,7 +67,7 @@ When GEAP Agent Runtime is entitled, the same agent configs deploy to managed ru
 | **Runtime client** | `services/loop/loop/geap_runtime.py` | `vertexai.Client` + `AdkApp` around LOOP orchestrator |
 | **Deploy** | `scripts/deploy-geap-agent.sh` | Creates Reasoning Engine with `identity_type=AGENT_IDENTITY` |
 | **Routing** | `LOOP_GEAP_ENABLED=1` + `LOOP_GEAP_AGENT_ENGINE_ID` | `POST /api/signals` → GEAP query → local LoopEngine persistence |
-| **Memory Bank** | `services/loop/loop/geap_memory.py` | `VertexAiMemoryBankService` when engine id set; SQLite/Firestore fallback |
+| **Memory Bank** | `services/loop/loop/geap_memory.py` | Recall live via Agent Engine `async_search_memory`; SQLite/Firestore fallback |
 | **Status** | `GET /api/geap/status`, `/api/adk/status` | Honest skipped_reason when SDK or engine id missing |
 | **Gateway** | Plan-only | Not required for first Runtime ship — Identity on create is enough |
 
@@ -84,7 +84,7 @@ GOOGLE_CLOUD_REGION=us-central1
 
 `deploy-gcp.sh` wires these by default (`LOOP_GEAP_ENABLE=1`; set `LOOP_GEAP_ENABLE=0` to opt out). Smoke: `python -m loop.geap_deploy --smoke` or `POST /api/geap/smoke`.
 
-IAM: deployer needs `roles/aiplatform.user` and write access to the staging bucket. Main `loop` host does **not** bundle `google-adk` — GEAP SDK is for deploy script / optional worker only; runtime queries use client API.
+IAM: deployer needs `roles/aiplatform.user` and write access to the staging bucket. Main `loop` host does **not** bundle `google-adk` — Memory Bank recall/write uses `vertexai.Client.agent_engines` memory APIs on the live engine; deploy script still uses AdkApp + `VertexAiMemoryBankService`.
 
 ---
 
