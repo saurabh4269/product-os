@@ -310,6 +310,34 @@ def twiml_gather(call_sid: str, speech: str, room: str) -> str:
 """
 
 
+def _metric_for_session(sess: dict[str, Any]) -> str:
+    metric = str(sess.get("metric") or "")
+    if metric:
+        return metric
+    room_id = sess.get("room_id")
+    if not room_id:
+        return ""
+    try:
+        from loop.api import get_engine
+
+        eng = get_engine()
+        room = eng.store.get_room(str(room_id))
+        if not room or not room.investigation_id:
+            return ""
+        inv = eng.store.get_investigation(room.investigation_id)
+        if not inv:
+            return ""
+        scenario = str(inv.scenario_id or "")
+        if scenario.startswith("t:") and scenario.count(":") >= 2:
+            return scenario.split(":", 2)[2]
+        title = str(inv.title or "")
+        if ":" in title:
+            return title.split(":", 1)[-1].strip()
+    except Exception:
+        return ""
+    return ""
+
+
 def finalize_call(call_sid: str, status: str = "completed") -> dict[str, Any]:
     from loop.abandon_research import extract_structured_evidence
 
@@ -319,7 +347,7 @@ def finalize_call(call_sid: str, status: str = "completed") -> dict[str, Any]:
     sess["status"] = "done" if status == "completed" else status
     transcript = list(sess.get("transcript") or [])
     outcome = classify_call_outcome(transcript)
-    structured = extract_structured_evidence(transcript)
+    structured = extract_structured_evidence(transcript, metric=_metric_for_session(sess))
     sess["outcome"] = outcome
     sess["structured"] = structured
     put_session(call_sid, sess)

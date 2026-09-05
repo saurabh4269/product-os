@@ -88,6 +88,21 @@ def visible_pending_actions(store: Any, inv_id: str) -> list[Any]:
     return [act for act in pending if not suppress_pending_action(store, act, inv_pr_url=pr_url)]
 
 
+def visible_pending_approvals(store: Any) -> list[Any]:
+    """Global pending gate — hides duplicate HIGH when a sibling already opened the tenant PR."""
+    if not hasattr(store, "list_actions"):
+        return []
+    inv_ids = {
+        a.investigation_id
+        for a in store.list_actions()
+        if getattr(a, "status", None) in {"proposed", "awaiting_approval"}
+    }
+    out: list[Any] = []
+    for inv_id in inv_ids:
+        out.extend(visible_pending_actions(store, inv_id))
+    return sorted(out, key=lambda a: str(getattr(a, "id", "")))
+
+
 def receipt_proof_status(
     *,
     kind: str,

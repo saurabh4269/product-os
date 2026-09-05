@@ -358,6 +358,11 @@ def resolve_diagnostic_plan(
     return opening, questions, replies
 
 
+def _otp_metric_class(metric: str) -> bool:
+    m = (metric or "").lower()
+    return "otp" in m and any(w in m for w in ("verify", "hang", "timeout", "code"))
+
+
 def extract_structured_evidence(
     transcript: list[dict[str, str]],
     *,
@@ -365,13 +370,17 @@ def extract_structured_evidence(
 ) -> StructuredCallEvidence:
     text = " ".join(f"{t.get('role')}: {t.get('message')}" for t in transcript).lower()
     ctx = f"{text} {(metric or '').lower()}"
+    otp_metric = _otp_metric_class(metric)
     loading = any(w in text for w in ("loading", "spinner", "kept loading", "hung", "timeout"))
     error_shown = any(w in text for w in ("error", "declined", "invalid card"))
     card_detect = "card" in text and any(w in text for w in ("detect", "not being", "wasn't", "wasnt"))
     tried_again = any(w in text for w in ("twice", "again", "retr"))
     gave_up = any(w in text for w in ("gave up", "gaveup", "i gave"))
-    otpish = any(w in ctx for w in ("otp", "verify", "2fa", "two-factor", "two factor"))
-    if loading or card_detect:
+    otpish = any(w in ctx for w in ("otp", "verify", "2fa", "two-factor", "two factor", "code"))
+    if otp_metric:
+        # Signal class wins — never label otp_verify_* hangs as payment_timeout.
+        reason = "otp_verify_timeout"
+    elif loading or card_detect:
         if otpish and loading:
             reason = "otp_verify_timeout"
         elif loading:

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { useWorldPollEnabled } from "@/lib/world-refresh";
 
 export type IncidentStep = {
   id: string;
@@ -57,8 +58,9 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
   const [life, setLife] = useState<IncidentLifecycle | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { tick, connection, incidentLifecycle } = useGlobalWs();
+  const { connection, incidentLifecycle } = useGlobalWs();
   const wsLive = connection === "live";
+  const pollEnabled = useWorldPollEnabled();
 
   const refresh = useCallback(async () => {
     try {
@@ -79,7 +81,7 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
 
   useEffect(() => {
     void refresh();
-  }, [refresh, tick]);
+  }, [refresh]);
 
   useEffect(() => {
     if (incidentLifecycle?.tenantId === tenantId) {
@@ -89,20 +91,21 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
   }, [incidentLifecycle, tenantId]);
 
   useEffect(() => {
+    if (!pollEnabled) return;
     const phase = life?.phase;
     const activePhase = phase === "diagnosing" || phase === "signal_received";
     const ms = wsLive
       ? activePhase
-        ? 8000
-        : 15000
+        ? 30_000
+        : 60_000
       : activePhase
-        ? 2000
-        : 4000;
+        ? 8000
+        : 15_000;
     const id = window.setInterval(() => {
       void refresh();
     }, ms);
     return () => window.clearInterval(id);
-  }, [life?.phase, refresh, wsLive]);
+  }, [life?.phase, refresh, wsLive, pollEnabled]);
 
   async function resetRegression() {
     setBusy(true);

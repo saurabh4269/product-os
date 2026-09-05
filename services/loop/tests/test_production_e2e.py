@@ -178,12 +178,19 @@ def test_full_ambient_pipeline_to_approval(engine, monkeypatch):
     reset_watch_state(None)
     from loop.models import SignalStatus
 
-    for sig in engine.detect_signals():
+    signals = list(engine.detect_signals())
+    assert signals, "warehouse fixtures must emit detectable signals"
+    for sig in signals:
         sig.status = SignalStatus.OPEN
         engine.store.put_signal(sig)
+    reset_watch_state(None)
     summary = tick_signal_watch(engine)
     assert summary is not None
     invs = engine.store.list_investigations()
+    if not invs:
+        applied = int(summary.get("auto_investigated") or 0)
+        assert applied > 0 or summary.get("new_signal_ids"), summary
+        invs = engine.store.list_investigations()
     assert invs
     inv = invs[-1]
     assert inv.state in {InvestigationState.AWAITING_APPROVAL, InvestigationState.APPROVED}

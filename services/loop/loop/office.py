@@ -22,6 +22,10 @@ _ALIASES = {
     "coordination": "coordination_agent",
 }
 
+# Caps for GET /api/office — never load full message/call tables on 2Gi poll.
+_OFFICE_CALL_SCAN = 80
+_OFFICE_HANDOFF_CAP = 40
+
 
 def canonical_agent(raw: str) -> str:
     if raw in by_id() or raw in {"you", "system"}:
@@ -51,16 +55,21 @@ def _district(kind: str | None) -> str:
 def office_snapshot(eng: LoopEngine) -> dict:
     rooms = eng.store.list_rooms()
     inv_to_room = {r.investigation_id: r for r in rooms if r.investigation_id}
-    messages = eng.store.list_all_messages()
-    calls = eng.store.list_all_agent_calls()
+    author_stats_raw = eng.store.message_stats_by_author()
+    author_stats: dict[str, tuple[int, object | None]] = {}
+    for author, (cnt, msg) in author_stats_raw.items():
+        canon = canonical_agent(author)
+        prev_cnt, prev_msg = author_stats.get(canon, (0, None))
+        merged_msg = prev_msg
+        if msg and (not merged_msg or msg.created_at > merged_msg.created_at):
+            merged_msg = msg
+        author_stats[canon] = (prev_cnt + cnt, merged_msg)
+    calls = eng.store.recent_agent_calls(limit=_OFFICE_CALL_SCAN)
 
-    msgs_by_author: dict[str, list] = {}
     rooms_by_member: dict[str, list] = {}
     for room in rooms:
         for member in room.members:
             rooms_by_member.setdefault(canonical_agent(member), []).append(room)
-    for msg in messages:
-        msgs_by_author.setdefault(canonical_agent(msg.author), []).append(msg)
 
     handoffs = []
     incoming: dict[str, list] = {}
@@ -82,11 +91,11 @@ def office_snapshot(eng: LoopEngine) -> dict:
 
     desks = []
     for entry in ENTRIES:
-        own_msgs = msgs_by_author.get(entry.id, [])
-        last_msg = own_msgs[-1] if own_msgs else None
-        last_in = incoming.get(entry.id, [])[-1] if incoming.get(entry.id) else None
-        last_out = outgoing.get(entry.id, [])[-1] if outgoing.get(entry.id) else None
-        member_rooms = rooms_by_member.get(entry.id, [])
+        agent_id = entry.id
+        msg_count, last_msg = author_stats.get(agent_id, (0, None))
+        last_in = incoming.get(agent_id, [])[-1] if incoming.get(agent_id) else None
+        last_out = outgoing.get(agent_id, [])[-1] if outgoing.get(agent_id) else None
+        member_rooms = rooms_by_member.get(agent_id, [])
         room = None
         if last_msg:
             room = eng.store.get_room(last_msg.room_id)
@@ -123,15 +132,15 @@ def office_snapshot(eng: LoopEngine) -> dict:
                 or (last_in.get("started_at") if last_in else None),
                 "handed_from": last_in["from_agent"] if last_in else None,
                 "handed_to": last_out["to_agent"] if last_out else None,
-                "message_count": len(own_msgs),
-                "handoff_count": len(incoming.get(entry.id, [])) + len(outgoing.get(entry.id, [])),
+                "message_count": msg_count,
+                "handoff_count": len(incoming.get(agent_id, [])) + len(outgoing.get(agent_id, [])),
             }
         )
 
     working = sum(1 for d in desks if d["status"] != "idle")
     return {
         "desks": desks,
-        "handoffs": handoffs[-40:],
+        "handoffs": handoffs[-_OFFICE_HANDOFF_CAP:],
         "working": working,
         "idle": len(desks) - working,
     }

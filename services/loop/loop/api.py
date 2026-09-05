@@ -387,12 +387,13 @@ def health():
 
 
 def _status_payload(eng) -> dict:
-    """Shared counters for GET /api/status and WebSocket initial_state."""
+    """Shared counters for GET /api/status — avoid per-room workflow/message scans (2Gi)."""
     from .connectors import google_oauth
-    from .workflow import workflow_from_store
+    from .models import InvestigationState
+    from .room_ui import visible_pending_approvals
 
     rooms = eng.store.list_rooms()
-    pending = eng.store.pending_approvals()
+    pending = visible_pending_approvals(eng.store)
     presence_n = sum(len(v) for v in HUB.presence.values())
     open_rooms = [r for r in rooms if r.status == "open"]
     by_kind: dict[str, int] = {}
@@ -404,18 +405,29 @@ def _status_payload(eng) -> dict:
         for ev in agents.values():
             st = str(ev.get("status") or "idle")
             stages[st] = stages.get(st, 0) + 1
+    engaged_states = {
+        InvestigationState.GATHERING,
+        InvestigationState.HYPOTHESIS,
+        InvestigationState.ACTION_PROPOSED,
+        InvestigationState.AWAITING_APPROVAL,
+        InvestigationState.APPROVED,
+        InvestigationState.ACTING,
+        InvestigationState.VERIFYING,
+    }
+    verified_states = {
+        InvestigationState.RESOLVED,
+        InvestigationState.PARTIALLY_RESOLVED,
+    }
     engaged = 0
     verified = 0
     for room in open_rooms:
         inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
-        funnel = workflow_from_store(eng.store, room, inv)
-        st = funnel.get("current") or "signal"
-        if st in {"investigate", "evidence", "root_cause", "customer", "product"}:
+        if not inv:
+            continue
+        state = inv.state
+        if state in engaged_states:
             engaged += 1
-        if inv and str(getattr(inv.state, "value", inv.state)) in {
-            "resolved",
-            "partially_resolved",
-        }:
+        if state in verified_states:
             verified += 1
     oauth = google_oauth.status()
     from loop import firestore_memory, gcs_state
@@ -423,8 +435,8 @@ def _status_payload(eng) -> dict:
     from loop.state_persist import last_upload_ts
     from loop.worker_heartbeat import last_tick as worker_last_tick
 
-    jobs_queued = len(eng.store.list_jobs(status="queued"))
-    jobs_dead = len(eng.store.list_jobs(status="dead"))
+    jobs_queued = eng.store.count_jobs(status="queued")
+    jobs_dead = eng.store.count_jobs(status="dead")
     last_tick = last_tick_summary()
     worker_tick = worker_last_tick()
 
@@ -1650,16 +1662,20 @@ def world_seed():
 @app.get("/api/rooms")
 def rooms(_actor: AdminUnlessEval, tenant_id: str | None = Query(default=None)):
     eng = get_engine()
+    filtered = [
+        room
+        for room in eng.store.list_rooms()
+        if not tenant_id or room.tenant_id in (None, tenant_id)
+    ]
+    summaries = eng.store.room_message_summaries([room.id for room in filtered])
     items = []
-    for room in eng.store.list_rooms():
-        if tenant_id and room.tenant_id not in (None, tenant_id):
-            continue
-        msgs = eng.store.list_messages(room.id)
+    for room in filtered:
+        count, preview = summaries.get(room.id, (0, None))
         items.append(
             {
                 **room.model_dump(mode="json"),
-                "message_count": len(msgs),
-                "preview": msgs[-1].text if msgs else room.topic,
+                "message_count": count,
+                "preview": preview or room.topic,
             }
         )
     return {"rooms": items}
@@ -2073,7 +2089,12 @@ def public_config():
 
 
 @app.get("/api/rooms/{room_id}")
-def room_detail(room_id: str, _actor: AdminUnlessEval):
+def room_detail(
+    room_id: str,
+    _actor: AdminUnlessEval,
+    slim: bool = Query(default=True),
+    full: bool = Query(default=False),
+):
     from .tenant import resolve_tenant
 
     eng = get_engine()
@@ -2083,9 +2104,10 @@ def room_detail(room_id: str, _actor: AdminUnlessEval):
     inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
     messages = list(eng.store.list_messages(room_id))
     message_count = len(messages)
-    if message_count > 80:
-        messages = messages[-80:]
-    bundle = _bundle(eng, room.investigation_id) if inv else None
+    msg_cap = 60 if (slim and not full) else 80
+    if message_count > msg_cap:
+        messages = messages[-msg_cap:]
+    bundle = _bundle(eng, room.investigation_id, slim=(slim and not full)) if inv else None
     tenant = resolve_tenant(eng.store, investigation=inv, room=room)
     from .workflow import workflow_from_store
 
@@ -2414,9 +2436,11 @@ def _publish_human_input_after_approve(eng, action, rid: str | None) -> None:
 
 @app.get("/api/approvals")
 def approvals(_actor: AdminUnlessEval):
+    from .room_ui import visible_pending_approvals
+
     eng = get_engine()
     gate = _gate(eng)
-    pending = [_action_row(eng, a) for a in eng.store.pending_approvals()]
+    pending = [_action_row(eng, a) for a in visible_pending_approvals(eng.store)]
     history = [a.model_dump(mode="json") for a in eng.store.list_approvals()]
     return {"pending": pending, "history": history, "gate": gate}
 
@@ -2455,6 +2479,13 @@ def decide(
             reused=True,
         )
     if body.decision == "approve":
+        from .room_ui import suppress_pending_action
+
+        if suppress_pending_action(eng.store, action):
+            raise HTTPException(
+                409,
+                "duplicate HIGH approval suppressed — tenant PR already open for this investigation",
+            )
         outcome = eng.resume_after_approval(action_id, body.approver, body.rationale)
         fresh = eng.store.get_action(action_id)
         execution = ((fresh.artifacts or {}).get("execution") if fresh else None) or {}
@@ -2650,6 +2681,9 @@ def worker_tick(
 
     require_admin_or_internal(authorization, internal_header=x_loop_worker)
     eng = get_engine()
+    from .jobs import sweep_dead_jobs
+
+    jobs_swept = sweep_dead_jobs(eng.store, force=True)
     detected = eng.detect_all_signals()
     from .auto_investigate import count_applied, open_signal_ids_for_auto_investigate
 
@@ -2675,6 +2709,7 @@ def worker_tick(
         "detected": len(detected),
         "investigated": investigated,
         "auto_investigated": count_applied(investigated),
+        "jobs_swept": jobs_swept,
     }
     from .worker_heartbeat import record_tick
 
@@ -2912,14 +2947,11 @@ async def ws_global(ws: WebSocket):
 
     await HUB.connect_global(ws)
     try:
-        eng = get_engine()
         await ws.send_text(
             json.dumps(
                 {
                     "type": "initial_state",
-                    "status": _status_payload(eng),
                     "activity": list_activity(25),
-                    "pipeline": {"cards": _pipeline_cards(eng)},
                 },
                 default=str,
             )
@@ -3096,12 +3128,21 @@ def _approve_payload(
     return payload
 
 
-def _bundle(eng: LoopEngine, inv_id: str) -> dict:
+def _bundle(eng: LoopEngine, inv_id: str, *, slim: bool = False) -> dict:
     from .room_ui import visible_pending_actions
 
     inv = eng.store.get_investigation(inv_id)
     assert inv
     pending = visible_pending_actions(eng.store, inv_id)
+    evidence = eng.store.list_evidence(inv_id)
+    if slim:
+        evidence = evidence[-24:]
+    timeline_cap = 24 if slim else 48
+    calls_cap = 24 if slim else 48
+    hypotheses = eng.store.list_hypotheses(inv_id)
+    if slim:
+        hypotheses = hypotheses[:3]
+    actions = eng.store.list_actions(inv_id)
     return {
         "investigation": inv.model_dump(mode="json"),
         "signals": [
@@ -3109,17 +3150,23 @@ def _bundle(eng: LoopEngine, inv_id: str) -> dict:
             for s in (eng.store.get_signal(i) for i in inv.originating_signal_ids)
             if s
         ],
-        "evidence": [e.model_dump(mode="json") for e in eng.store.list_evidence(inv_id)],
-        "hypotheses": [h.model_dump(mode="json") for h in eng.store.list_hypotheses(inv_id)],
-        "actions": [_action_row(eng, a) for a in eng.store.list_actions(inv_id)],
+        "evidence": [e.model_dump(mode="json") for e in evidence],
+        "hypotheses": [h.model_dump(mode="json") for h in hypotheses],
+        "actions": [_action_row(eng, a) for a in actions],
         "pending_actions": [_action_row(eng, a) for a in pending],
-        "approvals": [
-            ap.model_dump(mode="json")
-            for a in eng.store.list_actions(inv_id)
-            for ap in eng.store.list_approvals(a.id)
+        "approvals": (
+            []
+            if slim
+            else [
+                ap.model_dump(mode="json")
+                for a in actions
+                for ap in eng.store.list_approvals(a.id)
+            ]
+        ),
+        "timeline": [t.model_dump(mode="json") for t in eng.store.list_timeline(inv_id)[-timeline_cap:]],
+        "agent_calls": [
+            c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv_id)[-calls_cap:]
         ],
-        "timeline": [t.model_dump(mode="json") for t in eng.store.list_timeline(inv_id)[-48:]],
-        "agent_calls": [c.model_dump(mode="json") for c in eng.store.list_agent_calls(inv_id)[-48:]],
         "outcomes": [o.model_dump(mode="json") for o in eng.store.list_outcomes_for_investigation(inv_id)],
         "lessons": [lesson.model_dump(mode="json") for lesson in eng.store.list_lessons_for_investigation(inv_id)],
         "verdicts": _investigation_verdicts(eng, inv_id),

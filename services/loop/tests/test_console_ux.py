@@ -64,24 +64,25 @@ def test_campus_map_does_not_poll_office_rooms():
 def test_home_ws_tick_debounces_world_refetch():
     src = (CONSOLE / "app" / "page.tsx").read_text()
     assert "useDebouncedWorldTick" in src
+    assert "useSlowWorldTick" in src
     assert "worldTick" in src
-    assert "}, [tick]);" not in src
-    world_block = src[src.index("const [rooms, setRooms]") : src.index("const pulse")]
-    assert "api.rooms()" in world_block
-    assert "api.office()" in world_block
-    assert "worldTick" in world_block
-    assert "tick" not in world_block.split("worldTick")[1].split("const pulse")[0]
+    assert "slowTick" in src
+    rooms_block = src[src.index("api.rooms()") : src.index("api.office()")]
+    assert "worldTick" in rooms_block
+    office_block = src[src.index("api.office()") : src.index("const pulse")]
+    assert "slowTick" in office_block
+    assert "api.status()" in office_block
 
 
 def test_rooms_index_ws_tick_debounces_list_refetch():
     src = (CONSOLE / "app" / "rooms" / "page.tsx").read_text()
     assert "useDebouncedWorldTick" in src
     assert "worldTick" in src
-    assert "}, [tick]);" not in src
-    fetch_block = src[src.index("useEffect(() => {") : src.index("if (loading)")]
-    assert "api.rooms()" in fetch_block
-    assert "api.office()" in fetch_block
-    assert "worldTick" in fetch_block
+    assert "}, [worldTick, pollEnabled]);" in src
+    assert "api.office()" in src
+    office_block = src[src.index("api.office()") : src.index("api.rooms()")]
+    assert "}, []);" in office_block
+    assert "worldTick" not in office_block
 
 
 def test_shell_does_not_refetch_rooms_on_ws_tick():
@@ -90,7 +91,9 @@ def test_shell_does_not_refetch_rooms_on_ws_tick():
     assert "[path]" in rooms_effect or "[path, inRoom]" in rooms_effect
     assert "tick" not in rooms_effect
     assert "inRoom" in rooms_effect
-    assert "useDebouncedWorldTick" in src
+    assert "useSlowWorldTick" in src
+    status_effect = src[src.index("api\n      .status()") : src.index("useEffect(() => {", src.index("api\n      .status()"))]
+    assert "pollEnabled" in status_effect
 
 
 def test_unauth_room_copy_is_this_room_not_index():
@@ -122,10 +125,18 @@ def test_pending_actions_trusts_empty_server_list():
     assert "bundle.pending_actions?.length" not in fn
 
 
-def test_world_refresh_policy_is_at_least_15s():
+def test_world_refresh_policy_is_at_least_30s():
     src = (CONSOLE / "lib" / "world-refresh.ts").read_text()
     assert "WORLD_REFRESH_MS" in src
-    assert "15_000" in src or "15000" in src
+    assert "30_000" in src or "30000" in src
+    assert "WORLD_SLOW_REFRESH_MS" in src
+    assert "60_000" in src or "60000" in src
+    assert "useWorldPollEnabled" in src
+
+
+def test_room_api_defaults_to_slim_bundle():
+    src = (CONSOLE / "lib" / "api.ts").read_text()
+    assert "slim=1" in src
 
 
 def test_try_config_helper_retries_and_defaults():

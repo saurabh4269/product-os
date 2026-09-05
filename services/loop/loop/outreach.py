@@ -214,6 +214,37 @@ def start_mail_ladder(
                 },
             )
 
+    contact_tok = str(voice.get("user_id") or "") if voice else ""
+    if not contact_tok and cohort:
+        contact_tok = str(cohort[0].get("tokenized_user") or "")
+    lookup = resolve_customer_contact(engine.store, room_id=room.id, tokenized_user=contact_tok)
+    if not lookup.get("found") and cohort:
+        first = cohort[0]
+        if first.get("email") or first.get("phone"):
+            lookup = {
+                **first,
+                "found": True,
+                "tokenized_user": first.get("tokenized_user"),
+                "detail": "Cohort contact from registration.",
+            }
+    if lookup.get("email") or lookup.get("phone"):
+        phone = lookup.get("phone")
+        email = lookup.get("email")
+        post(
+            engine,
+            room.id,
+            author="customer_voice_agent",
+            author_kind="agent",
+            kind="chat",
+            text=(
+                "Looked up customer contact in memory."
+                + (f" Callback number is {phone}." if phone else "")
+                + (f" Email on file: {email}." if email else "")
+            ),
+            artifact_type="contact_lookup",
+            artifact={**lookup, "found": True},
+        )
+
     cluster_id = _id("cluster")
     cluster_art = {
         "cluster_id": cluster_id,

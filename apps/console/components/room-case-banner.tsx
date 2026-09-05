@@ -28,7 +28,7 @@ export function RoomCaseBanner({
   className?: string;
 }) {
   const path = pathLabel(bundle, room);
-  const action = pendingActions(bundle)[0] || bundle?.actions?.[0];
+  const action = pendingActions(bundle)[0];
   const recalled = bundle?.investigation?.recalled_lessons ?? [];
   const hyp = bundle?.hypotheses?.[0];
   const state = bundle?.investigation?.state;

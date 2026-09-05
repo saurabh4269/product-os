@@ -956,6 +956,9 @@ class LoopEngine:
                     self.store.put_tenant(tenant)
                 if code_fix_job is not None and result.get("pr_opened"):
                     code_fix_job["flag_pr_opened"] = True
+                    # flags.json GitHub PR is the ship path — skip lean code_fix (avoids dead jobs).
+                    code_fix_job = None
+                    result["code_fix"] = "skipped_flag_pr"
             if code_fix and brief and not result.get("pr_opened"):
                 result["pr_note"] = "Code fix PR opening in background (multi-file)"
         else:
@@ -1383,7 +1386,27 @@ class LoopEngine:
         if os.environ.get("LOOP_VERIFY_DEFER", "0") == "1":
             from .jobs import enqueue_verify
 
-            job = enqueue_verify(self.store, action.investigation_id, delay_hours=int(os.environ.get("LOOP_VERIFY_DELAY_HOURS", "24")))
+            delay_hours = int(os.environ.get("LOOP_VERIFY_DELAY_HOURS", "24"))
+            exe = (action.artifacts or {}).get("execution") or {}
+            if exe.get("pr_opened") or exe.get("pr_url"):
+                delay_hours = 0
+            inv = self.store.get_investigation(action.investigation_id)
+            assert inv
+            job = enqueue_verify(self.store, action.investigation_id, delay_hours=delay_hours)
+            if inv.room_id and delay_hours > 0:
+                sig = self.store.get_signal(inv.originating_signal_ids[0]) if inv.originating_signal_ids else None
+                from .world import post
+
+                post(
+                    self,
+                    inv.room_id,
+                    author="learning_agent",
+                    author_kind="agent",
+                    kind="artifact",
+                    text=f"Verify scheduled — measuring {sig.metric if sig else 'metric'} after deploy window.",
+                    artifact_type="verify_wait",
+                    artifact={"verify_job_id": job.id, "delay_hours": delay_hours},
+                )
             return {"deferred": True, "verify_job_id": job.id, "investigation_id": action.investigation_id}
         return self.verify(action.investigation_id)
 

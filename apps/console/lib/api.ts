@@ -426,7 +426,8 @@ export const api = {
   run: () => post<Bundle>("/api/loop/run"),
   seedWorld: () => post<{ rooms: string[]; scenarios: Array<Record<string, unknown>> }>("/api/world/seed"),
   rooms: () => get<{ rooms: Room[] }>("/api/rooms"),
-  room: (id: string) => get<RoomDetail>(`/api/rooms/${id}`),
+  room: (id: string, opts?: { full?: boolean }) =>
+    get<RoomDetail>(`/api/rooms/${id}${opts?.full ? "?full=1" : "?slim=1"}`),
   postRoom: (id: string, text: string) => post<RoomDetail>(`/api/rooms/${id}/messages`, { author: "you", text }),
   registry: () => get<{ agents: RegistryAgent[] }>("/api/registry"),
   memory: () =>

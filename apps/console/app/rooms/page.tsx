@@ -9,7 +9,7 @@ import { RoomView } from "@/components/room-view";
 import { api, hasAdminToken, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { segmentId } from "@/lib/route-id";
 import { useGlobalWs } from "@/lib/use-global-ws";
-import { useDebouncedWorldTick } from "@/lib/world-refresh";
+import { useDebouncedWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { ErrorState, Loading } from "@/components/ui";
 
@@ -30,6 +30,7 @@ export default function RoomsIndex() {
 function RoomsIndexBody() {
   const { tick } = useGlobalWs();
   const worldTick = useDebouncedWorldTick(tick);
+  const pollEnabled = useWorldPollEnabled();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [adminAuthRequired, setAdminAuthRequired] = useState(false);
@@ -38,16 +39,27 @@ function RoomsIndexBody() {
 
   useEffect(() => {
     let cancelled = false;
+    tryGet(() => api.office())
+      .then((officeRes) => {
+        if (cancelled) return;
+        setOffice(officeRes.data ?? null);
+        setAdminAuthRequired((prev) => prev || officeRes.authRequired);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pollEnabled) return;
+    let cancelled = false;
     (async () => {
       try {
-        const [roomsRes, officeRes] = await Promise.all([
-          tryGet(() => api.rooms()),
-          tryGet(() => api.office()),
-        ]);
+        const roomsRes = await tryGet(() => api.rooms());
         if (cancelled) return;
         setRooms(roomsRes.data?.rooms ?? []);
-        setOffice(officeRes.data ?? null);
-        setAdminAuthRequired(roomsRes.authRequired || officeRes.authRequired);
+        setAdminAuthRequired((prev) => prev || roomsRes.authRequired);
         setErr(null);
       } catch (e) {
         if (!cancelled) {
@@ -65,7 +77,7 @@ function RoomsIndexBody() {
     return () => {
       cancelled = true;
     };
-  }, [worldTick]);
+  }, [worldTick, pollEnabled]);
 
   if (loading) {
     return <Loading label="Loading rooms" />;

@@ -20,6 +20,7 @@ from loop.room_ui import (
     receipt_proof_status,
     suppress_pending_action,
     visible_pending_actions,
+    visible_pending_approvals,
 )
 from loop.tenant import ConnectorReport
 
@@ -204,7 +205,209 @@ def test_bundle_pending_actions_filtered(engine):
     assert bundle["pending_actions"] == []
 
 
-def test_same_metric_joins_awaiting_room_when_flags_pr_already_shipped(engine, monkeypatch):
+def test_room_message_summary_without_loading_all(engine):
+    from datetime import UTC, datetime
+
+    from loop.models import Room, RoomKind, RoomMessage
+
+    room = Room(
+        id="room_summary",
+        title="Summary",
+        topic="t",
+        kind=RoomKind.INCIDENT,
+        created_at=datetime.now(UTC),
+        members=["you"],
+    )
+    engine.store.put_room(room)
+    for i in range(5):
+        engine.store.put_message(
+            RoomMessage(
+                id=f"msg_{i}",
+                room_id=room.id,
+                author="a",
+                author_kind="agent",
+                kind="chat",
+                text=f"line {i}",
+                created_at=datetime.now(UTC),
+            )
+        )
+    count, preview = engine.store.room_message_summary(room.id)
+    assert count == 5
+    assert preview == "line 4"
+
+
+def test_room_list_uses_batch_summaries(engine, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from loop import api as api_mod
+
+    tenant, inv = _room_bundle(engine)
+
+    def forbid_per_room(_room_id: str):
+        raise AssertionError("room_message_summary must not run per room on list")
+
+    monkeypatch.setattr(engine.store, "room_message_summary", forbid_per_room)
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        body = client.get("/api/rooms").json()
+    assert any(r["id"] == "room_room_ui" for r in body["rooms"])
+
+
+def test_room_message_summaries_batch(engine):
+    from datetime import UTC, datetime
+
+    from loop.models import Room, RoomKind, RoomMessage
+
+    room = Room(
+        id="room_batch",
+        title="Batch",
+        topic="t",
+        kind=RoomKind.INCIDENT,
+        created_at=datetime.now(UTC),
+        members=["you"],
+    )
+    engine.store.put_room(room)
+    for i in range(3):
+        engine.store.put_message(
+            RoomMessage(
+                id=f"batch_{i}",
+                room_id=room.id,
+                author="a",
+                author_kind="agent",
+                kind="chat",
+                text=f"b{i}",
+                created_at=datetime.now(UTC),
+            )
+        )
+    batch = engine.store.room_message_summaries([room.id])
+    assert batch[room.id][0] == 3
+    assert batch[room.id][1] == "b2"
+
+
+def test_slim_room_bundle_caps_payload(engine):
+    from loop.api import _bundle
+
+    tenant, inv = _room_bundle(engine)
+    full = _bundle(engine, inv.id, slim=False)
+    slim = _bundle(engine, inv.id, slim=True)
+    assert len(full["approvals"]) >= 0
+    assert slim["approvals"] == []
+    assert len(slim["timeline"]) <= len(full["timeline"])
+
+
+def test_visible_pending_approvals_hides_duplicate_globally(engine):
+    tenant, inv = _room_bundle(engine)
+    shipped = ProposedAction(
+        id="act_shipped_global",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"execution": {"pr_url": "https://github.com/org/shop/pull/11"}},
+        idempotency_key="idem_shipped_global",
+        status="executed",
+        consequence="Opened PR",
+    )
+    duplicate = ProposedAction(
+        id="act_dup_global",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"flag": "checkout_v2"},
+        idempotency_key="idem_dup_global",
+        status="awaiting_approval",
+        consequence="Duplicate rollback",
+    )
+    engine.store.put_action(shipped)
+    engine.store.put_action(duplicate)
+    assert len(engine.store.pending_approvals()) == 1
+    assert visible_pending_approvals(engine.store) == []
+
+
+def test_approvals_api_hides_duplicate_pending(engine, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from loop import api as api_mod
+
+    tenant, inv = _room_bundle(engine)
+    shipped = ProposedAction(
+        id="act_shipped_api",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"execution": {"pr_url": "https://github.com/org/shop/pull/12"}},
+        idempotency_key="idem_shipped_api",
+        status="executed",
+        consequence="Opened PR",
+    )
+    duplicate = ProposedAction(
+        id="act_dup_api",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"flag": "checkout_v2"},
+        idempotency_key="idem_dup_api",
+        status="awaiting_approval",
+        consequence="Duplicate rollback",
+    )
+    engine.store.put_action(shipped)
+    engine.store.put_action(duplicate)
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        body = client.get("/api/approvals").json()
+    assert body["pending"] == []
+
+
+def test_decide_blocks_duplicate_high_when_pr_open(engine, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from loop import api as api_mod
+
+    tenant, inv = _room_bundle(engine)
+    shipped = ProposedAction(
+        id="act_shipped_gate",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"execution": {"pr_url": "https://github.com/org/shop/pull/17"}},
+        idempotency_key="idem_shipped_gate",
+        status="executed",
+        consequence="Opened PR",
+    )
+    duplicate = ProposedAction(
+        id="act_4754e1ae24f5",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"flag": "checkout_v2"},
+        idempotency_key="idem_dup_gate",
+        status="awaiting_approval",
+        consequence="Duplicate rollback",
+    )
+    engine.store.put_action(shipped)
+    engine.store.put_action(duplicate)
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        blocked = client.post(
+            f"/api/approvals/{duplicate.id}",
+            json={"decision": "approve", "approver": "oncall@brandx", "rationale": "retry"},
+        )
+    assert blocked.status_code == 409
+    assert "duplicate" in blocked.json()["detail"].lower()
     """Leftover HIGH is hidden after a flags PR — same-metric ingest must still join, not open a new room."""
     from loop.tenant import Tenant, hash_token
     from loop.world import ingest_tenant_signal, tenant_ingest_should_join_room

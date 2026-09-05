@@ -52,6 +52,53 @@ def test_place_call_skips_without_number():
     assert "phone" in report.detail.lower()
 
 
+def test_finalize_call_uses_room_metric_for_otp_hang(engine, monkeypatch):
+    from datetime import UTC, datetime
+
+    from loop.models import Investigation, InvestigationState, Room, RoomKind
+    from loop.telephony import finalize_call, put_session
+
+    inv = Investigation(
+        id="inv_otp_call",
+        originating_signal_ids=[],
+        state=InvestigationState.GATHERING,
+        opened_at=datetime.now(UTC),
+        invocation_id="x",
+        scenario_id="t:acme:otp_verify_hang_0904",
+        tenant_id="acme",
+        title="Cove: otp_verify_hang_0904",
+        room_id="room_otp_call",
+    )
+    engine.store.put_investigation(inv)
+    engine.store.put_room(
+        Room(
+            id="room_otp_call",
+            title="OTP hang",
+            topic="otp",
+            kind=RoomKind.INCIDENT,
+            created_at=datetime.now(UTC),
+            investigation_id=inv.id,
+            members=["you"],
+        )
+    )
+    monkeypatch.setattr("loop.api.get_engine", lambda: engine)
+    put_session(
+        "CA_otp_test",
+        {
+            "room_id": "room_otp_call",
+            "transcript": [
+                {"role": "user", "message": "It kept loading after the code."},
+                {"role": "agent", "message": "Did you try again?"},
+                {"role": "user", "message": "Yes twice. I gave up."},
+            ],
+        },
+    )
+    out = finalize_call("CA_otp_test")
+    assert out["ok"] is True
+    assert out["structured"]["reason"] == "otp_verify_timeout"
+    assert out["structured"]["reason"] != "payment_timeout"
+
+
 def test_twiml_open_contains_gather(monkeypatch):
     monkeypatch.setenv("LOOP_PUBLIC_URL", "https://loop.example")
     xml = twiml_open("room1", "checkout hung", "Cove")
