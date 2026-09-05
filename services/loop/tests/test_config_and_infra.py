@@ -63,6 +63,7 @@ def test_deploy_gcp_loop_host_profile():
     script = (ROOT / "scripts" / "deploy-gcp.sh").read_text()
     assert "--memory 2Gi" in script
     assert "--memory 4Gi" not in script
+    assert "--concurrency 16" in script
     assert "DEPLOYED_MEMORY" not in script
     assert "apt-get" not in script
     assert "urlretrieve" in script

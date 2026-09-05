@@ -488,6 +488,96 @@ class Store:
                 preview = None
         return count, preview
 
+    def room_message_summaries(
+        self, room_ids: list[str] | None = None
+    ) -> dict[str, tuple[int, str | None]]:
+        """Batch count + latest preview for many rooms (two SQL queries, not N×list_messages)."""
+        counts: dict[str, int] = {}
+        previews: dict[str, str | None] = {}
+        if room_ids is not None and not room_ids:
+            return {}
+        if room_ids:
+            placeholders = ",".join("?" * len(room_ids))
+            count_sql = f"SELECT room_id, COUNT(*) FROM messages WHERE room_id IN ({placeholders}) GROUP BY room_id"
+            for room_id, cnt in self._conn.execute(count_sql, room_ids).fetchall():
+                counts[str(room_id)] = int(cnt or 0)
+            preview_sql = f"""
+                SELECT room_id, json FROM (
+                    SELECT room_id, json,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY room_id ORDER BY json_extract(json, '$.created_at') DESC
+                        ) AS rn
+                    FROM messages WHERE room_id IN ({placeholders})
+                ) WHERE rn = 1
+            """
+            preview_rows = self._conn.execute(preview_sql, room_ids).fetchall()
+        else:
+            for room_id, cnt in self._conn.execute(
+                "SELECT room_id, COUNT(*) FROM messages GROUP BY room_id"
+            ).fetchall():
+                counts[str(room_id)] = int(cnt or 0)
+            preview_rows = self._conn.execute(
+                """
+                SELECT room_id, json FROM (
+                    SELECT room_id, json,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY room_id ORDER BY json_extract(json, '$.created_at') DESC
+                        ) AS rn
+                    FROM messages
+                ) WHERE rn = 1
+                """
+            ).fetchall()
+        for room_id, raw in preview_rows:
+            try:
+                previews[str(room_id)] = json.loads(raw).get("text")
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                previews[str(room_id)] = None
+        keys = room_ids if room_ids is not None else list({*counts.keys(), *previews.keys()})
+        return {rid: (counts.get(rid, 0), previews.get(rid)) for rid in keys}
+
+    def message_stats_by_author(self) -> dict[str, tuple[int, RoomMessage | None]]:
+        """Per-author count + latest message without scanning all rows into Python."""
+        counts: dict[str, int] = {}
+        for author, cnt in self._conn.execute(
+            "SELECT json_extract(json, '$.author'), COUNT(*) FROM messages GROUP BY 1"
+        ).fetchall():
+            if author:
+                counts[str(author)] = int(cnt or 0)
+        latest: dict[str, RoomMessage | None] = {}
+        for raw in self._conn.execute(
+            """
+            SELECT json FROM (
+                SELECT json,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY json_extract(json, '$.author')
+                        ORDER BY json_extract(json, '$.created_at') DESC
+                    ) AS rn
+                FROM messages
+            ) WHERE rn = 1
+            """
+        ).fetchall():
+            try:
+                msg = RoomMessage.model_validate_json(raw[0])
+                latest[msg.author] = msg
+            except Exception:
+                continue
+        authors = set(counts) | set(latest)
+        return {a: (counts.get(a, 0), latest.get(a)) for a in authors}
+
+    def recent_agent_calls(self, limit: int = 80) -> list[Any]:
+        from .models import AgentCall
+
+        rows = self._conn.execute(
+            """
+            SELECT json FROM agent_calls
+            ORDER BY json_extract(json, '$.started_at') DESC
+            LIMIT ?
+            """,
+            (max(1, limit),),
+        ).fetchall()
+        calls = [AgentCall.model_validate_json(r[0]) for r in rows]
+        return sorted(calls, key=lambda c: c.started_at)
+
     def put_job(self, job: Any) -> None:
         from .jobs import Job
 

@@ -362,11 +362,20 @@ If hosted HTML is the campus but XHR 404s, you shipped a new revision that is st
 
 ### 4s campus poll + WS-tick world refetch OOMs 2Gi
 
-**Symptom:** GFE returns **429 Rate exceeded** on campus or `/api/office`. Revision looks healthy in logs but users see blank or spinning UI.
+**Symptom:** GFE returns **429 Rate exceeded** on campus, `/api/rooms`, or `/api/office`. Revision logs show **OOM** (RSS>2048) and **503** under load.
 
-**Why:** `city-map` polled office + rooms every 4s. Combined with WebSocket-tick world refetch, 2Gi Cloud Run OOM’d. GFE 429 is **not** an in-app rate limiter.
+**Measured (loop-00136-xrw, 30m):** OOM×12 · GFE 429×229 · 503×329. Top request paths: `/api/rooms` (546), `/api/office` (521). Median client poll gap still ~4s. Default Cloud Run `containerConcurrency=80` stacks concurrent handlers until memory blows.
 
-**Fix:** Stampede poll removed (PR #24). Memory raised to 4Gi (PR #25). Do not re-add aggressive campus polling without measuring heap.
+**Why:** Campus polled office + rooms on every WS tick (and faster when tab visible). `/api/office` called `list_all_messages` + `list_all_agent_calls` per poll. `/api/rooms` list did N SQL round-trips per room. GFE 429 is **not** an in-app rate limiter — it is often OOM/backpressure.
+
+**Fix (PR #35 — stay on 2Gi forever, no 4Gi):**
+- `deploy-gcp.sh`: `--memory 2Gi` + `--concurrency 16` (explicit; never 80).
+- Batch `room_message_summaries()` for GET `/api/rooms` list; no per-room `list_messages`.
+- Office snapshot: SQL caps (`recent_agent_calls`, `message_stats_by_author`) — no full-table loads.
+- Console: 30s/60s debounced refetch; **pause polls when `document.hidden`**.
+- Slim `/api/status`; WS `initial_state` = activity only.
+
+Do not re-add aggressive campus polling or raise memory to 4Gi without owner sign-off.
 
 ### Persist GCS before deploy; crash-loop must not overwrite a good snapshot
 

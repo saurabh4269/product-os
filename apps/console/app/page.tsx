@@ -5,7 +5,7 @@ import { api, hasAdminToken, tryConfig, tryGet, type OfficeSnapshot, type Room }
 import { isFirstVisit, recordVisit } from "@/lib/first-visit";
 import { buildHomePulse } from "@/lib/home-pulse";
 import { useGlobalWs } from "@/lib/use-global-ws";
-import { useDebouncedWorldTick, useSlowWorldTick } from "@/lib/world-refresh";
+import { useDebouncedWorldTick, useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
 import { HomeCommandBar } from "@/components/home-command-bar";
@@ -22,6 +22,7 @@ export default function HomePage() {
   const { tick, connection } = useGlobalWs();
   const worldTick = useDebouncedWorldTick(tick);
   const slowTick = useSlowWorldTick(tick);
+  const pollEnabled = useWorldPollEnabled();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
   const [evalMode, setEvalMode] = useState(false);
@@ -59,6 +60,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (!pollEnabled) return;
     let cancelled = false;
     (async () => {
       try {
@@ -76,9 +78,10 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [worldTick]);
+  }, [worldTick, pollEnabled]);
 
   useEffect(() => {
+    if (!pollEnabled) return;
     let cancelled = false;
     (async () => {
       try {
@@ -107,7 +110,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [slowTick]);
+  }, [slowTick, pollEnabled]);
 
   const pulse = useMemo(() => {
     if (!visitReady) return null;

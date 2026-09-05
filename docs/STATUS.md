@@ -14,11 +14,11 @@ Keep-going unpaused by owner. Do not merge Cove. Local ship via `./scripts/local
 | GCP | `mystical-timing-442601-q8` · `us-central1` · service `loop` |
 | Revision | `loop-00134-8dw` (reported) |
 | SHA on main (pre-ship) | `1add371` (#33 product film) · demo PR #35 in flight |
-| Memory / scale | **2Gi** (hackathon pricing) · min 1 · max 2 |
+| Memory / scale | **2Gi** · concurrency **16** (hackathon pricing) · min 1 · max 2 |
 | `LOOP_EVAL` | `0` (`eval_mode: false`) |
 | Health | `/` and `/rooms` 200 when instance healthy · `/shop` 404 · OAuth connected when live |
 
-**2Gi note:** GFE 429 / 503 on campus usually means OOM from request stampede, not an in-app rate limiter. This branch reduces load: slim `/api/status` (no per-room workflow scan), WS `initial_state` sends activity only, debounced refetch (45s/90s), slim room GET (`?slim=1`), dead-job sweep throttled + on worker tick.
+**2Gi note:** On `loop-00136-xrw` (30m): OOM×12, GFE 429×229, 503×329 — top killers `/api/rooms` (546) + `/api/office` (521); median client poll gap ~4s; default `containerConcurrency=80` piled requests until RSS>2048. PR #35: **`--memory 2Gi` + `--concurrency 16`**, batch room summaries, capped office snapshot, 30s/60s debounce, pause polls when `document.hidden`, slim `/api/status`, WS activity-only.
 
 **State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance.
 

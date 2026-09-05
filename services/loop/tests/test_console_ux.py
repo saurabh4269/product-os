@@ -78,7 +78,7 @@ def test_rooms_index_ws_tick_debounces_list_refetch():
     src = (CONSOLE / "app" / "rooms" / "page.tsx").read_text()
     assert "useDebouncedWorldTick" in src
     assert "worldTick" in src
-    assert "}, [worldTick]);" in src
+    assert "}, [worldTick, pollEnabled]);" in src
     assert "api.office()" in src
     office_block = src[src.index("api.office()") : src.index("api.rooms()")]
     assert "}, []);" in office_block
@@ -93,7 +93,7 @@ def test_shell_does_not_refetch_rooms_on_ws_tick():
     assert "inRoom" in rooms_effect
     assert "useSlowWorldTick" in src
     status_effect = src[src.index("api\n      .status()") : src.index("useEffect(() => {", src.index("api\n      .status()"))]
-    assert "slowTick" in status_effect
+    assert "pollEnabled" in status_effect
 
 
 def test_unauth_room_copy_is_this_room_not_index():
@@ -125,12 +125,13 @@ def test_pending_actions_trusts_empty_server_list():
     assert "bundle.pending_actions?.length" not in fn
 
 
-def test_world_refresh_policy_is_at_least_45s():
+def test_world_refresh_policy_is_at_least_30s():
     src = (CONSOLE / "lib" / "world-refresh.ts").read_text()
     assert "WORLD_REFRESH_MS" in src
-    assert "45_000" in src or "45000" in src
+    assert "30_000" in src or "30000" in src
     assert "WORLD_SLOW_REFRESH_MS" in src
-    assert "90_000" in src or "90000" in src
+    assert "60_000" in src or "60000" in src
+    assert "useWorldPollEnabled" in src
 
 
 def test_room_api_defaults_to_slim_bundle():

@@ -23,7 +23,7 @@ import { agentPalette } from "@/lib/names";
 import { cn } from "@/lib/utils";
 import { BeanMark } from "@/components/mascot";
 import { useGlobalWs } from "@/lib/use-global-ws";
-import { useSlowWorldTick } from "@/lib/world-refresh";
+import { useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { HumanInputProvider } from "@/lib/human-input-context";
 import { HumanInputModals } from "@/components/human-input-modals";
 import { ToastProvider } from "@/lib/toast-context";
@@ -193,6 +193,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { tick } = useGlobalWs();
   const slowTick = useSlowWorldTick(tick);
+  const pollEnabled = useWorldPollEnabled();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [approvalsPending, setApprovalsPending] = useState(0);
   const [expanded, setExpanded] = useState(false);
@@ -209,12 +210,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, [path, inRoom]);
 
   useEffect(() => {
-    if (inRoom) return;
+    if (inRoom || !pollEnabled) return;
     api
       .status()
       .then((s) => setApprovalsPending(s.approvals_pending ?? 0))
       .catch(() => setApprovalsPending(0));
-  }, [slowTick, inRoom]);
+  }, [slowTick, inRoom, pollEnabled]);
 
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 1024px)");

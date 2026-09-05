@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
-import { useSlowWorldTick } from "@/lib/world-refresh";
+import { useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { AnimatedStat } from "@/components/animated-stat";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +25,7 @@ const CONN_DOT = {
 export function StatusStrip({ compact }: { compact?: boolean }) {
   const { tick, connection } = useGlobalWs();
   const slowTick = useSlowWorldTick(tick);
+  const pollEnabled = useWorldPollEnabled();
   const [s, setS] = useState<{
     rooms?: { open?: number; total?: number };
     approvals_pending?: number;
@@ -37,11 +38,12 @@ export function StatusStrip({ compact }: { compact?: boolean }) {
   const prev = useRef<{ waiting?: number; open?: number }>({});
 
   useEffect(() => {
+    if (!pollEnabled) return;
     api
       .status()
       .then(setS)
       .catch(() => setS(null));
-  }, [slowTick]);
+  }, [slowTick, pollEnabled]);
 
   if (!s) return null;
 

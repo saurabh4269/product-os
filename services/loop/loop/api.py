@@ -1662,11 +1662,15 @@ def world_seed():
 @app.get("/api/rooms")
 def rooms(_actor: AdminUnlessEval, tenant_id: str | None = Query(default=None)):
     eng = get_engine()
+    filtered = [
+        room
+        for room in eng.store.list_rooms()
+        if not tenant_id or room.tenant_id in (None, tenant_id)
+    ]
+    summaries = eng.store.room_message_summaries([room.id for room in filtered])
     items = []
-    for room in eng.store.list_rooms():
-        if tenant_id and room.tenant_id not in (None, tenant_id):
-            continue
-        count, preview = eng.store.room_message_summary(room.id)
+    for room in filtered:
+        count, preview = summaries.get(room.id, (0, None))
         items.append(
             {
                 **room.model_dump(mode="json"),

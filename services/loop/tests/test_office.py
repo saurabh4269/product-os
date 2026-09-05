@@ -15,6 +15,19 @@ def test_office_shows_working_agents_and_handoffs(engine: LoopEngine):
     assert any(h["from_agent"] == "orchestrator" for h in snap["handoffs"])
 
 
+def test_office_snapshot_avoids_full_table_scans(engine: LoopEngine, monkeypatch):
+    engine.seed_world()
+
+    def boom(*_a, **_k):
+        raise AssertionError("list_all_messages must not run on /api/office poll")
+
+    monkeypatch.setattr(engine.store, "list_all_messages", boom)
+    monkeypatch.setattr(engine.store, "list_all_agent_calls", boom)
+    snap = office_snapshot(engine)
+    assert snap["desks"]
+    assert len(snap["handoffs"]) <= 40
+
+
 def test_agent_page_has_that_bots_chat_and_handoffs(engine: LoopEngine):
     engine.seed_world()
     snap = agent_snapshot(engine, "analytics")

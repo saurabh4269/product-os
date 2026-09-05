@@ -236,6 +236,55 @@ def test_room_message_summary_without_loading_all(engine):
     assert preview == "line 4"
 
 
+def test_room_list_uses_batch_summaries(engine, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from loop import api as api_mod
+
+    tenant, inv = _room_bundle(engine)
+
+    def forbid_per_room(_room_id: str):
+        raise AssertionError("room_message_summary must not run per room on list")
+
+    monkeypatch.setattr(engine.store, "room_message_summary", forbid_per_room)
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        body = client.get("/api/rooms").json()
+    assert any(r["id"] == "room_room_ui" for r in body["rooms"])
+
+
+def test_room_message_summaries_batch(engine):
+    from datetime import UTC, datetime
+
+    from loop.models import Room, RoomKind, RoomMessage
+
+    room = Room(
+        id="room_batch",
+        title="Batch",
+        topic="t",
+        kind=RoomKind.INCIDENT,
+        created_at=datetime.now(UTC),
+        members=["you"],
+    )
+    engine.store.put_room(room)
+    for i in range(3):
+        engine.store.put_message(
+            RoomMessage(
+                id=f"batch_{i}",
+                room_id=room.id,
+                author="a",
+                author_kind="agent",
+                kind="chat",
+                text=f"b{i}",
+                created_at=datetime.now(UTC),
+            )
+        )
+    batch = engine.store.room_message_summaries([room.id])
+    assert batch[room.id][0] == 3
+    assert batch[room.id][1] == "b2"
+
+
 def test_slim_room_bundle_caps_payload(engine):
     from loop.api import _bundle
 
