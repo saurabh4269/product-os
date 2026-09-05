@@ -205,6 +205,47 @@ def test_bundle_pending_actions_filtered(engine):
     assert bundle["pending_actions"] == []
 
 
+def test_room_message_summary_without_loading_all(engine):
+    from loop.models import RoomMessage, Room, RoomKind
+    from datetime import UTC, datetime
+
+    room = Room(
+        id="room_summary",
+        title="Summary",
+        topic="t",
+        kind=RoomKind.INCIDENT,
+        created_at=datetime.now(UTC),
+        members=["you"],
+    )
+    engine.store.put_room(room)
+    for i in range(5):
+        engine.store.put_message(
+            RoomMessage(
+                id=f"msg_{i}",
+                room_id=room.id,
+                author="a",
+                author_kind="agent",
+                kind="chat",
+                text=f"line {i}",
+                created_at=datetime.now(UTC),
+            )
+        )
+    count, preview = engine.store.room_message_summary(room.id)
+    assert count == 5
+    assert preview == "line 4"
+
+
+def test_slim_room_bundle_caps_payload(engine):
+    from loop.api import _bundle
+
+    tenant, inv = _room_bundle(engine)
+    full = _bundle(engine, inv.id, slim=False)
+    slim = _bundle(engine, inv.id, slim=True)
+    assert len(full["approvals"]) >= 0
+    assert slim["approvals"] == []
+    assert len(slim["timeline"]) <= len(full["timeline"])
+
+
 def test_visible_pending_approvals_hides_duplicate_globally(engine):
     tenant, inv = _room_bundle(engine)
     shipped = ProposedAction(

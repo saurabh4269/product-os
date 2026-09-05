@@ -38,16 +38,26 @@ function RoomsIndexBody() {
 
   useEffect(() => {
     let cancelled = false;
+    tryGet(() => api.office())
+      .then((officeRes) => {
+        if (cancelled) return;
+        setOffice(officeRes.data ?? null);
+        setAdminAuthRequired((prev) => prev || officeRes.authRequired);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const [roomsRes, officeRes] = await Promise.all([
-          tryGet(() => api.rooms()),
-          tryGet(() => api.office()),
-        ]);
+        const roomsRes = await tryGet(() => api.rooms());
         if (cancelled) return;
         setRooms(roomsRes.data?.rooms ?? []);
-        setOffice(officeRes.data ?? null);
-        setAdminAuthRequired(roomsRes.authRequired || officeRes.authRequired);
+        setAdminAuthRequired((prev) => prev || roomsRes.authRequired);
         setErr(null);
       } catch (e) {
         if (!cancelled) {

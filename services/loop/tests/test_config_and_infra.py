@@ -59,12 +59,10 @@ def test_failopen_false_in_terraform():
 
 
 def test_deploy_gcp_loop_host_profile():
-    """Hosted LOOP: 4Gi RAM, lean boot (no apt-get curl/git/node — python urllib fetches the bundle)."""
+    """Hosted LOOP: 2Gi RAM (hackathon pricing), lean boot (python urllib fetches the bundle)."""
     script = (ROOT / "scripts" / "deploy-gcp.sh").read_text()
-    assert "--memory 4Gi" in script
-    assert "--memory 2Gi" not in script
-    assert "expected Cloud Run memory 4Gi" in script
-    assert "DEPLOYED_MEMORY" in script
+    assert "--memory 2Gi" in script
+    assert "DEPLOYED_MEMORY" not in script
     assert "apt-get" not in script
     assert "urlretrieve" in script
     assert "/tmp/loop.tgz" in script
@@ -80,7 +78,6 @@ def test_deploy_gcp_loop_host_profile():
 def test_deploy_gcp_actions_invokes_script():
     workflow = (ROOT / ".github" / "workflows" / "deploy-gcp.yml").read_text()
     assert "./scripts/deploy-gcp.sh" in workflow
-    assert "2Gi" not in workflow
 
 
 def test_models_yaml_forbids_pro():

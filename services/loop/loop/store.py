@@ -466,6 +466,28 @@ class Store:
         msgs = self._list("messages", RoomMessage, "WHERE room_id=?", (room_id,))
         return sorted(msgs, key=lambda m: m.created_at)
 
+    def room_message_summary(self, room_id: str) -> tuple[int, str | None]:
+        """Count + latest preview without loading every message row."""
+        row = self._conn.execute(
+            """
+            SELECT
+              (SELECT COUNT(*) FROM messages WHERE room_id = ?),
+              (SELECT json FROM messages WHERE room_id = ?
+               ORDER BY json_extract(json, '$.created_at') DESC LIMIT 1)
+            """,
+            (room_id, room_id),
+        ).fetchone()
+        if not row:
+            return 0, None
+        count = int(row[0] or 0)
+        preview = None
+        if row[1]:
+            try:
+                preview = json.loads(row[1]).get("text")
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                preview = None
+        return count, preview
+
     def put_job(self, job: Any) -> None:
         from .jobs import Job
 
