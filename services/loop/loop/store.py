@@ -466,6 +466,27 @@ class Store:
         msgs = self._list("messages", RoomMessage, "WHERE room_id=?", (room_id,))
         return sorted(msgs, key=lambda m: m.created_at)
 
+    def list_messages_recent(self, room_id: str, *, limit: int = 100) -> list[RoomMessage]:
+        """Recent messages for a room (newest last) without loading full history."""
+        cap = max(1, int(limit))
+        rows = self._conn.execute(
+            """
+            SELECT json FROM messages
+            WHERE room_id = ?
+            ORDER BY json_extract(json, '$.created_at') DESC
+            LIMIT ?
+            """,
+            (room_id, cap),
+        ).fetchall()
+        msgs: list[RoomMessage] = []
+        for (raw,) in rows:
+            try:
+                msgs.append(RoomMessage.model_validate_json(raw))
+            except Exception:
+                continue
+        msgs.reverse()
+        return msgs
+
     def room_message_summary(self, room_id: str) -> tuple[int, str | None]:
         """Count + latest preview without loading every message row."""
         row = self._conn.execute(

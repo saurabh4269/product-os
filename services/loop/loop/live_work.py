@@ -21,6 +21,10 @@ from loop.workflow import (
 LIVE_COLUMNS = list(LIVE_ORDER)
 LIVE_LABELS = dict(LIVE_LABEL)
 
+# Bounds for homepage board — avoid unbounded scans on hosted SQLite.
+MAX_OPEN_ROOMS = 24
+MESSAGES_PER_ROOM = 100
+
 # artifact_type → fine node (then collapsed via to_live_column)
 _ARTIFACT_NODE: dict[str, str] = {
     "signal": "signal",
@@ -243,18 +247,41 @@ def card_from_action(action: Any, *, room_id: str, room_title: str = "") -> dict
     }
 
 
-def build_live_work(store: Store, *, limit: int = 80) -> dict[str, Any]:
+def _recent_open_rooms(store: Store, *, limit: int = MAX_OPEN_ROOMS) -> list[Any]:
+    open_rooms = [r for r in store.list_rooms() if r.status == "open"]
+    cap = max(1, int(limit))
+
+    def _sort_key(room: Any) -> str:
+        ts = getattr(room, "last_message_at", None) or getattr(room, "created_at", None)
+        if hasattr(ts, "isoformat"):
+            return ts.isoformat()
+        return str(ts or "")
+
+    open_rooms.sort(key=_sort_key, reverse=True)
+    return open_rooms[:cap]
+
+
+def build_live_work(
+    store: Store,
+    *,
+    limit: int = 80,
+    room_limit: int = MAX_OPEN_ROOMS,
+    messages_per_room: int = MESSAGES_PER_ROOM,
+) -> dict[str, Any]:
     """Pile work receipts into columns derived from active room workflows."""
     cards: list[dict[str, Any]] = []
     workflows: list[dict[str, Any]] = []
-    for room in store.list_rooms():
-        if room.status != "open":
-            continue
+    list_recent = getattr(store, "list_messages_recent", None)
+    for room in _recent_open_rooms(store, limit=room_limit):
+        if list_recent is not None:
+            messages = list_recent(room.id, limit=messages_per_room)
+        else:
+            messages = store.list_messages(room.id)[-messages_per_room:]
         inv = store.get_investigation(room.investigation_id) if room.investigation_id else None
-        workflows.append(workflow_from_store(store, room, inv))
+        workflows.append(workflow_from_store(store, room, inv, messages=messages))
         tenant = store.get_tenant(room.tenant_id) if room.tenant_id else None
         product = tenant.product if tenant else None
-        for msg in store.list_messages(room.id):
+        for msg in messages:
             card = card_from_message(msg, room_title=room.title, tenant_product=product)
             if card:
                 cards.append(card)
