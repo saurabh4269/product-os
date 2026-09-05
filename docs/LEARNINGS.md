@@ -461,9 +461,9 @@ Do not re-add aggressive campus polling or raise memory to 4Gi without owner sig
 
 **Pattern:** Managed Agent Runtime for orchestration turns; LoopEngine on `loop` Cloud Run for persistence, UI, HITL, and GitHub PR connectors.
 
-**Env:** `LOOP_GEAP_ENABLED=1`, `LOOP_GEAP_AGENT_ENGINE_ID`, optional `LOOP_GEAP_STAGING_BUCKET`.
+**Env:** `LOOP_GEAP_ENABLED=1`, `LOOP_GEAP_AGENT_ENGINE_ID` (full resource name), optional `LOOP_GEAP_STAGING_BUCKET` (`gs://mystical-timing-442601-q8-loop-host`).
 
-**Deploy:** `./scripts/deploy-geap-agent.sh` (needs `roles/aiplatform.user` + staging bucket). Does **not** apply Agent Gateway terraform.
+**Deploy:** `./scripts/deploy-geap-agent.sh` (needs `roles/aiplatform.user` + staging bucket). Uses `vertexai.Client.agent_engines` — not `agentplatform.Client`. Requirements include `cloudpickle` + `pydantic`. Model from `config/models.yaml`, fallback `gemini-2.5-flash`.
 
 **Fallback:** When GEAP SDK or engine id missing, `dispatch_signal` falls through to ADK worker → inline ADK → deterministic graph — hosted demo never breaks.
 

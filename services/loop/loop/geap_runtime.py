@@ -1,7 +1,10 @@
 """GEAP Agent Runtime client — managed Reasoning Engine for LOOP orchestration.
 
-Uses client-based ``vertexai.Client`` (SDK >=1.112). Fail closed: when GEAP is
-unavailable the caller falls back to ADK worker / inline ADK / LoopEngine.
+Uses ``vertexai.Client(...).agent_engines`` for create/list/get (live probe
+2026-09-05 on mystical-timing-442601-q8). Do **not** use ``agentplatform.Client``
+— it exists but has no ``agent_engines`` yet. AdkApp comes from
+``vertexai.agent_engines``. Fail closed: when GEAP is unavailable the caller
+falls back to ADK worker / inline ADK / LoopEngine.
 """
 
 from __future__ import annotations
@@ -11,7 +14,10 @@ import json
 import os
 from typing import Any
 
+from loop.config import default_model_id
+
 _DEFAULT_STAGING_BUCKET = "gs://mystical-timing-442601-q8-loop-host"
+_GEAP_MODEL_FALLBACK = "gemini-2.5-flash"
 _last_error: str = ""
 _cached_remote: Any | None = None
 
@@ -81,6 +87,26 @@ def geap_preferred() -> bool:
     return geap_enabled() and bool(geap_engine_id()) and sdk_available()
 
 
+def geap_model_candidates() -> list[str]:
+    """Primary model from config/models.yaml; fallback when deploy/query fails."""
+    primary = (os.environ.get("LOOP_GEAP_MODEL") or default_model_id()).strip()
+    out: list[str] = []
+    for mid in (primary, _GEAP_MODEL_FALLBACK):
+        if mid and mid not in out:
+            out.append(mid)
+    return out
+
+
+def geap_engine_requirements() -> list[str]:
+    """Remote Agent Engine pip requirements (live create warned without cloudpickle/pydantic)."""
+    return [
+        "google-cloud-aiplatform[agent_engines,adk]>=1.112",
+        "google-adk>=2.8.0",
+        "cloudpickle",
+        "pydantic>=2.10",
+    ]
+
+
 def _note_error(exc: Exception | str) -> None:
     global _last_error
     _last_error = str(exc)[:400]
@@ -122,10 +148,13 @@ def status() -> dict[str, Any]:
         "memory_bank_uri": f"agentengine://{engine_id_short()}" if engine_id_short() else None,
         "last_error": _last_error or None,
         "preferred": geap_preferred(),
+        "client": "vertexai.Client.agent_engines",
+        "models": geap_model_candidates(),
+        "requirements": geap_engine_requirements(),
     }
 
 
-def build_loop_adk_app(engine: Any) -> Any:
+def build_loop_adk_app(engine: Any, *, model_id: str | None = None) -> Any:
     """Wrap LOOP orchestrator LlmAgent in AdkApp for Agent Runtime deploy."""
     from loop.adk_runtime import adk_available
 
@@ -137,6 +166,13 @@ def build_loop_adk_app(engine: Any) -> Any:
     orchestrator = (apps.get("_agents") or {}).get("orchestrator")
     if orchestrator is None:
         raise RuntimeError("orchestrator agent missing from build_apps()")
+
+    mid = (model_id or geap_model_candidates()[0]).strip()
+    if mid and getattr(orchestrator, "model", None) != mid:
+        try:
+            orchestrator = orchestrator.model_copy(update={"model": mid})
+        except AttributeError:
+            orchestrator.model = mid  # type: ignore[attr-defined]
 
     from vertexai import agent_engines
 
@@ -182,31 +218,58 @@ def get_remote_agent(*, client: Any | None = None, force_refresh: bool = False) 
         return None
 
 
+def list_agent_engines(*, client: Any | None = None) -> list[dict[str, Any]]:
+    """List Reasoning Engines via vertexai.Client.agent_engines."""
+    if not sdk_available():
+        return []
+    cli = client or get_client()
+    rows: list[dict[str, Any]] = []
+    try:
+        for item in cli.agent_engines.list():
+            name = getattr(getattr(item, "api_resource", None), "name", None) or str(item)
+            rows.append(
+                {
+                    "resource_name": name,
+                    "agent_engine_id": engine_id_short(str(name)),
+                    "display_name": getattr(getattr(item, "api_resource", None), "display_name", None),
+                }
+            )
+    except Exception as exc:
+        _note_error(exc)
+    return rows
+
+
 def create_agent_engine(engine: Any, *, display_name: str = "loop-orchestrator") -> dict[str, Any]:
     """Create a new Reasoning Engine from LOOP AdkApp. Used by deploy script."""
     if not sdk_available():
         raise RuntimeError("google-cloud-aiplatform[agent_engines,adk] not installed")
     from vertexai import types
 
-    app = build_loop_adk_app(engine)
     client = get_client()
-    remote = client.agent_engines.create(
-        agent=app,
-        config={
-            "display_name": display_name,
-            "requirements": ["google-cloud-aiplatform[agent_engines,adk]>=1.112", "google-adk>=2.8.0"],
-            "staging_bucket": geap_staging_bucket(),
-            "identity_type": types.IdentityType.AGENT_IDENTITY,
-        },
-    )
-    resource = getattr(getattr(remote, "api_resource", None), "name", None) or str(remote)
-    global _cached_remote
-    _cached_remote = remote
-    return {
-        "resource_name": resource,
-        "agent_engine_id": engine_id_short(str(resource)),
+    config = {
         "display_name": display_name,
+        "requirements": geap_engine_requirements(),
+        "staging_bucket": geap_staging_bucket(),
+        "identity_type": types.IdentityType.AGENT_IDENTITY,
     }
+    last_exc: Exception | None = None
+    for model_id in geap_model_candidates():
+        try:
+            app = build_loop_adk_app(engine, model_id=model_id)
+            remote = client.agent_engines.create(agent=app, config=config)
+            resource = getattr(getattr(remote, "api_resource", None), "name", None) or str(remote)
+            global _cached_remote
+            _cached_remote = remote
+            return {
+                "resource_name": resource,
+                "agent_engine_id": engine_id_short(str(resource)),
+                "display_name": display_name,
+                "model_id": model_id,
+            }
+        except Exception as exc:
+            last_exc = exc
+            _note_error(exc)
+    raise RuntimeError(str(last_exc or "GEAP agent engine create failed"))
 
 
 def _collect_async_stream(coro: Any) -> list[Any]:

@@ -33,16 +33,16 @@ mkdir -p "${LOOP_DATA_DIR}"
 
 python -m loop.geap_deploy --create --display-name "${DISPLAY_NAME}" --json | tee /tmp/loop-geap-engine.json
 
-ENGINE_ID="$(python3 - <<'PY'
+RESOURCE_NAME="$(python3 - <<'PY'
 import json
-print(json.load(open("/tmp/loop-geap-engine.json"))["agent_engine_id"])
+print(json.load(open("/tmp/loop-geap-engine.json"))["resource_name"])
 PY
 )"
 
 echo ""
-echo "deploy-geap-agent: created reasoning engine id=${ENGINE_ID}"
+echo "deploy-geap-agent: created ${RESOURCE_NAME}"
 echo "Next steps:"
 echo "  1. gcloud run services update loop --region=${REGION} --project=${PROJECT} \\"
-echo "       --update-env-vars LOOP_GEAP_ENABLED=1,LOOP_GEAP_AGENT_ENGINE_ID=${ENGINE_ID},LOOP_GEAP_STAGING_BUCKET=${BUCKET}"
+echo "       --update-env-vars LOOP_GEAP_ENABLED=1,LOOP_GEAP_AGENT_ENGINE_ID=${RESOURCE_NAME},LOOP_GEAP_STAGING_BUCKET=${BUCKET}"
 echo "  2. IAM: deployer needs roles/aiplatform.user and storage access on ${BUCKET}"
 echo "  3. Agent Gateway (infra/terraform/gated/) stays plan-only until entitlements"

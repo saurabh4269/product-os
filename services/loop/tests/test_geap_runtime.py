@@ -39,6 +39,24 @@ def test_engine_resource_name(monkeypatch):
     monkeypatch.setenv("GOOGLE_CLOUD_REGION", "us-central1")
     monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "999")
     assert geap_runtime.engine_resource_name() == "projects/demo-proj/locations/us-central1/reasoningEngines/999"
+    monkeypatch.setenv(
+        "LOOP_GEAP_AGENT_ENGINE_ID",
+        "projects/demo-proj/locations/us-central1/reasoningEngines/888",
+    )
+    assert geap_runtime.engine_resource_name().endswith("/reasoningEngines/888")
+
+
+def test_geap_engine_requirements_include_cloudpickle():
+    reqs = geap_runtime.geap_engine_requirements()
+    assert any("cloudpickle" in r for r in reqs)
+    assert any("pydantic" in r for r in reqs)
+
+
+def test_geap_model_candidates(monkeypatch):
+    monkeypatch.delenv("LOOP_GEAP_MODEL", raising=False)
+    models = geap_runtime.geap_model_candidates()
+    assert models[0] == "gemini-3.5-flash"
+    assert "gemini-2.5-flash" in models
 
 
 def test_query_agent_engine_mock(monkeypatch):
@@ -74,11 +92,51 @@ def test_create_agent_engine_mock(engine, monkeypatch):
     mock_vertexai.types.IdentityType.AGENT_IDENTITY = "AGENT_IDENTITY"
     monkeypatch.setitem(sys.modules, "vertexai", mock_vertexai)
 
-    with patch("loop.geap_runtime.build_loop_adk_app", return_value=MagicMock()):
+    with patch("loop.geap_runtime.build_loop_adk_app", return_value=MagicMock()) as build:
         with patch("loop.geap_runtime.get_client", return_value=fake_client):
             result = geap_runtime.create_agent_engine(engine)
     assert result["agent_engine_id"] == "777"
+    assert result["model_id"] == "gemini-3.5-flash"
+    build.assert_called_once()
     fake_client.agent_engines.create.assert_called_once()
+    req = fake_client.agent_engines.create.call_args.kwargs["config"]["requirements"]
+    assert "cloudpickle" in req
+
+
+def test_create_agent_engine_model_fallback(engine, monkeypatch):
+    import sys
+
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-proj")
+    monkeypatch.setattr(geap_runtime, "sdk_available", lambda: True)
+
+    fake_remote = MagicMock()
+    fake_remote.api_resource.name = "projects/demo-proj/locations/us-central1/reasoningEngines/888"
+
+    fake_client = MagicMock()
+    fake_client.agent_engines.create.side_effect = [RuntimeError("3.5 unavailable"), fake_remote]
+
+    mock_vertexai = MagicMock()
+    mock_vertexai.types.IdentityType.AGENT_IDENTITY = "AGENT_IDENTITY"
+    monkeypatch.setitem(sys.modules, "vertexai", mock_vertexai)
+
+    with patch("loop.geap_runtime.build_loop_adk_app", return_value=MagicMock()):
+        with patch("loop.geap_runtime.get_client", return_value=fake_client):
+            result = geap_runtime.create_agent_engine(engine)
+    assert result["model_id"] == "gemini-2.5-flash"
+    assert fake_client.agent_engines.create.call_count == 2
+
+
+def test_list_agent_engines_mock(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-proj")
+    monkeypatch.setattr(geap_runtime, "sdk_available", lambda: True)
+    item = MagicMock()
+    item.api_resource.name = "projects/demo-proj/locations/us-central1/reasoningEngines/1"
+    item.api_resource.display_name = "loop-orchestrator"
+    fake_client = MagicMock()
+    fake_client.agent_engines.list.return_value = [item]
+    with patch("loop.geap_runtime.get_client", return_value=fake_client):
+        rows = geap_runtime.list_agent_engines()
+    assert rows[0]["resource_name"].endswith("/reasoningEngines/1")
 
 
 def test_dispatch_geap_signal_falls_back_when_disabled(engine, monkeypatch):
