@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from loop.classify import classify_call_outcome, classify_voice
 from loop.connectors.voice import place_call
-from loop.models import LoopType, PathKind
-from loop.outreach import call_brief_for_outreach
+from loop.models import Investigation, InvestigationState, LoopType, PathKind, Room, RoomKind
+from loop.outreach import (
+    _generic_fallback_brief,
+    call_brief_for_outreach,
+    room_call_context,
+)
 from loop.telephony import (
     GATHER_TIMEOUT,
     TWILIO_VOICE,
@@ -47,11 +53,12 @@ def test_normalize_phone():
     assert normalize_e164("+123") is None
 
 
-def test_fix_notify_opening_mentions_otp():
-    text = fix_notify_opening("Cove", "OTP verification timeout")
+def test_fix_notify_opening_is_generic():
+    text = fix_notify_opening("Cove", "payment timeout regression")
     assert "Lexi" in text
-    assert "OTP" in text
     assert "fix" in text.lower()
+    assert "OTP" not in text
+    assert "spinner" not in text.lower()
 
 
 def test_call_brief_fix_notify_distinct_from_feedback():
@@ -60,8 +67,165 @@ def test_call_brief_fix_notify_distinct_from_feedback():
     assert fix["purpose"] == "fix_notify"
     assert ask["purpose"] == "feedback_ask"
     assert fix["opening"] != ask["opening"]
-    assert "OTP" in fix["opening"]
-    assert len(fix["questions"]) == 3
+    assert "OTP" not in fix["opening"]
+    assert "spinner" not in fix["opening"].lower()
+    assert "otp_verify" not in fix["opening"].lower()
+    assert len(fix["questions"]) >= 2
+
+
+def test_generic_fallback_brief_has_no_scenario_nouns():
+    brief = _generic_fallback_brief(
+        {"product": "Acme", "metric": "checkout_drop", "hypothesis": "SDK regression"},
+        "feedback_ask",
+    )
+    blob = f"{brief['opening']} {' '.join(brief['questions'])}"
+    for banned in ("otp_verify", "spinner", "OTP", "verification code"):
+        assert banned not in blob
+
+
+def test_room_call_context_uses_hypothesis_and_voice_reason(engine):
+    inv = Investigation(
+        id="inv_ctx",
+        originating_signal_ids=[],
+        state=InvestigationState.GATHERING,
+        opened_at=datetime.now(UTC),
+        invocation_id="x",
+        scenario_id="t:acme:payment_timeout_q3",
+        tenant_id="acme",
+        title="Acme: payment_timeout_q3",
+        room_id="room_ctx",
+    )
+    engine.store.put_investigation(inv)
+    engine.store.put_room(
+        Room(
+            id="room_ctx",
+            title="Payment timeout",
+            topic="payment",
+            kind=RoomKind.INCIDENT,
+            created_at=datetime.now(UTC),
+            investigation_id=inv.id,
+            members=["you"],
+        )
+    )
+    from loop.models import Classification, Hypothesis
+
+    engine.store.put_hypothesis(
+        Hypothesis(
+            id="hyp_ctx",
+            investigation_id=inv.id,
+            statement="Payment authorize callback stalls on slow networks",
+            confidence=0.82,
+            classification=Classification.BUG,
+            supporting_evidence_ids=[],
+            contradicting_evidence_ids=[],
+            cited_memory=[],
+            rank=1,
+            independence_groups=["analytics"],
+        )
+    )
+    from loop.world import post
+
+    post(
+        engine,
+        "room_ctx",
+        author="customer_voice_agent",
+        author_kind="agent",
+        kind="artifact",
+        text="Diagnostic context ready",
+        artifact_type="voice_context",
+        artifact={
+            "failure": "payment_timeout",
+            "hypothesis_hint": "Payment authorize callback stalls on slow networks",
+        },
+    )
+    ctx = room_call_context(engine.store, "room_ctx")
+    assert ctx["metric"] == "payment_timeout_q3"
+    assert "callback" in ctx["hypothesis"].lower()
+    assert ctx["voice_reason"] == "payment_timeout"
+
+
+def test_call_brief_uses_room_context(engine, monkeypatch):
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("LOOP_USE_VERTEX", "0")
+
+    inv = Investigation(
+        id="inv_brief",
+        originating_signal_ids=[],
+        state=InvestigationState.GATHERING,
+        opened_at=datetime.now(UTC),
+        invocation_id="x",
+        scenario_id="t:acme:shipping_delay",
+        tenant_id="acme",
+        title="Acme: shipping_delay",
+        room_id="room_brief",
+    )
+    engine.store.put_investigation(inv)
+    engine.store.put_room(
+        Room(
+            id="room_brief",
+            title="Shipping delay",
+            topic="shipping",
+            kind=RoomKind.INCIDENT,
+            created_at=datetime.now(UTC),
+            investigation_id=inv.id,
+            members=["you"],
+        )
+    )
+    from loop.models import Classification, Hypothesis
+
+    engine.store.put_hypothesis(
+        Hypothesis(
+            id="hyp_brief",
+            investigation_id=inv.id,
+            statement="ETA calculation uses stale warehouse cutoff",
+            confidence=0.75,
+            classification=Classification.BUG,
+            supporting_evidence_ids=[],
+            contradicting_evidence_ids=[],
+            cited_memory=[],
+            rank=1,
+            independence_groups=["analytics"],
+        )
+    )
+
+    brief = call_brief_for_outreach(
+        {"purpose": "feedback_ask", "product": "Acme"},
+        store=engine.store,
+        room_id="room_brief",
+    )
+    assert brief["hypothesis"] == "ETA calculation uses stale warehouse cutoff"
+    assert brief["metric"] == "shipping_delay"
+    blob = f"{brief['opening']} {' '.join(brief['questions'])}"
+    assert "otp_verify" not in blob.lower()
+    assert "spinner" not in blob.lower()
+
+
+def test_call_brief_gemini_generated_when_available(monkeypatch):
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+
+    def _fake_generate(prompt: str, *, timeout: float = 90.0) -> str:
+        return (
+            '{"opening": "Hi, Lexi from Acme. Quick question about your session?", '
+            '"questions": ["What did you see?", "Did you retry?"], '
+            '"listen_prompt": "Tell me what happened."}'
+        )
+
+    monkeypatch.setattr("loop.vertex_gemini.generate_content", _fake_generate)
+    monkeypatch.setattr("loop.vertex_gemini.gemini_configured", lambda: True)
+
+    brief = call_brief_for_outreach(
+        {
+            "purpose": "feedback_ask",
+            "product": "Acme",
+            "metric": "onboarding_drop",
+            "hypothesis": "Step 3 form validation blocks mobile users",
+            "voice_reason": "form_validation_error",
+        },
+    )
+    assert brief["gemini_generated"] is True
+    assert "Lexi" in brief["opening"]
+    assert len(brief["questions"]) == 2
 
 
 def test_place_call_skips_without_twilio(monkeypatch):
@@ -80,9 +244,6 @@ def test_place_call_skips_without_number():
 
 
 def test_finalize_call_uses_room_metric_for_otp_hang(engine, monkeypatch):
-    from datetime import UTC, datetime
-
-    from loop.models import Investigation, InvestigationState, Room, RoomKind
     from loop.telephony import finalize_call, put_session
 
     inv = Investigation(
@@ -135,11 +296,21 @@ def test_twiml_open_contains_gather(monkeypatch):
     assert f'timeout="{GATHER_TIMEOUT}"' in xml
     assert "After the tone" in xml
     assert "/api/twilio/gather" in xml
+    assert "spinner" not in xml.lower()
+    assert "OTP" not in xml
 
 
-def test_twiml_open_uses_fix_notify_brief(monkeypatch):
+def test_twiml_open_uses_context_brief(monkeypatch):
     monkeypatch.setenv("LOOP_PUBLIC_URL", "https://loop.example")
-    brief = call_brief_for_outreach({"purpose": "fix_notify", "product": "Cove"})
-    xml = twiml_open("room1", "otp hang", "Cove", brief=brief)
-    assert "OTP verification" in xml
+    brief = call_brief_for_outreach(
+        {
+            "purpose": "fix_notify",
+            "product": "Cove",
+            "hypothesis": "Payment gateway timeout on slow networks",
+            "fix_summary": "gateway timeout handling",
+        },
+    )
+    xml = twiml_open("room1", "payment issue", "Cove", brief=brief)
     assert "Lexi" in xml
+    assert "OTP verification" not in xml
+    assert "spinner" not in xml.lower()

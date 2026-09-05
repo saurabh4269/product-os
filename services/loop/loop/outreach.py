@@ -9,7 +9,9 @@ Flow:
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -88,40 +90,198 @@ def friendly_fix_notify_email(*, product: str, summary: str = "") -> tuple[str, 
     return subject, body
 
 
-def call_brief_for_outreach(row: dict[str, Any], *, fix_summary: str = "") -> dict[str, Any]:
-    """Purpose for the call: feedback ask vs fix notify."""
-    purpose = str(row.get("call_purpose") or row.get("purpose") or "feedback_ask")
-    product = str(row.get("product") or "your product")
-    if purpose == "fix_notify" or fix_summary:
-        summary = fix_summary or row.get("fix_summary") or "the OTP verification hang at checkout"
-        return {
-            "purpose": "fix_notify",
-            "fix_summary": summary,
-            "opening": (
-                f"Hi, this is Lexi from the {product} team. "
-                f"We tracked an issue where checkout could hang during OTP verification, "
-                f"and we shipped a fix for {summary}. "
-                "I wanted to check in and hear what you experienced."
-            ),
-            "questions": [
-                "Was it the spinner that never stopped, or did you see an error message?",
-                "Did the verification code ever arrive, or did it time out?",
-                "Have you tried again since the fix — is anything still stuck?",
-            ],
-        }
+_GENERIC_FALLBACK_OPENING_FEEDBACK = (
+    "Hi, this is Lexi from the {product} team. "
+    "We noticed something unusual in recent activity and would like to learn what you experienced. "
+    "Do you have about thirty seconds?"
+)
+_GENERIC_FALLBACK_OPENING_FIX = (
+    "Hi, this is Lexi from the {product} team. "
+    "We shipped a fix for an issue we were tracking and wanted to check in. "
+    "Can you share what you saw on your side?"
+)
+_GENERIC_FALLBACK_QUESTIONS = [
+    "What happened on your screen — did it keep loading or show an error?",
+    "Have you tried again since?",
+    "Is anything still not working for you?",
+]
+GENERIC_LISTEN_PROMPT = "After the tone, tell me what you saw on your side."
+
+
+def _metric_from_investigation(inv: Any) -> str:
+    scenario = str(getattr(inv, "scenario_id", None) or "")
+    if scenario.startswith("t:") and scenario.count(":") >= 2:
+        return scenario.split(":", 2)[2]
+    title = str(getattr(inv, "title", None) or "")
+    if ":" in title:
+        return title.split(":", 1)[-1].strip()
+    return title or str(getattr(inv, "id", "") or "")
+
+
+def room_call_context(store: Any, room_id: str) -> dict[str, Any]:
+    """Load investigation context for telephony at call time."""
+    from loop.tenant import product_for_room
+
+    room = store.get_room(room_id) if room_id else None
+    if not room:
+        return {}
+
+    inv = store.get_investigation(room.investigation_id) if room.investigation_id else None
+    product = product_for_room(store, room_id)
+    metric = ""
+    signal_title = str(getattr(room, "title", None) or "")
+    hypothesis = ""
+    voice_reason = ""
+    failure = ""
+
+    if inv:
+        metric = _metric_from_investigation(inv)
+        signal_title = str(getattr(inv, "title", None) or signal_title)
+        hyps = store.list_hypotheses(inv.id)
+        if hyps:
+            hypothesis = str(hyps[0].statement or "")
+
+    for msg in reversed(store.list_messages(room_id)):
+        art = msg.artifact if isinstance(msg.artifact, dict) else {}
+        if msg.artifact_type == "voice_context" and art:
+            voice_reason = str(art.get("failure") or art.get("reason") or "")
+            failure = voice_reason or failure
+            if not hypothesis:
+                hypothesis = str(art.get("hypothesis_hint") or "")
+            break
+        if msg.artifact_type in {"call_evidence", "call_feedback"} and isinstance(art.get("structured"), dict):
+            voice_reason = str(art["structured"].get("reason") or "")
+            if voice_reason:
+                break
+
+    if inv and not voice_reason:
+        for ev in store.list_evidence(inv.id):
+            if ev.source_type == "customer_voice":
+                ref = str(ev.source_reference or "")
+                m = re.search(r"reason=([\w_]+)", ref)
+                if m:
+                    voice_reason = m.group(1)
+                    break
+
     return {
-        "purpose": "feedback_ask",
-        "opening": (
-            f"Hi, this is Lexi from the {product} team. "
-            "We emailed about a checkout issue a few people hit and did not hear back. "
-            "I am calling to learn what you saw — do you have about thirty seconds?"
-        ),
-        "questions": [
-            "What happened on your screen — did it keep loading or show an error?",
-            "Were you trying to verify with a one-time code?",
-            "Have you tried again since?",
-        ],
+        "room_id": room_id,
+        "metric": metric,
+        "signal_title": signal_title,
+        "hypothesis": hypothesis,
+        "voice_reason": voice_reason,
+        "failure": failure,
+        "product": product,
     }
+
+
+def _strip_json_fence(raw: str) -> str:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```\w*\n?", "", text)
+        text = re.sub(r"\n?```$", "", text)
+    return text.strip()
+
+
+def _generate_call_plan_with_gemini(ctx: dict[str, Any], purpose: str, fix_summary: str = "") -> dict[str, Any] | None:
+    from loop.vertex_gemini import gemini_configured, generate_content
+
+    if not gemini_configured():
+        return None
+
+    product = ctx.get("product") or "the product"
+    metric = ctx.get("metric") or ctx.get("signal_title") or "unknown"
+    voice_reason = ctx.get("voice_reason") or "not yet classified"
+    hypothesis = ctx.get("hypothesis") or "under investigation"
+    fix_line = f"- Fix summary: {fix_summary}\n" if fix_summary and purpose == "fix_notify" else ""
+
+    prompt = (
+        f"You are Lexi, a customer research agent for {product}.\n\n"
+        "Investigation context (use ONLY this evidence — do not invent failure modes):\n"
+        f"- Metric/signal: {metric}\n"
+        f"- Customer Voice reason: {voice_reason}\n"
+        f"- Top hypothesis: {hypothesis}\n"
+        f"- Call purpose: {purpose}  (feedback_ask = learn what happened; fix_notify = we fixed something, confirm)\n"
+        f"{fix_line}\n"
+        "Write a phone call plan as JSON with exactly these keys:\n"
+        '- "opening": Lexi speaking, at most 2 short sentences, friendly, ask if they have about 30 seconds\n'
+        '- "questions": array of 2-3 adaptive follow-up questions tailored to the evidence above\n'
+        '- "listen_prompt": one short sentence inviting them to describe what they saw (generic, no invented failure mode)\n\n'
+        "Rules:\n"
+        "- Never mention OTP, spinner, verification code, or other specifics UNLESS they appear in the context above\n"
+        "- If evidence is thin, use open diagnostic questions\n"
+        "- Speak as Lexi from the product team\n"
+        "- Output ONLY valid JSON, no markdown"
+    )
+    try:
+        raw = generate_content(prompt, timeout=30.0)
+        plan = json.loads(_strip_json_fence(raw))
+        if isinstance(plan, dict) and plan.get("opening"):
+            return plan
+    except Exception:
+        pass
+    return None
+
+
+def _generic_fallback_brief(ctx: dict[str, Any], purpose: str, fix_summary: str = "") -> dict[str, Any]:
+    product = ctx.get("product") or "your product"
+    if purpose == "fix_notify":
+        opening = _GENERIC_FALLBACK_OPENING_FIX.format(product=product)
+    else:
+        opening = _GENERIC_FALLBACK_OPENING_FEEDBACK.format(product=product)
+    return {
+        "purpose": purpose,
+        "product": product,
+        "metric": ctx.get("metric", ""),
+        "signal_title": ctx.get("signal_title", ""),
+        "voice_reason": ctx.get("voice_reason", ""),
+        "hypothesis": ctx.get("hypothesis", ""),
+        "fix_summary": fix_summary,
+        "opening": opening,
+        "questions": list(_GENERIC_FALLBACK_QUESTIONS),
+        "listen_prompt": GENERIC_LISTEN_PROMPT,
+        "gemini_generated": False,
+    }
+
+
+def call_brief_for_outreach(
+    row: dict[str, Any],
+    *,
+    fix_summary: str = "",
+    store: Any | None = None,
+    room_id: str = "",
+) -> dict[str, Any]:
+    """Build a context-aware call brief — Gemini when available, generic fallback otherwise."""
+    purpose = str(row.get("call_purpose") or row.get("purpose") or "feedback_ask")
+    if purpose == "fix_notify" or fix_summary:
+        purpose = "fix_notify"
+
+    ctx: dict[str, Any] = {}
+    rid = room_id or str(row.get("room_id") or "")
+    if store and rid:
+        ctx = room_call_context(store, rid)
+    if row.get("product"):
+        ctx["product"] = str(row["product"])
+    for key in ("metric", "hypothesis", "voice_reason", "signal_title"):
+        if row.get(key):
+            ctx[key] = str(row[key])
+
+    summary = fix_summary or str(row.get("fix_summary") or "")
+    plan = _generate_call_plan_with_gemini(ctx, purpose, summary)
+    if plan:
+        return {
+            "purpose": purpose,
+            "product": ctx.get("product") or str(row.get("product") or "your product"),
+            "metric": ctx.get("metric", ""),
+            "signal_title": ctx.get("signal_title", ""),
+            "voice_reason": ctx.get("voice_reason", ""),
+            "hypothesis": ctx.get("hypothesis", ""),
+            "fix_summary": summary,
+            "opening": str(plan.get("opening", "")),
+            "questions": [str(q) for q in (plan.get("questions") or []) if q],
+            "listen_prompt": str(plan.get("listen_prompt") or GENERIC_LISTEN_PROMPT),
+            "gemini_generated": True,
+        }
+    return _generic_fallback_brief(ctx, purpose, summary)
 
 
 def _send_or_draft_feedback(to: str, subject: str, body: str) -> dict[str, Any]:
@@ -472,15 +632,26 @@ def advance_outreach(
             continue
 
         purpose = "fix_notify" if (any_solved or fix_summary) else "feedback_ask"
-        brief = call_brief_for_outreach({**row, "call_purpose": purpose}, fix_summary=fix_summary)
+        from loop.tenant import product_for_room
+
+        product_name = product_for_room(engine.store, room_id)
+        brief = call_brief_for_outreach(
+            {**row, "call_purpose": purpose, "product": product_name},
+            fix_summary=fix_summary,
+            store=engine.store,
+            room_id=room_id,
+        )
+        from loop.abandon_research import call_system_prompt
+
+        system_prompt = call_system_prompt(brief)
         report = voice_connector.place_call(
             tok,
             reason=str(row.get("pattern") or "follow_up"),
             to_number=phone,
             room_id=room_id,
-            product="",
+            product=product_name,
             brief=brief,
-            system_prompt="",
+            system_prompt=system_prompt,
         )
         call_row = {
             "id": _id("out"),
