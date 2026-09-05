@@ -206,8 +206,9 @@ def test_bundle_pending_actions_filtered(engine):
 
 
 def test_room_message_summary_without_loading_all(engine):
-    from loop.models import RoomMessage, Room, RoomKind
     from datetime import UTC, datetime
+
+    from loop.models import Room, RoomKind, RoomMessage
 
     room = Room(
         id="room_summary",

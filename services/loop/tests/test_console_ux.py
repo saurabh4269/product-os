@@ -125,12 +125,12 @@ def test_pending_actions_trusts_empty_server_list():
     assert "bundle.pending_actions?.length" not in fn
 
 
-def test_world_refresh_policy_is_at_least_30s():
+def test_world_refresh_policy_is_at_least_45s():
     src = (CONSOLE / "lib" / "world-refresh.ts").read_text()
     assert "WORLD_REFRESH_MS" in src
-    assert "30_000" in src or "30000" in src
+    assert "45_000" in src or "45000" in src
     assert "WORLD_SLOW_REFRESH_MS" in src
-    assert "60_000" in src or "60000" in src
+    assert "90_000" in src or "90000" in src
 
 
 def test_room_api_defaults_to_slim_bundle():

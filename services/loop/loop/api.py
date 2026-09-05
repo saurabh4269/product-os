@@ -387,10 +387,9 @@ def health():
 
 
 def _status_payload(eng) -> dict:
-    """Shared counters for GET /api/status and WebSocket initial_state."""
+    """Shared counters for GET /api/status — avoid per-room workflow/message scans (2Gi)."""
     from .connectors import google_oauth
-    from .workflow import workflow_from_store
-
+    from .models import InvestigationState
     from .room_ui import visible_pending_approvals
 
     rooms = eng.store.list_rooms()
@@ -406,18 +405,29 @@ def _status_payload(eng) -> dict:
         for ev in agents.values():
             st = str(ev.get("status") or "idle")
             stages[st] = stages.get(st, 0) + 1
+    engaged_states = {
+        InvestigationState.GATHERING,
+        InvestigationState.HYPOTHESIS,
+        InvestigationState.ACTION_PROPOSED,
+        InvestigationState.AWAITING_APPROVAL,
+        InvestigationState.APPROVED,
+        InvestigationState.ACTING,
+        InvestigationState.VERIFYING,
+    }
+    verified_states = {
+        InvestigationState.RESOLVED,
+        InvestigationState.PARTIALLY_RESOLVED,
+    }
     engaged = 0
     verified = 0
     for room in open_rooms:
         inv = eng.store.get_investigation(room.investigation_id) if room.investigation_id else None
-        funnel = workflow_from_store(eng.store, room, inv)
-        st = funnel.get("current") or "signal"
-        if st in {"investigate", "evidence", "root_cause", "customer", "product"}:
+        if not inv:
+            continue
+        state = inv.state
+        if state in engaged_states:
             engaged += 1
-        if inv and str(getattr(inv.state, "value", inv.state)) in {
-            "resolved",
-            "partially_resolved",
-        }:
+        if state in verified_states:
             verified += 1
     oauth = google_oauth.status()
     from loop import firestore_memory, gcs_state
@@ -425,8 +435,8 @@ def _status_payload(eng) -> dict:
     from loop.state_persist import last_upload_ts
     from loop.worker_heartbeat import last_tick as worker_last_tick
 
-    jobs_queued = len(eng.store.list_jobs(status="queued"))
-    jobs_dead = len(eng.store.list_jobs(status="dead"))
+    jobs_queued = eng.store.count_jobs(status="queued")
+    jobs_dead = eng.store.count_jobs(status="dead")
     last_tick = last_tick_summary()
     worker_tick = worker_last_tick()
 
@@ -2667,6 +2677,9 @@ def worker_tick(
 
     require_admin_or_internal(authorization, internal_header=x_loop_worker)
     eng = get_engine()
+    from .jobs import sweep_dead_jobs
+
+    jobs_swept = sweep_dead_jobs(eng.store, force=True)
     detected = eng.detect_all_signals()
     from .auto_investigate import count_applied, open_signal_ids_for_auto_investigate
 
@@ -2692,6 +2705,7 @@ def worker_tick(
         "detected": len(detected),
         "investigated": investigated,
         "auto_investigated": count_applied(investigated),
+        "jobs_swept": jobs_swept,
     }
     from .worker_heartbeat import record_tick
 
@@ -2929,14 +2943,11 @@ async def ws_global(ws: WebSocket):
 
     await HUB.connect_global(ws)
     try:
-        eng = get_engine()
         await ws.send_text(
             json.dumps(
                 {
                     "type": "initial_state",
-                    "status": _status_payload(eng),
                     "activity": list_activity(25),
-                    "pipeline": {"cards": _pipeline_cards(eng)},
                 },
                 default=str,
             )

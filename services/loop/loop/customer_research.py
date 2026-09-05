@@ -370,7 +370,6 @@ def extract_structured_evidence(
 ) -> StructuredCallEvidence:
     text = " ".join(f"{t.get('role')}: {t.get('message')}" for t in transcript).lower()
     ctx = f"{text} {(metric or '').lower()}"
-    metric_lower = (metric or "").lower()
     otp_metric = _otp_metric_class(metric)
     loading = any(w in text for w in ("loading", "spinner", "kept loading", "hung", "timeout"))
     error_shown = any(w in text for w in ("error", "declined", "invalid card"))

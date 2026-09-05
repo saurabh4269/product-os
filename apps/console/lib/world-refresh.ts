@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 
 /** Minimum gap between light list refetches driven by WS ticks (rooms). */
-export const WORLD_REFRESH_MS = 30_000;
+export const WORLD_REFRESH_MS = 45_000;
 
 /** Heavier endpoints (office, status, proof) — avoid hammering 2Gi Cloud Run. */
-export const WORLD_SLOW_REFRESH_MS = 60_000;
+export const WORLD_SLOW_REFRESH_MS = 90_000;
 
 /**
  * Coalesce rapid WS ticks so list/office/status endpoints are not refetched on

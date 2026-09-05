@@ -18,7 +18,7 @@ Keep-going unpaused by owner. Do not merge Cove. Local ship via `./scripts/local
 | `LOOP_EVAL` | `0` (`eval_mode: false`) |
 | Health | `/` and `/rooms` 200 when instance healthy · `/shop` 404 · OAuth connected when live |
 
-**2Gi note:** GFE 429 on campus usually means OOM from request stampede, not an in-app rate limiter. This branch reduces load: no office+rooms hammer on every WS tick, slim room GET (`?slim=1`), SQL preview for `/api/rooms` list, 30s/60s debounced refetch.
+**2Gi note:** GFE 429 / 503 on campus usually means OOM from request stampede, not an in-app rate limiter. This branch reduces load: slim `/api/status` (no per-room workflow scan), WS `initial_state` sends activity only, debounced refetch (45s/90s), slim room GET (`?slim=1`), dead-job sweep throttled + on worker tick.
 
 **State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the hang room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance.
 

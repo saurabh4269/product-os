@@ -258,6 +258,35 @@ def test_process_job_respects_run_after(engine, monkeypatch):
     assert still.attempts == 0
 
 
+def test_sweep_dead_jobs_throttled(engine, monkeypatch):
+    from loop.jobs import Job, sweep_dead_jobs
+
+    monkeypatch.setattr("loop.jobs._SWEEP_DEAD_INTERVAL_S", 3600.0)
+    job = Job(
+        id="job_dead_throttle",
+        kind="verify",
+        status="dead",
+        payload={"investigation_id": "inv_throttle"},
+        result={},
+        attempts=3,
+        max_attempts=3,
+        error="worker died",
+        created_at=_iso(),
+        updated_at=_iso(),
+    )
+    engine.store.put_job(job)
+    assert sweep_dead_jobs(engine.store) == []
+    assert sweep_dead_jobs(engine.store, force=True) == [job.id]
+
+
+def test_count_jobs(engine):
+    from loop.jobs import enqueue
+
+    enqueue(engine.store, "verify", {"investigation_id": "inv_count"})
+    assert engine.store.count_jobs(status="queued") >= 1
+    assert engine.store.count_jobs(status="dead") == 0
+
+
 def test_sweep_dead_code_fix_marks_skipped_and_queues_verify(engine):
     inv_id = "inv_dead_cf"
     job = Job(
@@ -273,7 +302,7 @@ def test_sweep_dead_code_fix_marks_skipped_and_queues_verify(engine):
         updated_at=_iso(),
     )
     engine.store.put_job(job)
-    swept = sweep_dead_jobs(engine.store)
+    swept = sweep_dead_jobs(engine.store, force=True)
     assert job.id in swept
     got = engine.store.get_job(job.id)
     assert got.status == "succeeded"
@@ -301,7 +330,7 @@ def test_sweep_dead_verify_requeues_once(engine):
         updated_at=_iso(),
     )
     engine.store.put_job(job)
-    swept = sweep_dead_jobs(engine.store)
+    swept = sweep_dead_jobs(engine.store, force=True)
     assert job.id in swept
     got = engine.store.get_job(job.id)
     assert got.status == "queued"

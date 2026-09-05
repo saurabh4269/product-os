@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
@@ -124,10 +125,19 @@ def enqueue_verify(store: Any, investigation_id: str, *, delay_hours: int = 24) 
     )
 
 
-def sweep_dead_jobs(store: Any) -> list[str]:
+_SWEEP_DEAD_INTERVAL_S = 60.0
+_last_dead_sweep_mono = 0.0
+
+
+def sweep_dead_jobs(store: Any, *, force: bool = False, limit: int = 25) -> list[str]:
     """Clear zombie dead jobs and queue verify when flags PR already shipped."""
+    global _last_dead_sweep_mono
+    now_mono = time.monotonic()
+    if not force and now_mono - _last_dead_sweep_mono < _SWEEP_DEAD_INTERVAL_S:
+        return []
+    _last_dead_sweep_mono = now_mono
     swept: list[str] = []
-    for job in store.list_jobs(status="dead", limit=200):
+    for job in store.list_jobs(status="dead", limit=limit):
         inv_id = str(job.payload.get("investigation_id") or "")
         if job.kind == "code_fix" and (
             job.payload.get("flag_pr_opened") or job.result.get("flag_pr_opened")

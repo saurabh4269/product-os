@@ -94,6 +94,7 @@ fi
 
 # ^|^ so gcloud does not split urlretrieve(url, path) on the comma.
 # One-arg urlretrieve writes a random NamedTemporaryFile — always pass /tmp/loop.tgz.
+# Owner pricing lock: explicit 2Gi — never ship 4Gi from Actions or laptop deploy.
 set +e
 gcloud run deploy "${SERVICE}" \
   --image python:3.12-slim \

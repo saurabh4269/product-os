@@ -499,6 +499,19 @@ class Store:
 
         return self._get("jobs", Job, id_)
 
+    def count_jobs(self, *, status: str | None = None, kind: str | None = None) -> int:
+        clauses: list[str] = []
+        args: list[Any] = []
+        if status:
+            clauses.append("json LIKE ?")
+            args.append(f'%"status": "{status}"%')
+        if kind:
+            clauses.append("json LIKE ?")
+            args.append(f'%"kind": "{kind}"%')
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        row = self._conn.execute(f"SELECT COUNT(*) FROM jobs {where}", tuple(args)).fetchone()
+        return int(row[0] or 0)
+
     def list_jobs(self, *, status: str | None = None, kind: str | None = None, limit: int = 50) -> list[Any]:
         from .jobs import Job
 

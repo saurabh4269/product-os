@@ -57,7 +57,7 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
   const [life, setLife] = useState<IncidentLifecycle | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { tick, connection, incidentLifecycle } = useGlobalWs();
+  const { connection, incidentLifecycle } = useGlobalWs();
   const wsLive = connection === "live";
 
   const refresh = useCallback(async () => {
@@ -79,7 +79,7 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
 
   useEffect(() => {
     void refresh();
-  }, [refresh, tick]);
+  }, [refresh]);
 
   useEffect(() => {
     if (incidentLifecycle?.tenantId === tenantId) {
@@ -93,11 +93,11 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
     const activePhase = phase === "diagnosing" || phase === "signal_received";
     const ms = wsLive
       ? activePhase
-        ? 8000
-        : 15000
+        ? 30_000
+        : 60_000
       : activePhase
-        ? 2000
-        : 4000;
+        ? 8000
+        : 15_000;
     const id = window.setInterval(() => {
       void refresh();
     }, ms);
