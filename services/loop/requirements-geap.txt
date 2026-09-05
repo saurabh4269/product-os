@@ -1,0 +1,2 @@
+google-cloud-aiplatform[agent_engines,adk]>=1.112
+google-adk>=2.8.0

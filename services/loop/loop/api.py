@@ -431,6 +431,7 @@ def _status_payload(eng) -> dict:
             verified += 1
     oauth = google_oauth.status()
     from loop import firestore_memory, gcs_state
+    from loop import geap_memory, geap_runtime
     from loop.signal_watch import last_tick_summary
     from loop.state_persist import last_upload_ts
     from loop.worker_heartbeat import last_tick as worker_last_tick
@@ -455,6 +456,8 @@ def _status_payload(eng) -> dict:
         },
         "workspace": {"connected": bool(oauth.get("connected")), "email": oauth.get("email") or ""},
         "memory": firestore_memory.status(),
+        "geap": geap_runtime.status(),
+        "geap_memory": geap_memory.status(),
         "worker": {
             "inline": os.environ.get("LOOP_INLINE_WORKER") == "1",
             "tasks_disabled": os.environ.get("LOOP_TASKS_DISABLE") == "1",
@@ -1071,6 +1074,7 @@ def adk_status():
     from loop.adk_runtime import adk_available, adk_inline_enabled, adk_worker_url, fleet_status
     from loop.antigravity_fix import antigravity_status
     from loop.code_fix import code_backend
+    from loop import geap_memory, geap_runtime
     from loop.vertex_gemini import gemini_configured, use_vertex
 
     eng = get_engine()
@@ -1081,18 +1085,63 @@ def adk_status():
             fleet = fleet_status(eng)
         except Exception as exc:
             fleet = {"error": str(exc)[:200]}
+    geap = geap_runtime.status()
     return {
         "adk_installed": adk_available(),
         "adk_inline": adk_inline_enabled(),
         "adk_worker_url": worker or None,
         "worker_reachable": bool(worker),
         "fleet": fleet,
+        "geap": geap,
+        "geap_memory": geap_memory.status(),
+        "geap_preferred": geap.get("preferred"),
         "antigravity": antigravity_status(),
         "code_backend": code_backend(),
         "vertex_gemini": use_vertex(),
         "gemini_configured": gemini_configured(),
-        "pitch": "ADK orchestrates on worker; gateway + Model Armor enforce; jobs clone → test → PR.",
+        "pitch": "GEAP Runtime when LOOP_GEAP_ENABLED=1; else ADK worker; gateway + Model Armor enforce; jobs clone → test → PR.",
     }
+
+
+@app.get("/api/geap/status")
+def geap_status(_actor: AdminUnlessEval):
+    """GEAP Agent Runtime + Memory Bank configuration (honest)."""
+    from loop import geap_memory, geap_runtime
+
+    return {
+        "geap": geap_runtime.status(),
+        "memory_bank": geap_memory.status(),
+        "routing": {
+            "signals": "geap → adk worker → inline adk → LoopEngine",
+            "research": "geap note + local pipeline when enabled",
+            "ui_and_gate": "loop Cloud Run (SQLite, approvals, GitHub PR)",
+        },
+        "entitlements_needed": {
+            "runtime": "roles/aiplatform.user + Storage on staging bucket",
+            "gateway": "Agent Gateway terraform in infra/terraform/gated/ (plan-only)",
+            "sgp": "Semantic Governance Preview (plan-only)",
+        },
+    }
+
+
+class GeapMemoryBody(BaseModel):
+    title: str
+    body: str = ""
+    tenant_id: str | None = None
+
+
+@app.get("/api/geap/memory")
+def geap_memory_status(_actor: AdminUnlessEval):
+    from loop import geap_memory
+
+    return {"memory_bank": geap_memory.status()}
+
+
+@app.post("/api/geap/memory")
+def geap_memory_remember(body: GeapMemoryBody, _actor: AdminUnlessEval):
+    from loop import geap_memory
+
+    return geap_memory.remember(body.title, body.body, tenant_id=body.tenant_id)
 
 
 @app.post("/api/research")
@@ -1131,10 +1180,18 @@ def research_event(body: ResearchEventBody, _actor: AdminUnlessEval):
         "scenario_id": body.scenario_id,
     }
     # Rooms live in this service's SQLite — do not forward to ADK worker (separate ephemeral DB).
-    if adk_inline_enabled():
-        out = run_adk_research(eng, event, **kwargs)
-    else:
-        out = run_customer_research(eng, event, **kwargs)
+    out = None
+    try:
+        from loop.geap_runtime import dispatch_geap_research
+
+        out = dispatch_geap_research(eng, event, **kwargs)
+    except Exception:
+        out = None
+    if out is None:
+        if adk_inline_enabled():
+            out = run_adk_research(eng, event, **kwargs)
+        else:
+            out = run_customer_research(eng, event, **kwargs)
     room = eng.store.get_room(out["room_id"])
     return {
         **out,
@@ -2346,7 +2403,7 @@ def signals(_actor: AdminUnlessEval):
 @app.post("/api/signals")
 def post_signal(_actor: AdminUnlessEval, body: SignalInBody):
     """Ingest a signal → investigation pipeline with live WS events (eval/admin only when hosted)."""
-    from .unified_runner import run_signal_pipeline
+    from .adk_runtime import dispatch_signal
 
     eng = get_engine()
     from loop.world import ensure_api_ready
@@ -2371,7 +2428,7 @@ def post_signal(_actor: AdminUnlessEval, body: SignalInBody):
         publish_signal({**sig, "path": "api.signals"})
     except Exception:
         pass
-    result = run_signal_pipeline(
+    result = dispatch_signal(
         eng,
         None,
         sig,

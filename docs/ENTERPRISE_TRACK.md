@@ -56,10 +56,32 @@ When GEAP Agent Runtime is entitled, the same agent configs deploy to managed ru
 ## Plan-only until GEAP
 
 - GEAP **Agent Gateway** + SGP as enforcement plane (Terraform in `infra/terraform/gated/`)
-- Managed **Agent Runtime** (TB-1…TB-7 split)
-- **Cloud Memory Bank** adapter (SQLite + playbooks today)
+- **Cloud Memory Bank** full consolidation (Firestore mirror + optional GEAP adapter today)
 - **Antigravity** as sole code path (jobs worker uses clone + apply + test today)
 - Outbound **Google PSTN** / Live API media bridge at scale
+
+### GEAP Agent Runtime (wired, opt-in)
+
+| Piece | Status | Notes |
+|---|---|---|
+| **Runtime client** | `services/loop/loop/geap_runtime.py` | `vertexai.Client` + `AdkApp` around LOOP orchestrator |
+| **Deploy** | `scripts/deploy-geap-agent.sh` | Creates Reasoning Engine with `identity_type=AGENT_IDENTITY` |
+| **Routing** | `LOOP_GEAP_ENABLED=1` + `LOOP_GEAP_AGENT_ENGINE_ID` | `POST /api/signals` → GEAP query → local LoopEngine persistence |
+| **Memory Bank** | `services/loop/loop/geap_memory.py` | `VertexAiMemoryBankService` when engine id set; SQLite/Firestore fallback |
+| **Status** | `GET /api/geap/status`, `/api/adk/status` | Honest skipped_reason when SDK or engine id missing |
+| **Gateway** | Plan-only | Not required for first Runtime ship — Identity on create is enough |
+
+Env checklist (GEAP):
+
+```
+LOOP_GEAP_ENABLED=1
+LOOP_GEAP_AGENT_ENGINE_ID=<reasoning-engine-id>
+LOOP_GEAP_STAGING_BUCKET=gs://mystical-timing-442601-q8-loop-host
+GOOGLE_CLOUD_PROJECT=mystical-timing-442601-q8
+GOOGLE_CLOUD_REGION=us-central1
+```
+
+IAM: deployer needs `roles/aiplatform.user` and write access to the staging bucket. Main `loop` host does **not** bundle `google-adk` — GEAP SDK is for deploy script / optional worker only; runtime queries use client API.
 
 ---
 
@@ -72,7 +94,7 @@ When GEAP Agent Runtime is entitled, the same agent configs deploy to managed ru
 ./scripts/deploy-gcp.sh
 ```
 
-Main `loop` forwards `POST /api/signals` and `/api/research` to `loop-adk` when `LOOP_ADK_WORKER_URL` is set. Code-fix jobs use `LOOP_CODE_BACKEND=auto`: Antigravity → Gemini → fixture fallback.
+Main `loop` forwards `POST /api/signals` through **GEAP Runtime** when `LOOP_GEAP_ENABLED=1` and `LOOP_GEAP_AGENT_ENGINE_ID` are set, else to `loop-adk` when `LOOP_ADK_WORKER_URL` is set. Code-fix jobs use `LOOP_CODE_BACKEND=auto`: Antigravity → Gemini → fixture fallback.
 
 **Scale:** `loop` and `loop-adk` default **min-instances 0** in deploy scripts. Demo tenant Cove should also scale to zero when not demoing (separate repo/deploy).
 

@@ -326,6 +326,18 @@ class LoopEngine:
         hits: list[str] = []
         seen: set[str] = set()
 
+        try:
+            from loop.geap_memory import enabled as geap_memory_enabled
+            from loop.geap_memory import recall as geap_recall
+
+            if geap_memory_enabled():
+                for stmt in geap_recall(*needles, tenant_id=tenant_id):
+                    if stmt not in seen:
+                        hits.append(stmt)
+                        seen.add(stmt)
+        except Exception:
+            pass
+
         if firestore_memory.enabled():
             for stmt in firestore_memory.recall(*needles, tenant_id=tenant_id):
                 if stmt not in seen:
