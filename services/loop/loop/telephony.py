@@ -75,12 +75,17 @@ def gemini_configured() -> bool:
 
 
 def normalize_e164(phone: str) -> str | None:
-    digits = re.sub(r"\D", "", phone or "")
+    """Normalize to E.164. Accepts US shorthand and international +[10-15 digits]."""
+    raw = (phone or "").strip()
+    digits = re.sub(r"\D", "", raw)
     if len(digits) == 10:
         return f"+1{digits}"
     if len(digits) == 11 and digits.startswith("1"):
         return f"+{digits}"
-    if phone.startswith("+") and len(digits) >= 10:
+    if raw.startswith("+") and 10 <= len(digits) <= 15:
+        return f"+{digits}"
+    # Bare international digits without + (e.g. 919508709729 for India)
+    if not raw.startswith("+") and 10 <= len(digits) <= 15:
         return f"+{digits}"
     return None
 
@@ -119,12 +124,49 @@ def _gemini_reply(system: str, user: str, history: list[dict[str, str]]) -> str:
         return fallback
 
 
+TWILIO_VOICE = "alice"
+GATHER_TIMEOUT = "8"
+LISTEN_PROMPT = (
+    "After the tone, tell me what you saw — "
+    "did the screen keep spinning, show an error, or did the code never arrive?"
+)
+
+
 def opening_line(reason: str, product: str = "your product") -> str:
     r = (reason or "a checkout problem").strip()[:200]
+    product = product or "your product"
     return (
-        f"Hi, this is Lexi from the {product} product team. "
-        f"We saw {r}. Do you have thirty seconds to tell me what you saw on screen?"
+        f"Hi, this is Lexi from the {product} team. "
+        f"We noticed {r}, and I am calling to learn what happened on your side. "
+        "Do you have about thirty seconds?"
     )
+
+
+def fix_notify_opening(product: str = "your product", fix_summary: str = "") -> str:
+    product = product or "your product"
+    fix = (fix_summary or "the OTP verification hang at checkout").strip()[:180]
+    return (
+        f"Hi, this is Lexi from the {product} team. "
+        f"We tracked an issue where checkout could hang during OTP verification, "
+        f"and we shipped a fix for {fix}. "
+        "I wanted to check in and hear what you experienced."
+    )
+
+
+def _brief_opening(brief: dict[str, Any] | None, reason: str, product: str) -> str:
+    b = brief or {}
+    opening = b.get("opening") or ((b.get("call_plan") or {}).get("opening"))
+    if opening:
+        return str(opening)
+    if b.get("purpose") == "fix_notify":
+        return fix_notify_opening(product, str(b.get("fix_summary") or ""))
+    return opening_line(reason, product or "your product")
+
+
+def _brief_questions(brief: dict[str, Any] | None) -> list[str]:
+    b = brief or {}
+    qs = b.get("questions") or ((b.get("call_plan") or {}).get("questions")) or []
+    return [str(q) for q in qs if q]
 
 
 def place_call(
@@ -160,7 +202,7 @@ def place_call(
         return ConnectorReport(
             status="skipped",
             connector="voice.place_call",
-            detail=f"Invalid US phone number: {to_number}",
+            detail=f"Invalid phone number (need E.164, e.g. +919508709729): {to_number}",
         )
 
     # prevent_duplicate_call — same room + number already in flight or done recently
@@ -183,13 +225,14 @@ def place_call(
     try:
         with httpx.Client(timeout=30.0) as client:
             # Trial accounts may reject StatusCallbackEvent lists; StatusCallback alone is ok.
-            data = {
+            # Trial accounts: keep params minimal — Url, To, From, optional StatusCallback.
+            data: dict[str, str] = {
                 "To": e164,
                 "From": frm,
                 "Url": voice_url,
-                "StatusCallback": status_url,
-                "StatusCallbackMethod": "POST",
             }
+            if status_url:
+                data["StatusCallback"] = status_url
             res = client.post(
                 f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Calls.json",
                 auth=(sid, token),
@@ -223,7 +266,7 @@ def place_call(
             "transcript": [],
             "brief": brief or {},
             "system_prompt": system_prompt,
-            "scripted_questions": ((brief or {}).get("call_plan") or {}).get("questions") or [],
+            "scripted_questions": _brief_questions(brief),
             "url": f"https://www.twilio.com/console/voice/calls/{call_sid}" if call_sid else None,
         },
     )
@@ -239,17 +282,19 @@ def twiml_open(room: str, reason: str, product: str, brief: dict[str, Any] | Non
     from loop.abandon_research import build_customer_context_brief
 
     b = brief or build_customer_context_brief()
-    opening = ((b.get("call_plan") or {}).get("opening")) or opening_line(reason, product or "your product")
+    opening = _brief_opening(b, reason, product or "your product")
     say = xml.escape(opening)
+    listen = xml.escape(LISTEN_PROMPT)
     base = _public_base()
     action = f"{base}/api/twilio/gather?{urlencode({'room': room})}"
+    voice = TWILIO_VOICE
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">{say}</Say>
-  <Gather input="speech" speechTimeout="auto" timeout="5" action="{xml.escape(action)}" method="POST">
-    <Say voice="Polly.Joanna">I am listening.</Say>
+  <Say voice="{voice}">{say}</Say>
+  <Gather input="speech" speechTimeout="auto" timeout="{GATHER_TIMEOUT}" action="{xml.escape(action)}" method="POST">
+    <Say voice="{voice}">{listen}</Say>
   </Gather>
-  <Say voice="Polly.Joanna">I did not catch that. We will follow up by email. Goodbye.</Say>
+  <Say voice="{voice}">I did not catch that. We will follow up by email. Goodbye.</Say>
   <Hangup/>
 </Response>
 """
@@ -277,9 +322,13 @@ def twiml_gather(call_sid: str, speech: str, room: str) -> str:
     if turns >= 4 or re.search(r"\b(bye|goodbye|hang up|stop)\b", speech, re.I):
         sess["status"] = "done"
         put_session(call_sid, sess)
-        bye = xml.escape("Thanks for your time. We will take it from here. Goodbye.")
+        bye = xml.escape(
+            "Thank you so much for sharing that with us. "
+            "We will use your feedback to make sure this stays fixed. Goodbye."
+        )
+        voice = TWILIO_VOICE
         return f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response><Say voice="Polly.Joanna">{bye}</Say><Hangup/></Response>
+<Response><Say voice="{voice}">{bye}</Say><Hangup/></Response>
 """
 
     scripted = list(sess.get("scripted_questions") or [])
@@ -298,13 +347,15 @@ def twiml_gather(call_sid: str, speech: str, room: str) -> str:
 
     base = _public_base()
     action = f"{base}/api/twilio/gather?{urlencode({'room': room or sess.get('room_id') or ''})}"
+    voice = TWILIO_VOICE
+    listen = xml.escape(LISTEN_PROMPT if turns < 3 else "Anything else before I let you go?")
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">{xml.escape(reply)}</Say>
-  <Gather input="speech" speechTimeout="auto" timeout="5" action="{xml.escape(action)}" method="POST">
-    <Say voice="Polly.Joanna">Go ahead.</Say>
+  <Say voice="{voice}">{xml.escape(reply)}</Say>
+  <Gather input="speech" speechTimeout="auto" timeout="{GATHER_TIMEOUT}" action="{xml.escape(action)}" method="POST">
+    <Say voice="{voice}">{listen}</Say>
   </Gather>
-  <Say voice="Polly.Joanna">Thanks again. Goodbye.</Say>
+  <Say voice="{voice}">Thanks again for your time. Goodbye.</Say>
   <Hangup/>
 </Response>
 """

@@ -5,7 +5,14 @@ from __future__ import annotations
 from loop.classify import classify_call_outcome, classify_voice
 from loop.connectors.voice import place_call
 from loop.models import LoopType, PathKind
-from loop.telephony import normalize_e164, twiml_open
+from loop.outreach import call_brief_for_outreach
+from loop.telephony import (
+    GATHER_TIMEOUT,
+    TWILIO_VOICE,
+    fix_notify_opening,
+    normalize_e164,
+    twiml_open,
+)
 
 
 def test_classify_checkout_hang_is_type_a():
@@ -34,7 +41,27 @@ def test_classify_call_transcript():
 def test_normalize_phone():
     assert normalize_e164("5551234567") == "+15551234567"
     assert normalize_e164("+1 (555) 123-4567") == "+15551234567"
+    assert normalize_e164("+919508709729") == "+919508709729"
+    assert normalize_e164("919508709729") == "+919508709729"
     assert normalize_e164("12") is None
+    assert normalize_e164("+123") is None
+
+
+def test_fix_notify_opening_mentions_otp():
+    text = fix_notify_opening("Cove", "OTP verification timeout")
+    assert "Lexi" in text
+    assert "OTP" in text
+    assert "fix" in text.lower()
+
+
+def test_call_brief_fix_notify_distinct_from_feedback():
+    fix = call_brief_for_outreach({"purpose": "fix_notify", "product": "Cove"})
+    ask = call_brief_for_outreach({"purpose": "feedback_ask", "product": "Cove"})
+    assert fix["purpose"] == "fix_notify"
+    assert ask["purpose"] == "feedback_ask"
+    assert fix["opening"] != ask["opening"]
+    assert "OTP" in fix["opening"]
+    assert len(fix["questions"]) == 3
 
 
 def test_place_call_skips_without_twilio(monkeypatch):
@@ -104,4 +131,15 @@ def test_twiml_open_contains_gather(monkeypatch):
     xml = twiml_open("room1", "checkout hung", "Cove")
     assert "Gather" in xml
     assert "Say" in xml
+    assert f'voice="{TWILIO_VOICE}"' in xml
+    assert f'timeout="{GATHER_TIMEOUT}"' in xml
+    assert "After the tone" in xml
     assert "/api/twilio/gather" in xml
+
+
+def test_twiml_open_uses_fix_notify_brief(monkeypatch):
+    monkeypatch.setenv("LOOP_PUBLIC_URL", "https://loop.example")
+    brief = call_brief_for_outreach({"purpose": "fix_notify", "product": "Cove"})
+    xml = twiml_open("room1", "otp hang", "Cove", brief=brief)
+    assert "OTP verification" in xml
+    assert "Lexi" in xml
