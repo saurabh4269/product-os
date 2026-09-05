@@ -2,8 +2,8 @@ import React from "react";
 import { Composition } from "remotion";
 import { LoopDemo } from "./LoopDemo";
 import { FilmEnd, FilmTitle } from "./FilmCards";
+import { MacOsDemo, FPS, MACOS_DEMO_DURATION } from "./MacOsDemo";
 
-const FPS = 30;
 const TITLE_FRAMES = 90;
 const END_FRAMES = 90;
 
@@ -14,6 +14,14 @@ export const RemotionRoot: React.FC = () => {
         id="LoopDemo"
         component={LoopDemo}
         durationInFrames={360}
+        fps={FPS}
+        width={1280}
+        height={720}
+      />
+      <Composition
+        id="MacOsDemo"
+        component={MacOsDemo}
+        durationInFrames={MACOS_DEMO_DURATION}
         fps={FPS}
         width={1280}
         height={720}

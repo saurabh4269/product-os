@@ -31,6 +31,7 @@ if [[ ! -d node_modules ]]; then npm install; fi
 python3 -m loop.cli export-demo -o "$ROOT/apps/demo/public/loop.json"
 npx remotion compositions src/index.ts
 npx remotion render src/index.ts LoopDemo /tmp/loop-demo.mp4
-ls -la /tmp/loop-demo.mp4
+npx remotion render src/index.ts MacOsDemo /tmp/macos-demo.mp4
+ls -la /tmp/loop-demo.mp4 /tmp/macos-demo.mp4
 
 echo "verify: ok"
