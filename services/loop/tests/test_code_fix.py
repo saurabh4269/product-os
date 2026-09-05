@@ -197,8 +197,8 @@ def test_execute_opens_flag_pr_when_code_fix_queued(engine, monkeypatch):
     out = engine.execute_approved(action.id)
     assert out["pr_opened"] is True
     assert out["pr_url"].endswith("/pull/7")
-    assert out.get("code_fix") == "queued"
-    assert queued and queued[0]["flag_pr_opened"] is True
+    assert out.get("code_fix") == "skipped_flag_pr"
+    assert queued == []
     exe = engine.store.get_action(action.id).artifacts["execution"]
     assert exe["pr_opened"] is True
 

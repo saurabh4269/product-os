@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from loop.jobs import (
+    Job,
     _iso,
     begin_attempt,
     enqueue,
@@ -13,6 +14,7 @@ from loop.jobs import (
     process_job,
     process_one,
     reclaim_stale_running_jobs,
+    sweep_dead_jobs,
 )
 from loop.tasks import dispatch_job, kick_job, use_cloud_tasks
 
@@ -254,3 +256,53 @@ def test_process_job_respects_run_after(engine, monkeypatch):
     still = engine.store.get_job(job.id)
     assert still.status == "queued"
     assert still.attempts == 0
+
+
+def test_sweep_dead_code_fix_marks_skipped_and_queues_verify(engine):
+    inv_id = "inv_dead_cf"
+    job = Job(
+        id="job_dead_cf",
+        kind="code_fix",
+        status="dead",
+        payload={"investigation_id": inv_id, "flag_pr_opened": True},
+        result={"flag_pr_opened": True},
+        attempts=3,
+        max_attempts=3,
+        error="no node on lean worker",
+        created_at=_iso(),
+        updated_at=_iso(),
+    )
+    engine.store.put_job(job)
+    swept = sweep_dead_jobs(engine.store)
+    assert job.id in swept
+    got = engine.store.get_job(job.id)
+    assert got.status == "succeeded"
+    verify_jobs = [
+        j
+        for j in engine.store.list_jobs(kind="verify")
+        if str(j.payload.get("investigation_id") or "") == inv_id
+    ]
+    assert verify_jobs
+    assert verify_jobs[0].status == "queued"
+
+
+def test_sweep_dead_verify_requeues_once(engine):
+    inv_id = "inv_dead_verify"
+    job = Job(
+        id="job_dead_verify",
+        kind="verify",
+        status="dead",
+        payload={"investigation_id": inv_id},
+        result={},
+        attempts=3,
+        max_attempts=3,
+        error="worker died",
+        created_at=_iso(),
+        updated_at=_iso(),
+    )
+    engine.store.put_job(job)
+    swept = sweep_dead_jobs(engine.store)
+    assert job.id in swept
+    got = engine.store.get_job(job.id)
+    assert got.status == "queued"
+    assert got.attempts == 0

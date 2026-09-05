@@ -32,6 +32,8 @@ Keep-going unpaused by owner. Do not merge Cove. Local ship via `./scripts/local
 - Mail-first outreach: contact lookup + cohort cluster + Gmail glass-box cards.
 - Customer Voice: OTP hang metrics classify `otp_verify_timeout` on new ingest / telephony finalize.
 - Duplicate HIGH hidden in room bundle, `/api/approvals`, and status counts when flags PR already shipped.
+- Approve API returns **409** when a duplicate HIGH action would re-open a tenant PR (`act_4754e1ae24f5` pattern).
+- Verify: dead `code_fix` jobs swept; immediate verify when flags PR opens (`LOOP_VERIFY_DELAY_HOURS=0` on deploy).
 - GitHub card DONE when PR open — `code_fix` failure does not surface as failed GitHub receipt when flags PR exists.
 - `./scripts/verify.sh` green locally.
 

@@ -19,6 +19,36 @@ def test_deferred_verify_job(engine, monkeypatch):
     assert job.kind == "verify"
 
 
+def test_deferred_verify_runs_immediately_when_flag_pr_open(engine, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    from loop.jobs import _parse_iso
+
+    monkeypatch.setenv("LOOP_VERIFY_DEFER", "1")
+    monkeypatch.setenv("LOOP_VERIFY_DELAY_HOURS", "24")
+    inv = engine.run_until_approval()
+    action = engine.store.list_actions(inv.id)[0]
+
+    def fake_execute(action_id: str) -> dict:
+        act = engine.store.get_action(action_id)
+        assert act
+        act.status = "executed"
+        act.artifacts = {
+            **(act.artifacts or {}),
+            "execution": {"pr_opened": True, "pr_url": "https://github.com/org/shop/pull/9"},
+        }
+        engine.store.put_action(act)
+        return act.artifacts["execution"]
+
+    monkeypatch.setattr(engine, "execute_approved", fake_execute)
+    out = engine.resume_after_approval(action.id, "oncall@test")
+    assert out.get("deferred") is True
+    job = engine.store.get_job(str(out["verify_job_id"]))
+    run_after = _parse_iso(job.run_after)
+    assert run_after is not None
+    assert run_after <= datetime.now(timezone.utc) + timedelta(seconds=2)
+
+
 def test_verify_job_runs(engine):
     inv = engine.run_until_approval()
     action = engine.store.list_actions(inv.id)[0]

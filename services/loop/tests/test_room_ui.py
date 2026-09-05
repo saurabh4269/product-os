@@ -317,7 +317,47 @@ def test_approvals_api_hides_duplicate_pending(engine, monkeypatch):
     assert body["pending"] == []
 
 
-def test_same_metric_joins_awaiting_room_when_flags_pr_already_shipped(engine, monkeypatch):
+def test_decide_blocks_duplicate_high_when_pr_open(engine, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from loop import api as api_mod
+
+    tenant, inv = _room_bundle(engine)
+    shipped = ProposedAction(
+        id="act_shipped_gate",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"execution": {"pr_url": "https://github.com/org/shop/pull/17"}},
+        idempotency_key="idem_shipped_gate",
+        status="executed",
+        consequence="Opened PR",
+    )
+    duplicate = ProposedAction(
+        id="act_4754e1ae24f5",
+        investigation_id=inv.id,
+        type="code_change",
+        risk_tier=RiskTier.HIGH,
+        tier_rationale="checkout surface",
+        required_approver_role="eng-manager",
+        artifacts={"flag": "checkout_v2"},
+        idempotency_key="idem_dup_gate",
+        status="awaiting_approval",
+        consequence="Duplicate rollback",
+    )
+    engine.store.put_action(shipped)
+    engine.store.put_action(duplicate)
+    monkeypatch.setattr(api_mod, "_engine", engine)
+    monkeypatch.setattr(api_mod, "get_engine", lambda: engine)
+    with TestClient(api_mod.app) as client:
+        blocked = client.post(
+            f"/api/approvals/{duplicate.id}",
+            json={"decision": "approve", "approver": "oncall@brandx", "rationale": "retry"},
+        )
+    assert blocked.status_code == 409
+    assert "duplicate" in blocked.json()["detail"].lower()
     """Leftover HIGH is hidden after a flags PR — same-metric ingest must still join, not open a new room."""
     from loop.tenant import Tenant, hash_token
     from loop.world import ingest_tenant_signal, tenant_ingest_should_join_room
