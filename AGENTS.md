@@ -9,7 +9,7 @@ Repo: `github.com/saurabh4269/product-os`
 GCP: `mystical-timing-442601-q8` · `us-central1` · Cloud Run service `loop`  
 Demo tenant (Cove only): `github.com/saurabh4269/cove` · Cloud Run `cove` · https://cove-5uy6fkd7bq-uc.a.run.app
 
-**Owner unpaused keep-going.** #30–#32 on main; live revision `loop-00129-ghd` (Actions ship 2026-09-04). `GCP_SA_KEY` is set — green `ci` on `main` auto-deploys.
+**Owner unpaused keep-going.** #35 lean host on main (`3faa7ba`); live revision `loop-00141-j22` (2Gi demo E2E PASS 2026-09-05). `GCP_SA_KEY` is set — green `ci` on `main` auto-deploys.
 
 ## What this product is
 
@@ -25,20 +25,23 @@ It is **not** a Safari / 3DS / checkout app. Those scenarios are **fixtures** th
 
 The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents, visible handoffs, per-bot chats. It is not a CRUD dashboard and not a dark “war room.”
 
-## Live / hosted (2026-09-04 ~07:00 IST)
+## Live / hosted (2026-09-05)
 
 | Field | Value |
 |---|---|
 | User URL | https://productos.heisenbug.in |
-| Revision | `loop-00129-ghd` (100% traffic) |
-| SHA deployed | `8588d32` on main (#32) via Actions |
+| Revision | `loop-00141-j22` (100% traffic) |
+| SHA deployed | `3faa7ba` on main (#35 lean host) via Actions |
 | Memory | **2Gi** · concurrency **8** · min 1 · max 2 |
+| Worker profile | `LOOP_INLINE_WORKER=0` · `LOOP_AUTO_INVESTIGATE=0` |
 | `LOOP_EVAL` | `0` (no Demo chrome) |
 | Health | `/` and `/rooms` 200 · `/shop` 404 · persist POST 200 · Workspace OAuth connected |
 
-**State:** SQLite persists via `LOOP_STATE_GCS_URI` (`gs://mystical-timing-442601-q8-loop-host/loop_state.db`). Rooms survive restarts unless a deploy hydrates an **old** GCS snapshot. **Persist live sqlite before `package-host.sh`** when the hang room GET is 200. If live is 503/OOM, do **not** overwrite a good snapshot.
+**State:** SQLite persists via `LOOP_STATE_GCS_URI` (`gs://mystical-timing-442601-q8-loop-host/loop_state.db`). Rooms survive restarts unless a deploy hydrates an **old** GCS snapshot. **Persist live sqlite before `package-host.sh`** when the demo room GET is 200. If live is 503/OOM, do **not** overwrite a good snapshot. Under concurrency 8 with max 2 instances, intermittent room/action 404 can occur (multi-instance drift) — mitigated with retries + persist; see LEARNINGS.
 
-**Demo hang (live):** `room_f627763ea9` (survived deploy) · `inv_450569ba5e7e` · metric `otp_verify_hang_0904` · Type A HIGH · Voice `payment_timeout`. Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) (`flags.json` only) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (would duplicate #17). `code_fix` extra failed (no node in worker); `github_pr` is the ship path.
+**Demo E2E (PASS 2026-09-05):** metric `otp_verify_hang_demo_1788625174` → `room_65a4654bec` · Voice `otp_verify_timeout` · Type A HIGH · `act_4d9bccc41f92` approved → Cove PR [#18](https://github.com/saurabh4269/cove/pull/18) (`flags.json` only) — OPEN, never merge. `github_pr` is the ship path (`code_fix` extra skips on lean worker).
+
+**Older hang (stale GCS may still list):** `room_f627763ea9` · metric `otp_verify_hang_0904` · Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (duplicates #17).
 
 ## References the user pointed at
 
@@ -62,9 +65,9 @@ Open these before you change campus, mascots, or the rail. Do not copy licensed 
 
 ## GitHub / PRs
 
-**product-os:** `main` tip `8588d32` (#9–#32). `GCP_SA_KEY` set on the repo; Actions `deploy-gcp` works (`workflow_dispatch` green 2026-09-04). Laptop path: `./scripts/local-ship.sh`.
+**product-os:** `main` tip `3faa7ba` (#9–#35). `GCP_SA_KEY` set on the repo; Actions `deploy-gcp` works after green `ci`. Laptop path: `./scripts/local-ship.sh`.
 
-**Never merge:** Cove PRs #1–#4, #7; LOOP #11–#16, #17. Do not merge Cove.
+**Never merge:** Cove PRs #1–#4, #7, #17, #18; LOOP #11–#16, #17. Do not merge Cove.
 
 ## Binding rules
 
@@ -166,7 +169,7 @@ After deploy: hard-refresh https://productos.heisenbug.in. Confirm `/city/campus
 
 `apps/demo` — LoopDemo 1280×720 12s from `export-demo` JSON. Cloud Run does **not** serve it.
 
-- Hosted hang: `python3 -m loop.cli export-demo --room room_f627763ea9 -o apps/demo/out/hang.json` (needs `LOOP_ADMIN_TOKEN`). Refuses to overwrite `apps/demo/public/loop.json` unless `--force`. Copy to `public/loop.json` for render only, then `git checkout -- apps/demo/public/loop.json`.
+- Hosted demo: `python3 -m loop.cli export-demo --room room_65a4654bec -o apps/demo/out/hang.json` (needs `LOOP_ADMIN_TOKEN`). Refuses to overwrite `apps/demo/public/loop.json` unless `--force`. Copy to `public/loop.json` for render only, then `git checkout -- apps/demo/public/loop.json`.
 - Lesson/verify scenes use this investigation’s `lessons[]` / `outcomes[]` and name **this metric** when still waiting.
 - LoopDemo shows a Type A / Type B chip. No Safari/3DS/Northstar fallbacks.
 
@@ -214,8 +217,9 @@ Inverts that must stay green: unprompted Safari detect, six fixtures one pipelin
 - Do not credit Cursor/Copilot/Claude in commit trailers.
 - Do not post to Slack / GitHub issues unless the user asked.
 - Do not deploy until owner says go.
-- Do not merge Cove PRs or leftover LOOP Cove PRs (#11–#17).
+- Do not merge Cove PRs or leftover LOOP Cove PRs (#11–#17, #18).
 - Do not approve `act_4754e1ae24f5` (duplicates Cove #17).
+- Do not `gcloud run deploy --env-vars-file` with a single key — it wipes other env. Use `--update-env-vars`.
 - Do not overwrite a good GCS snapshot from a crash-looping instance.
 
 ## If you are stuck
