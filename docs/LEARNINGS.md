@@ -407,4 +407,44 @@ Do not re-add aggressive campus polling or raise memory to 4Gi without owner sig
 
 **Why:** Join required visible pending actions. PR #27 hides duplicate HIGH once a sibling opened the tenant PR, so join returned false.
 
-**Fix:** Same tenant+metric joins an open `AWAITING_APPROVAL` room when pending remains **or** a flags PR already shipped. Pick a **unique metric** only when you intend a new room (e.g. `otp_verify_hang_0904`). Do not approve leftover `act_4754e1ae24f5`.
+**Fix:** Same tenant+metric joins an open `AWAITING_APPROVAL` room when pending remains **or** a flags PR already shipped. Pick a **unique metric** only when you intend a new room (e.g. `otp_verify_hang_demo_1788625174`). Do not approve leftover `act_4754e1ae24f5`.
+
+---
+
+## 12. Lean 2Gi demo E2E (2026-09-05)
+
+### `LOOP_GITHUB_TOKEN` must be a valid GitHub PAT
+
+**Symptom:** `github_pr` actions fail with GitHub **401**; flags PR never opens; E2E stalls at HIGH approval.
+
+**Why:** Hosted `LOOP_GITHUB_TOKEN` was set to a 390-character value (not a valid PAT). GitHub rejects it on every API call.
+
+**Fix:** Replace with a working 40-character PAT via `--update-env-vars`. **Do not print tokens** in logs, commits, or docs. Verify with a dry `github_pr` action or the demo E2E path.
+
+### `gcloud run deploy --env-vars-file` with one key wipes all other env
+
+**Symptom:** After a token fix deploy, unrelated env vars vanish (`LOOP_STATE_GCS_URI`, `LOOP_PUBLIC_URL`, worker flags, etc.). Service behaves like a fresh seed.
+
+**Why:** `--env-vars-file` **replaces** the entire env map, not merges. A YAML with only `LOOP_GITHUB_TOKEN` deletes everything else.
+
+**Fix:** Use `--update-env-vars KEY=VALUE` (or `--set-env-vars` with the full desired map). Never `--env-vars-file` for a single-key patch.
+
+### Multi-instance drift under concurrency 8
+
+**Symptom:** Intermittent **404** on `GET /api/rooms/{id}` or `GET /api/actions/{id}` during demo E2E, especially with max 2 instances and concurrency 8.
+
+**Why:** SQLite state is hydrated per instance from GCS. Writes on one instance may not be visible on another until persist/hydrate cycles complete. Concurrent requests can hit a stale instance.
+
+**Fix:** Client and scripts retry room/action GETs. Persist live sqlite to GCS after successful demo steps. Stay on 2Gi + concurrency 8 — do not raise memory without owner sign-off. `fail_open=false` remains binding.
+
+### Lean 2Gi E2E reference (PASS)
+
+| Step | Value |
+|---|---|
+| Metric | `otp_verify_hang_demo_1788625174` |
+| Room | `room_65a4654bec` |
+| Voice | `otp_verify_timeout` |
+| Risk | Type A HIGH |
+| Action | `act_4d9bccc41f92` approved |
+| Cove PR | [#18](https://github.com/saurabh4269/cove/pull/18) — OPEN, never merge (`flags.json` only) |
+| Live revision | `loop-00141-j22` · SHA `3faa7ba` (#35) |
