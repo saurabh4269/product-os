@@ -90,6 +90,80 @@ def friendly_fix_notify_email(*, product: str, summary: str = "") -> tuple[str, 
     return subject, body
 
 
+_PLACEHOLDER_BRACKET = re.compile(r"\[[^\]]+\]")
+_PLACEHOLDER_CURLY = re.compile(r"\{[^}]+\}")
+_PLACEHOLDER_CUSTOMER_NAME = re.compile(r"\bCustomer Name\b", re.I)
+_VAGUE_FEEDBACK_PHRASE = re.compile(r"feedback you shared", re.I)
+
+
+def contains_spoken_placeholder(text: str) -> bool:
+    """True when text still has bracket/curly placeholders or literal Customer Name."""
+    if not text:
+        return False
+    return bool(
+        _PLACEHOLDER_BRACKET.search(text)
+        or _PLACEHOLDER_CURLY.search(text)
+        or _PLACEHOLDER_CUSTOMER_NAME.search(text)
+    )
+
+
+def sanitize_spoken_line(text: str) -> str:
+    """Strip placeholder tokens and tidy spacing — never speak [Customer Name] aloud."""
+    t = str(text or "")
+    t = _PLACEHOLDER_BRACKET.sub("", t)
+    t = _PLACEHOLDER_CURLY.sub("", t)
+    t = _PLACEHOLDER_CUSTOMER_NAME.sub("", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"\s+([,.!?;:])", r"\1", t)
+    t = re.sub(r"Hi\s+,", "Hi,", t, flags=re.I)
+    return t
+
+
+def _voice_reason_phrase(voice_reason: str) -> str:
+    return str(voice_reason or "").replace("_", " ").strip()
+
+
+def _reflects_voice_reason(blob: str, voice_reason: str) -> bool:
+    if not voice_reason:
+        return True
+    lower = blob.lower()
+    vr = voice_reason.lower()
+    if vr in lower:
+        return True
+    phrase = _voice_reason_phrase(voice_reason).lower()
+    if phrase and phrase in lower:
+        return True
+    tokens = [t for t in phrase.split() if len(t) > 3]
+    return any(t in lower for t in tokens)
+
+
+def _grounded_feedback_opening(ctx: dict[str, Any], *, purpose: str, fix_summary: str = "") -> str:
+    product = ctx.get("product") or "your product"
+    if purpose == "fix_notify":
+        fix = (fix_summary or "a recent issue").strip()[:180]
+        return (
+            f"Hi, this is Lexi from the {product} team. "
+            f"We shipped a fix for {fix}. "
+            "I wanted to check in and hear what you experienced."
+        )
+    voice_reason = str(ctx.get("voice_reason") or "").strip()
+    metric = str(ctx.get("metric") or ctx.get("signal_title") or "").strip()
+    hypothesis = str(ctx.get("hypothesis") or "").strip()
+    if voice_reason:
+        issue = _voice_reason_phrase(voice_reason)
+    elif metric:
+        issue = metric.replace("_", " ")
+    elif hypothesis:
+        issue = hypothesis[:140]
+    else:
+        return _GENERIC_FALLBACK_OPENING_FEEDBACK.format(product=product)
+    return (
+        f"Hi, this is Lexi from the {product} team. "
+        f"We are looking into {issue} and wanted to hear what you saw on your side. "
+        "Do you have about thirty seconds?"
+    )
+
+
 _GENERIC_FALLBACK_OPENING_FEEDBACK = (
     "Hi, this is Lexi from the {product} team. "
     "We noticed something unusual in recent activity and would like to learn what you experienced. "
@@ -174,6 +248,45 @@ def room_call_context(store: Any, room_id: str) -> dict[str, Any]:
     }
 
 
+def sanitize_call_script(
+    plan: dict[str, Any],
+    ctx: dict[str, Any],
+    *,
+    purpose: str,
+    fix_summary: str = "",
+) -> dict[str, Any]:
+    """Reject Gemini placeholders; ground opening in room evidence when present."""
+    opening = sanitize_spoken_line(str(plan.get("opening") or ""))
+    questions = [sanitize_spoken_line(str(q)) for q in (plan.get("questions") or []) if q]
+    questions = [q for q in questions if q]
+    listen = sanitize_spoken_line(str(plan.get("listen_prompt") or "")) or GENERIC_LISTEN_PROMPT
+
+    voice_reason = str(ctx.get("voice_reason") or "").strip()
+    blob = f"{opening} {' '.join(questions)}"
+
+    if (
+        not opening
+        or contains_spoken_placeholder(opening)
+        or _VAGUE_FEEDBACK_PHRASE.search(opening)
+    ):
+        opening = _grounded_feedback_opening(ctx, purpose=purpose, fix_summary=fix_summary)
+    elif voice_reason and not _reflects_voice_reason(blob, voice_reason):
+        opening = _grounded_feedback_opening(ctx, purpose=purpose, fix_summary=fix_summary)
+
+    if voice_reason and not _reflects_voice_reason(f"{opening} {' '.join(questions)}", voice_reason):
+        phrase = _voice_reason_phrase(voice_reason)
+        questions = [
+            f"When you hit {phrase}, what did you see on screen?",
+            *questions,
+        ][:3]
+
+    return {
+        "opening": opening,
+        "questions": questions or list(_GENERIC_FALLBACK_QUESTIONS),
+        "listen_prompt": listen,
+    }
+
+
 def _strip_json_fence(raw: str) -> str:
     text = raw.strip()
     if text.startswith("```"):
@@ -194,11 +307,17 @@ def _generate_call_plan_with_gemini(ctx: dict[str, Any], purpose: str, fix_summa
     hypothesis = ctx.get("hypothesis") or "under investigation"
     fix_line = f"- Fix summary: {fix_summary}\n" if fix_summary and purpose == "fix_notify" else ""
 
+    voice_line = (
+        f"- Customer Voice reason (cite this in the opening when present): {voice_reason}\n"
+        if voice_reason and voice_reason != "not yet classified"
+        else f"- Customer Voice reason: {voice_reason}\n"
+    )
     prompt = (
         f"You are Lexi, a customer research agent for {product}.\n\n"
         "Investigation context (use ONLY this evidence — do not invent failure modes):\n"
+        f"- Product: {product}\n"
         f"- Metric/signal: {metric}\n"
-        f"- Customer Voice reason: {voice_reason}\n"
+        f"{voice_line}"
         f"- Top hypothesis: {hypothesis}\n"
         f"- Call purpose: {purpose}  (feedback_ask = learn what happened; fix_notify = we fixed something, confirm)\n"
         f"{fix_line}\n"
@@ -207,9 +326,12 @@ def _generate_call_plan_with_gemini(ctx: dict[str, Any], purpose: str, fix_summa
         '- "questions": array of 2-3 adaptive follow-up questions tailored to the evidence above\n'
         '- "listen_prompt": one short sentence inviting them to describe what they saw (generic, no invented failure mode)\n\n'
         "Rules:\n"
+        "- NEVER use placeholder names like [Customer Name], {name}, or Customer Name — speak to the caller directly with no fake personalization\n"
+        f"- Introduce yourself as Lexi from the {product} team (use the product name above)\n"
+        "- Ground the opening in metric, Customer Voice reason, and/or hypothesis when any are present — do NOT say vague phrases like \"feedback you shared\"\n"
+        "- When Customer Voice reason is present, reference it naturally in the opening (underscores may become spaces)\n"
         "- Never mention OTP, spinner, verification code, or other specifics UNLESS they appear in the context above\n"
-        "- If evidence is thin, use open diagnostic questions\n"
-        "- Speak as Lexi from the product team\n"
+        "- If evidence is thin, use open diagnostic questions without inventing specifics or placeholders\n"
         "- Output ONLY valid JSON, no markdown"
     )
     try:
@@ -224,10 +346,12 @@ def _generate_call_plan_with_gemini(ctx: dict[str, Any], purpose: str, fix_summa
 
 def _generic_fallback_brief(ctx: dict[str, Any], purpose: str, fix_summary: str = "") -> dict[str, Any]:
     product = ctx.get("product") or "your product"
-    if purpose == "fix_notify":
-        opening = _GENERIC_FALLBACK_OPENING_FIX.format(product=product)
-    else:
-        opening = _GENERIC_FALLBACK_OPENING_FEEDBACK.format(product=product)
+    opening = _grounded_feedback_opening(ctx, purpose=purpose, fix_summary=fix_summary)
+    questions = list(_GENERIC_FALLBACK_QUESTIONS)
+    voice_reason = str(ctx.get("voice_reason") or "").strip()
+    if voice_reason and not _reflects_voice_reason(" ".join(questions), voice_reason):
+        phrase = _voice_reason_phrase(voice_reason)
+        questions = [f"When you hit {phrase}, what did you see on screen?", *questions][:3]
     return {
         "purpose": purpose,
         "product": product,
@@ -268,6 +392,7 @@ def call_brief_for_outreach(
     summary = fix_summary or str(row.get("fix_summary") or "")
     plan = _generate_call_plan_with_gemini(ctx, purpose, summary)
     if plan:
+        cleaned = sanitize_call_script(plan, ctx, purpose=purpose, fix_summary=summary)
         return {
             "purpose": purpose,
             "product": ctx.get("product") or str(row.get("product") or "your product"),
@@ -276,12 +401,14 @@ def call_brief_for_outreach(
             "voice_reason": ctx.get("voice_reason", ""),
             "hypothesis": ctx.get("hypothesis", ""),
             "fix_summary": summary,
-            "opening": str(plan.get("opening", "")),
-            "questions": [str(q) for q in (plan.get("questions") or []) if q],
-            "listen_prompt": str(plan.get("listen_prompt") or GENERIC_LISTEN_PROMPT),
+            "opening": cleaned["opening"],
+            "questions": cleaned["questions"],
+            "listen_prompt": cleaned["listen_prompt"],
             "gemini_generated": True,
         }
-    return _generic_fallback_brief(ctx, purpose, summary)
+    fallback = _generic_fallback_brief(ctx, purpose, summary)
+    cleaned = sanitize_call_script(fallback, ctx, purpose=purpose, fix_summary=summary)
+    return {**fallback, **cleaned}
 
 
 def _send_or_draft_feedback(to: str, subject: str, body: str) -> dict[str, Any]:

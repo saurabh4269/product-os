@@ -10,7 +10,10 @@ from loop.models import Investigation, InvestigationState, LoopType, PathKind, R
 from loop.outreach import (
     _generic_fallback_brief,
     call_brief_for_outreach,
+    contains_spoken_placeholder,
     room_call_context,
+    sanitize_call_script,
+    sanitize_spoken_line,
 )
 from loop.telephony import (
     GATHER_TIMEOUT,
@@ -201,6 +204,87 @@ def test_call_brief_uses_room_context(engine, monkeypatch):
     assert "spinner" not in blob.lower()
 
 
+def test_sanitize_spoken_line_strips_bracket_placeholders():
+    raw = (
+        "Hi [Customer Name], this is Lexi from the Cove product team. "
+        "I'm calling about the feedback you shared – do you have about 30 seconds?"
+    )
+    cleaned = sanitize_spoken_line(raw)
+    assert "[" not in cleaned
+    assert "]" not in cleaned
+    assert "Customer Name" not in cleaned
+    assert contains_spoken_placeholder(cleaned) is False
+
+
+def test_sanitize_spoken_line_strips_curly_name():
+    cleaned = sanitize_spoken_line("Hi {name}, quick question from Lexi.")
+    assert "{" not in cleaned
+    assert "}" not in cleaned
+    assert contains_spoken_placeholder(cleaned) is False
+
+
+def test_sanitize_call_script_rejects_vague_feedback_and_placeholders():
+    ctx = {"product": "Cove", "voice_reason": "otp_verify_timeout", "metric": "otp_verify_hang"}
+    plan = {
+        "opening": (
+            "Hi [Customer Name], this is Lexi from the Cove product team. "
+            "I'm calling about the feedback you shared – do you have about 30 seconds?"
+        ),
+        "questions": ["What happened?"],
+        "listen_prompt": "Go ahead.",
+    }
+    cleaned = sanitize_call_script(plan, ctx, purpose="feedback_ask")
+    assert "[" not in cleaned["opening"]
+    assert "]" not in cleaned["opening"]
+    assert "feedback you shared" not in cleaned["opening"].lower()
+    blob = f"{cleaned['opening']} {' '.join(cleaned['questions'])}".lower()
+    assert "otp" in blob or "verify" in blob or "timeout" in blob
+
+
+def test_call_brief_gemini_placeholder_stripped(monkeypatch):
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+
+    def _fake_generate(prompt: str, *, timeout: float = 90.0) -> str:
+        assert "NEVER use placeholder names" in prompt
+        return (
+            '{"opening": "Hi [Customer Name], this is Lexi from Cove. '
+            'Calling about the feedback you shared.", '
+            '"questions": ["What did you see?"], '
+            '"listen_prompt": "Tell me what happened."}'
+        )
+
+    monkeypatch.setattr("loop.vertex_gemini.generate_content", _fake_generate)
+    monkeypatch.setattr("loop.vertex_gemini.gemini_configured", lambda: True)
+
+    brief = call_brief_for_outreach(
+        {
+            "purpose": "feedback_ask",
+            "product": "Cove",
+            "metric": "otp_verify_hang",
+            "voice_reason": "otp_verify_timeout",
+        },
+    )
+    assert brief["gemini_generated"] is True
+    assert "[" not in brief["opening"]
+    assert "]" not in brief["opening"]
+    assert "feedback you shared" not in brief["opening"].lower()
+    blob = f"{brief['opening']} {' '.join(brief['questions'])}".lower()
+    assert "otp" in blob or "verify" in blob or "timeout" in blob
+
+
+def test_call_brief_fallback_reflects_voice_reason():
+    brief = call_brief_for_outreach(
+        {
+            "purpose": "feedback_ask",
+            "product": "Cove",
+            "voice_reason": "payment_timeout",
+        },
+    )
+    blob = f"{brief['opening']} {' '.join(brief['questions'])}".lower()
+    assert "[" not in brief["opening"]
+    assert "payment" in blob and "timeout" in blob
+
+
 def test_call_brief_gemini_generated_when_available(monkeypatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
 
@@ -226,6 +310,8 @@ def test_call_brief_gemini_generated_when_available(monkeypatch):
     assert brief["gemini_generated"] is True
     assert "Lexi" in brief["opening"]
     assert len(brief["questions"]) == 2
+    assert "[" not in brief["opening"]
+    assert "]" not in brief["opening"]
 
 
 def test_place_call_skips_without_twilio(monkeypatch):

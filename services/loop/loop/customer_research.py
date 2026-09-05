@@ -309,6 +309,7 @@ def call_system_prompt(brief: CustomerContextBrief | dict[str, Any]) -> str:
             f"Hypothesis: {hyp}. "
             f"Ask one short adaptive diagnostic question at a time. "
             f"Never invent a specific failure mode not in the evidence. "
+            f"Never use placeholder names like [Customer Name] or {{name}}. "
             f"Never offer discounts."
         )
     b = brief if isinstance(brief, CustomerContextBrief) else CustomerContextBrief.model_validate(brief)

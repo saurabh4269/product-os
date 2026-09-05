@@ -165,10 +165,14 @@ def fix_notify_opening(product: str = "your product", fix_summary: str = "") -> 
 
 
 def _brief_opening(brief: dict[str, Any] | None, reason: str, product: str) -> str:
+    from loop.outreach import sanitize_spoken_line
+
     b = brief or {}
     opening = b.get("opening") or ((b.get("call_plan") or {}).get("opening"))
     if opening:
-        return str(opening)
+        cleaned = sanitize_spoken_line(str(opening))
+        if cleaned:
+            return cleaned
     if b.get("purpose") == "fix_notify":
         return fix_notify_opening(product, str(b.get("fix_summary") or ""))
     return opening_line(reason, product or "your product")
@@ -181,9 +185,11 @@ def _brief_listen_prompt(brief: dict[str, Any] | None) -> str:
 
 
 def _brief_questions(brief: dict[str, Any] | None) -> list[str]:
+    from loop.outreach import sanitize_spoken_line
+
     b = brief or {}
     qs = b.get("questions") or ((b.get("call_plan") or {}).get("questions")) or []
-    return [str(q) for q in qs if q]
+    return [sanitize_spoken_line(str(q)) for q in qs if q and sanitize_spoken_line(str(q))]
 
 
 def place_call(
@@ -361,6 +367,9 @@ def twiml_gather(call_sid: str, speech: str, room: str) -> str:
             reply = scripted[idx]
         else:
             reply = _generic_gemini_fallback()
+    from loop.outreach import sanitize_spoken_line
+
+    reply = sanitize_spoken_line(reply) or _generic_gemini_fallback()
     sess.setdefault("transcript", []).append({"role": "agent", "message": reply})
     put_session(call_sid, sess)
 
