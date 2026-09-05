@@ -6,7 +6,13 @@ import asyncio
 import os
 from typing import Any
 
-from loop.geap_runtime import engine_id_short, geap_enabled, geap_project, geap_region, sdk_available
+from loop.geap_runtime import (
+    engine_id_short,
+    geap_enabled,
+    geap_project,
+    geap_region,
+    sdk_available,
+)
 
 _last_error: str = ""
 _service: Any | None = None

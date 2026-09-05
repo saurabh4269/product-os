@@ -25,7 +25,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     from loop.engine import default_engine
-    from loop.geap_runtime import create_agent_engine, geap_staging_bucket, list_agent_engines, smoke_query, status
+    from loop.geap_runtime import (
+        create_agent_engine,
+        geap_staging_bucket,
+        list_agent_engines,
+        smoke_query,
+        status,
+    )
 
     if args.smoke:
         os.environ.setdefault("LOOP_GEAP_ENABLED", "1")

@@ -430,8 +430,7 @@ def _status_payload(eng) -> dict:
         if state in verified_states:
             verified += 1
     oauth = google_oauth.status()
-    from loop import firestore_memory, gcs_state
-    from loop import geap_memory, geap_runtime
+    from loop import firestore_memory, gcs_state, geap_memory, geap_runtime
     from loop.signal_watch import last_tick_summary
     from loop.state_persist import last_upload_ts
     from loop.worker_heartbeat import last_tick as worker_last_tick
@@ -1071,10 +1070,10 @@ def telephony_status():
 @app.get("/api/adk/status")
 def adk_status():
     """Connect / judges — ADK fleet + Antigravity + worker routing (honest)."""
+    from loop import geap_memory, geap_runtime
     from loop.adk_runtime import adk_available, adk_inline_enabled, adk_worker_url, fleet_status
     from loop.antigravity_fix import antigravity_status
     from loop.code_fix import code_backend
-    from loop import geap_memory, geap_runtime
     from loop.vertex_gemini import gemini_configured, use_vertex
 
     eng = get_engine()
