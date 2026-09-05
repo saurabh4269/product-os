@@ -43,6 +43,14 @@ The UI is a **campus + multi-room chat** (Grok / OpenClaw energy): pixel agents,
 
 **Older hang (stale GCS may still list):** `room_f627763ea9` · metric `otp_verify_hang_0904` · Cove PR [#17](https://github.com/saurabh4269/cove/pull/17) — OPEN, never merge. Do **not** approve leftover `act_4754e1ae24f5` (duplicates #17).
 
+## Recording tip
+
+Live revision `loop-00141-j22` · **2Gi** · concurrency **8**.
+
+1. After Connect, deep-link **`/rooms/room_65a4654bec`** — the demo PASS room (Cove [#18](https://github.com/saurabh4269/cove/pull/18)).
+2. Do **not** open stale `room_f627763ea9` or leftover HIGH `act_4754e1ae24f5`.
+3. Prefer **in-room A2A** over Campus office — campus desks lag on older rooms.
+
 ## References the user pointed at
 
 Open these before you change campus, mascots, or the rail. Do not copy licensed art.
