@@ -40,6 +40,8 @@ The repo contains a full **ADK 2.0-shaped fleet** for tests and local dev:
 
 When GEAP Agent Runtime is entitled, the same agent configs deploy to managed runtime; the console and store schema stay unchanged.
 
+**Cost posture (2026-09-05):** Hosted `loop` is thin glue — observe → investigate (ADK worker when `LOOP_ADK_WORKER_URL` set) → connectors → risk gate → receipts. Homemade `LoopEngine`, `gateway.py`, and SQLite/Firestore memory are **stand-ins** for GEAP Agent Runtime, Agent Gateway, and Memory Bank. Do not expand them without entitlements; prefer `loop-adk` scale-to-zero and a single brain path. Product UI, HITL approvals, and tenant PR workflow stay regardless of GEAP migration.
+
 ---
 
 ## Security model (judge narrative)
@@ -71,6 +73,8 @@ When GEAP Agent Runtime is entitled, the same agent configs deploy to managed ru
 ```
 
 Main `loop` forwards `POST /api/signals` and `/api/research` to `loop-adk` when `LOOP_ADK_WORKER_URL` is set. Code-fix jobs use `LOOP_CODE_BACKEND=auto`: Antigravity → Gemini → fixture fallback.
+
+**Scale:** `loop` and `loop-adk` default **min-instances 0** in deploy scripts. Demo tenant Cove should also scale to zero when not demoing (separate repo/deploy).
 
 ---
 

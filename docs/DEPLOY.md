@@ -56,7 +56,11 @@ Manual deploy anytime: **Actions → deploy-gcp → Run workflow**, or from a la
 
 SQLite on Cloud Run is backed by `LOOP_STATE_GCS_URI` (full DB snapshot) and `LOOP_FLAGS_GCS_URI` (tenant flags). Cold start hydrates from GCS when the blob is newer than local disk. Without GCS URIs, cold start re-seeds fixtures.
 
-Production profile (when `LOOP_ADMIN_TOKEN` is set on deploy): `LOOP_EVAL=0`, `LOOP_VERIFY_DEFER=1`, `LOOP_INLINE_WORKER=1`, `LOOP_AUTO_INVESTIGATE=1`, `LOOP_FIRESTORE_MEMORY=1`. Cloud Scheduler should POST `/api/internal/worker/tick` every 10–15 minutes (see `infra/terraform/cheap/scheduler.tf`).
+Production profile (when `LOOP_ADMIN_TOKEN` is set on deploy): `LOOP_EVAL=0`, `LOOP_VERIFY_DEFER=1`, `LOOP_INLINE_WORKER=0`, `LOOP_AUTO_INVESTIGATE=0`, `LOOP_FIRESTORE_MEMORY=1`. Cloud Scheduler should POST `/api/internal/worker/tick` every 10–15 minutes (see `infra/terraform/cheap/scheduler.tf`).
+
+**Cloud Run defaults (`deploy-gcp.sh`):** `--memory 2Gi`, `--concurrency 8`, `--min-instances 0`, `--max-instances 3`. Never patch env with `gcloud run deploy --env-vars-file` and a single key — it wipes the map. Use `--update-env-vars` for one-key fixes.
+
+**Cove (demo tenant):** separate Cloud Run service — scale to zero when not demoing; no keep-warm from Product OS.
 
 ## Cloud Run (image build — optional, needs extra IAM)
 

@@ -41,7 +41,7 @@ Production console must use `BASE = ""` (same origin as FastAPI).
 1. `gcloud run deploy --args` splits on commas. A Python `urlretrieve(url, path)` inside a plain `--args="-c,…"` is cut in half.
 2. One-arg `urlretrieve(url)` after `cd /tmp` does **not** write `loop-host.tgz`. Python 3.12 writes a random `NamedTemporaryFile`. `tar -xzf /tmp/loop-host.tgz` then fails and the container exits.
 
-**Fix:** Use the `^|^` list delimiter so the bash `-c` script may contain commas, and pass an explicit dest: `urlretrieve(url, "/tmp/loop.tgz")`. Do **not** `apt-get` curl/git/node on every start — python:3.12-slim already has CA certs. `code_fix` extra skips cleanly without git/node; flags.json GitHub PR is the ship path. `--min-instances 1` so cold start is deploy-time, not every user.
+**Fix:** Use the `^|^` list delimiter so the bash `-c` script may contain commas, and pass an explicit dest: `urlretrieve(url, "/tmp/loop.tgz")`. Do **not** `apt-get` curl/git/node on every start — python:3.12-slim already has CA certs. `code_fix` extra skips cleanly without git/node; flags.json GitHub PR is the ship path. Default **`--min-instances 0`** (scale-to-zero); accept cold start on first visit after idle.
 
 ### `LOOP_STATIC` left on breaks `next dev`
 
@@ -369,13 +369,21 @@ If hosted HTML is the campus but XHR 404s, you shipped a new revision that is st
 **Why:** Campus polled office + rooms on every WS tick (and faster when tab visible). `/api/office` called `list_all_messages` + `list_all_agent_calls` per poll. `/api/rooms` list did N SQL round-trips per room. GFE 429 is **not** an in-app rate limiter — it is often OOM/backpressure.
 
 **Fix (PR #35 — stay on 2Gi forever, no 4Gi):**
-- `deploy-gcp.sh`: `--memory 2Gi` + `--concurrency 8` (explicit; never 80). Production profile: `LOOP_INLINE_WORKER=0`, `LOOP_AUTO_INVESTIGATE=0`.
+- `deploy-gcp.sh`: `--memory 2Gi` + `--concurrency 8` + **`--min-instances 0`** (scale-to-zero; ops may tune live). Production profile: `LOOP_INLINE_WORKER=0`, `LOOP_AUTO_INVESTIGATE=0`.
 - Batch `room_message_summaries()` for GET `/api/rooms` list; no per-room `list_messages`.
 - Office snapshot: SQL caps (`recent_agent_calls`, `message_stats_by_author`) — no full-table loads.
-- Console: 30s/60s debounced refetch; **pause polls when `document.hidden`**.
+- Console: **60s/120s** debounced refetch (90s/180s when `/ws` live) + **shared in-flight coalescing** (`world-data.ts`); **pause polls when `document.hidden`**.
 - Slim `/api/status`; WS `initial_state` = activity only.
 
 Do not re-add aggressive campus polling or raise memory to 4Gi without owner sign-off.
+
+### Scale-to-zero is the cost default (2026-09-05)
+
+**Symptom:** Always-on `min-instances=1` on `loop` burns ~$30–50/mo idle even when nobody is on campus.
+
+**Fix:** `deploy-gcp.sh` defaults `--min-instances 0`, `--max-instances 3`, `--concurrency 8`, `--memory 2Gi`. Ops may set live minScale separately; **do not** let the next script deploy reintroduce `min-instances 1`. `loop-adk` and demo tenant **Cove** stay scale-to-zero when not demoing — no keep-warm code in this repo.
+
+**GEAP note:** Homemade `LoopEngine`, local `gateway.py`, and SQLite/Firestore memory approximate GEAP Agent Runtime + Agent Gateway + Memory Bank. Migrate when entitlements land; keep console, HITL, and tenant PR path.
 
 ### Persist GCS before deploy; crash-loop must not overwrite a good snapshot
 

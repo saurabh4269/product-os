@@ -14,11 +14,11 @@ Keep-going unpaused by owner. Do not merge Cove. Local ship via `./scripts/local
 | GCP | `mystical-timing-442601-q8` · `us-central1` · service `loop` |
 | Revision | `loop-00141-j22` (100% traffic) |
 | SHA on main | `3faa7ba` (#35 lean host) |
-| Memory / scale | **2Gi** · concurrency **8** · `LOOP_INLINE_WORKER=0` · `LOOP_AUTO_INVESTIGATE=0` |
+| Memory / scale | **2Gi** · concurrency **8** · min **0** · max **3** · `LOOP_INLINE_WORKER=0` · `LOOP_AUTO_INVESTIGATE=0` |
 | `LOOP_EVAL` | `0` (`eval_mode: false`) |
 | Health | `/` and `/rooms` 200 when instance healthy · `/shop` 404 · OAuth connected when live |
 
-**2Gi lean host (PR #35, shipped):** Explicit `--memory 2Gi` + `--concurrency 8`, batch room summaries, capped office, 30s/60s debounce + `document.hidden` pause, slim `/api/status`. **E2E PASS** on this profile (see Demo E2E below). Stay on 2Gi — no 4Gi without owner sign-off.
+**2Gi lean host (PR #35, shipped):** Explicit `--memory 2Gi` + `--concurrency 8`, batch room summaries, capped office, 60s/120s debounce + shared fetch coalescing + `document.hidden` pause, slim `/api/status`. **E2E PASS** on this profile (see Demo E2E below). Stay on 2Gi — no 4Gi without owner sign-off.
 
 **State:** `LOOP_STATE_GCS_URI=gs://mystical-timing-442601-q8-loop-host/loop_state.db`. Persist live sqlite before package when the demo room GET is 200. Do not overwrite a good snapshot from a 503/OOM instance. Multi-instance drift (intermittent room/action 404 under concurrency 8) — mitigated with retries + persist; see LEARNINGS.
 

@@ -67,11 +67,11 @@ def test_home_ws_tick_debounces_world_refetch():
     assert "useSlowWorldTick" in src
     assert "worldTick" in src
     assert "slowTick" in src
-    rooms_block = src[src.index("api.rooms()") : src.index("api.office()")]
+    rooms_block = src[src.index("fetchWorldRooms()") : src.index("fetchWorldOffice()")]
     assert "worldTick" in rooms_block
-    office_block = src[src.index("api.office()") : src.index("const pulse")]
+    office_block = src[src.index("fetchWorldOffice()") : src.index("const pulse")]
     assert "slowTick" in office_block
-    assert "api.status()" in office_block
+    assert "fetchWorldStatus()" in office_block
 
 
 def test_rooms_index_ws_tick_debounces_list_refetch():
@@ -79,20 +79,20 @@ def test_rooms_index_ws_tick_debounces_list_refetch():
     assert "useDebouncedWorldTick" in src
     assert "worldTick" in src
     assert "}, [worldTick, pollEnabled]);" in src
-    assert "api.office()" in src
-    office_block = src[src.index("api.office()") : src.index("api.rooms()")]
+    assert "fetchWorldOffice()" in src
+    office_block = src[src.index("fetchWorldOffice()") : src.index("fetchWorldRooms()")]
     assert "}, []);" in office_block
     assert "worldTick" not in office_block
 
 
 def test_shell_does_not_refetch_rooms_on_ws_tick():
     src = (CONSOLE / "components" / "shell.tsx").read_text()
-    rooms_effect = src[src.index("api\n      .rooms()") : src.index("api\n      .status()")]
+    rooms_effect = src[src.index("api\n      .rooms()") : src.index("fetchWorldStatus()")]
     assert "[path]" in rooms_effect or "[path, inRoom]" in rooms_effect
     assert "tick" not in rooms_effect
     assert "inRoom" in rooms_effect
     assert "useSlowWorldTick" in src
-    status_effect = src[src.index("api\n      .status()") : src.index("useEffect(() => {", src.index("api\n      .status()"))]
+    status_effect = src[src.index("fetchWorldStatus()") : src.index("useEffect(() => {", src.index("fetchWorldStatus()"))]
     assert "pollEnabled" in status_effect
 
 
@@ -128,10 +128,21 @@ def test_pending_actions_trusts_empty_server_list():
 def test_world_refresh_policy_is_at_least_30s():
     src = (CONSOLE / "lib" / "world-refresh.ts").read_text()
     assert "WORLD_REFRESH_MS" in src
-    assert "30_000" in src or "30000" in src
-    assert "WORLD_SLOW_REFRESH_MS" in src
     assert "60_000" in src or "60000" in src
+    assert "WORLD_SLOW_REFRESH_MS" in src
+    assert "120_000" in src or "120000" in src
     assert "useWorldPollEnabled" in src
+
+
+def test_world_data_coalesces_shared_fetches():
+    src = (CONSOLE / "lib" / "world-data.ts").read_text()
+    assert "fetchWorldRooms" in src
+    assert "fetchWorldOffice" in src
+    assert "fetchWorldStatus" in src
+    assert "inflight" in src
+    home = (CONSOLE / "app" / "page.tsx").read_text()
+    assert "fetchWorldRooms" in home
+    assert "fetchWorldOffice" in home
 
 
 def test_room_api_defaults_to_slim_bundle():
@@ -150,9 +161,11 @@ def test_demo_page_and_film_banner_exist():
     banner = (CONSOLE / "components" / "product-film-banner.tsx").read_text()
     home = (CONSOLE / "app" / "page.tsx").read_text()
     assert "/demo/product-os-demo.mp4" in demo
+    assert "eval_mode" in demo
     assert "playsInline" in demo
     assert "Connect Product Y" in demo
     assert "ProductFilmBanner" in home
+    assert "evalMode" in home
     assert "muted" in banner and "autoPlay" in banner
 
 

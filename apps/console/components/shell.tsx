@@ -23,6 +23,7 @@ import { agentPalette } from "@/lib/names";
 import { cn } from "@/lib/utils";
 import { BeanMark } from "@/components/mascot";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { fetchWorldRooms, fetchWorldStatus } from "@/lib/world-data";
 import { useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { HumanInputProvider } from "@/lib/human-input-context";
 import { HumanInputModals } from "@/components/human-input-modals";
@@ -191,8 +192,9 @@ function SystemLinks({
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { tick } = useGlobalWs();
-  const slowTick = useSlowWorldTick(tick);
+  const { tick, connection } = useGlobalWs();
+  const wsLive = connection === "live";
+  const slowTick = useSlowWorldTick(tick, wsLive);
   const pollEnabled = useWorldPollEnabled();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [approvalsPending, setApprovalsPending] = useState(0);
@@ -211,8 +213,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (inRoom || !pollEnabled) return;
-    api
-      .status()
+    fetchWorldStatus()
       .then((s) => setApprovalsPending(s.approvals_pending ?? 0))
       .catch(() => setApprovalsPending(0));
   }, [slowTick, inRoom, pollEnabled]);

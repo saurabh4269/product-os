@@ -9,6 +9,7 @@ import { RoomView } from "@/components/room-view";
 import { api, hasAdminToken, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { segmentId } from "@/lib/route-id";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { fetchWorldOffice, fetchWorldRooms } from "@/lib/world-data";
 import { useDebouncedWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { ErrorState, Loading } from "@/components/ui";
@@ -28,8 +29,9 @@ export default function RoomsIndex() {
 }
 
 function RoomsIndexBody() {
-  const { tick } = useGlobalWs();
-  const worldTick = useDebouncedWorldTick(tick);
+  const { tick, connection } = useGlobalWs();
+  const wsLive = connection === "live";
+  const worldTick = useDebouncedWorldTick(tick, undefined, wsLive);
   const pollEnabled = useWorldPollEnabled();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [office, setOffice] = useState<OfficeSnapshot | null>(null);
@@ -39,7 +41,7 @@ function RoomsIndexBody() {
 
   useEffect(() => {
     let cancelled = false;
-    tryGet(() => api.office())
+    tryGet(() => fetchWorldOffice())
       .then((officeRes) => {
         if (cancelled) return;
         setOffice(officeRes.data ?? null);
@@ -56,9 +58,9 @@ function RoomsIndexBody() {
     let cancelled = false;
     (async () => {
       try {
-        const roomsRes = await tryGet(() => api.rooms());
+        const roomsRes = await tryGet(() => fetchWorldRooms());
         if (cancelled) return;
-        setRooms(roomsRes.data?.rooms ?? []);
+        setRooms(roomsRes.data ?? []);
         setAdminAuthRequired((prev) => prev || roomsRes.authRequired);
         setErr(null);
       } catch (e) {

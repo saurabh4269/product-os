@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiAuthError, hasAdminToken } from "@/lib/api";
 import { useGlobalWs } from "@/lib/use-global-ws";
+import { fetchWorldGlass, fetchWorldStatus } from "@/lib/world-data";
 import { useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { ProofEmbed, ProofGrid, type ProofPayload } from "@/components/proof-embed";
 import { LiveWorkBoard, type LiveWorkCard } from "@/components/live-work-board";
@@ -51,7 +52,8 @@ function FeaturedCard({ card }: { card: LiveWorkCard }) {
 /** Live tool receipts — BQ, GitHub, mail, flags — without leaving home. */
 export function HomeGlassBox({ className }: { className?: string }) {
   const { tick, connection } = useGlobalWs();
-  const slowTick = useSlowWorldTick(tick);
+  const wsLive = connection === "live";
+  const slowTick = useSlowWorldTick(tick, wsLive);
   const pollEnabled = useWorldPollEnabled();
   const [proofs, setProofs] = useState<ProofPayload[]>([]);
   const [skips, setSkips] = useState<string[]>([]);
@@ -61,8 +63,8 @@ export function HomeGlassBox({ className }: { className?: string }) {
 
   const loadGlass = useCallback(() => {
     setNeedsAuth(false);
-    Promise.all([api.proof(), api.liveWork()])
-      .then(([pf, lw]) => {
+    fetchWorldGlass()
+      .then(({ proofs: pf, liveWork: lw }) => {
         const cards = ((pf.cards || []) as ProofPayload[]).filter((c) => c?.kind);
         const trio = [pf.github, pf.warehouse, pf.ga4, pf.workspace, pf.gateway]
           .filter(Boolean)
@@ -180,16 +182,16 @@ export function HomeGlassBox({ className }: { className?: string }) {
 
 /** Compact live-work strip — only when receipts exist. */
 export function HomeLiveReceipts({ className }: { className?: string }) {
-  const { tick } = useGlobalWs();
-  const slowTick = useSlowWorldTick(tick);
+  const { tick, connection } = useGlobalWs();
+  const wsLive = connection === "live";
+  const slowTick = useSlowWorldTick(tick, wsLive);
   const pollEnabled = useWorldPollEnabled();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (!pollEnabled) return;
-    api
-      .liveWork()
-      .then((r) => setCount(r.cards?.length ?? 0))
+    fetchWorldGlass()
+      .then((r) => setCount(r.liveWork.cards?.length ?? 0))
       .catch(() => setCount(0));
   }, [slowTick, pollEnabled]);
 

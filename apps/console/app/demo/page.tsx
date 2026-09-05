@@ -1,11 +1,41 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 const DEMO_SRC = "/demo/product-os-demo.mp4";
-const HANG_ROOM = "room_f627763ea9";
+const HANG_ROOM = "room_65a4654bec";
 
 export default function DemoPage() {
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    api
+      .config()
+      .then((c) => setAllowed(Boolean(c.eval_mode)))
+      .catch(() => setAllowed(false));
+  }, []);
+
+  if (allowed === null) {
+    return <div className="page-pad text-[14px] text-[var(--dim)]">Loading…</div>;
+  }
+
+  if (!allowed) {
+    return (
+      <div className="page-pad mx-auto max-w-lg">
+        <p className="text-[15px] font-medium text-foreground">Product film is local/eval only</p>
+        <p className="mt-2 text-[14px] leading-relaxed text-[var(--dim)]">
+          Hosted Product OS keeps Remotion and the film off the control plane. Run locally with{" "}
+          <code className="text-[13px]">LOOP_EVAL=1</code> or open the campus to walk a live room.
+        </p>
+        <Link href="/" className="mt-4 inline-block text-[14px] font-medium text-accent hover:underline">
+          ← Campus
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full bg-[#f5f5f7]">
       <div className="page-pad mx-auto max-w-5xl pb-16 pt-8">
@@ -39,7 +69,7 @@ export default function DemoPage() {
         </div>
 
         <p className="mt-3 text-[12px] text-[var(--faint)]">
-          Muted autoplay on the campus embeds the same clip. Illustrative metrics use the hosted hang demo.
+          Muted autoplay on the campus embeds the same clip when eval mode is on. Illustrative metrics use the hosted hang demo.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">

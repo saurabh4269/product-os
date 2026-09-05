@@ -96,11 +96,11 @@ export function LiveIncidentPanel({ tenantId, adminReady }: { tenantId: string; 
     const activePhase = phase === "diagnosing" || phase === "signal_received";
     const ms = wsLive
       ? activePhase
-        ? 30_000
-        : 60_000
+        ? 60_000
+        : 120_000
       : activePhase
-        ? 8000
-        : 15_000;
+        ? 20_000
+        : 45_000;
     const id = window.setInterval(() => {
       void refresh();
     }, ms);
