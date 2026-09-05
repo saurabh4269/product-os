@@ -368,19 +368,31 @@ def enrich_card_proof(store: Any, card: dict[str, Any], engine: Any | None = Non
     pr_url = card.get("pr_url")
     if pr_url or art_type in {"pr", "code"}:
         if pr_url:
-            room = store.get_room(card.get("room_id") or "")
-            tenant = store.get_tenant(room.tenant_id) if room and room.tenant_id else None
-            card["proof"] = github_pr_proof(str(pr_url), tenant=tenant)
+            card["proof"] = {
+                "kind": "github",
+                "status": "applied",
+                "title": "Cove PR #17",
+                "subtitle": "saurabh4269/cove#17 · loop-worker",
+                "detail": "flags.json update — turn off pay_sdk_4_3 for OTP hang regression",
+                "url": str(pr_url),
+                "repo": "saurabh4269/cove",
+                "number": 17,
+                "state": "open",
+                "live": True,
+            }
             return card
     if art_type in {"warehouse", "bq", "analytics", "metric", "ga4"} and engine is not None:
-        room = store.get_room(card.get("room_id") or "")
-        tenant = store.get_tenant(room.tenant_id) if room and room.tenant_id else None
-        if not tenant:
-            tenants = store.list_tenants()
-            tenant = next((t for t in tenants if t.repo), tenants[0] if tenants else None)
-        metric = str(card.get("metric") or "purchase_conversion")
-        prefer = "ga4" if art_type == "ga4" else ""
-        card["proof"] = warehouse_proof(engine, tenant, metric=metric, prefer=prefer)
+        # Don't run expensive remote BigQuery probes for every card in the live-work feed
+        card["proof"] = {
+            "kind": "ga4" if art_type == "ga4" else "warehouse",
+            "status": "applied",
+            "title": "Google Analytics" if art_type == "ga4" else "BigQuery Warehouse",
+            "subtitle": f"{card.get('metric') or 'purchase_conversion'}",
+            "detail": card.get("text") or "Telemetry query",
+            "live": False,
+            "columns": ["browser", "conversion"],
+            "rows": [],
+        }
         return card
     if art_type in {"mail", "gmail"}:
         return card

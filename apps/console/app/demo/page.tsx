@@ -17,11 +17,12 @@ export default function DemoPage() {
             Product film
           </p>
           <h1 className="mt-2 font-serif text-[clamp(2rem,4vw,2.75rem)] font-medium leading-tight tracking-tight text-foreground">
-            One loop, end to end.
+            The autonomous product loop.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[var(--dim)]">
-            Real hosted UI — campus, a live incident room, diagnosis, human gate, and a tenant flags PR.
-            Cove is the demo tenant only; Product OS never merges tenant PRs.
+            A full guided walkthrough with voiceover across all tools — Product OS campus, Connect desk,
+            live Cove tenant storefront, incident diagnosis with Customer Voice &amp; BigQuery proofs,
+            and the resulting GitHub pull request with human approval gating.
           </p>
         </header>
 

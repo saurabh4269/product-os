@@ -21,7 +21,7 @@ function fadeUp(frame: number, fps: number, delay = 0) {
   return { opacity: t, transform: `translateY(${y}px)` };
 }
 
-const stops = ["Campus", "Room", "Diagnose", "Approve", "Ship"];
+const stops = ["Observe", "Connect", "Diagnose", "Coordinate", "Ship", "Learn"];
 
 export const FilmTitle: React.FC = () => {
   const frame = useCurrentFrame();
@@ -92,8 +92,8 @@ export const FilmTitle: React.FC = () => {
         >
           Your product team, watching the numbers.
         </h1>
-        <p style={{ ...line, margin: "28px 0 0", fontSize: 26, color: DIM, maxWidth: 720, lineHeight: 1.45 }}>
-          Observe → rooms → specialists → human approve → tenant PR. One campus, one loop.
+        <p style={{ ...line, margin: "28px 0 0", fontSize: 26, color: DIM, maxWidth: 780, lineHeight: 1.45 }}>
+          Signals from Cove → rooms with specialists → Gmail, Calendar, and calls → human gate → tenant PR.
         </p>
         <div style={{ ...rail, marginTop: 48, display: "flex", gap: 14, flexWrap: "wrap" }}>
           {stops.map((s) => (
@@ -157,7 +157,7 @@ export const FilmEnd: React.FC = () => {
           Start on campus.
         </p>
         <p style={{ ...cta, margin: "24px 0 0", fontSize: 28, color: "rgba(245,245,247,0.72)" }}>
-          Two minutes to Connect Product Y.
+          Wire Cove · OAuth · rooms · approvals · verify.
         </p>
         <div
           style={{
