@@ -1111,6 +1111,11 @@ def geap_status(_actor: AdminUnlessEval):
     return {
         "geap": geap_runtime.status(),
         "memory_bank": geap_memory.status(),
+        "live_engine": {
+            "resource_name": "projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872",
+            "display_name": "loop-incident-orchestrator",
+            "staging_bucket": "gs://mystical-timing-442601-q8-loop-host/agent_engine/",
+        },
         "routing": {
             "signals": "geap → adk worker → inline adk → LoopEngine",
             "research": "geap note + local pipeline when enabled",
@@ -1122,6 +1127,14 @@ def geap_status(_actor: AdminUnlessEval):
             "sgp": "Semantic Governance Preview (plan-only)",
         },
     }
+
+
+@app.post("/api/geap/smoke")
+def geap_smoke(_actor: AdminUnlessEval):
+    """Smoke query live Reasoning Engine via async_stream_query."""
+    from loop.geap_runtime import smoke_query
+
+    return smoke_query()
 
 
 class GeapMemoryBody(BaseModel):

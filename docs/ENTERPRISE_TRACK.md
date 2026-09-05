@@ -75,13 +75,14 @@ Env checklist (GEAP):
 
 ```
 LOOP_GEAP_ENABLED=1
-LOOP_GEAP_AGENT_ENGINE_ID=projects/.../locations/.../reasoningEngines/<id>   # full resource name
-LOOP_GEAP_STAGING_BUCKET=gs://mystical-timing-442601-q8-loop-host
+LOOP_GEAP_AGENT_ENGINE_ID=projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872
+LOOP_GEAP_STAGING_BUCKET=gs://mystical-timing-442601-q8-loop-host/agent_engine/
+LOOP_GEAP_DISPLAY_NAME=loop-incident-orchestrator
 GOOGLE_CLOUD_PROJECT=mystical-timing-442601-q8
 GOOGLE_CLOUD_REGION=us-central1
 ```
 
-Live probe (2026-09-05): use ``vertexai.Client(...).agent_engines`` for create/list — **not** ``agentplatform.Client`` (no ``agent_engines`` yet). Agent Engine create requires ``cloudpickle`` + ``pydantic`` in requirements. Model: ``config/models.yaml`` primary (``gemini-3.5-flash``), fallback ``gemini-2.5-flash`` on deploy failure.
+`deploy-gcp.sh` wires these by default (`LOOP_GEAP_ENABLE=1`; set `LOOP_GEAP_ENABLE=0` to opt out). Smoke: `python -m loop.geap_deploy --smoke` or `POST /api/geap/smoke`.
 
 IAM: deployer needs `roles/aiplatform.user` and write access to the staging bucket. Main `loop` host does **not** bundle `google-adk` — GEAP SDK is for deploy script / optional worker only; runtime queries use client API.
 

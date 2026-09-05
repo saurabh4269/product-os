@@ -42,6 +42,14 @@
 # LOOP_ADK_WORKER_URL=       # loop-adk Cloud Run URL (main service forwards signals)
 # LOOP_ADK_ENABLED=1         # inline ADK on same process (worker service sets this)
 
+# GEAP Agent Runtime (live loop-incident-orchestrator on mystical-timing-442601-q8)
+# LOOP_GEAP_ENABLE=1          # deploy-gcp.sh default; set 0 to skip wiring
+# LOOP_GEAP_ENABLED=1
+# LOOP_GEAP_AGENT_ENGINE_ID=projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872
+# LOOP_GEAP_STAGING_BUCKET=gs://mystical-timing-442601-q8-loop-host/agent_engine/
+# LOOP_GEAP_DISPLAY_NAME=loop-incident-orchestrator
+# Smoke: python -m loop.geap_deploy --smoke  or  POST /api/geap/smoke
+
 # Optional
 # GOOGLE_CLOUD_PROJECT=mystical-timing-442601-q8
 # LOOP_WAREHOUSE_PATH=

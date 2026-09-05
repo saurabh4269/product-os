@@ -6,8 +6,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="${HOME}/google-cloud-sdk/bin:${PATH}"
 PROJECT="${GOOGLE_CLOUD_PROJECT:-mystical-timing-442601-q8}"
 REGION="${GOOGLE_CLOUD_REGION:-us-central1}"
-BUCKET="${LOOP_GEAP_STAGING_BUCKET:-gs://${PROJECT}-loop-host}"
-DISPLAY_NAME="${LOOP_GEAP_DISPLAY_NAME:-loop-orchestrator}"
+BUCKET="${LOOP_GEAP_STAGING_BUCKET:-gs://${PROJECT}-loop-host/agent_engine/}"
+DISPLAY_NAME="${LOOP_GEAP_DISPLAY_NAME:-loop-incident-orchestrator}"
 
 echo "deploy-geap-agent: project=${PROJECT} region=${REGION} bucket=${BUCKET}"
 

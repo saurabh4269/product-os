@@ -142,12 +142,14 @@ Product OS now ships **real wiring** to Gemini Enterprise Agent Platform — not
 Deploy managed runtime:
 
 ```bash
-./scripts/deploy-geap-agent.sh
-# then update loop Cloud Run:
-# LOOP_GEAP_ENABLED=1 LOOP_GEAP_AGENT_ENGINE_ID=<id>
+./scripts/deploy-geap-agent.sh   # create/redeploy engine (cloudpickle + pydantic in requirements)
+./scripts/deploy-gcp.sh          # wires LOOP_GEAP_* by default (LOOP_GEAP_ENABLE=0 to opt out)
+python -m loop.geap_deploy --smoke
 ```
 
-Judges: `GET /api/geap/status` shows honest `skipped_reason` when not entitled. No secrets in git. `fail_open=false` preserved.
+Live engine: `loop-incident-orchestrator` · `projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872`
+
+Judges: `GET /api/geap/status` · `POST /api/geap/smoke`
 
 ---
 

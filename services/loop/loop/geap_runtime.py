@@ -16,7 +16,11 @@ from typing import Any
 
 from loop.config import default_model_id
 
-_DEFAULT_STAGING_BUCKET = "gs://mystical-timing-442601-q8-loop-host"
+_DEFAULT_STAGING_BUCKET = "gs://mystical-timing-442601-q8-loop-host/agent_engine/"
+_LIVE_AGENT_ENGINE = (
+    "projects/mystical-timing-442601-q8/locations/us-central1/reasoningEngines/7709236223511887872"
+)
+_LIVE_DISPLAY_NAME = "loop-incident-orchestrator"
 _GEAP_MODEL_FALLBACK = "gemini-2.5-flash"
 _last_error: str = ""
 _cached_remote: Any | None = None
@@ -144,6 +148,7 @@ def status() -> dict[str, Any]:
         "agent_engine_id": geap_engine_id() or None,
         "agent_engine_short_id": engine_id_short() or None,
         "resource_name": engine_resource_name() or None,
+        "display_name": (os.environ.get("LOOP_GEAP_DISPLAY_NAME") or _LIVE_DISPLAY_NAME).strip() if geap_engine_id() else None,
         "staging_bucket": geap_staging_bucket(),
         "memory_bank_uri": f"agentengine://{engine_id_short()}" if engine_id_short() else None,
         "last_error": _last_error or None,
@@ -312,10 +317,10 @@ def query_agent_engine(
     session_id: str | None = None,
     engine: Any | None = None,
 ) -> dict[str, Any]:
-    """Sync wrapper around remote ``async_stream_query``."""
+    """Sync wrapper around ``client.agent_engines.get(...).async_stream_query``."""
     remote = get_remote_agent()
     if remote is None:
-        return {"ok": False, "error": _last_error or "GEAP agent engine unavailable"}
+        return {"ok": False, "error": _last_error or "GEAP agent engine unavailable", "resource_name": engine_resource_name()}
     prompt = message[:6000]
     kwargs: dict[str, Any] = {"user_id": user_id, "message": prompt}
     if session_id:
@@ -330,11 +335,28 @@ def query_agent_engine(
             "reply": reply or None,
             "events": len(events),
             "backend": "geap_runtime",
+            "resource_name": engine_resource_name(),
             "agent_engine_id": engine_id_short(),
         }
     except Exception as exc:
         _note_error(exc)
-        return {"ok": False, "error": str(exc)[:300], "backend": "geap_runtime"}
+        return {
+            "ok": False,
+            "error": str(exc)[:300],
+            "backend": "geap_runtime",
+            "resource_name": engine_resource_name(),
+        }
+
+
+def smoke_query(*, user_id: str = "loop-smoke") -> dict[str, Any]:
+    """One-line health probe against the live Reasoning Engine."""
+    if not geap_configured() and not geap_engine_id():
+        return {"ok": False, "error": "GEAP not configured", "geap": status()}
+    msg = "Reply with exactly: LOOP GEAP ok"
+    out = query_agent_engine(msg, user_id=user_id)
+    out["smoke"] = True
+    out["geap"] = status()
+    return out
 
 
 def _signal_prompt(signal: dict[str, Any], *, room_id: str | None = None) -> str:

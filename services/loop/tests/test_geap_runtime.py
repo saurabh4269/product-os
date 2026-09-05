@@ -189,6 +189,15 @@ def test_adk_status_includes_geap(engine, monkeypatch):
     assert "geap_memory" in body
 
 
+def test_smoke_query_mock(monkeypatch):
+    monkeypatch.setenv("LOOP_GEAP_ENABLED", "1")
+    monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "projects/demo/locations/us-central1/reasoningEngines/1")
+    monkeypatch.setattr(geap_runtime, "query_agent_engine", lambda *_a, **_k: {"ok": True, "reply": "LOOP GEAP ok"})
+    out = geap_runtime.smoke_query()
+    assert out["smoke"] is True
+    assert out["ok"] is True
+
+
 def test_geap_memory_recall_mock(monkeypatch):
     monkeypatch.setenv("LOOP_GEAP_ENABLED", "1")
     monkeypatch.setenv("LOOP_GEAP_AGENT_ENGINE_ID", "123")
