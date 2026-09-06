@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, hasAdminToken, tryConfig, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { isFirstVisit, recordVisit } from "@/lib/first-visit";
+import { mergeAuthRequired, shouldShowHomeConnectOverlay } from "@/lib/home-auth-state";
 import { buildHomePulse } from "@/lib/home-pulse";
+import { applyRoomsTryGet } from "@/lib/rooms-index-load";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { fetchWorldOffice, fetchWorldRooms, fetchWorldStatus } from "@/lib/world-data";
-import { useDebouncedWorldTick, useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
+import { shouldWorldPollFetch, useDebouncedWorldTick, useSlowWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { ErrorState } from "@/components/ui";
 import { CityMap } from "@/components/city-map";
 import { HomeCommandBar } from "@/components/home-command-bar";
@@ -36,6 +38,11 @@ export default function HomePage() {
   const [status, setStatus] = useState<Awaited<ReturnType<typeof api.status>> | null>(null);
   const [visitReady, setVisitReady] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [worldHydrated, setWorldHydrated] = useState(false);
+  const roomsPrimed = useRef(false);
+  const officePrimed = useRef(false);
+  const roomsSettled = useRef(false);
+  const officeSettled = useRef(false);
 
   useEffect(() => {
     recordVisit();
@@ -62,18 +69,32 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!pollEnabled) return;
+    if (!shouldWorldPollFetch(pollEnabled, roomsPrimed.current)) return;
+    roomsPrimed.current = true;
     let cancelled = false;
     (async () => {
       try {
         const roomsRes = await tryGet(() => fetchWorldRooms());
         if (cancelled) return;
-        setRooms(roomsRes.data ?? []);
-        setAdminAuthRequired((prev) => prev || roomsRes.authRequired);
+        setAdminAuthRequired((prev) => {
+          const applied = applyRoomsTryGet(prev, roomsRes);
+          setRooms(applied.rooms);
+          return applied.adminAuthRequired;
+        });
         setErr(null);
       } catch (e) {
-        if (!cancelled && hasAdminToken()) {
-          setErr(e instanceof Error ? e.message : "API unreachable");
+        if (!cancelled) {
+          if (!hasAdminToken()) {
+            setAdminAuthRequired(true);
+            setErr(null);
+          } else {
+            setErr(e instanceof Error ? e.message : "API unreachable");
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          roomsSettled.current = true;
+          if (officeSettled.current) setWorldHydrated(true);
         }
       }
     })();
@@ -83,7 +104,8 @@ export default function HomePage() {
   }, [worldTick, pollEnabled]);
 
   useEffect(() => {
-    if (!pollEnabled) return;
+    if (!shouldWorldPollFetch(pollEnabled, officePrimed.current)) return;
+    officePrimed.current = true;
     let cancelled = false;
     (async () => {
       try {
@@ -94,8 +116,8 @@ export default function HomePage() {
         if (cancelled) return;
         setOffice(officeRes.data);
         setStatus(statusRes.data);
-        setAdminAuthRequired(
-          (prev) => prev || officeRes.authRequired || statusRes.authRequired
+        setAdminAuthRequired((prev) =>
+          mergeAuthRequired(prev, officeRes.authRequired, statusRes.authRequired)
         );
         setErr(null);
       } catch (e) {
@@ -106,6 +128,11 @@ export default function HomePage() {
           } else {
             setErr(e instanceof Error ? e.message : "API unreachable");
           }
+        }
+      } finally {
+        if (!cancelled) {
+          officeSettled.current = true;
+          if (roomsSettled.current) setWorldHydrated(true);
         }
       }
     })();
@@ -130,6 +157,12 @@ export default function HomePage() {
   }, [visitReady, status, office, adminAuthRequired]);
 
   if (err && hasAdminToken()) return <ErrorState message={err} />;
+
+  const showConnectOverlay = shouldShowHomeConnectOverlay(
+    adminAuthRequired,
+    hasAdminToken(),
+    worldHydrated
+  );
 
   const desks = office?.desks ?? [];
   const handoffs = office?.handoffs ?? [];
@@ -166,7 +199,7 @@ export default function HomePage() {
           liveMotion={live}
         />
         <HomeBrief pulse={pulse} onDismiss={() => setShowHint(false)} />
-        {adminAuthRequired ? <ConnectAdminCta variant="overlay" /> : null}
+        {showConnectOverlay ? <ConnectAdminCta variant="overlay" /> : null}
         <HomeCommandBar
           pulse={pulse}
           evalMode={evalMode}
