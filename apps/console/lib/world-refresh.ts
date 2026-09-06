@@ -12,6 +12,8 @@ export const WORLD_SLOW_REFRESH_MS = 120_000;
 export const WORLD_REFRESH_WS_LIVE_MS = 90_000;
 export const WORLD_SLOW_REFRESH_WS_LIVE_MS = 180_000;
 
+export { shouldWorldPollFetch } from "./world-poll-gate";
+
 /** Skip HTTP polls while the tab is in the background (saves 2Gi host RAM). */
 export function useWorldPollEnabled(): boolean {
   const [enabled, setEnabled] = useState(

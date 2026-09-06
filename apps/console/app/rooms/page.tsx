@@ -1,16 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { ConnectAdminCta } from "@/components/connect-admin-cta";
 import { RoomView } from "@/components/room-view";
-import { api, hasAdminToken, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
+import { hasAdminToken, tryGet, type OfficeSnapshot, type Room } from "@/lib/api";
 import { segmentId } from "@/lib/route-id";
+import { applyRoomsTryGet } from "@/lib/rooms-index-load";
 import { useGlobalWs } from "@/lib/use-global-ws";
 import { fetchWorldOffice, fetchWorldRooms } from "@/lib/world-data";
-import { useDebouncedWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
+import { shouldWorldPollFetch, useDebouncedWorldTick, useWorldPollEnabled } from "@/lib/world-refresh";
 import { LiveRoomsRail } from "@/components/live-rooms-rail";
 import { ErrorState, Loading } from "@/components/ui";
 
@@ -38,6 +39,7 @@ function RoomsIndexBody() {
   const [adminAuthRequired, setAdminAuthRequired] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const roomsPrimed = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,14 +56,18 @@ function RoomsIndexBody() {
   }, []);
 
   useEffect(() => {
-    if (!pollEnabled) return;
+    if (!shouldWorldPollFetch(pollEnabled, roomsPrimed.current)) return;
+    roomsPrimed.current = true;
     let cancelled = false;
     (async () => {
       try {
         const roomsRes = await tryGet(() => fetchWorldRooms());
         if (cancelled) return;
-        setRooms(roomsRes.data ?? []);
-        setAdminAuthRequired((prev) => prev || roomsRes.authRequired);
+        setAdminAuthRequired((prev) => {
+          const applied = applyRoomsTryGet(prev, roomsRes);
+          setRooms(applied.rooms);
+          return applied.adminAuthRequired;
+        });
         setErr(null);
       } catch (e) {
         if (!cancelled) {
